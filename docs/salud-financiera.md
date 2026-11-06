@@ -145,5 +145,6 @@ Además del puntaje, la tarjeta muestra cuatro pilares (**Liquidez, Deuda, Flujo
 - **Deuda:** `tcPropia + yoDebo` frente al ingreso típico (> 3× rojo, 1,5–3× ámbar) y frente a los activos líquidos (> 100 % rojo, > 50 % ámbar); manda el peor. **No cambia el puntaje** (criterio b sigue mirando solo la tarjeta, para no penalizar dos veces con la liquidez).
 - **Flujo:** de los últimos 3 meses completos, 0 en déficit verde, 1 ámbar, 2+ rojo.
 - **Tendencia:** patrimonio a 90 días sin depósitos ni retiros (`Salud.tendenciaPatrimonio`); necesita 30 días de historial.
+- **Patrimonio cayendo N meses:** `Salud.mesesCayendo` cuenta los meses completos seguidos con el cierre mensual (`S.patrimonioCierres`) bajando, sin aperturas y descontando ruido; la regla `patrimonio-cayendo` avisa desde 2 (ámbar) y 3 (rojo) en «Necesita atención». No cambia el puntaje.
 - **Estado:** crisis > presión > atención > creciendo > estable (reglas en el comentario de `Salud.estado`). Presión y crisis no celebran y proponen hasta 3 acciones con enlace. Patrimonio negativo nunca es «Creciendo».
 - Límites en `UMBRALES.salud.pilares`; pruebas en `tests/finanzas.test.js`.

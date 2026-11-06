@@ -1267,6 +1267,7 @@ describe('borrar-todo-pin', () => {
     app.pedirPinAntesDe = async () => true; // el PIN de confirmación se escribió bien (pedirPinAntesDe vive en core-state.js, ver pin-confirmar-acciones-destructivas)
     app._fbUser = { uid: 'u1' };
     app._fb = { db: {}, doc: () => ({}), setDoc: async () => { if (!nubeOk) throw new Error('sin conexión'); } };
+    app._fbEscribirDoc = async (payload, ts) => app._fb.setDoc({}, { payload, updatedAt: ts }); // la capa de sync (firebase-sync.js) no se carga aquí: escribe por el setDoc simulado
     app.location = { reload() { app.__recargado = true; }, href: '' };
     const lanzados = [];
     app._fbLoadData = () => lanzados.push('app');

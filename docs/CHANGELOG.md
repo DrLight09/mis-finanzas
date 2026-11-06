@@ -4,6 +4,26 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sync con `rev`, extraordinarios, cierres y patrimonio cayendo (2026-11-06, SW v111)
+
+Origen: `mejoras-mis-finanzas.md`, que seguía listando como pendientes cosas ya hechas (A1–A4, A9, B1, B5, B7, P8/P9 estaban resueltas en v95–v110); se comprobó cada punto contra el código antes de tocarlo. Pruebas: **823** (11 nuevas).
+
+- **Sync sin depender de relojes (`rev`).** Era cierto: el guardado era `setDoc` sin comparar nada y el listener decidía por `updatedAt` del cliente con 5 s de margen. Ahora el documento lleva `rev` (entero, +1 por guardado) y `window._revNube` recuerda la que este dispositivo ya aplicó. El guardado se hace con `runTransaction` (lectura + escritura atómicas) y **solo se acepta si la nube sigue en esa revisión** (`_escribirNube`, `firebase-sync.js`).
+  - Conflicto (otro dispositivo guardó antes): **no se pisa**. Se carga la versión de la nube, se avisa, y lo local descartado queda en `localStorage.mf_conflicto` (`{ts, payload}`; `window._fbConflictoGuardado()` lo devuelve). El cierre de sesión no cierra si hubo conflicto.
+  - Listener: con `rev` manda la revisión (aunque el otro reloj esté atrasado); un documento sin `rev` cuenta como 0 y usa la regla antigua por hora. Si llega una actualización con cambios locales sin guardar, se guarda copia en `mf_conflicto` y se avisa.
+  - Sin conexión la transacción falla de inmediato: se cae a `setDoc` (cola local de Firestore), como antes.
+  - `_fbSaveToCloud({ forzar:true })` (importar backup) y `borrarTodo` escriben a propósito sobre la nube y suben la revisión (`window._fbEscribirDoc(payload, ts, true)`). El guardado de `beforeunload` (core-state.js) escribe `rev+1` directo.
+  - Límite: sigue siendo un solo documento por usuario; no hay fusión entre dos versiones, gana la de la nube y la local queda como copia.
+- **Ingreso típico sin extraordinarios.** `Periodo.ingresoPromedioPrevio` ya no cuenta los ingresos marcados «extraordinario» (`ingresosPorMes(estado, { sinExtra:true })`); un aguinaldo ya no sube `ingresoRef`. El total real del mes no cambia.
+- **Marcar un ingreso ya registrado.** En el detalle de un movimiento (entrada real de `S.movimientos`) hay un botón «Marcar como extraordinario» / «Quitar la marca» (`core:toggleExtraordinario`, `movimientos.js`). No mueve plata.
+- **Cierres mensuales al eliminar.** `quitarDeHistorial` ahora también ajusta `S.patrimonioCierres` desde el mes del movimiento en adelante (antes los meses ya podados de la serie diaria quedaban con el valor viejo).
+- **«Patrimonio cayendo N meses»** (B6-2). `Salud.mesesCayendo(cierres, mesActual, { gastoTipico })` (pura): meses completos seguidos en que el cierre bajó, descontando `base` (aperturas) y con un ruido de `UMBRALES.salud.patrimonioCayendo.ruidoGastoPct` (10 % del gasto típico). Regla `patrimonio-cayendo` en «Necesita atención»: ámbar desde 2 meses, rojo desde 3.
+- Prueba existente adaptada: `borrar-todo-pin` simula `_fbEscribirDoc` (carga solo configuracion.js).
+- **Para probar:** (1) abrir la app en dos pestañas con la misma cuenta, editar en la A y guardar, editar en la B sin esperar el aviso: al guardar B debe salir «Otro dispositivo guardó antes que tú» y cargar lo de A. (2) Ingresos → abrir uno → «Marcar como extraordinario»: el ingreso típico del Inicio baja. (3) Importar backup sigue funcionando sin avisar conflicto.
+- **Antes de desplegar:** `node scripts/sellar-sw.js` (el BUILD de `sw.js` no está resellado: faltaban `icons/` y `css/` en el entorno donde se hizo).
+
+---
+
 ## Tests agrupados por sección (2026-11-06, sin cambio en la app)
 
 - 20 archivos de prueba → 9: `finanzas.test.js`, `cierre-wrapped.test.js`, `sesion-y-despliegue.test.js` e `interfaz.test.js` agrupan los que eran pequeños y afines; `nucleo`, `cuentas`, `libro`, `prestamos` y `mesada` siguen aparte. Cada archivo anterior es ahora un `describe` con el mismo nombre (mismo patrón que ya usaban `libro` y `sync`). Mismos 812 tests, mismo resultado.

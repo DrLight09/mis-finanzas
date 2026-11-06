@@ -52,11 +52,86 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
   // esperando una promesa que el clearTimeout canceló.
   let _savePromise = null;
   let _saveResolve = null;
+  let _forzarProximo = false; // lo pide _fbSaveToCloud({ forzar:true }): importar un backup pisa la nube a propósito
   const PAYLOAD_AVISO_BYTES = 800000, PAYLOAD_LIMITE_BYTES = 1000000; // el documento de Firestore admite 1 MiB
   window._payloadLimites = { aviso: PAYLOAD_AVISO_BYTES, limite: PAYLOAD_LIMITE_BYTES }; // los lee js/core/cierre.js (medidor de tamaño)
   // Cada guardado toma su número al empezar. Comprimir es asíncrono: si mientras tanto arrancó un guardado más nuevo, este
   // ya quedó viejo y no debe escribir después (pisaría datos más recientes en la nube).
   let _saveSeq = 0;
+
+  // ── Control de revisión (`rev`) — «último escribe gana» sin depender de relojes ────────────────────────────────────
+  // El documento lleva `rev` (entero que sube de 1 en 1 en cada guardado). `_revNube` es la revisión de la nube que ESTE
+  // dispositivo ya aplicó o escribió; un guardado solo se acepta si la nube sigue en esa revisión (se comprueba dentro de una
+  // transacción de Firestore: lectura + escritura atómicas). Si otro dispositivo guardó en medio, NO se pisa: se carga su versión
+  // y la copia local descartada queda en localStorage (`mf_conflicto`). Un documento viejo sin `rev` cuenta como 0.
+  // `_revEnVuelo` es la revisión que este dispositivo está escribiendo ahora: el eco de su propio guardado no es «otro dispositivo».
+  window._revNube = null;
+  window._revEnVuelo = 0;
+  const _revDe = datos => (datos && typeof datos.rev === 'number') ? datos.rev : 0;
+  function _errorSinRed(e) {
+    return !!e && (e.code === 'unavailable' || /offline|sin conexi/i.test(String(e.message || '')));
+  }
+  // Escribe el payload ya codificado. Devuelve {ok:true, rev} | {ok:false, reason:'conflict', snap}; lanza si falla de verdad.
+  // `forzar` (importar un backup, borrar todo): escritura intencional que pisa la nube y sube la revisión.
+  async function _escribirNube(payloadNube, ts, forzar) {
+    const { db, doc, setDoc, runTransaction } = window._fb;
+    const ref = doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas');
+    const base = window._revNube;
+    const directa = async (revBase) => {
+      const rev = (revBase || 0) + 1;
+      window._revEnVuelo = rev;
+      await setDoc(ref, { payload: payloadNube, updatedAt: ts, rev });
+      window._revNube = rev;
+      return { ok: true, rev };
+    };
+    if (forzar || typeof runTransaction !== 'function' || base == null) {
+      // Forzada: sube sobre la revisión que haya en la nube ahora (si se puede leer) para que los demás dispositivos la vean como nueva.
+      let revBase = base;
+      if (forzar && typeof runTransaction === 'function') {
+        try { revBase = await runTransaction(db, async tx => { const s = await tx.get(ref); return s.exists() ? _revDe(s.data()) : 0; }); } catch (_) { /* sin red: se usa la que se conoce */ }
+      }
+      return directa(Math.max(revBase || 0, base || 0));
+    }
+    try {
+      const res = await runTransaction(db, async (tx) => {
+        const s = await tx.get(ref);
+        const revNube = s.exists() ? _revDe(s.data()) : 0;
+        if (revNube !== base) return { conflicto: true, snap: s };
+        window._revEnVuelo = base + 1;
+        tx.set(ref, { payload: payloadNube, updatedAt: ts, rev: base + 1 });
+        return { rev: base + 1 };
+      });
+      if (res.conflicto) return { ok: false, reason: 'conflict', snap: res.snap };
+      window._revNube = res.rev;
+      return { ok: true, rev: res.rev };
+    } catch (e) {
+      // Sin conexión la transacción falla de inmediato; setDoc, en cambio, queda en la cola local de Firestore y sube al volver la red.
+      if (_errorSinRed(e)) return directa(base);
+      throw e;
+    }
+  }
+  window._fbEscribirDoc = _escribirNube;
+
+  // Otro dispositivo guardó antes que este: se conserva una copia de lo local que se descarta y se carga la versión de la nube.
+  async function _resolverConflicto(snapCrudo, payloadLocal) {
+    try { localStorage.setItem('mf_conflicto', JSON.stringify({ ts: Date.now(), payload: payloadLocal })); } catch (_) {}
+    const snap = await _decodificarSnap(snapCrudo);
+    _applyCloudData(snap);
+    const tsNube = (snap.data() || {}).updatedAt || 0;
+    window._lastSavedAt = tsNube;
+    try { localStorage.setItem('mf_lastSavedAt', String(tsNube)); } catch (_) {}
+    (window.S && window.S.cajitas || []).forEach(c => { if (typeof materializarIntereses === 'function') materializarIntereses(c); });
+    if (typeof load === 'function') load();
+    if (typeof refresh === 'function') refresh();
+    if (window.applyModulos) applyModulos();
+    setSyncStatus('ok', 'Sincronizado con la nube');
+    if (typeof toast === 'function') toast('Otro dispositivo guardó antes que tú: se cargó su versión. Lo que habías cambiado aquí sin guardar no se subió; revísalo.', 'warn', 10000);
+  }
+  // Copia de seguridad de lo local cuando una actualización de otro dispositivo llega con cambios locales sin guardar.
+  window._fbConflictoGuardado = function() {
+    try { const c = JSON.parse(localStorage.getItem('mf_conflicto') || 'null'); return c; } catch (_) { return null; }
+  };
+
   // Cuerpo del guardado con debounce, extraído tal cual del setTimeout para
   // poder ejecutarlo también de inmediato (ver _fbFlushSave más abajo).
   async function _ejecutarGuardado() {
@@ -121,10 +196,14 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
         // propio, sea cual sea el orden de las dos resoluciones async.
         window._lastSavedAt = savedAt;
         try { localStorage.setItem('mf_lastSavedAt', String(savedAt)); } catch(_){}
-        await setDoc(
-          doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: payloadNube, updatedAt: savedAt }
-        );
+        const forzar = _forzarProximo; _forzarProximo = false;
+        const r = await _escribirNube(payloadNube, savedAt, forzar);
+        if (!r.ok) {
+          // Conflicto: la nube cambió desde la última vez que este dispositivo la leyó. No se pisa.
+          await _resolverConflicto(r.snap, payloadStr);
+          resolve({ok:false, reason:'conflict'});
+          return;
+        }
         window._lastSavedPayload = payloadStr;
         setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
         resolve({ok:true});
@@ -135,7 +214,8 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
       }
   }
 
-  window._fbSaveToCloud = function() {
+  window._fbSaveToCloud = function(opts) {
+    if(opts && opts.forzar) _forzarProximo = true;
     // Estado aislado (conEstadoAislado, core-state.js): un estado de prueba jamás se escribe en la nube.
     if(window._estadoAislado) return Promise.resolve({ok:false, reason:'isolated'});
     // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
@@ -393,11 +473,23 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
           const remoteTs = remoteData.updatedAt || 0;
           const localTs = window._lastSavedAt || 0;
 
-          // Si los datos remotos son más nuevos que lo que guardamos por última
-          // vez (con margen de 5s para latencia de red y desfase de relojes), aplicar la actualización.
-          if(remoteTs > localTs + 5000 && remoteTs > _remotoAplicadoTs) {
-            _remotoAplicadoTs = remoteTs;
+          // Con `rev` (documentos guardados por esta versión) manda la revisión: es nueva si supera la que este dispositivo ya aplicó
+          // o está escribiendo, sin importar los relojes. Sin `rev` (documento anterior) queda la regla de siempre por hora, con margen
+          // de 5 s para latencia de red y desfase de relojes.
+          const hayRev = typeof remoteData.rev === 'number';
+          const esNueva = hayRev
+            ? remoteData.rev > Math.max(window._revNube || 0, window._revEnVuelo || 0)
+            : (remoteTs > localTs + 5000 && remoteTs > _remotoAplicadoTs);
+          if(esNueva) {
+            _remotoAplicadoTs = Math.max(_remotoAplicadoTs, remoteTs);
             console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
+            // Cambios locales sin guardar que esta actualización va a reemplazar: se guarda una copia antes.
+            try {
+              if(window._lastSavedPayload && JSON.stringify(window.S) !== window._lastSavedPayload) {
+                localStorage.setItem('mf_conflicto', JSON.stringify({ ts: Date.now(), payload: JSON.stringify(window.S) }));
+                if(window.toast) window.toast('Otro dispositivo guardó mientras editabas aquí: se cargó su versión.', 'warn', 8000);
+              }
+            } catch(_){}
             _applyCloudData(snap);
             // Materializar intereses antes de renderizar para minimizar diferencia con Nu
             (window.S&&window.S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
@@ -464,6 +556,8 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
   //   'nodoc'       — el documento no existe o no trae payload
   //   'parse-error' — había payload pero no se pudo leer
   function _applyCloudData(snap) {
+    // La revisión de la nube que este dispositivo acaba de ver (0 si el documento no existe o es anterior a `rev`).
+    window._revNube = snap.exists() ? _revDe(snap.data()) : 0;
     if(snap.exists() && snap.data().payload) {
       try {
         let estado = 'applied';
@@ -692,13 +786,15 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     // Guardar una última vez de forma inmediata si hay datos válidos
     if(window._fbUser && window.S && window._dataLoaded) {
       try {
-        const {db, doc, setDoc} = window._fb;
         const signOutTs = Date.now();
         try { localStorage.setItem('mf_lastSavedAt', String(signOutTs)); } catch(_){}
-        await setDoc(
-          doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas'),
-          { payload: await codificarPayload(JSON.stringify(window.S)), updatedAt: signOutTs }
-        );
+        const r = await _escribirNube(await codificarPayload(JSON.stringify(window.S)), signOutTs, false);
+        if(!r.ok) {
+          // Otro dispositivo guardó antes: se carga su versión (la local queda en `mf_conflicto`) y no se cierra la sesión todavía.
+          await _resolverConflicto(r.snap, JSON.stringify(window.S));
+          if(_overlay) _overlay.style.display = 'none';
+          return;
+        }
       } catch(e) {
         console.warn('Error en guardado final antes de cerrar sesión:', e);
         // No seguir con el cierre de sesión: si este guardado no llegó a Firestore,

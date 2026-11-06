@@ -179,20 +179,23 @@ const Periodo = (() => {
   }
 
   // Ingreso total por mes ('YYYY-MM' → pesos), con las mismas fuentes y la misma regla de caja que ingresosDelMes().
-  function ingresosPorMes(estado) {
+  // `opts.sinExtra`: deja fuera los ingresos marcados «extraordinario» (aguinaldo, venta, premio): lo que queda es el ritmo habitual.
+  function ingresosPorMes(estado, opts) {
     const out = {};
+    const sinExtra = !!(opts && opts.sinExtra);
     const sumar = (mes, monto) => { if (mes && monto > 0) out[mes] = (out[mes] || 0) + monto; };
     mesadaEntradas(estado).forEach(e => sumar(e.mes, e.monto));
     ingresosFijosEntradas(estado).forEach(e => sumar(e.mes, e.monto));
     spotifyEntradas(estado).forEach(e => sumar(e.mes, e.monto));
-    entradasIngresoReal(estado).forEach(m => sumar(mesKey(m.fecha), m.monto || 0));
+    entradasIngresoReal(estado).forEach(m => { if (!(sinExtra && m.extraordinario)) sumar(mesKey(m.fecha), m.monto || 0); });
     return out;
   }
 
   // Ingreso mensual típico: promedio de los últimos `n` meses ANTERIORES a `mes` que tengan ingreso (el mes en curso no entra:
   // con la regla de caja el ingreso llega en pocos días, y a principio de mes aún no ha llegado). Misma forma que gastoPromedioPrevio.
+  // Los ingresos marcados «extraordinario» no entran: un aguinaldo no es lo que cobras normalmente.
   function ingresoPromedioPrevio(mes, n, estado) {
-    const porMes = ingresosPorMes(estado);
+    const porMes = ingresosPorMes(estado, { sinExtra: true });
     const previos = _mesesDeReferencia(porMes, mes, n);
     if (!previos.length) return { promedio: 0, meses: 0 };
     return { promedio: previos.reduce((a, k) => a + porMes[k], 0) / previos.length, meses: previos.length };

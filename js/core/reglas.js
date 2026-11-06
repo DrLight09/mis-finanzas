@@ -125,6 +125,14 @@ const Reglas = (() => {
     const m = ctx.situacion; if (!m || !(m.patrimonio < 0)) return [];
     return [{ tipo: 'red', texto: 'Tu patrimonio es negativo: debes ' + _fmt(ctx)(-m.patrimonio) + ' más de lo que tienes', ir: 'analisis' }];
   } });
+  // B6-2: el patrimonio lleva varios meses completos bajando (cierres mensuales, sin depósitos ni retiros). Complementa la racha de déficit:
+  // esta mira el patrimonio entero (deuda, tarjeta, gastos), no solo ingreso contra gasto.
+  registrar({ id: 'patrimonio-cayendo', canales: A, evaluar(ctx) {
+    const m = ctx.situacion; const c = m && m.patrimonioCayendo; if (!c) return [];
+    const P = _U(ctx).salud.patrimonioCayendo;
+    if (!(c.n >= P.aviso)) return [];
+    return [{ tipo: c.n >= P.alerta ? 'red' : 'amber', texto: 'Tu patrimonio lleva ' + c.n + ' meses seguidos bajando (' + _fmt(ctx)(-c.total) + ' en total, sin contar lo que depositaste o retiraste)', ir: 'analisis' }];
+  } });
   registrar({ id: 'racha-deficit', canales: A, evaluar(ctx) {
     const m = ctx.situacion; if (!m || !m.racha) return [];
     const U = _U(ctx);

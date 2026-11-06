@@ -75,6 +75,7 @@ function _situacion(){
     ingresoTipico, ingresoRef, gastoTipico, mesesCubiertos:_mesesCubiertos(liq.neta,gastoTipico),
     racha, balances, deficitMesActual:ingresoRef>0&&Periodo.gastosDelMes(mes).total>ingresoRef,
     tendencia:Salud.tendenciaPatrimonio(S.patrimonioHistorial,hoy()),
+    patrimonioCayendo:Salud.mesesCayendo(S.patrimonioCierres,mes,{gastoTipico}),
     sinDatos:patrimonio===0&&liq.libre===0&&liq.cdts===0&&liq.tcPropia===0&&liq.yoDebo===0&&liq.meDeben===0&&liq.ajeno===0&&Periodo.gastosDelMes(mes).total===0,
   };
 }

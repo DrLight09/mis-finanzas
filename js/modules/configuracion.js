@@ -281,7 +281,7 @@ function leerArchivoImport(e){
         return;
       }
       toast('Importando y guardando en la nube…','info',3000);
-      const _saveResult = await window._fbSaveToCloud();
+      const _saveResult = await window._fbSaveToCloud({ forzar: true }); // importar pisa la nube a propósito (no se trata como conflicto)
       if(_saveResult && _saveResult.ok){
         toast('Datos importados correctamente — recargando…','ok');
         // Recargar solo una vez confirmado el guardado (ya no hace falta
@@ -351,14 +351,11 @@ async function borrarTodo(){
   let _borradoFirebaseOk = true;
   if(window._fbUser && window._fb){
     try{
-      const {db, doc, setDoc} = window._fb;
       const resetTs = Date.now();
       try { localStorage.setItem('mf_lastSavedAt', String(resetTs)); } catch(_){}
       window._lastSavedAt = resetTs;
-      await setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),{
-        payload: JSON.stringify({}),
-        updatedAt: resetTs
-      });
+      // Escritura intencional (forzar): sube la revisión sobre la que haya en la nube, así los otros dispositivos la ven como nueva.
+      await window._fbEscribirDoc(JSON.stringify({}), resetTs, true);
     }catch(e){
       console.error('Error borrando en Firebase:',e);
       _borradoFirebaseOk = false;

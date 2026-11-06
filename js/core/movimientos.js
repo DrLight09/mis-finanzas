@@ -418,6 +418,17 @@ function abrirDetalleMov(el){
         </div>`);
     }
 
+    // Ingreso ya registrado: se puede marcar (o desmarcar) como extraordinario (aguinaldo, venta, premio). Entonces no cuenta en el ingreso
+    // típico ni en el balance recurrente. Solo entradas reales de S.movimientos (no saldos iniciales ni espejos de otros módulos).
+    if (rm.id && rm.tipo === 'entrada' && (S.movimientos || []).includes(rm) && entradasIngresoReal().some(x => x.id === rm.id)) {
+      richParts.push(`
+        <div class="mdet-caja">
+          <div class="mdet-cap-neutra">Ingreso extraordinario</div>
+          <div class="mdet-txt">${rm.extraordinario ? 'Marcado como extraordinario: no cuenta en tu ingreso típico.' : 'Si no se repite (aguinaldo, venta, premio), márcalo para que no suba tu ingreso típico.'}</div>
+          <button type="button" class="btn btn-ghost btn-sm" ${raw(Events.attr('core:toggleExtraordinario', rm.id))}>${rm.extraordinario ? 'Quitar la marca' : 'Marcar como extraordinario'}</button>
+        </div>`);
+    }
+
     if (richParts.length) {
       richHtml = `<div class="mdet-rich">${richParts.join('')}</div>`;
     }
@@ -711,6 +722,16 @@ function _rerenderCuentaActiva() {
 // Registro bajo el namespace 'core' — ver nota de cabecera de este archivo.
 Events.on('core:abrirDetalleMov', abrirDetalleMov);
 Events.on('core:eliminarMovimiento', eliminarMovimiento);
+// Marca o quita «extraordinario» en una entrada ya registrada (S.movimientos). No mueve plata: solo cambia cómo cuenta en el ingreso típico.
+function toggleExtraordinario(id) {
+  const m = (S.movimientos || []).find(x => x.id === id);
+  if (!m || m.tipo !== 'entrada') return;
+  if (m.extraordinario) delete m.extraordinario; else m.extraordinario = true;
+  save(); refresh();
+  closeSheet('mov-detalle');
+  toast(m.extraordinario ? 'Marcado como ingreso extraordinario' : 'Ya cuenta como ingreso normal', 'ok');
+}
+Events.on('core:toggleExtraordinario', toggleExtraordinario);
 
 
 /* ---- Reversibles: protección por antigüedad de cada tipo de movimiento (ver core-state.js) ---- */

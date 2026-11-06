@@ -53,6 +53,26 @@ const Salud = (() => {
     return { dias: span, delta, pct: inicio > 0 ? (delta / inicio) * 100 : null, inicio, fin: val(ultimo) };
   }
 
+  // Meses completos SEGUIDOS (los más recientes) en que el patrimonio bajó, con los cierres mensuales (`S.patrimonioCierres`:
+  // { 'AAAA-MM': { valor|valorVisible, base } }). La variación de un mes es cierre − cierre del mes anterior − `base` (aperturas del
+  // mes: saldos iniciales que no son crecimiento). `mesActual` ('AAAA-MM') no entra: aún no cerró. Una baja menor al ruido
+  // (`ruidoGastoPct` % del gasto típico) no cuenta y corta la racha, igual que un mes sin cierre anterior para comparar.
+  // → { n, total (suma de las variaciones, negativa), desde ('AAAA-MM' del primer mes de la racha) } con n = 0 si no hay racha.
+  function mesesCayendo(cierres, mesActual, opts) {
+    const U = ((opts && opts.umbrales) || _U()).salud.patrimonioCayendo;
+    const c = cierres || {};
+    const val = x => (typeof x.valorVisible === 'number' ? x.valorVisible : (x.valor || 0));
+    const ruido = Math.max(1, ((opts && opts.gastoTipico) || 0) * U.ruidoGastoPct / 100);
+    const antes = k => { const [a, m] = k.split('-').map(Number); return m === 1 ? (a - 1) + '-12' : a + '-' + String(m - 1).padStart(2, '0'); };
+    let k = antes(mesActual), n = 0, total = 0, desde = null;
+    while (c[k] && c[antes(k)]) {
+      const delta = val(c[k]) - val(c[antes(k)]) - (c[k].base || 0);
+      if (!(delta < -ruido)) break;
+      n++; total += delta; desde = k; k = antes(k);
+    }
+    return { n, total, desde };
+  }
+
   // Dirección de una tendencia: 'sube' | 'plana' | 'cae' | null (sin historial suficiente). Con base no positiva no hay porcentaje: se
   // compara el cambio contra un cuarto del gasto mensual típico (un cambio menor a eso es ruido).
   function _direccion(t, m, U) {
@@ -417,7 +437,7 @@ const Salud = (() => {
   return { score, tips, consejos, sinDatos: !tieneAlgo, mesesCubiertos, rachaDeficit: rachaMeses };
 }
 
-  return { puntaje, simular, fraseTendencia, pilares, estado, tendenciaPatrimonio, fechaAgotamiento, accionesUrgentes, ESTADOS };
+  return { puntaje, simular, fraseTendencia, pilares, estado, tendenciaPatrimonio, mesesCayendo, fechaAgotamiento, accionesUrgentes, ESTADOS };
 })();
 if (typeof window !== 'undefined') window.Salud = Salud;
 if (typeof module !== 'undefined' && module.exports) module.exports = Salud;

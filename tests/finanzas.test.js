@@ -1125,6 +1125,56 @@ test('B5. un ingreso marcado extraordinario cuenta en el balance real pero no en
   assert.equal(b.balance - b.balanceRecurrente, 800000);
 });
 
+test('B6-2. Salud.mesesCayendo cuenta los meses completos seguidos con el patrimonio bajando, sin depósitos y sin ruido', () => {
+  const Salud = require('../js/core/salud.js');
+  const cierres = { '2026-06': { valor: 1000000, base: 0 }, '2026-07': { valor: 900000, base: 0 }, '2026-08': { valor: 800000, base: 0 }, '2026-09': { valor: 700000, base: 0 }, '2026-10': { valor: 600000, base: 0 } };
+  const r = Salud.mesesCayendo(cierres, '2026-11', { gastoTipico: 500000 });
+  assert.deepEqual({ n: r.n, total: r.total, desde: r.desde }, { n: 4, total: -400000, desde: '2026-07' });
+  assert.equal(Salud.mesesCayendo(cierres, '2026-10', { gastoTipico: 500000 }).n, 3, 'el mes en curso no cuenta: aún no cerró');
+  // un depósito de apertura no es crecimiento: ese mes sigue bajando aunque el valor suba
+  const conApertura = { ...cierres, '2026-10': { valor: 800000, base: 300000 } };
+  assert.equal(Salud.mesesCayendo(conApertura, '2026-11', { gastoTipico: 500000 }).n, 4, 'octubre: 800.000 − 700.000 − 300.000 = −200.000');
+  // una subida corta la racha
+  assert.equal(Salud.mesesCayendo({ ...cierres, '2026-09': { valor: 950000, base: 0 } }, '2026-11', { gastoTipico: 500000 }).n, 1);
+  // una baja menor al ruido (10 % de 500.000 = 50.000) no cuenta
+  assert.equal(Salud.mesesCayendo({ '2026-09': { valor: 1000000 }, '2026-10': { valor: 970000 } }, '2026-11', { gastoTipico: 500000 }).n, 0);
+  assert.equal(Salud.mesesCayendo({ '2026-10': { valor: 1 } }, '2026-11').n, 0, 'sin mes anterior con qué comparar');
+  assert.equal(Salud.mesesCayendo(null, '2026-01').n, 0);
+  assert.equal(Salud.mesesCayendo({ '2025-11': { valor: 300 }, '2025-12': { valor: 100 } }, '2026-01', { gastoTipico: 0 }).n, 1, 'cruza el año (dic → ene)');
+});
+
+test('B6-2. la regla patrimonio-cayendo avisa desde 2 meses (ámbar) y es roja desde 3', () => {
+  const { Reglas, UMBRALES } = app({});
+  const ev = n => Reglas.evaluar('atencion', { hoy: '2026-11-05', mes: '2026-11', S: {}, fmt: x => '$' + x, umbrales: UMBRALES, situacion: { patrimonioCayendo: { n, total: -n * 100000, desde: '2026-08' } } }).filter(i => i.regla === 'patrimonio-cayendo');
+  assert.equal(ev(1).length, 0);
+  assert.equal(ev(2)[0].tipo, 'amber');
+  assert.equal(ev(3)[0].tipo, 'red');
+  assert.match(ev(3)[0].texto, /3 meses seguidos bajando/);
+});
+
+test('B5b. el ingreso típico no cuenta los ingresos extraordinarios (un aguinaldo no es lo que cobras normalmente)', () => {
+  const [m1, m2] = [mesHace(1), mesHace(2)];
+  const ctx = app({ cuentas: cuentas(0), movimientos: [
+    { id: 'a', tipo: 'entrada', clase: 'ingreso', fuente: 'nequi', monto: 1000000, fecha: m1 + '-02', desc: 'Sueldo' },
+    { id: 'b', tipo: 'entrada', clase: 'ingreso', fuente: 'nequi', monto: 3000000, fecha: m1 + '-03', desc: 'Aguinaldo', extraordinario: true },
+    { id: 'c', tipo: 'entrada', clase: 'ingreso', fuente: 'nequi', monto: 1000000, fecha: m2 + '-02', desc: 'Sueldo' },
+  ] });
+  assert.equal(ctx.Periodo.ingresoPromedioPrevio(mesAct, 3).promedio, 1000000);
+  assert.equal(ctx.Periodo.ingresosPorMes()[m1], 4000000, 'el total real del mes sigue incluyéndolo');
+  ctx.S.movimientos[1].extraordinario = false; // sin marca vuelve a contar
+  assert.equal(ctx.Periodo.ingresoPromedioPrevio(mesAct, 3).promedio, 2500000);
+});
+
+test('al eliminar un movimiento, los cierres mensuales de patrimonio (también los de meses ya podados) arrastran el cambio', () => {
+  const ctx = app({ cuentas: cuentas(0), patrimonioHistorial: [{ fecha: '2026-10-20', valor: 900, valorVisible: 900 }],
+    patrimonioCierres: { '2025-12': { valor: 500, valorVisible: 500, base: 0 }, '2026-01': { valor: 700, valorVisible: 700, base: 0 }, '2026-10': { valor: 900, valorVisible: 900, base: 0 } } });
+  ctx.quitarDeHistorial('2026-01-15', -200, -200);
+  assert.equal(ctx.S.patrimonioCierres['2025-12'].valor, 500, 'antes del movimiento no cambia');
+  assert.equal(ctx.S.patrimonioCierres['2026-01'].valor, 500, 'el mes del movimiento sí');
+  assert.equal(ctx.S.patrimonioCierres['2026-10'].valor, 700, 'y los posteriores');
+  assert.equal(ctx.S.patrimonioHistorial[0].valor, 700);
+});
+
 test('PUSH gastos fijos: el cálculo desde S coincide con Periodo.gastosFijosProgramados (anti-deriva)', () => {
   const ctx = app({ gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, dia: 31 }, { id: 'b', nombre: 'Luz', monto: 70000, dia: 9 }, { id: 'c', nombre: 'Agua', monto: 20000, dia: 3 }],
     pagosGastosFijos: { ['c_' + mesAct]: { fecha: mesAct + '-03', monto: 20000 } } });
@@ -1382,7 +1432,7 @@ test('los canales declarados: el push solo lleva las reglas basadas en S; Atenci
   const push = Reglas.lista('push').map(r => r.id);
   assert.deepEqual(push.filter(id => !id.startsWith('prueba')), ['gastos-fijos', 'spotify-vencido', 'cdt', 'encargos-comprometidos', 'wrapped-disponible']);
   const atn = Reglas.lista('atencion').map(r => r.id);
-  ['liquidez', 'patrimonio-negativo', 'racha-deficit', 'gastos-fijos', 'gastos-fijos-sin-dia', 'ingresos-fijos', 'deudas-personas', 'mesada-pendiente', 'tarjetas', 'spotify-vencido', 'cdt', 'encargos-comprometidos'].forEach(id => assert.ok(atn.includes(id), id));
+  ['liquidez', 'patrimonio-negativo', 'patrimonio-cayendo', 'racha-deficit', 'gastos-fijos', 'gastos-fijos-sin-dia', 'ingresos-fijos', 'deudas-personas', 'mesada-pendiente', 'tarjetas', 'spotify-vencido', 'cdt', 'encargos-comprometidos'].forEach(id => assert.ok(atn.includes(id), id));
   assert.ok(!atn.includes('wrapped-disponible'), 'el aviso de Wrapped es solo del push');
 });
 

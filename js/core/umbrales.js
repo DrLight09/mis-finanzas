@@ -26,6 +26,7 @@ const UMBRALES = (() => {
       prestadoSobreLiquidez: { vigilar: 0.4, comprometido: 1, vulnerable: 2 }, // lo que te deben ÷ tu liquidez
       gastoSobreIngreso: { sano: 0.7, ajustado: 0.9, deficit: 1 }, // gasto típico ÷ ingreso típico
       cdtPesoCompleto: 0.10,                                       // el CDT puntúa completo cuando pesa ≥ 10 % de tu plata (cuentas libres + CDTs)
+      patrimonioCayendo: { aviso: 2, alerta: 3, ruidoGastoPct: 10 }, // meses completos seguidos con el patrimonio (sin depósitos ni retiros) bajando; una baja menor al 10 % del gasto típico mensual es ruido
       rachaDeficitMeses: { aviso: 2, alerta: 3 },                  // meses completos seguidos con balance negativo
       // Pilares con semáforo y estado de situación (salud.js)
       pilares: {

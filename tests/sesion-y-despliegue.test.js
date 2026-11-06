@@ -365,6 +365,117 @@ describe('firebase-sync', () => {
     listeners.next(s(2, base + 120000)); await esperar(60); // repetido: no vuelve a avisar
     assert.equal(avisos.filter(m => /otro dispositivo/.test(m)).length, 1);
   });
+
+  // ── Control de revisión (`rev`): dos dispositivos con la misma cuenta ────────────────────────────────────────────
+  function entornoRev(nube) {
+    const e = entorno({ cuentas: [{ id: 'nequi', saldo: 1 }], libro: [] });
+    const almacen = { doc: nube }; // lo que hay en «Firestore»: { payload, updatedAt, rev } o null
+    const store = {};
+    e.app.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
+    e.app._fb.setDoc = async (ref, datos) => { almacen.doc = datos; e.escritos.push(datos); };
+    e.app._fb.runTransaction = async (db, fn) => {
+      let pend = null;
+      const tx = {
+        get: async () => ({ exists: () => almacen.doc != null, data: () => almacen.doc }),
+        set: (ref, datos) => { pend = datos; },
+      };
+      const r = await fn(tx);
+      if (pend) { almacen.doc = pend; e.escritos.push(pend); }
+      return r;
+    };
+    e.app.toast = () => {}; e.app.load = () => {}; e.app.refresh = () => {}; e.app.applyModulos = () => {};
+    e.almacen = almacen; e.store = store;
+    return e;
+  }
+  const nubeDoc = (saldo, rev, updatedAt = Date.now() - 600000) => ({ payload: JSON.stringify({ cuentas: [{ id: 'nequi', saldo }], libro: [] }), updatedAt, ...(rev == null ? {} : { rev }) });
+  const cargar = async (e) => { e.app._fbLoadData(); e.listeners.next({ exists: () => e.almacen.doc != null, data: () => e.almacen.doc, metadata: { fromCache: false, hasPendingWrites: false } }); await hasta(() => e.app._dataLoaded); };
+
+  test('rev — un guardado normal escribe rev+1 con una transacción y recuerda la revisión', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    await cargar(e);
+    assert.equal(e.app._revNube, 3);
+    e.app.S.cuentas[0].saldo = 50;
+    const r = await guardar(e.app);
+    assert.equal(r.ok, true);
+    assert.equal(e.almacen.doc.rev, 4);
+    assert.equal(e.app._revNube, 4);
+  });
+
+  test('rev — documento anterior sin `rev` cuenta como 0: el primer guardado escribe rev 1', async () => {
+    const e = entornoRev(nubeDoc(1, null));
+    await cargar(e);
+    assert.equal(e.app._revNube, 0);
+    e.app.S.cuentas[0].saldo = 7;
+    await guardar(e.app);
+    assert.equal(e.almacen.doc.rev, 1);
+  });
+
+  test('rev — si otro dispositivo guardó en medio NO se pisa: se carga su versión y la copia local queda en mf_conflicto', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    await cargar(e);
+    e.almacen.doc = nubeDoc(500, 4, Date.now()); // el otro dispositivo guardó la revisión 4
+    const avisos = []; e.app.toast = m => avisos.push(m);
+    e.app.S.cuentas[0].saldo = 99; // cambio local sobre la revisión 3
+    const r = await guardar(e.app);
+    assert.equal(r.ok, false);
+    assert.equal(r.reason, 'conflict');
+    assert.equal(e.escritos.length, 0, 'no se escribió nada en la nube');
+    assert.equal(e.almacen.doc.rev, 4, 'la nube sigue intacta');
+    assert.equal(e.app.S.cuentas[0].saldo, 500, 'se cargó la versión de la nube');
+    assert.equal(e.app._revNube, 4);
+    const copia = JSON.parse(e.store.mf_conflicto);
+    assert.equal(JSON.parse(copia.payload).cuentas[0].saldo, 99, 'lo local descartado quedó guardado');
+    assert.ok(avisos.some(m => /otro dispositivo/i.test(m)));
+    // y con la versión nueva ya cargada, el siguiente guardado pasa
+    e.app.S.cuentas[0].saldo = 501;
+    assert.equal((await guardar(e.app)).ok, true);
+    assert.equal(e.almacen.doc.rev, 5);
+  });
+
+  test('rev — forzar (importar un backup) pisa la nube aunque haya cambiado y sube la revisión', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    await cargar(e);
+    e.almacen.doc = nubeDoc(500, 8, Date.now());
+    e.app.S.cuentas[0].saldo = 77;
+    const p = e.app._fbSaveToCloud({ forzar: true }); e.app._fbFlushSave();
+    const r = await p;
+    assert.equal(r.ok, true);
+    assert.equal(e.almacen.doc.rev, 9, 'sube sobre la revisión que había en la nube');
+    assert.equal(JSON.parse(await e.app.decodificarPayload(e.almacen.doc.payload)).cuentas[0].saldo, 77);
+  });
+
+  test('rev — sin conexión la transacción falla y el guardado se encola con setDoc (no se pierde)', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    await cargar(e);
+    e.app._fb.runTransaction = async () => { const err = new Error('Failed to get document because the client is offline.'); err.code = 'unavailable'; throw err; };
+    e.app.S.cuentas[0].saldo = 12;
+    const r = await guardar(e.app);
+    assert.equal(r.ok, true);
+    assert.equal(e.escritos.length, 1);
+    assert.equal(e.escritos[0].rev, 4);
+  });
+
+  test('rev — el listener decide por revisión, no por reloj: una revisión nueva con hora ANTERIOR sí se aplica', async () => {
+    const e = entornoRev(nubeDoc(1, 3, Date.now()));
+    const avisos = []; e.app.toast = m => avisos.push(m); e.app.window = e.app.window || e.app; e.app.window.toast = e.app.toast; e.app.window.dispatchEvent = () => {};
+    await cargar(e); await esperar(30);
+    const viva = (saldo, rev, ts) => ({ exists: () => true, data: () => nubeDoc(saldo, rev, ts), metadata: { fromCache: false, hasPendingWrites: false } });
+    e.listeners.next(viva(300, 4, Date.now() - 3600000)); // reloj del otro dispositivo atrasado una hora
+    await hasta(() => e.app.S.cuentas[0].saldo === 300);
+    assert.equal(e.app._revNube, 4);
+  });
+
+  test('rev — el eco del propio guardado (misma revisión) no avisa «otro dispositivo»', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    const avisos = []; e.app.toast = m => avisos.push(m); e.app.window = e.app.window || e.app; e.app.window.toast = e.app.toast;
+    await cargar(e); await esperar(30);
+    e.app.S.cuentas[0].saldo = 60;
+    await guardar(e.app);
+    e.listeners.next({ exists: () => true, data: () => e.almacen.doc, metadata: { fromCache: false, hasPendingWrites: false } });
+    await esperar(60);
+    assert.deepEqual(avisos.filter(m => /otro dispositivo/i.test(m)), []);
+    assert.equal(e.app.S.cuentas[0].saldo, 60);
+  });
 });
 });
 

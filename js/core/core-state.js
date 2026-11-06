@@ -1242,6 +1242,15 @@ function quitarDeHistorial(dia, delta, deltaVisible){
     h.valor=r((h.valor||0)+delta);
     if(h.valorVisible!=null) h.valorVisible=r(h.valorVisible+dv);
   });
+  // Los cierres mensuales (S.patrimonioCierres, sin límite) también arrastran el movimiento: los meses ya podados de la serie diaria
+  // solo viven ahí. Los meses que aún están en la serie se recalculan igual en el próximo snapshot, con el mismo resultado.
+  const mesDia=dia.slice(0,7), cierres=S.patrimonioCierres||{};
+  Object.keys(cierres).forEach(k=>{
+    const c=cierres[k];
+    if(k<mesDia||!c) return;
+    c.valor=r((c.valor||0)+delta);
+    if(c.valorVisible!=null) c.valorVisible=r(c.valorVisible+dv);
+  });
 }
 
 // `antes` viene de medirPatrimonioParaHistorial() justo antes de revertir; `item` es lo que se eliminó.
@@ -1582,8 +1591,10 @@ window.addEventListener('beforeunload', function() {
       // que un snapshot antiguo de otro dispositivo pise estos datos.
       try { localStorage.setItem('mf_lastSavedAt', String(closingTs)); } catch(_){}
       window._lastSavedAt = closingTs;
+      // Al cerrar no se puede esperar una transacción: se escribe con la revisión siguiente. Si otro dispositivo guardó en medio,
+      // el próximo guardado de ese dispositivo lo detecta como conflicto y no se pierde nada sin aviso.
       setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),
-        {payload: JSON.stringify(data), updatedAt: closingTs}
+        {payload: JSON.stringify(data), updatedAt: closingTs, rev: (window._revNube || 0) + 1}
       ).catch(()=>{});
     } catch(e) {}
   }

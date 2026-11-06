@@ -4,6 +4,13 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Tests agrupados por sección (2026-11-06, sin cambio en la app)
+
+- 20 archivos de prueba → 9: `finanzas.test.js`, `cierre-wrapped.test.js`, `sesion-y-despliegue.test.js` e `interfaz.test.js` agrupan los que eran pequeños y afines; `nucleo`, `cuentas`, `libro`, `prestamos` y `mesada` siguen aparte. Cada archivo anterior es ahora un `describe` con el mismo nombre (mismo patrón que ya usaban `libro` y `sync`). Mismos 812 tests, mismo resultado.
+- Referencias en docs, scripts y `subir.sh` actualizadas. Las entradas antiguas de este changelog conservan los nombres de la época.
+
+---
+
 ## «Apartar $X» en el plan de deudas (2026-11-06, SW v110)
 
 - Nuevo `PlanDeudas.pagoPosible({ deuda, disponible, gastoTipico, mesesReserva, rendimientoEA })` (puro, `plan-deudas.js`): cuánto de la deuda más cara se puede pagar **ya** sin bajar de la reserva (3 meses de gasto típico), en múltiplos de $1.000, con el ahorro mensual de intereses (descontando lo que dejaría de rendir esa plata).

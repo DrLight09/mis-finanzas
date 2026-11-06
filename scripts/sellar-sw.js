@@ -11,7 +11,7 @@
    Uso (desde la raíz del repo):
      node scripts/sellar-sw.js            → calcula la huella y la escribe en sw.js (línea `const BUILD = '…'`)
      node scripts/sellar-sw.js --check    → no escribe; sale con código 1 si sw.js no coincide con los archivos
-                                            (lo corre `npm test`, tests/sw-sellado.test.js)
+                                            (lo corre `npm test`, tests/sesion-y-despliegue.test.js)
 
    Sin dependencias. Determinista: los saltos de línea se normalizan a LF (Windows con autocrlf da el mismo hash) y las rutas se
    ordenan. Qué entra: index.html, manifest.webmanifest, css/**, js/**, icons/**. Qué NO entra: sw.js (se sella a sí mismo),

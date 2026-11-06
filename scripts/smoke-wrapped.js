@@ -1,7 +1,7 @@
 // Prueba de humo del Wrapped guardado y del mensaje «no alcanzó el tiempo» con la página REAL en jsdom.
 // Recorre: abrir NO guarda; el botón «Guardar este Wrapped» guarda; dentro de enero un guardado se actualiza al abrirlo; fuera de enero
 // queda fijo y no se genera uno nuevo; el mensaje «no alcanzó el tiempo» no se guarda; «Ocultar saldos» se aplica al mostrar; y «Mis Wrapped»
-// lista, abre y elimina (con confirmación y PIN). La lógica pura está en tests/wrapped-guardado.test.js; esto comprueba que todo está
+// lista, abre y elimina (con confirmación y PIN). La lógica pura está en tests/cierre-wrapped.test.js; esto comprueba que todo está
 // cableado en la página.
 // Uso: node scripts/smoke-wrapped.js [raiz-del-repo]   (npm run smoke:wrapped; necesita `npm install`: jsdom está en devDependencies)
 // Vive en scripts/ y NO en tests/ por la misma razón que smoke-browser.js: necesita jsdom y levanta la página completa.

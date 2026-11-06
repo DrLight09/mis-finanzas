@@ -146,4 +146,4 @@ Además del puntaje, la tarjeta muestra cuatro pilares (**Liquidez, Deuda, Flujo
 - **Flujo:** de los últimos 3 meses completos, 0 en déficit verde, 1 ámbar, 2+ rojo.
 - **Tendencia:** patrimonio a 90 días sin depósitos ni retiros (`Salud.tendenciaPatrimonio`); necesita 30 días de historial.
 - **Estado:** crisis > presión > atención > creciendo > estable (reglas en el comentario de `Salud.estado`). Presión y crisis no celebran y proponen hasta 3 acciones con enlace. Patrimonio negativo nunca es «Creciendo».
-- Límites en `UMBRALES.salud.pilares`; pruebas en `tests/salud.test.js`.
+- Límites en `UMBRALES.salud.pilares`; pruebas en `tests/finanzas.test.js`.

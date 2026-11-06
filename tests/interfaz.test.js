@@ -1,4 +1,10 @@
 'use strict';
+// tests/interfaz.test.js — Interfaz: estilos sin inline, innerHTML escapado, Refresh y filtros de Gastos.
+// Un archivo por sección de la app. Cada bloque `describe` es lo que antes era un archivo suelto (estilos.test.js, innerhtml.test.js, refresh.test.js, gastos-filtros.test.js).
+// Corre con:  node --test tests/interfaz.test.js   (o todo: npm test)
+const { describe: _describe } = require('node:test');
+
+_describe('estilos', () => {
 // tests/estilos.test.js — Paso 5 (estilos inline → clases): guardia de lo ya convertido.
 // Corre con:  node --test tests/estilos.test.js   (o todo: npm test)
 const test = require('node:test');
@@ -288,4 +294,197 @@ test('detalle de cuenta: Encargos antes que el bloque de Movimientos, y el bloqu
   }
   assert.ok(/\.cuenta-movs-bloque-vacio > \.sec-title[^{]*\{display:none/.test(CSS));
   assert.ok(leer('js/modules/cuentas.js').includes("classList.toggle('cuenta-movs-bloque-vacio', !movs.length)"));
+});
+});
+
+_describe('innerhtml', () => {
+// A11: ningún `x.innerHTML = \`…${…}…\`` nuevo sin la etiqueta html``. Lo que ya había se revisó a mano: solo interpola números
+// (fmt), clases/íconos internos o texto ya escapado con escHtml(); por eso se fija la cantidad por archivo. Si este test falla:
+// usa html`…` (escapa solo) en vez de plantilla normal, o, si de verdad solo interpolas números o constantes, súbelo aquí.
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const RAIZ = path.join(__dirname, '..', 'js');
+const REVISADOS = {
+  'modules/plata_comprometida.js': 4,
+  'modules/inicio.js': 4,
+  'modules/analisis.js': 2,
+  'core/diferencial.js': 1,
+  'core-state.js': 1, // toast(): el mensaje es HTML por contrato; quien llama escapa nombres con escHtml()
+};
+function archivos(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? archivos(path.join(dir, e.name)) : e.name.endsWith('.js') ? [path.join(dir, e.name)] : []);
+}
+test('innerHTML con interpolación sin html``: solo los casos revisados', () => {
+  const hallados = {};
+  for (const f of archivos(RAIZ)) {
+    const rel = path.relative(RAIZ, f).split(path.sep).join('/');
+    const n = fs.readFileSync(f, 'utf8').split('\n').filter(l => /innerHTML\s*\+?=\s*`[^`]*\$\{/.test(l) && !/html`/.test(l)).length;
+    if (n) hallados[rel.replace(/^core\/core-state/, 'core-state')] = n;
+  }
+  assert.deepEqual(hallados, REVISADOS);
+});
+});
+
+_describe('refresh', () => {
+// tests/refresh.test.js — Refresh (js/core/core-state.js): registro de partes de refresh() en vez de una cadena de parches.
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const { loadApp } = require('./support/load-app');
+
+const RAIZ = path.join(__dirname, '..');
+function nueva(activas = []) {
+  const ctx = loadApp([path.join(RAIZ, 'js/core/core-state.js')], { permissive: true });
+  ctx.document.getElementById = id => ({ classList: { contains: c => c === 'active' && activas.some(n => id === 'screen-' + n) } });
+  ctx._refreshNucleo = () => {}; // el cuerpo de siempre (hero, listas) no es lo que se prueba aquí
+  return ctx;
+}
+const silencio = fn => { const e = console.error; const l = []; console.error = (...a) => l.push(a); try { return [fn(), l]; } finally { console.error = e; } };
+
+test('Refresh: corre las partes en orden de `orden` y, a igual orden, en orden de registro', () => {
+  const { Refresh } = nueva(); const v = [];
+  Refresh.registrar('c', () => v.push('c'), { orden: 200 });
+  Refresh.registrar('a', () => v.push('a'));
+  Refresh.registrar('b', () => v.push('b'));
+  Refresh.registrar('z', () => v.push('z'), { orden: 1 });
+  Refresh.ejecutar();
+  assert.deepEqual(v, ['z', 'a', 'b', 'c']);
+});
+
+test('Refresh: una parte que falla no silencia a las siguientes, y deja rastro en consola con su id', () => {
+  const { Refresh } = nueva(); const v = [];
+  Refresh.registrar('rota', () => { throw new Error('boom'); });
+  Refresh.registrar('sana', () => v.push('sana'));
+  const [, log] = silencio(() => Refresh.ejecutar());
+  assert.deepEqual(v, ['sana']);
+  assert.equal(log.length, 1);
+  assert.equal(log[0][0], '[Refresh:rota]');
+});
+
+test('Refresh: registrar el mismo id REEMPLAZA (un módulo lazy cargado dos veces no se duplica) y conserva su lugar', () => {
+  const { Refresh } = nueva(); const v = [];
+  Refresh.registrar('a', () => v.push('a1'));
+  Refresh.registrar('b', () => v.push('b'));
+  Refresh.registrar('a', () => v.push('a2'));
+  Refresh.ejecutar();
+  assert.deepEqual(v, ['a2', 'b']);
+  assert.equal(Refresh.registrados().length, 2);
+});
+
+test('Refresh: `pantalla` limita la parte a cuando esa pantalla está activa (string o lista); sin `pantalla` corre siempre', () => {
+  const { Refresh } = nueva(['encargos']); const v = [];
+  Refresh.registrar('enc', () => v.push('enc'), { pantalla: 'encargos' });
+  Refresh.registrar('hist', () => v.push('hist'), { pantalla: 'historial' });
+  Refresh.registrar('varias', () => v.push('varias'), { pantalla: ['historial', 'encargos'] });
+  Refresh.registrar('siempre', () => v.push('siempre'));
+  Refresh.ejecutar();
+  assert.deepEqual(v, ['enc', 'varias', 'siempre']);
+});
+
+test('Refresh: quitar() y validación de argumentos', () => {
+  const { Refresh } = nueva(); const v = [];
+  Refresh.registrar('a', () => v.push('a')); Refresh.quitar('a'); Refresh.ejecutar();
+  assert.deepEqual(v, []);
+  assert.throws(() => Refresh.registrar('', () => {}));
+  assert.throws(() => Refresh.registrar('x', null));
+});
+
+test('refresh() corre primero el cuerpo de siempre y después las partes registradas', () => {
+  const ctx = nueva(); const v = [];
+  // refresh() llama a _refreshNucleo por nombre global: se reemplaza por una marca
+  ctx._refreshNucleo = () => v.push('nucleo');
+  ctx.Refresh.registrar('x', () => v.push('x'));
+  ctx.refresh();
+  assert.deepEqual(v, ['nucleo', 'x']);
+});
+
+test('guarda: ningún js/ vuelve a envolver window.refresh a mano ni con hookGlobal — se usa Refresh.registrar', () => {
+  const sinComentarios = s => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
+  const archivos = ['core', 'modules'].flatMap(d => fs.readdirSync(path.join(RAIZ, 'js', d)).map(f => path.join(RAIZ, 'js', d, f))).filter(f => f.endsWith('.js'));
+  const re = /window\.refresh\s*=[^=]|(?:^|[^.\w])refresh\s*=\s*function|hookGlobal\(\s*['"]refresh['"]/m;
+  const malos = archivos.filter(f => re.test(sinComentarios(fs.readFileSync(f, 'utf8')))).map(f => path.relative(RAIZ, f));
+  assert.deepEqual(malos, []);
+});
+});
+
+_describe('gastos-filtros', () => {
+// tests/gastos-filtros.test.js — Gastos: el filtro por mes y el «Total mensual fijo» solo aparecen cuando aportan algo.
+const { describe, test } = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { loadApp } = require('./support/load-app');
+
+const CORE_DIR = process.env.MIS_FINANZAS_CORE_DIR || path.join(__dirname, '..', 'js', 'core');
+const MODULES_DIR = process.env.MIS_FINANZAS_MODULES_DIR || path.join(__dirname, '..', 'js', 'modules');
+
+function app(S = {}) {
+  const ctx = loadApp([
+    path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
+    path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'html-tag.js'), path.join(CORE_DIR, 'umbrales.js'), path.join(CORE_DIR, 'reglas.js'), path.join(CORE_DIR, 'salud.js'), path.join(CORE_DIR, 'plan-deudas.js'), path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'gastos.js'),
+  ], { permissive: true });
+  Object.assign(ctx.S, S);
+  // document que recuerda el estado de cada id (el stub normal devuelve un elemento nuevo en cada llamada)
+  const els = {};
+  const base = ctx.document;
+  ctx.document = Object.assign({}, base, {
+    getElementById(id) { return els[id] || (els[id] = Object.assign(base.getElementById(id), { innerHTML: '', textContent: '', style: {} })); },
+    querySelector(sel) { return els[sel] || (els[sel] = Object.assign(base.querySelector(sel), { style: {} })); },
+  });
+  return { ctx, els };
+}
+const gasto = (id, fecha, monto = 1000) => ({ id, fecha, monto, desc: 'x', cat: 'Otros', fuente: 'nequi' });
+const oculto = (el) => el.style.display === 'none';
+
+describe('gastos — filtro por mes', () => {
+  test('sin gastos o con un solo mes el filtro no aparece (filtrar por ese mes es lo mismo que «Todos»)', () => {
+    for (const gastosVar of [[], [gasto('a', '2026-10-05'), gasto('b', '2026-10-20')]]) {
+      const { ctx, els } = app({ gastosVar });
+      ctx.renderMesFiltros();
+      assert.ok(oculto(els.mesFilter), 'oculto');
+      assert.equal(els.mesFilter.innerHTML, '');
+    }
+  });
+
+  test('desde el segundo mes con gastos aparece, con «Todos» y un chip por mes', () => {
+    const { ctx, els } = app({ gastosVar: [gasto('a', '2026-09-30'), gasto('b', '2026-10-05')] });
+    ctx.renderMesFiltros();
+    assert.ok(!oculto(els.mesFilter));
+    assert.ok(String(els.mesFilter.innerHTML).includes('Todos'));
+    assert.equal((String(els.mesFilter.innerHTML).match(/mf-chip/g) || []).length, 3);
+  });
+
+  test('un mes que solo tiene un retiro manual también cuenta como mes elegible', () => {
+    const { ctx, els } = app({
+      gastosVar: [gasto('a', '2026-10-05')],
+      movimientos: [{ id: 'r1', tipo: 'salida_manual', clase: 'gasto', fecha: '2026-09-10', monto: 5000, fuente: 'nequi' }],
+    });
+    ctx.renderMesFiltros();
+    assert.ok(!oculto(els.mesFilter));
+  });
+
+  test('si el mes filtrado deja de existir (se borraron sus gastos) el filtro vuelve a «todos» y la lista no queda vacía', () => {
+    const { ctx, els } = app({ gastosVar: [gasto('a', '2026-09-30'), gasto('b', '2026-10-05')] });
+    ctx.setMesFiltro('2026-09');
+    ctx.S.gastosVar = ctx.S.gastosVar.filter((g) => g.id !== 'a'); // ya solo queda octubre
+    ctx.renderMesFiltros();
+    assert.ok(oculto(els.mesFilter));
+    // La lista muestra el gasto de octubre (no queda filtrada a septiembre, que ya no tiene gastos).
+    assert.equal(els.totalGVFilt.textContent, ctx.fmt(1000));
+  });
+});
+
+describe('gastos — total mensual fijo', () => {
+  test('sin gastos fijos el «Total mensual fijo» se oculta; con uno aparece', () => {
+    const sin = app({ gastosFijos: [] });
+    sin.ctx.renderGastosFijos();
+    assert.ok(oculto(sin.els.gfTotalCard));
+    const con = app({ gastosFijos: [{ id: 'g1', nombre: 'Arriendo', monto: 500000, cat: 'Hogar', dia: 1 }] });
+    con.ctx.renderGastosFijos();
+    assert.ok(!oculto(con.els.gfTotalCard));
+  });
+});
 });

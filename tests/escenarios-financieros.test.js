@@ -1188,3 +1188,19 @@ test('A3-2. Reversibles: un tipo nuevo se protege por antigüedad sin tocar los 
   assert.equal(r.ok, false, 'más de diasBloqueo: bloqueado');
   assert.equal(dlg, 1, 'solo el aviso de bloqueo');
 });
+
+test('Apartar $X: el plan sugiere pagar ya lo que sobra sobre la reserva, solo con tasa y gasto típico; sin ellos no aparece', () => {
+  const mk = (extra = {}) => {
+    const ctx = app({ cuentas: cuentas(5000000), tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 2000000, cupo: 9000000, tasaEA: 28 }],
+      ...gastosEn(500000, ultimosN(3)), ...extra });
+    const el = { innerHTML: '' };
+    ctx.document.getElementById = id => id === 'plan-deudas-card' ? el : null;
+    ctx.renderPlanDeudas();
+    return el.innerHTML;
+  };
+  assert.match(mk(), /podrías (saldar|pagar ya) .*«Visa»/);
+  assert.match(mk(), /3 meses de gastos de reserva/);
+  assert.doesNotMatch(mk({ cuentas: cuentas(1000000) }), /podrías/, 'todo es reserva: no se sugiere');
+  assert.doesNotMatch(mk({ tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 2000000, cupo: 9000000 }] }), /podrías/, 'sin tasa');
+  assert.doesNotMatch(mk({ gastosFijos: [], pagosGastosFijos: {} }), /podrías/, 'sin gasto típico no hay reserva medible');
+});

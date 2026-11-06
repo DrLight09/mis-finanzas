@@ -70,7 +70,26 @@ const PlanDeudas = (() => {
     return { conviene: tasaDeudaEA > rendimientoEA, diferenciaPts: tasaDeudaEA - rendimientoEA };
   }
 
-  return { tasaMensual, costoMensual, ordenar, construir, pagarConviene };
+  // «Apartar $X»: ¿cuánto de la deuda se puede pagar YA con plata que tienes, sin quedarte por debajo del fondo de emergencia?
+  //   o.deuda: { saldo, tasaEA }   o.disponible: plata usable ya (cuentas + cajitas + CDT vencidos, menos plata ajena; nunca la Alcancía)
+  //   o.gastoTipico y o.mesesReserva: la reserva que se respeta = gastoTipico × mesesReserva   o.rendimientoEA: lo que rinde esa plata (opcional)
+  // → { monto (múltiplo de 1.000), total (¿salda la deuda?), reserva, ahorroMensual } o null si no aplica: sin tasa, sin gasto típico (no
+  // hay con qué medir la reserva), la plata rinde igual o más de lo que cuesta la deuda, o no sobra nada sobre la reserva.
+  // Pagar con efectivo NO cambia la liquidez neta (baja el efectivo y la deuda a la vez): lo que se gana son los intereses.
+  function pagoPosible(o) {
+    const d = o && o.deuda;
+    if (!d || !(d.saldo > 0) || !(d.tasaEA > 0) || !(o.gastoTipico > 0)) return null;
+    const rend = o.rendimientoEA > 0 ? o.rendimientoEA : 0;
+    if (d.tasaEA <= rend) return null;
+    const reserva = o.gastoTipico * (o.mesesReserva || 0);
+    const sobra = (o.disponible || 0) - reserva;
+    const monto = Math.floor(Math.min(d.saldo, sobra) / 1000) * 1000;
+    if (!(monto > 0)) return null;
+    const ahorroMensual = Math.max(0, costoMensual(monto, d.tasaEA) - costoMensual(monto, rend));
+    return { monto, total: monto >= d.saldo, reserva, ahorroMensual };
+  }
+
+  return { tasaMensual, costoMensual, ordenar, construir, pagarConviene, pagoPosible };
 })();
 if (typeof window !== 'undefined') window.PlanDeudas = PlanDeudas;
 if (typeof module !== 'undefined' && module.exports) module.exports = PlanDeudas;

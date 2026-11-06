@@ -458,12 +458,24 @@ function renderPlanDeudas(){
   if(pc) conviene = `<div class="inicio-plan-costo">${pc.conviene
     ? `Tu cajita rinde ${escHtml(String(rendNu).replace('.', ','))} % y «${escHtml(masCara.nombre)}» cuesta ${escHtml(String(masCara.tasaEA).replace('.', ','))} %: pagarla con lo ahorrado te sale a favor.`
     : `Tu cajita rinde ${escHtml(String(rendNu).replace('.', ','))} %, más de lo que cuesta «${escHtml(masCara.nombre)}» (${escHtml(String(masCara.tasaEA).replace('.', ','))} %): no tiene afán de pagarla con lo ahorrado.`}</div>`;
+  // «Apartar $X»: pagar YA una parte de la deuda más cara con plata que tienes, respetando el fondo de emergencia. Usa lo que la app
+  // conoce (cuentas, cajitas y CDT vencidos; la Alcancía nunca cuenta: está oculta). Si el ahorro está en otro lado que la app no ve,
+  // la línea no lo sabe: por eso habla de «con lo que tienes en tus cuentas y cajitas».
+  let apartar = '';
+  if(masCara){
+    const liq = calcLiquidez(), gt = Periodo.gastoPromedioPrevio(mesActual(), UMBRALES.salud.mesesReferencia).promedio;
+    const pp = PlanDeudas.pagoPosible({ deuda: masCara, disponible: liq.libre + liq.cdtsVencidos - liq.ajeno, gastoTipico: gt, mesesReserva: UMBRALES.salud.fondoMeses.minimo, rendimientoEA: rendNu });
+    if(pp){
+      const ir = masCara.tipo === 'tarjeta' ? 'tarjetas' : 'prestamos';
+      apartar = `<div class="inicio-plan-apartar"><span>${pp.total ? 'Con lo que tienes en tus cuentas y cajitas podrías saldar' : 'Con lo que tienes en tus cuentas y cajitas podrías pagar ya'} ${fmt(pp.monto)} de «${escHtml(masCara.nombre)}» y seguir con ${UMBRALES.salud.fondoMeses.minimo} meses de gastos de reserva${pp.ahorroMensual > 0 ? ` (ahorrarías ≈ ${fmt(pp.ahorroMensual)} al mes en intereses)` : ''}.</span><button type="button" class="inicio-plan-est" ${Events.attr('inicio:irConsejo', ir)}>Ir a pagar</button></div>`;
+    }
+  }
   const sinTasa = !conTasa && (S.tarjetasCredito || []).some(t => calcDeudaTcPropiaDeTarjeta(t) > 0) ? '<div class="inicio-plan-nota">Agrega la tasa E.A. en cada tarjeta para ver cuánto te cuesta.</div>' : '';
   const filas = plan.orden.map((x, i) => `<div class="inicio-plan-fila"><span class="inicio-plan-n">${i + 1}</span><span class="inicio-plan-nom">${escHtml(x.nombre)}</span><span class="inicio-plan-tasa">${x.tasaEA ? escHtml(String(x.tasaEA).replace('.', ',')) + ' % E.A.' : 'sin tasa'}</span><span class="inicio-plan-monto">${fmt(x.saldo)}</span></div>`).join('');
   const btn = (id, txt) => `<button type="button" class="inicio-plan-est ${plan.estrategia === id ? 'inicio-plan-est-on' : ''}" ${Events.attr('inicio:planEstrategia', id)}>${txt}</button>`;
   el.innerHTML = `<div class="card inicio-plan">
     <div class="inicio-plan-tit">Plan de salida de deudas</div>
-    <div class="inicio-plan-resumen">${resumen}</div>${costo}${conviene}
+    <div class="inicio-plan-resumen">${resumen}</div>${costo}${conviene}${apartar}
     <div class="inicio-plan-ests">${btn('avalancha', 'Más cara primero')}${btn('bola', 'Más pequeña primero')}</div>
     ${filas}${sinTasa}
   </div>`;

@@ -62,3 +62,19 @@ test('pagarConviene: «tu cajita rinde 9 % y tu tarjeta cuesta 28 %»', () => {
   assert.equal(P.pagarConviene(8, 10).conviene, false);
   assert.equal(P.pagarConviene(null, 10), null); assert.equal(P.pagarConviene(28, undefined), null);
 });
+
+test('pagoPosible («Apartar $X»): respeta la reserva, exige tasa y que la deuda cueste más de lo que rinde la plata', () => {
+  const P = require('../js/core/plan-deudas.js');
+  const base = { deuda: { saldo: 2000000, tasaEA: 28 }, disponible: 3000000, gastoTipico: 500000, mesesReserva: 3 };
+  const r = P.pagoPosible(base);
+  assert.equal(r.monto, 1500000, 'disponible 3 M − reserva 1,5 M');
+  assert.equal(r.total, false);
+  assert.ok(r.ahorroMensual > 0);
+  assert.equal(P.pagoPosible({ ...base, disponible: 9000000 }).monto, 2000000, 'no pasa del saldo');
+  assert.equal(P.pagoPosible({ ...base, disponible: 9000000 }).total, true);
+  assert.equal(P.pagoPosible({ ...base, disponible: 1500000 }), null, 'todo es reserva');
+  assert.equal(P.pagoPosible({ ...base, gastoTipico: 0 }), null, 'sin gasto típico no hay reserva medible');
+  assert.equal(P.pagoPosible({ ...base, deuda: { saldo: 2000000 } }), null, 'sin tasa no se sugiere');
+  assert.equal(P.pagoPosible({ ...base, rendimientoEA: 30 }), null, 'la plata rinde más de lo que cuesta la deuda');
+  assert.ok(P.pagoPosible({ ...base, rendimientoEA: 10 }).ahorroMensual < r.ahorroMensual, 'descuenta lo que dejaría de rendir');
+});

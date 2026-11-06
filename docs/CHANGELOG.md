@@ -4,6 +4,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## «Apartar $X» en el plan de deudas (2026-11-06, SW v110)
+
+- Nuevo `PlanDeudas.pagoPosible({ deuda, disponible, gastoTipico, mesesReserva, rendimientoEA })` (puro, `plan-deudas.js`): cuánto de la deuda más cara se puede pagar **ya** sin bajar de la reserva (3 meses de gasto típico), en múltiplos de $1.000, con el ahorro mensual de intereses (descontando lo que dejaría de rendir esa plata).
+- La tarjeta «Plan de salida de deudas» (Inicio) muestra una línea y un botón «Ir a pagar» (lleva a Tarjetas o Préstamos). **No guarda nada nuevo**: no hay concepto de «apartar» ni dato extra.
+- Qué plata cuenta: cuentas + cajitas + CDT vencidos, menos plata ajena. **La Alcancía nunca entra** (está oculta a propósito) y los CDT sin vencer tampoco. Por eso la línea dice «con lo que tienes en tus cuentas y cajitas»: si tienes ahorro en un lugar que la app no ve (o en la Alcancía), la sugerencia no lo sabe; si ya tienes esa plata en una cajita, sí la ve y la cuenta.
+- No aparece si: la deuda no tiene tasa E.A., no hay gasto típico (no hay cómo medir la reserva), la cajita rinde igual o más de lo que cuesta la deuda, o no sobra nada sobre la reserva.
+- Pagar con efectivo no cambia la liquidez neta (baja el efectivo y la deuda a la vez); lo que se gana son los intereses.
+- Tests: 2 nuevos (función pura y la tarjeta del plan). 811 + 1.
+- Para probar: tener una tarjeta con tasa E.A. y ahorros por encima de 3 meses de gasto → aparece la línea; bajar el saldo de las cuentas → desaparece.
+
+---
+
 ## A10 (resto): seguridad de Firebase revisada (2026-11-06, solo docs)
 
 - Reglas de Firestore verificadas (solo el dueño accede a `usuarios/{uid}`) y Authentication con solo Google activo. App Check queda sin activar a propósito (ver `mejoras-mis-finanzas.md`). No cambia la app ni el SW.

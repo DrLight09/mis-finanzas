@@ -4,6 +4,14 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## A11: candado contra `innerHTML` sin escapar (2026-11-06, sin cambio en la app)
+
+- `tests/innerhtml.test.js`: falla si aparece un `x.innerHTML = \`…${…}…\`` nuevo sin la etiqueta `html\`\``. Los 12 casos existentes se revisaron: solo interpolan números (`fmt`), clases/íconos internos o texto ya escapado con `escHtml()` (`toast()` recibe HTML por contrato). La cantidad por archivo queda fijada.
+- No hace falta subir versión del service worker (solo tests y docs).
+- Descartado a propósito: bundler/esbuild (no urgente, la app no lo necesita hoy).
+
+---
+
 ## A9 (resto): `calcHealthScore` partido (2026-11-06, SW v108)
 
 - El cálculo del puntaje (los 7 criterios a–h, consejos tipados, orden por urgencia) ahora vive en `Salud.puntaje(e)` (`js/core/salud.js`): **puro**, sin DOM, sin `window` ni `S`; corre igual en Node, así que Wrapped, el cierre de mes o el push pueden usarlo.

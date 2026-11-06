@@ -4,6 +4,12 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## A10 (resto): seguridad de Firebase revisada (2026-11-06, solo docs)
+
+- Reglas de Firestore verificadas (solo el dueño accede a `usuarios/{uid}`) y Authentication con solo Google activo. App Check queda sin activar a propósito (ver `mejoras-mis-finanzas.md`). No cambia la app ni el SW.
+
+---
+
 ## A11: candado contra `innerHTML` sin escapar (2026-11-06, sin cambio en la app)
 
 - `tests/innerhtml.test.js`: falla si aparece un `x.innerHTML = \`…${…}…\`` nuevo sin la etiqueta `html\`\``. Los 12 casos existentes se revisaron: solo interpolan números (`fmt`), clases/íconos internos o texto ya escapado con `escHtml()` (`toast()` recibe HTML por contrato). La cantidad por archivo queda fijada.

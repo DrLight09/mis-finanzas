@@ -4,6 +4,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## A9 (resto): `calcHealthScore` partido (2026-11-06, SW v108)
+
+- El cálculo del puntaje (los 7 criterios a–h, consejos tipados, orden por urgencia) ahora vive en `Salud.puntaje(e)` (`js/core/salud.js`): **puro**, sin DOM, sin `window` ni `S`; corre igual en Node, así que Wrapped, el cierre de mes o el push pueden usarlo.
+- `calcHealthScore()` en `inicio.js` queda como adaptador: junta las métricas con las definiciones únicas (`Periodo.*`, `calcLiquidez`, `calcPatrimonioVisible`…) y llama a `Salud.puntaje`. Misma salida de antes (`score, tips, consejos, sinDatos, ingresosMes, rendimientoCDTMes, mesesCubiertos, rachaDeficit`); no cambió ningún número ni texto (los 806 tests de comportamiento previos pasan sin tocarse).
+- Test nuevo en Node puro (`tests/salud.test.js`).
+- Para probar: Inicio → tarjeta de salud: puntaje, etiqueta y consejos iguales que antes.
+
+---
+
 ## A3-2: `Reversibles` (2026-11-06, SW v107)
 
 - Nuevo en `core-state.js`: `Reversibles.registrar({ tipo, proteccion(ref, ctx) })` y `Reversibles.proteger(tipo, ref)`. Cada tipo declara `{ fecha, ops, modulo, nombre, monto, direccion, campo?, dialogo? }`; el registro aplica `nivelAntiguedadMovimiento` (bloqueado → aviso; viejo → confirmación estándar o la propia del tipo) y devuelve `{ ok, confirmado }`.

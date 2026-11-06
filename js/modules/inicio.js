@@ -309,219 +309,28 @@ function _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos){ return Re
 function calcHealthScore(){
   const S = window.S || {};
   if(!S.cajitas) return null;
-  let score = 50;
-  // Cada consejo lleva su TIPO explícito (no se deduce del texto):
-  //   ok         → algo ya cumplido o bien hecho (check verde)
-  //   alerta     → importante, hay que atenderlo (rojo, advertencia)
-  //   aviso      → conviene mirarlo (ámbar, advertencia)
-  //   sugerencia → oportunidad o tarea pendiente, no un logro (neutro, ícono de información); `ir` = pantalla donde se resuelve
-  const consejos = [];
-  const add = (texto, tipo, ir) => { consejos.push({ texto, tipo, ir: ir || '' }); };
-
-  // ── Cálculos base ────────────────────────────────────────────────────
-  // Patrimonio VISIBLE (sin alcancía) — mismo criterio que renderProyeccion().
-  // El riesgo real acá es bajo: `patrimonio` solo se usa como gate booleano
-  // (tieneAlgo) y en el ratio deudaTC/patrimonio cuando no hay ingresos del
-  // mes registrados (líneas más abajo) — nunca se muestra el monto en pesos,
-  // a diferencia de la Proyección financiera. Aun así, restarla acá evita
-  // cualquier filtración indirecta (ej. un depósito grande a la alcancía
-  // haciendo que "tieneAlgo" pase de false a true, o cambiando qué tip
-  // aparece) y mantiene el mismo principio en toda la app: mientras esté
-  // tapada, es como si esa plata no existiera para nada visible al usuario.
-  // Patrimonio VISIBLE (sin alcancía): una sola definición en core-state.js (calcPatrimonioVisible), la misma del hero, el historial
-  // y la Proyección. Resta TODAS las deudas (tarjetas, «Yo debo», plata ajena), así que ya no hay que corregirlo aquí.
-  const patrimonio = calcPatrimonioVisible();
   const mes = window.mesActual ? window.mesActual() : '';
-
-  // Gastos e ingresos del mes: definición única en periodo.js (la misma de Análisis, cierre de mes y Wrapped).
-  const _gMes = Periodo.gastosDelMes(mes);
-  const gvMes = _gMes.gvTotal;
-  const gastosMes = _gMes.total;
-
-  // Deuda TC que realmente es mía (excluye encargos, plata comprometida, préstamos TC)
-  const deudaTC = typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0;
-
-  // Ingresos del mes: mesada + ingresos fijos + entradas reales (periodo.js).
-  const ingresosMes = Periodo.ingresosDelMes(mes).total;
-  // Ingreso de REFERENCIA para los ratios (b, d y «sin ingresos»): el mayor entre lo ingresado este mes y el ingreso típico de los
-  // últimos 3 meses con ingreso. Con la regla de caja el ingreso llega en pocos días (la mesada, el sueldo, las cuotas de Spotify): a
-  // principio de mes aún no ha llegado y comparar contra $0 haría ver una deuda enorme o «gastas más de lo que ingresas» cada mes
-  // antes de cobrar. Si este mes ya entró más que lo típico, manda lo de este mes; sin meses anteriores con ingreso, todo sigue igual.
-  const ingresoRef = Math.max(ingresosMes, Periodo.ingresoPromedioPrevio(mes, 3).promedio);
-
-  // ── Rendimiento de CDTs generado este mes (Opción 2: patrimonio real) ──
-  // Es plata que el patrimonio total ya ganó este mes, pero sigue bloqueada
-  // dentro del CDT — NO es efectivo disponible, así que NO se suma a ingresosMes
-  // (que mide flujo de caja real para los ratios de deuda/gasto).
-  // Se expone aparte para que la app "sepa" que ese rendimiento existe.
-  const rendimientoCDTMes = Periodo.rendimientosDelMes(mes).total; // cajitas + CDTs (ver periodo.js)
-
-  // ── Liquidez real: una sola definición en core-state.js (calcLiquidez) ─────
-  // Suma lo que se puede usar ya (cajitas, Nequi, Efectivo, cuentas propias) y resta lo que no es tuyo o ya debes: la tarjeta
-  // propia, lo que debes a personas (aunque no haya fecha de pago: entre amigos casi nunca la hay, y es plata que te pueden
-  // pedir en cualquier momento) y la plata ajena que guardas. NO suma los CDTs (bloqueados) ni lo que te deben (sin fecha
-  // cierta no es plata disponible). Ver el bloque «PATRIMONIO Y LIQUIDEZ» de core-state.js.
-  const liq = calcLiquidez();
-  const liquidoReal = liq.neta;
-  const cdtVal = liq.cdts;
-  // patrimonio total sí incluye CDTs para otros cálculos
-  const liquidoConCDTs = liq.conCDTs;
-
-  // ── Plata prestada a otros ────────────────────────────────────────────
-  const prest = liq.meDeben;
-
-  // ── Hay datos suficientes para evaluar? ───────────────────────────────
-  // Cualquier activo o deuda cuenta como dato, también las deudas con personas y la plata ajena: antes solo contaban un patrimonio
-  // positivo, lo prestado, la tarjeta o los gastos del mes, y quien solo debía («Yo debo») veía «Registra más datos» justo cuando su
-  // situación era más delicada.
-  const tieneAlgo = patrimonio !== 0 || prest > 0 || deudaTC > 0 || liq.yoDebo > 0 || liq.ajeno > 0 || liq.libre !== 0 || liq.cdts > 0 || gastosMes > 0;
   const U = UMBRALES.salud;
-
-  // a) Fondo de emergencia: liquidez real vs gasto mensual TÍPICO
-  // Se usa liquidoReal (sin CDTs sin vencer) — un CDT bloqueado no cubre una emergencia.
-  // El gasto de referencia es el promedio de los últimos meses COMPLETOS con datos (Periodo.gastoPromedioPrevio), no el gasto del mes
-  // en curso: a los 2 días de empezar el mes apenas hay gastos, y «reservas / gastos del mes» salía en decenas de meses y regalaba +20
-  // puntos que se iban cayendo a medida que pasaba el mes. Sin ningún mes anterior con gastos todavía no hay con qué medir.
-  const gastoRef = Periodo.gastoPromedioPrevio(mes, U.mesesReferencia).promedio;
-  const mesesCubiertos = _mesesCubiertos(liquidoReal, gastoRef); // «runway»: cuántos meses aguantas sin ingresos (null si no hay gasto típico)
-  let avisoDeudaTC = false; // si la deuda de tarjeta ya se avisó por liquidez negativa, (b) no la penaliza otra vez
-  if(liquidoReal > 0){
-    if(gastoRef > 0){
-      if(mesesCubiertos >= U.fondoMeses.completo) score += 20;
-      else if(mesesCubiertos >= U.fondoMeses.minimo) score += 10;
-      else { score -= 5; add(`Tus reservas cubren menos de ${U.fondoMeses.minimo} meses de gastos.`,'aviso','cuentas'); }
-    }
-  } else if(liquidoReal < 0){
-    // Debes más de lo que tienes disponible. Se nombra QUÉ deuda es. Si lo cubren CDTs sin vencer es menos grave (la plata existe, solo está
-    // bloqueada). Antes un CDT mandaba este caso a «tus ahorros están en CDTs» y el consejo no decía que la liquidez era negativa.
-    const quien = (liq.yoDebo <= 0 && liq.ajeno <= 0) ? 'Tu deuda en tarjetas supera'
-      : (liq.tcPropia <= 0 && liq.ajeno <= 0) ? 'Lo que debes a personas supera'
-      : 'Tus deudas y la plata ajena que guardas superan';
-    avisoDeudaTC = liq.tcPropia > 0;
-    if(liquidoConCDTs >= 0){ score -= 8; add(`${quien} la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs.`,'aviso','prestamos'); }
-    else { score -= 15; add(`${quien} la plata que tienes disponible.`,'alerta','prestamos'); }
-  } else if((gastosMes > 0 || gastoRef > 0) && liquidoConCDTs > 0){
-    // Liquidez justo en cero y solo CDTs sin vencer: el ahorro existe pero no está libre.
-    score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso','cuentas');
-  }
-
-  // b) Deuda de tarjetas de crédito vs ingresos (ratio de endeudamiento TC)
-  if(deudaTC > 0 && ingresoRef > 0){
-    const ratioTC = deudaTC / ingresoRef;
-    if(ratioTC > U.tcSobreIngreso.critico){ score -= 15; add(`Tu deuda en TC supera ${U.tcSobreIngreso.critico} meses de ingresos — prioriza pagarla.`,'alerta','tarjetas'); }
-    else if(ratioTC > U.tcSobreIngreso.alto){ score -= 8; add('Tu deuda en tarjetas es alta respecto a tus ingresos.','aviso','tarjetas'); }
-    // Hasta 1,5 meses de ingreso es una deuda manejable: no suma ni resta. Antes SUMABA +5 por tenerla (incentivo invertido: quien
-    // no debe nada recibía 0). El punto a favor es de quien no tiene deudas propias, más abajo.
-  } else if(deudaTC > 0 && ingresoRef === 0){
-    // Tiene deuda TC pero no registra ingresos — verificar vs patrimonio
-    if(patrimonio > 0 && deudaTC / patrimonio > 0.4){
-      score -= 10; add('Tu deuda en tarjetas es alta — considera pagarla con tus ahorros.','aviso','tarjetas');
-    } else if(patrimonio <= 0 && !avisoDeudaTC){
-      // Sin la guarda se penalizaba dos veces la MISMA deuda (−15 aquí y −15 por liquidez negativa, con dos alertas casi iguales).
-      score -= 15; add('Tienes deuda en tarjetas y tu patrimonio no la cubre — prioriza pagarla.','alerta','tarjetas');
-    }
-  }
-  // Sin deudas propias y con plata disponible: lo único que se premia en endeudamiento.
-  if(deudaTC <= 0 && liq.yoDebo <= 0 && liq.ajeno <= 0 && liquidoReal > 0) score += 5;
-
-  // c) Plata prestada a otros (riesgo de incobrabilidad / inmovilización)
-  // Penalización escalonada por ratio — independiente del bonus de CDTs
-  let ratioPrest = 0;
-  if(prest > 0){
-    if(liquidoReal <= 0){
-      // Sin liquidez libre y con plata prestada sin cobrar — caso crítico (la liquidez puede estar en cero por lo prestado o por lo que debes)
-      score -= 15; add('No te queda liquidez libre y tienes plata prestada sin cobrar — no tienes nada disponible para emergencias.','alerta','prestamos');
-      ratioPrest = Infinity;
-    } else {
-      ratioPrest = prest / liquidoReal;
-      if(ratioPrest > U.prestadoSobreLiquidez.vulnerable){
-        score -= 18; add('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.','alerta','prestamos');
-      } else if(ratioPrest > U.prestadoSobreLiquidez.comprometido){
-        score -= 13; add('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.','alerta','prestamos');
-      } else if(ratioPrest > U.prestadoSobreLiquidez.vigilar){
-        score -= 8; add('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).','aviso','prestamos');
-      }
-      // ratioPrest <= 0.4: situación sana, no penalizar
-    }
-  }
-
-  // d) Ritmo de gasto vs ingreso (disciplina de gasto) y h) racha de déficit.
-  // d) se mide con lo TÍPICO de los meses completos (gasto típico ÷ ingreso típico), no con «gastado hasta hoy ÷ ingreso del mes
-  // completo»: a los 3 días eso daba ≈ 0,05 y regalaba +10 puntos que se iban cayendo a medida que avanzaba el mes (el mismo defecto
-  // que ya se corrigió en el fondo de emergencia, a). Lo único que el mes en curso puede decir sin riesgo de parcialidad es que YA se
-  // pasó: si lo gastado hasta hoy supera el ingreso de referencia, el mes cierra en déficit pase lo que pase.
-  const ingresoTipico = Periodo.ingresoPromedioPrevio(mes, U.mesesReferencia).promedio;
-  // h) Tendencia: meses completos SEGUIDOS cerrando en déficit. Es la dirección que la foto de a)–c) no ve: alguien puede llevar meses
-  // gastando más de lo que entra y seguir en «Regular» porque aún tiene colchón. Un fondo sólido (≥ 6 meses) la absorbe y no puntúa.
-  const racha = Periodo.rachaDeficit(mes, 6);
-  const rachaMeses = _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos);
-  let enDeficit = false;
-  if(rachaMeses >= U.rachaDeficitMeses.alerta){
-    score -= 15; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'alerta','gastos');
-  } else if(rachaMeses >= U.rachaDeficitMeses.aviso){
-    score -= 8; enDeficit = true; add(`Llevas ${rachaMeses} meses seguidos gastando más de lo que ingresas.`,'aviso','gastos');
-  }
-  if(ingresoTipico > 0 && gastoRef > 0){
-    const ratioGasto = gastoRef / ingresoTipico;
-    if(ratioGasto <= U.gastoSobreIngreso.sano) score += 10;
-    else if(ratioGasto <= U.gastoSobreIngreso.ajustado) score += 5;
-    else if(ratioGasto > U.gastoSobreIngreso.deficit && !enDeficit){ score -= 10; enDeficit = true; add('Vienes gastando más de lo que ingresas.','aviso','gastos'); }
-  }
-  if(!enDeficit && ingresoRef > 0 && gastosMes > ingresoRef){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso','gastos'); }
-
-  // e) CDTs activos (ahorro estructurado)
-  // Si el riesgo de prestado es alto (ratio > 1) o la liquidez es negativa, el CDT no compensa — bonus reducido a +3.
-  // Solo cuando la situación de liquidez es sana merece el bonus completo.
-  const cdts = (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0);
-  if(cdts >= 1){
-    // El bono es proporcional al peso del CDT en tu plata (cuentas libres + CDTs): llega completo cuando el CDT es el 10 % o más;
-    // un CDT de $1.000 dentro de $80.000 ya no regala los 10 puntos.
-    const cdtBonusMax = (ratioPrest > U.prestadoSobreLiquidez.comprometido || liquidoReal < 0) ? 3 : 10;
-    const pesoCDT = liquidoConCDTs > 0 ? cdtVal / liquidoConCDTs : 0;
-    score += Math.round(cdtBonusMax * Math.min(1, pesoCDT / U.cdtPesoCompleto));
-  } else if(tieneAlgo && liquidoReal > 0 && deudaTC <= 0 && ratioPrest <= U.prestadoSobreLiquidez.comprometido && (gastoRef <= 0 || liquidoReal >= gastoRef * U.fondoMeses.minimo)){
-    // Solo se sugiere con ahorros que sobran: fondo de emergencia cubierto (≥ 3 meses de gasto típico), sin deuda de tarjeta propia
-    // y sin tener prestado más de lo que tienes disponible (junto a «tu situación es muy vulnerable» sonaba contradictorio).
-    add('Considera poner algo en un CDT para hacer crecer tus ahorros.','sugerencia','cuentas');
-  }
-
-  // f) y g) (≥ 2 gastos fijos configurados: +5; una sola categoría en gastos variables: −5) ya NO puntúan: miden cómo usas la app, no
-  // tu salud financiera, y mezclaban dos cosas distintas en un mismo número. La sugerencia de categorías se conserva como consejo.
-  const cats = new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat));
-  if(gvMes > 0 && cats.size <= 1) add('Registra las categorías de tus gastos para mejor control.','sugerencia','gastos');
-
-  // Una compra grande reciente (marcada por el usuario) que dejó las reservas bajas: no resta puntos propios (la liquidez baja y el
-  // runway ya lo cuentan), pero se nombra para que la causa no sea un misterio y se sepa qué hacer: reconstruir el fondo.
+  const _gMes = Periodo.gastosDelMes(mes);
+  const ingresosMes = Periodo.ingresosDelMes(mes).total;
   const _d90 = _fechaSafe(hoy()); _d90.setDate(_d90.getDate() - 90);
   const _desde90 = _d90.getFullYear() + '-' + String(_d90.getMonth() + 1).padStart(2, '0') + '-' + String(_d90.getDate()).padStart(2, '0');
-  const _cgRecientes = Periodo.comprasGrandesEntre(_desde90, hoy());
-  if(_cgRecientes.length && (mesesCubiertos === null || mesesCubiertos < U.fondoMeses.completo)){
-    const _mayor = _cgRecientes.slice().sort((a, b) => (b.monto||0) - (a.monto||0))[0];
-    add(`Tu compra grande reciente (${_mayor.desc || 'sin nombre'}, ${fmt(_mayor.monto||0)}) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad.`,'sugerencia','cuentas');
-  }
-
-  // Sin gasto típico no se puede medir cuántos meses cubren tus reservas: se dice en vez de quedarse en un «Regular» mudo.
-  if(tieneAlgo && liquidoReal > 0 && gastoRef <= 0) add('Cuando completes un mes de gastos podremos medir cuántos meses cubren tus reservas.','sugerencia');
-
-  // Sin ingresos registrados no se puede evaluar la disciplina de gasto ni el endeudamiento (los ratios b y d se saltan):
-  // no puede salir «Excelente», y se avisa igual que el balance de Análisis.
-  const sinIngresos = ingresoRef <= 0 && gastosMes > 0;
-  if(sinIngresos){
-    score = Math.min(score, 74);
-    add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia','analisis');
-  }
-  score = Math.max(0, Math.min(100, score));
-  if(!consejos.length){
-    if(score >= 80) add('¡Excelente! Tus finanzas están muy bien.','ok');
-    else if(score >= 60) add('Vas bien — diversifica tus ahorros o reduce gastos variables para subir tu puntaje.','sugerencia');
-    else if(tieneAlgo) add('Hay espacio para mejorar: revisa tus gastos y ahorros para subir tu puntaje.','sugerencia','gastos');
-    else add('Registra más movimientos para un análisis más preciso.','sugerencia');
-  }
-  // Lo urgente primero y las sugerencias suaves después (el orden es estable dentro de cada tipo).
-  const ORDEN = { alerta: 0, aviso: 1, sugerencia: 2, ok: 3 };
-  consejos.sort((a, b) => ORDEN[a.tipo] - ORDEN[b.tipo]);
-  const tips = consejos.map(c => c.texto); // los textos, para quien solo necesita la lista
-  return { score, tips, consejos, sinDatos: !tieneAlgo, ingresosMes, rendimientoCDTMes, mesesCubiertos, rachaDeficit: rachaMeses };
+  const gastoRef = Periodo.gastoPromedioPrevio(mes, U.mesesReferencia).promedio;
+  const e = {
+    patrimonio: calcPatrimonioVisible(), gvMes: _gMes.gvTotal, gastosMes: _gMes.total,
+    deudaTC: typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0,
+    // Ingreso de REFERENCIA: el mayor entre lo de este mes y el típico de los últimos 3 meses con ingreso (ver Salud.puntaje).
+    ingresoRef: Math.max(ingresosMes, Periodo.ingresoPromedioPrevio(mes, 3).promedio),
+    liq: calcLiquidez(), gastoRef,
+    ingresoTipico: Periodo.ingresoPromedioPrevio(mes, U.mesesReferencia).promedio,
+    racha: Periodo.rachaDeficit(mes, 6),
+    cdtsActivos: (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0),
+    catsCount: new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat)).size,
+    comprasGrandes: Periodo.comprasGrandesEntre(_desde90, hoy()),
+    fmt
+  };
+  const r = Salud.puntaje(e);
+  return Object.assign(r, { ingresosMes, rendimientoCDTMes: Periodo.rendimientosDelMes(mes).total }); // los CDT rinden pero siguen bloqueados: no son flujo de caja
 }
 
 function renderHealthScore(){

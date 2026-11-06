@@ -113,3 +113,18 @@ test('fechaAgotamiento (P4): cuándo se acaba la plata disponible al ritmo actua
   assert.equal(Salud.fechaAgotamiento(5, 100, '2026-11-05'), null);
   assert.equal(Salud.fechaAgotamiento(-5, -100, '2026-11-05'), null);
 });
+
+/* ================= Salud.puntaje: puro, corre en Node sin S ni DOM ================= */
+test('puntaje: sin S ni navegador; fondo sólido y sin deudas suma, deuda de TC alta resta', () => {
+  const liq = (o = {}) => ({ neta: 6000000, conCDTs: 6000000, cdts: 0, meDeben: 0, yoDebo: 0, ajeno: 0, libre: 6000000, tcPropia: 0, ...o });
+  const base = { patrimonio: 6000000, gvMes: 0, gastosMes: 0, deudaTC: 0, ingresoRef: 3000000, liq: liq(), gastoRef: 1000000, ingresoTipico: 3000000, racha: { meses: 0 }, cdtsActivos: 0, catsCount: 3, comprasGrandes: [], fmt: n => '$' + n };
+  const sano = Salud.puntaje(base);
+  assert.ok(sano.score >= 80, 'fondo ≥ 6 meses, gasto sano y sin deudas: Excelente');
+  assert.equal(sano.sinDatos, false);
+  const deuda = Salud.puntaje({ ...base, deudaTC: 9000000, liq: liq({ neta: -3000000, conCDTs: -3000000, tcPropia: 9000000 }) });
+  assert.ok(deuda.score < sano.score - 30);
+  assert.ok(deuda.consejos.some(c => c.tipo === 'alerta'));
+  assert.equal(deuda.consejos[0].tipo, 'alerta', 'lo urgente primero');
+  const vacio = Salud.puntaje({ ...base, patrimonio: 0, gastoRef: 0, ingresoTipico: 0, ingresoRef: 0, liq: liq({ neta: 0, conCDTs: 0, libre: 0 }) });
+  assert.equal(vacio.sinDatos, true);
+});

@@ -799,6 +799,9 @@ function abrirPresupuestos(){
   // nunca pasaba por escHtml() — bajo riesgo real hoy porque siempre es un monto
   // numérico (S.presupuestos[cat]), pero con html`` deja de depender de que siga
   // siendo siempre así.
+  // Sugerencia por categoría: lo que sueles gastar (promedio de 3 meses, sin compras grandes), redondeado a la decena de miles.
+  const tipico = Periodo.gastoPromedioPorCategoria(window.mesActual ? window.mesActual() : '', 3);
+  const sugerido = cat => { const v = Math.round((tipico.cats[cat] || 0) / 10000) * 10000; return v > 0 ? v : 0; };
   lista.innerHTML = html`${cats.map((cat, i) => {
     // Se muestra con puntos de miles (500.000); lo guardado sigue siendo el número (500000).
     const val = S.presupuestos[cat] ? _milesFormatear(String(Math.round(S.presupuestos[cat]))) : '';
@@ -808,6 +811,7 @@ function abrirPresupuestos(){
         <input type="text" inputmode="numeric" id="presup-input-${i}" class="presup-input miles-input an-presup-input" data-cat="${cat}" placeholder="Sin límite" value="${val}">
         <span class="an-presup-mes">/mes</span>
       </div>
+      ${sugerido(cat)>0?html`<button type="button" class="an-presup-sug" data-cat="${cat}" data-val="${sugerido(cat)}">Sueles gastar ~${fmt(sugerido(cat))} · usar</button>`:''}
     </div>`;
   })}`;
 
@@ -820,6 +824,15 @@ function abrirPresupuestos(){
       else { delete S.presupuestos[cat]; this.value = ''; } // vacío o 0 = sin límite
       if(window._fbSaveToCloud) window._fbSaveToCloud();
       renderPresupuestos();
+    });
+  });
+
+  lista.querySelectorAll('.an-presup-sug').forEach(b => {
+    b.addEventListener('click', function(){
+      const inp = lista.querySelector('.presup-input[data-cat="'+CSS.escape(this.dataset.cat)+'"]');
+      if(!inp) return;
+      inp.value = _milesFormatear(String(this.dataset.val));
+      inp.dispatchEvent(new Event('change'));
     });
   });
 

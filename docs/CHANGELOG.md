@@ -4,6 +4,13 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Sugerencia de presupuesto por categoría (2026-11-05, SW v103)
+
+- En el editor de presupuestos, cada categoría con historial muestra «Sueles gastar ~$X · usar»: un toque rellena el campo (promedio de los últimos 3 meses con gasto, redondeado a la decena de miles, **sin compras grandes**). `Periodo.gastoPromedioPorCategoria(mes, n)` (nuevo). No guarda nada hasta que cambias el campo, igual que antes.
+- Test con compra grande marcada (`grande:true`) que no entra al promedio.
+
+---
+
 ## Push de gastos fijos (2026-11-05, SW v102)
 
 - La regla `gastos-fijos` ahora también es del canal **push**: «Arriendo vence en 2 días ($900.000)», «Internet venció hace 1 día…». Sin `api` (el push corre en Node, sin Periodo ni core-state) la regla calcula desde `S` con `_gastosFijosProgramadosDeS`: clave de pago `<id>_AAAA-MM`, día recortado al último día del mes, mes actual + siguiente. Lo vencido hace **más de 7 días** no se repite cada día en el celular (en la app sí se sigue viendo). La brecha de caja a 30 días sigue siendo solo de la app.

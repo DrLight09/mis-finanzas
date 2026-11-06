@@ -1127,3 +1127,14 @@ test('PUSH gastos fijos: el cálculo desde S coincide con Periodo.gastosFijosPro
   const push = ctx.Reglas.evaluar('push', { hoy: hoyStr, S: ctx.S }).filter(i => i.regla === 'gastos-fijos').map(i => i.texto.split(' ')[0]).sort();
   assert.deepEqual(Array.from(push), Array.from(esperado));
 });
+
+test('presupuestos: gastoPromedioPorCategoria promedia meses previos con gasto y deja fuera las compras grandes', () => {
+  const [m1, m2] = [mesHace(1), mesHace(2)];
+  const g = (id, mes, cat, monto) => ({ id, fecha: mes + '-05', monto, cat, desc: cat });
+  const ctx = app({ cuentas: cuentas(0), gastosVar: [g('1', m1, 'Comida', 300000), g('2', m2, 'Comida', 500000), g('3', m1, 'Transporte', 100000), { ...g('4', m1, 'Moto', 9000000), grande: true }] });
+  const r = ctx.Periodo.gastoPromedioPorCategoria(mesAct, 3);
+  assert.equal(r.meses, 2);
+  assert.equal(r.cats.Comida, 400000);
+  assert.equal(r.cats.Transporte, 50000);
+  assert.equal(r.cats.Moto, undefined, 'una compra grande no es lo que sueles gastar');
+});

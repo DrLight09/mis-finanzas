@@ -2361,3 +2361,5 @@ button.inicio-pilar-accion{cursor:pointer;}
 .an-sim-etq{color:var(--text2);}
 
 .an-presup-ritmo{margin-top:4px;font-size:11px;color:var(--text3);}
+
+.an-presup-sug{margin-top:4px;font-size:11px;color:var(--text3);background:none;border:none;padding:0;text-align:left;text-decoration:underline;}

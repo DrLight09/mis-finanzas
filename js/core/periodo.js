@@ -347,6 +347,20 @@ const Periodo = (() => {
     return out;
   }
 
+  // Gasto típico por categoría: promedio de los últimos `n` meses anteriores a `mes` con gasto, sin las compras grandes (mismo criterio que
+  // gastoPromedioPrevio). Sirve para sugerir un presupuesto realista. → { cats: { cat: promedio }, meses }
+  function gastoPromedioPorCategoria(mes, n, estado) {
+    const meses = _mesesDeReferencia(gastosPorMes(estado, { sinExtraordinarios: true }), mes, n);
+    const suma = {};
+    meses.forEach(m => {
+      const g = gastosDelMes(m, estado), grandes = new Set(g.extraordinarios);
+      g.items.forEach(it => { if (grandes.has(it)) return; const c = it.cat || 'Otro'; suma[c] = (suma[c] || 0) + (it.monto || 0); });
+    });
+    const cats = {};
+    Object.keys(suma).forEach(c => { cats[c] = suma[c] / (meses.length || 1); });
+    return { cats, meses: meses.length };
+  }
+
   /* ---- RENDIMIENTOS (intereses de Nu) ---- */
   // Los intereses de las cajitas y CDTs de Nu SON ingreso económico (plata nueva que antes no tenías), pero no
   // entran en `ingresosDelMes().total`: ese total mide flujo de caja operativo y alimenta los ratios de deuda y
@@ -532,7 +546,7 @@ const Periodo = (() => {
     return { dia: d, diasMes, esperadoPct, usadoPct, adelantado: limite > 0 && d >= 5 && usadoPct < 100 && usadoPct - esperadoPct >= 15 };
   }
 
-  return { ritmoPresupuesto, resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
+  return { gastoPromedioPorCategoria, ritmoPresupuesto, resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosFijosSinDia, conciliar, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 

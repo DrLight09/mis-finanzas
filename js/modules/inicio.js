@@ -609,7 +609,7 @@ function _deudasPropias(){
     if(saldo > 0) out.push({ id: tc.id, nombre: tc.nombre, tipo: 'tarjeta', saldo, tasaEA: tc.tasaEA > 0 ? tc.tasaEA : null });
   });
   if(typeof Deudas !== 'undefined' && typeof getDeudorSaldo === 'function'){
-    Deudas.lista('contra').forEach(d => { const saldo = getDeudorSaldo(d); if(saldo > 0) out.push({ id: d.id, nombre: d.nombre, tipo: 'persona', saldo, tasaEA: null }); });
+    Deudas.lista('contra').forEach(d => { const saldo = getDeudorSaldo(d); if(saldo > 0) out.push({ id: d.id, nombre: d.nombre, tipo: 'persona', saldo, tasaEA: d.tasaEA > 0 ? d.tasaEA : null }); });
   }
   return out;
 }

@@ -1138,3 +1138,11 @@ test('presupuestos: gastoPromedioPorCategoria promedia meses previos con gasto y
   assert.equal(r.cats.Transporte, 50000);
   assert.equal(r.cats.Moto, undefined, 'una compra grande no es lo que sueles gastar');
 });
+
+test('P2. la tasa E.A. de una deuda «Yo debo» entra al costo de la deuda y al plan', () => {
+  const ctx = app({ cuentas: cuentas(0), misDeudas: [{ id: 'd1', nombre: 'Fulano', tasaEA: 24, movimientos: [{ tipo: 'recibido', monto: 1000000 }] }] });
+  const d = ctx._deudasPropias();
+  assert.equal(d.length, 1);
+  assert.equal(d[0].tasaEA, 24);
+  assert.ok(ctx.planDeudasDatos().plan.costoMensualTotal > 0);
+});

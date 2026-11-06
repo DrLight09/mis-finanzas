@@ -2802,6 +2802,8 @@ function editarMiDeudaActual() {
   window._miDeudaEditColor = (_pEdit && _pEdit.color) ? _pEdit.color : (d.color || PERSONA_COLORES[4]);
   const inp = document.getElementById('md_edit_nombre');
   if (inp) inp.value = d.nombre || '';
+  const inpTasa = document.getElementById('md_edit_tasa');
+  if (inpTasa) inpTasa.value = d.tasaEA > 0 ? String(d.tasaEA).replace('.', ',') : '';
   _renderColorPicker('md_edit_colores', '_miDeudaEditColor');
   if (typeof openSheet === 'function') openSheet('editar-mi-deuda');
 }
@@ -2818,6 +2820,11 @@ function guardarEditarMiDeuda() {
   const nombre = (document.getElementById('md_edit_nombre').value || '').trim();
   if (!nombre) { if (typeof toast === 'function') toast('Ingresa el nombre', 'err'); return; }
   const nuevoColor = window._miDeudaEditColor || d.color;
+  // Tasa E.A. opcional (P2): vacío = sin intereses conocidos. Entre 0 y 100 %.
+  const tasaTxt = ((document.getElementById('md_edit_tasa') || {}).value || '').trim().replace(',', '.');
+  const tasaEA = tasaTxt === '' ? null : Number(tasaTxt);
+  if (tasaEA !== null && (!isFinite(tasaEA) || tasaEA < 0 || tasaEA > 100)) { if (typeof toast === 'function') toast('La tasa E.A. debe estar entre 0 y 100', 'err'); return; }
+  if (tasaEA > 0) d.tasaEA = tasaEA; else delete d.tasaEA;
   d.nombre = nombre;
   d.color = nuevoColor;
   // Sincronizar en S.personas si está vinculada (persona es la fuente de verdad)

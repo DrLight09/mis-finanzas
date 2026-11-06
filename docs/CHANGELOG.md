@@ -4,6 +4,12 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Tasa E.A. en «Yo debo» (2026-11-05, SW v104)
+
+- «Editar deuda» (Yo debo) tiene el campo opcional **Tasa E.A.** (0–100 %, vacío = sin intereses). Se guarda como `tasaEA` en la deuda y entra al costo mensual y al plan de salida (`_deudasPropias`). Test `P2`.
+
+---
+
 ## Sugerencia de presupuesto por categoría (2026-11-05, SW v103)
 
 - En el editor de presupuestos, cada categoría con historial muestra «Sueles gastar ~$X · usar»: un toque rellena el campo (promedio de los últimos 3 meses con gasto, redondeado a la decena de miles, **sin compras grandes**). `Periodo.gastoPromedioPorCategoria(mes, n)` (nuevo). No guarda nada hasta que cambias el campo, igual que antes.

@@ -1117,3 +1117,13 @@ test('B5. un ingreso marcado extraordinario cuenta en el balance real pero no en
   assert.equal(b.ingresosExtra, 800000);
   assert.equal(b.balance - b.balanceRecurrente, 800000);
 });
+
+test('PUSH gastos fijos: el cálculo desde S coincide con Periodo.gastosFijosProgramados (anti-deriva)', () => {
+  const ctx = app({ gastosFijos: [{ id: 'a', nombre: 'Arriendo', monto: 900000, dia: 31 }, { id: 'b', nombre: 'Luz', monto: 70000, dia: 9 }, { id: 'c', nombre: 'Agua', monto: 20000, dia: 3 }],
+    pagosGastosFijos: { ['c_' + mesAct]: { fecha: mesAct + '-03', monto: 20000 } } });
+  const hoyStr = ctx.hoy();
+  const esperado = [...ctx.Periodo.gastosFijosProgramados(mesAct, hoyStr), ...ctx.Periodo.gastosFijosProgramados(ctx.Periodo.mesDesplazado(mesAct, 1), hoyStr)]
+    .filter(g => g.dias >= -7 && g.dias <= ctx.UMBRALES.atencion.gastoFijoAvisoDias).map(g => g.nombre).sort();
+  const push = ctx.Reglas.evaluar('push', { hoy: hoyStr, S: ctx.S }).filter(i => i.regla === 'gastos-fijos').map(i => i.texto.split(' ')[0]).sort();
+  assert.deepEqual(Array.from(push), Array.from(esperado));
+});

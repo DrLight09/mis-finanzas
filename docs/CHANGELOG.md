@@ -4,6 +4,13 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Push de gastos fijos (2026-11-05, SW v102)
+
+- La regla `gastos-fijos` ahora también es del canal **push**: «Arriendo vence en 2 días ($900.000)», «Internet venció hace 1 día…». Sin `api` (el push corre en Node, sin Periodo ni core-state) la regla calcula desde `S` con `_gastosFijosProgramadosDeS`: clave de pago `<id>_AAAA-MM`, día recortado al último día del mes, mes actual + siguiente. Lo vencido hace **más de 7 días** no se repite cada día en el celular (en la app sí se sigue viendo). La brecha de caja a 30 días sigue siendo solo de la app.
+- Test anti-deriva: el cálculo desde S coincide con `Periodo.gastosFijosProgramados`. Actualizados los tests que fijaban la lista de reglas del push. `docs/notificaciones-push.md` por actualizar con el nuevo aviso (ver abajo).
+
+---
+
 ## Ingreso extraordinario (2026-11-05, SW v101)
 
 - Los dos sheets de «Agregar dinero» tienen la casilla **«Es extraordinario (no se repite)»** (aguinaldo, venta, premio). La entrada guarda `extraordinario:true` (campo nuevo del movimiento; no aplica a saldos iniciales).

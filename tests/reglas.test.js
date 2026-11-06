@@ -33,7 +33,7 @@ test('registro: ids únicos (reemplaza), validación y aislamiento de errores', 
 
 test('los canales declarados: el push solo lleva las reglas basadas en S; Atención lleva todas las de situación', () => {
   const push = Reglas.lista('push').map(r => r.id);
-  assert.deepEqual(push.filter(id => !id.startsWith('prueba')), ['spotify-vencido', 'cdt', 'encargos-comprometidos', 'wrapped-disponible']);
+  assert.deepEqual(push.filter(id => !id.startsWith('prueba')), ['gastos-fijos', 'spotify-vencido', 'cdt', 'encargos-comprometidos', 'wrapped-disponible']);
   const atn = Reglas.lista('atencion').map(r => r.id);
   ['liquidez', 'patrimonio-negativo', 'racha-deficit', 'gastos-fijos', 'gastos-fijos-sin-dia', 'ingresos-fijos', 'deudas-personas', 'mesada-pendiente', 'tarjetas', 'spotify-vencido', 'cdt', 'encargos-comprometidos'].forEach(id => assert.ok(atn.includes(id), id));
   assert.ok(!atn.includes('wrapped-disponible'), 'el aviso de Wrapped es solo del push');
@@ -152,7 +152,7 @@ test('ingresos fijos atrasados', () => {
 
 test('el push sigue funcionando a través de checks.js (ruta real del script) y devuelve solo {tipo, texto}', () => {
   const { ejecutarChecks, CHECKS } = require(path.join('..', 'scripts', 'notificaciones', 'checks.js'));
-  assert.deepEqual(CHECKS.map(c => c.id), ['spotify-vencido', 'cdt', 'encargos-comprometidos', 'wrapped-disponible']);
+  assert.deepEqual(CHECKS.map(c => c.id), ['gastos-fijos', 'spotify-vencido', 'cdt', 'encargos-comprometidos', 'wrapped-disponible']);
   const r = ejecutarChecks({ cajitas: [{ nombre: 'Nu', cdts: [{ vence: '2026-11-04' }] }] }, HOY);
   assert.deepEqual(r, [{ tipo: 'red', texto: 'CDT "Nu" venció — ¡libera tu plata!' }]);
   assert.deepEqual(ejecutarChecks({}, HOY), []);
@@ -161,4 +161,23 @@ test('el push sigue funcionando a través de checks.js (ruta real del script) y 
 test('guarda: checks.js ya no copia reglas (no define spPersonaPagadaVigente ni checkCDT propios)', () => {
   const src = require('node:fs').readFileSync(path.join(__dirname, '..', 'scripts', 'notificaciones', 'checks.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(src, /function (spPersonaPagadaVigente|checkCDT|checkEncargos|checkSpotifyVencido|checkWrapped)/);
+});
+
+test('PUSH de gastos fijos: calcula desde S (sin api), ignora los pagados y los vencidos de hace más de 7 días', () => {
+  const S = {
+    gastosFijos: [
+      { id: 'a', nombre: 'Arriendo', monto: 900000, dia: 7 },
+      { id: 'b', nombre: 'Internet', monto: 80000, dia: 4 },
+      { id: 'c', nombre: 'Gym', monto: 50000, dia: 6 },
+      { id: 'd', nombre: 'Viejo', monto: 10000, dia: 1 },
+      { id: 'e', nombre: 'Sin día', monto: 1 },
+    ],
+    pagosGastosFijos: { 'c_2026-11': { fecha: '2026-11-02', monto: 50000 } },
+  };
+  const t = ev('push', { hoy: HOY, S }).filter(i => i.regla === 'gastos-fijos').map(i => i.texto);
+  assert.equal(t.length, 3, t.join(' | ')); // Arriendo, Internet, Viejo; Gym ya está pagado y «Sin día» no tiene vencimiento
+  assert.ok(t.some(x => x.startsWith('Internet venció hace')));
+  // el 20: lo vencido hace más de una semana ya no se repite en el push
+  assert.ok(!ev('push', { hoy: '2026-11-20', S }).some(i => i.regla === 'gastos-fijos' && i.texto.startsWith('Internet')));
+  assert.ok(t.some(x => x.startsWith('Arriendo vence en')));
 });

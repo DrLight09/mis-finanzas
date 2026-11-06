@@ -94,6 +94,24 @@ const Reglas = (() => {
      ================================================================ */
   const A = ['atencion'], AP = ['atencion', 'push'];
 
+  // Gastos fijos con día que aún no se pagaron, calculados SOLO con `S` (el push corre en Node sin Periodo/core-state). Misma definición que
+  // Periodo.gastosFijosProgramados (un test los compara): clave de pago «<id>_AAAA-MM», día recortado al último día del mes.
+  function _gastosFijosProgramadosDeS(S, hoy) {
+    const [hy, hm] = hoy.split('-').map(Number), out = [];
+    const pagos = (S && S.pagosGastosFijos) || {};
+    [0, 1].forEach(off => {
+      const d = new Date(Date.UTC(hy, hm - 1 + off, 1)), mes = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
+      (S.gastosFijos || []).forEach(gf => {
+        const dia = Number(gf.dia);
+        if (!Number.isInteger(dia) || dia < 1 || dia > 31 || pagos[gf.id + '_' + mes]) return;
+        const real = Math.min(dia, new Date(d.getUTCFullYear(), d.getUTCMonth() + 1, 0).getDate());
+        const fecha = mes + '-' + String(real).padStart(2, '0');
+        out.push({ id: gf.id, nombre: gf.nombre, monto: gf.monto || 0, dias: dias(hoy, fecha) });
+      });
+    });
+    return out.sort((a, b) => a.dias - b.dias);
+  }
+
   // Situación: liquidez negativa o runway crítico; patrimonio negativo; racha de déficit.
   registrar({ id: 'liquidez', canales: A, evaluar(ctx) {
     const m = ctx.situacion; if (!m) return [];
@@ -116,10 +134,13 @@ const Reglas = (() => {
   } });
 
   // Gastos fijos con día: vencidos sin pagar (rojo), por vencer (ámbar) y la brecha de caja a 30 días.
-  registrar({ id: 'gastos-fijos', canales: A, evaluar(ctx) {
-    const api = ctx.api || {}; if (!api.gastosFijosProgramados) return [];
+  registrar({ id: 'gastos-fijos', canales: AP, evaluar(ctx) {
+    const api = ctx.api || {};
+    // Sin `api` (el push diario) se calcula desde `S`; y un vencido de hace más de una semana no se repite cada día en el celular.
+    const prog = api.gastosFijosProgramados ? api.gastosFijosProgramados() : (ctx.S && ctx.hoy ? _gastosFijosProgramadosDeS(ctx.S, ctx.hoy).filter(g => g.dias >= -7) : null);
+    if (!prog) return [];
     const f = _fmt(ctx), U = _U(ctx), out = [];
-    api.gastosFijosProgramados().forEach(g => {
+    prog.forEach(g => {
       if (g.dias < 0) out.push({ tipo: 'red', texto: g.nombre + ' venció hace ' + (-g.dias) + ' ' + _plural(-g.dias) + ' y no está pagado (' + f(g.monto) + ')', ir: 'gastos' });
       else if (g.dias === 0) out.push({ tipo: 'amber', texto: g.nombre + ' vence hoy (' + f(g.monto) + ')', ir: 'gastos' });
       else if (g.dias <= U.atencion.gastoFijoAvisoDias) out.push({ tipo: 'amber', texto: g.nombre + ' vence en ' + g.dias + ' ' + _plural(g.dias) + ' (' + f(g.monto) + ')', ir: 'gastos' });

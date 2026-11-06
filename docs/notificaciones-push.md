@@ -3,6 +3,10 @@
 No usa Cloud Functions ni requiere el plan Blaze — corre como un job
 programado de GitHub Actions, igual que ya corren tus tests.
 
+## Qué avisa el push
+
+Gastos fijos por vencer o vencidos (hasta 7 días de atraso), Spotify vencido, CDT por vencer o vencido, partes comprometidas de encargos y el aviso de Wrapped. Todo sale de las reglas de `js/core/reglas.js` con el canal `push`.
+
 ## Qué va dónde
 
 | Archivo acá | Va en tu repo en |
@@ -41,7 +45,7 @@ Functions, puedes borrarla — no hace falta desplegarla a ningún lado.)
 ## Para ver la notificación de verdad
 
 Igual que antes: edita manualmente en Firestore una fecha que dispare
-alguno de los 3 chequeos (ej. un CDT que venza mañana), corré el
+alguno de los chequeos (ej. un CDT que venza mañana), corré el
 workflow a mano (paso 5), y con el celular con la app cerrada del todo
 deberías recibir el push del sistema.
 

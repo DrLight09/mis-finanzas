@@ -555,111 +555,23 @@ async function _eliminarMovimientoImpl(btn) {
   // 'salida_manual', 'ingreso'/'apertura'/'entrada' y el 'gasto' genérico
   // (no-TC) solo se pueden borrar desde acá, así que es su único punto de
   // entrada.
-  let confirmado = false;
+  // Cada tipo declara su protección con Reversibles.registrar() (más abajo en este archivo y en gastos.js).
+  let ref = null;
   if (movTipoEl === 'mesada') {
-    let target = null;
     ['papa', 'mama'].forEach(parent => {
       const data = getMesadaData(parent);
-      Object.keys(data).forEach(k => { if (data[k] && data[k]._id === movId) target = { parent, key: k, info: data[k] }; });
+      Object.keys(data).forEach(k => { if (data[k] && data[k]._id === movId) ref = { parent, key: k, info: data[k] }; });
     });
-    if (target && _mesadaTieneCuentaAfectada(target.info)) {
-      const opsPosteriores = _mesadaOpsPosteriores(target.parent, target.key, target.info);
-      const nivel = nivelAntiguedadMovimiento(target.info.fecha, opsPosteriores, 'mesada');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        const fuentes = _mesadaFuentesDe(target.info);
-        const nombreCuenta = fuentes.length > 1 ? `${fuentes.length} cuentas` : fuenteLabel(fuentes[0]);
-        confirmado = await confirmarBorrarMovimientoViejo(nombreCuenta, target.info.monto || 0, 'baja');
-        if (!confirmado) return;
-      }
-    }
-  } else if (movTipoEl === 'gasto') {
-    const g = (S.gastosVar || []).find(x => x.id === movId);
-    if (g && (g._esCompraTC || g._esPagoTC) && g._tcId) {
-      const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
-      const item = g._esCompraTC
-        ? (tc && (tc.compras || []).find(c => c.id === g._tcCompraId))
-        : (tc && (tc.pagos || []).find(p => p.id === g._tcPagoId));
-      if (tc && item) {
-        const opsPosteriores = _tcOpsPosteriores(tc, item.fecha, item.id);
-        const nivel = nivelAntiguedadMovimiento(item.fecha, opsPosteriores, 'tarjetas');
-        if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-        if (nivel === 'viejo') {
-          confirmado = await confirmarBorrarMovimientoViejo(tc.nombre, item.monto || 0, g._esCompraTC ? 'baja' : 'sube', 'deuda');
-          if (!confirmado) return;
-        }
-      }
-    } else if (g && g.fuente) {
-      // Gasto variable genérico (no TC): plata salió de g.fuente.
-      const opsPosteriores = _cuentaOpsPosteriores(g.fuente, g.fecha, g.id);
-      const nivel = nivelAntiguedadMovimiento(g.fecha, opsPosteriores, 'gastos');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(g.fuente), g.monto || 0, 'sube');
-        if (!confirmado) return;
-      }
-    } else if (g && g.splits && g.splits.length) {
-      // Gasto dividido entre varias cuentas — antes no tenía NINGUNA
-      // protección (g.fuente queda vacío en este caso, ver addGastoVar en
-      // gastos.js), a diferencia del gasto de una sola cuenta de arriba.
-      // Ver CHANGELOG.md#gastos (2026-09-01).
-      const conFuente = g.splits.filter(s => s.fuente);
-      if (conFuente.length) {
-        const opsPosteriores = Math.max(...conFuente.map(s => _cuentaOpsPosteriores(s.fuente, g.fecha, g.id)));
-        const nivel = nivelAntiguedadMovimiento(g.fecha, opsPosteriores, 'gastos');
-        if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-        if (nivel === 'viejo') {
-          const nombreCuenta = conFuente.length > 1 ? `${conFuente.length} cuentas` : fuenteLabel(conFuente[0].fuente);
-          confirmado = await confirmarBorrarMovimientoViejo(nombreCuenta, g.monto || 0, 'sube');
-          if (!confirmado) return;
-        }
-      }
-    }
-  } else if (movTipoEl === 'transferencia') {
-    const tr = (S.transferencias || []).find(t => t.id === movId);
-    if (tr) {
-      const fecha = tr.fecha || fechaItem;
-      const opsPosteriores = Math.max(_cuentaOpsPosteriores(tr.origen, fecha, tr.id), _cuentaOpsPosteriores(tr.destino, fecha, tr.id));
-      const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        // Dos cuentas afectadas en direcciones opuestas — no encaja en
-        // confirmarBorrarMovimientoViejo() (una cuenta, una dirección), así
-        // que se arma un diálogo propio con el mismo espíritu.
-        confirmado = await dialogo(
-          'Movimiento antiguo',
-          `Esta transferencia ya tiene tiempo y puede estar mezclada con operaciones más recientes. Si la eliminas, "${fuenteLabel(tr.origen)}" recupera ${fmt(tr.monto)} y "${fuenteLabel(tr.destino)}" pierde ${fmt(tr.monto)} ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`,
-          'Eliminar de todas formas', true
-        );
-        if (!confirmado) return;
-      }
-    }
-  } else if (movTipoEl === 'salida_manual') {
+  } else if (movTipoEl === 'gasto') ref = (S.gastosVar || []).find(x => x.id === movId);
+  else if (movTipoEl === 'transferencia') ref = (S.transferencias || []).find(t => t.id === movId);
+  else if (movTipoEl === 'salida_manual') ref = (S.movimientos || []).find(x => x.id === movId);
+  else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
     const m = (S.movimientos || []).find(x => x.id === movId);
-    if (m && m.fuente) {
-      const fecha = m.fecha || fechaItem;
-      const opsPosteriores = _cuentaOpsPosteriores(m.fuente, fecha, m.id);
-      const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(m.fuente), m.monto || 0, 'sube');
-        if (!confirmado) return;
-      }
-    }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
-    const m = (S.movimientos || []).find(x => x.id === movId);
-    const fuente = (m && m.fuente) || fuenteOrigen;
-    const fecha = (m && m.fecha) || fechaItem;
-    if (fuente) {
-      const opsPosteriores = _cuentaOpsPosteriores(fuente, fecha, m ? m.id : null);
-      const nivel = nivelAntiguedadMovimiento(fecha, opsPosteriores, 'cuentas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(fuente), (m ? m.monto : monto) || 0, 'baja');
-        if (!confirmado) return;
-      }
-    }
+    ref = { m, fuente: (m && m.fuente) || fuenteOrigen, fecha: (m && m.fecha) || fechaItem, monto: m ? m.monto : monto };
   }
+  const prot = await Reversibles.proteger(movTipoEl, ref, { fechaItem });
+  if (!prot.ok) return;
+  let confirmado = prot.confirmado;
 
   // Confirmación
   // Seguridad: si el movimiento ya no existe (otro clic, otra pestaña, otro dispositivo) no se pregunta ni se revierte nada:
@@ -799,3 +711,45 @@ function _rerenderCuentaActiva() {
 // Registro bajo el namespace 'core' — ver nota de cabecera de este archivo.
 Events.on('core:abrirDetalleMov', abrirDetalleMov);
 Events.on('core:eliminarMovimiento', eliminarMovimiento);
+
+
+/* ---- Reversibles: protección por antigüedad de cada tipo de movimiento (ver core-state.js) ---- */
+Reversibles.registrar({ tipo: 'mesada', proteccion(t) {
+  if (!t || !_mesadaTieneCuentaAfectada(t.info)) return null;
+  const fuentes = _mesadaFuentesDe(t.info);
+  return { fecha: t.info.fecha, ops: _mesadaOpsPosteriores(t.parent, t.key, t.info), modulo: 'mesada',
+    nombre: fuentes.length > 1 ? `${fuentes.length} cuentas` : fuenteLabel(fuentes[0]), monto: t.info.monto || 0, direccion: 'baja' };
+} });
+Reversibles.registrar({ tipo: 'transferencia', proteccion(tr, c) {
+  if (!tr) return null;
+  const fecha = tr.fecha || (c && c.fechaItem);
+  return { fecha, ops: Math.max(_cuentaOpsPosteriores(tr.origen, fecha, tr.id), _cuentaOpsPosteriores(tr.destino, fecha, tr.id)), modulo: 'cuentas',
+    // Dos cuentas en direcciones opuestas: no encaja en el aviso estándar.
+    dialogo: () => dialogo('Movimiento antiguo',
+      `Esta transferencia ya tiene tiempo y puede estar mezclada con operaciones más recientes. Si la eliminas, "${fuenteLabel(tr.origen)}" recupera ${fmt(tr.monto)} y "${fuenteLabel(tr.destino)}" pierde ${fmt(tr.monto)} ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`,
+      'Eliminar de todas formas', true) };
+} });
+Reversibles.registrar({ tipo: 'salida_manual', proteccion(m, c) {
+  if (!m || !m.fuente) return null;
+  const fecha = m.fecha || (c && c.fechaItem);
+  return { fecha, ops: _cuentaOpsPosteriores(m.fuente, fecha, m.id), modulo: 'cuentas', nombre: fuenteLabel(m.fuente), monto: m.monto || 0, direccion: 'sube' };
+} });
+Reversibles.registrar({ tipo: ['ingreso', 'apertura', 'entrada'], proteccion(r) {
+  if (!r || !r.fuente) return null;
+  return { fecha: r.fecha, ops: _cuentaOpsPosteriores(r.fuente, r.fecha, r.m ? r.m.id : null), modulo: 'cuentas', nombre: fuenteLabel(r.fuente), monto: r.monto || 0, direccion: 'baja' };
+} });
+Reversibles.registrar({ tipo: 'gasto', proteccion(g) {
+  if (!g) return null;
+  if ((g._esCompraTC || g._esPagoTC) && g._tcId) {
+    const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
+    const it = g._esCompraTC ? (tc && (tc.compras || []).find(c => c.id === g._tcCompraId)) : (tc && (tc.pagos || []).find(p => p.id === g._tcPagoId));
+    if (!tc || !it) return null;
+    return { fecha: it.fecha, ops: _tcOpsPosteriores(tc, it.fecha, it.id), modulo: 'tarjetas', nombre: tc.nombre, monto: it.monto || 0, direccion: g._esCompraTC ? 'baja' : 'sube', campo: 'deuda' };
+  }
+  if (g.fuente) return { fecha: g.fecha, ops: _cuentaOpsPosteriores(g.fuente, g.fecha, g.id), modulo: 'gastos', nombre: fuenteLabel(g.fuente), monto: g.monto || 0, direccion: 'sube' };
+  // Dividido entre cuentas: g.fuente queda vacío (ver addGastoVar).
+  const conFuente = (g.splits || []).filter(s => s.fuente);
+  if (!conFuente.length) return null;
+  return { fecha: g.fecha, ops: Math.max(...conFuente.map(s => _cuentaOpsPosteriores(s.fuente, g.fecha, g.id))), modulo: 'gastos',
+    nombre: conFuente.length > 1 ? `${conFuente.length} cuentas` : fuenteLabel(conFuente[0].fuente), monto: g.monto || 0, direccion: 'sube' };
+} });

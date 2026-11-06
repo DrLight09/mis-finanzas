@@ -4,6 +4,16 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## A3-2: `Reversibles` (2026-11-06, SW v107)
+
+- Nuevo en `core-state.js`: `Reversibles.registrar({ tipo, proteccion(ref, ctx) })` y `Reversibles.proteger(tipo, ref)`. Cada tipo declara `{ fecha, ops, modulo, nombre, monto, direccion, campo?, dialogo? }`; el registro aplica `nivelAntiguedadMovimiento` (bloqueado → aviso; viejo → confirmación estándar o la propia del tipo) y devuelve `{ ok, confirmado }`.
+- `movimientos.js`: el bloque de ~100 líneas con un `if` por tipo en `eliminarMovimiento` ahora es una sola llamada; los tipos `mesada`, `transferencia`, `salida_manual`, `ingreso/apertura/entrada` y `gasto` (TC, cuenta única y dividido) se registran al final del archivo. `deleteGastoVar` (gastos.js) usa el mismo registro, así que ya no hay dos copias de la regla del gasto.
+- Un módulo nuevo se integra registrándose; no hay que tocar los puntos de borrado. Lo que NO se migró: la reversión en sí (el `switch` que devuelve la plata) y los flujos propios de préstamos, encargos, Spotify, Alcancía y plata comprometida, que ya traían su protección en su módulo.
+- Para probar: borrar un gasto, transferencia, salida e ingreso recientes (confirma normal), uno viejo (aviso con monto) y uno muy antiguo (bloqueado), desde la cuenta y desde Gastos.
+- Test nuevo del contrato (808).
+
+---
+
 ## A2 + A4: `opcionesCuenta` y API del diferencial (2026-11-06, SW v106)
 
 - **A4 — Diferencial:** `diffRegistrarInstancia(inst, cfg)` ahora devuelve la API (`toggle, addParte, removeParte, setNombre, setMonto, togglePagoYo, setCuentaSalida, setCuentaEntrada, resumen, validarIntercambios, estaAbierto, reset`). Se eliminaron **22 envoltorios** de una línea en `encargos.js` (movenc, usarParte, ctc) y `prestado.js` (prestamoDif, prtc), con sus referencias. Ojo para probar: el bloque «dijiste / real» (diferencial) en pago de encargo, usar parte de encargo, cobro de TC y préstamos.

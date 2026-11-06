@@ -558,53 +558,9 @@ async function deleteGastoVar(id) {
   // este camino sin ninguna protección. Ver CHANGELOG.md#gastos (2026-09-01).
   // `confirmado` evita pedir dos confirmaciones seguidas cuando el nivel es
   // 'viejo' (mismo patrón que eliminarMovimiento() en movimientos.js).
-  let confirmado = false;
-  if (g && g._esCompraTC && g._tcId) {
-    const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
-    const compra = tc && (tc.compras || []).find(c => c.id === g._tcCompraId);
-    if (tc && compra) {
-      const opsPosteriores = _tcOpsPosteriores(tc, compra.fecha, compra.id);
-      const nivel = nivelAntiguedadMovimiento(compra.fecha, opsPosteriores, 'tarjetas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(tc.nombre, compra.monto || 0, 'baja', 'deuda');
-        if (!confirmado) return;
-      }
-    }
-  } else if (g && g._esPagoTC && g._tcId) {
-    const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
-    const pago = tc && (tc.pagos || []).find(p => p.id === g._tcPagoId);
-    if (tc && pago) {
-      const opsPosteriores = _tcOpsPosteriores(tc, pago.fecha, pago.id);
-      const nivel = nivelAntiguedadMovimiento(pago.fecha, opsPosteriores, 'tarjetas');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        confirmado = await confirmarBorrarMovimientoViejo(tc.nombre, pago.monto || 0, 'sube', 'deuda');
-        if (!confirmado) return;
-      }
-    }
-  } else if (g && g.splits && g.splits.length) {
-    const conFuente = g.splits.filter(s => s.fuente);
-    if (conFuente.length) {
-      const opsPosteriores = Math.max(...conFuente.map(s => _cuentaOpsPosteriores(s.fuente, g.fecha, g.id)));
-      const nivel = nivelAntiguedadMovimiento(g.fecha, opsPosteriores, 'gastos');
-      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-      if (nivel === 'viejo') {
-        const nombreCuenta = conFuente.length > 1 ? `${conFuente.length} cuentas` : fuenteLabel(conFuente[0].fuente);
-        confirmado = await confirmarBorrarMovimientoViejo(nombreCuenta, g.monto || 0, 'sube');
-        if (!confirmado) return;
-      }
-    }
-  } else if (g && g.fuente) {
-    const opsPosteriores = _cuentaOpsPosteriores(g.fuente, g.fecha, g.id);
-    const nivel = nivelAntiguedadMovimiento(g.fecha, opsPosteriores, 'gastos');
-    if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
-    if (nivel === 'viejo') {
-      confirmado = await confirmarBorrarMovimientoViejo(fuenteLabel(g.fuente), g.monto || 0, 'sube');
-      if (!confirmado) return;
-    }
-  }
-
+  const prot = await Reversibles.proteger('gasto', g);
+  if (!prot.ok) return;
+  const confirmado = prot.confirmado;
   if (!confirmado) {
     const ok = await dialogo('Eliminar gasto', '¿Seguro que quieres eliminar este gasto? Esta acción no se puede deshacer.', 'Eliminar', true);
     if (!ok) return;

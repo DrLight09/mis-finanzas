@@ -1170,3 +1170,21 @@ test('A2. crearSplitWidget acepta `fuentes` declarativo (objeto o función) en l
   const html = ctx._splitInstancias ? ctx._splitInstancias.x.getFuentesFn('nequi') : null;
   assert.ok(html && html.includes('Elige') && html.includes('value="nequi" selected'));
 });
+
+/* ================= A3-2: Reversibles ================= */
+test('A3-2. Reversibles: un tipo nuevo se protege por antigüedad sin tocar los puntos de borrado', async () => {
+  const ctx = app({ cuentas: cuentas(0) });
+  let dlg = 0, aviso = 0;
+  ctx.dialogo = () => { dlg++; return Promise.resolve(true); };
+  const hoy = new Date().toISOString().slice(0, 10);
+  const viejo = new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10);
+  ctx.Reversibles.registrar({ tipo: ['x1', 'x2'], proteccion: r => r && { fecha: r.fecha, ops: 0, modulo: 'cuentas', nombre: 'Nequi', monto: 5, direccion: 'sube' } });
+  assert.equal(ctx.Reversibles.tiene('x2'), true);
+  assert.equal(ctx.Reversibles.tiene('zzz'), false);
+  assert.deepEqual({ ...await ctx.Reversibles.proteger('x1', { fecha: hoy }) }, { ok: true, confirmado: false });
+  assert.deepEqual({ ...await ctx.Reversibles.proteger('zzz', {}) }, { ok: true, confirmado: false });
+  assert.deepEqual({ ...await ctx.Reversibles.proteger('x1', null) }, { ok: true, confirmado: false });
+  const r = await ctx.Reversibles.proteger('x1', { fecha: viejo });
+  assert.equal(r.ok, false, 'más de diasBloqueo: bloqueado');
+  assert.equal(dlg, 1, 'solo el aviso de bloqueo');
+});

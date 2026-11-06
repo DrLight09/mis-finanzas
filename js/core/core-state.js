@@ -1521,6 +1521,32 @@ function avisarMovimientoBloqueado(){
   );
 }
 
+// Registro de tipos de movimiento reversibles. Un tipo declara cómo se protege su borrado:
+//   Reversibles.registrar({ tipo: 'x' | ['x','y'], proteccion(ref, ctx) → null | { fecha, ops, modulo, nombre, monto,
+//                           direccion:'sube'|'baja', campo?:'saldo'|'deuda', dialogo?: () => Promise<boolean> } })
+// proteger(tipo, ref) aplica nivelAntiguedadMovimiento: 'bloqueado' avisa y devuelve {ok:false};
+// 'viejo' pide confirmación (la del tipo si trae `dialogo`, si no la estándar) y devuelve {ok, confirmado}.
+// Un módulo nuevo se integra registrándose; los puntos de borrado (movimientos.js, gastos.js…) no cambian.
+var Reversibles = (() => {
+  const _reg = new Map();
+  return {
+    registrar(def) { [].concat(def.tipo).forEach(t => _reg.set(t, def)); },
+    tiene(tipo) { return _reg.has(tipo); },
+    async proteger(tipo, ref, ctx) {
+      const def = _reg.get(tipo);
+      const p = def && def.proteccion ? def.proteccion(ref, ctx) : null;
+      if (!p) return { ok: true, confirmado: false };
+      const nivel = nivelAntiguedadMovimiento(p.fecha, p.ops, p.modulo);
+      if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return { ok: false, confirmado: false }; }
+      if (nivel === 'viejo') {
+        const si = p.dialogo ? await p.dialogo() : await confirmarBorrarMovimientoViejo(p.nombre, p.monto, p.direccion, p.campo || 'saldo');
+        return { ok: !!si, confirmado: !!si };
+      }
+      return { ok: true, confirmado: false };
+    }
+  };
+})();
+
 /* ---- DEBOUNCE SAVE ---- */
 var _saveTimer=null;
 // Flag: true solo si este dispositivo hizo cambios reales en esta sesión.

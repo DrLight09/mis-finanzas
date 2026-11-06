@@ -4,6 +4,16 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Ingreso extraordinario (2026-11-05, SW v101)
+
+- Los dos sheets de «Agregar dinero» tienen la casilla **«Es extraordinario (no se repite)»** (aguinaldo, venta, premio). La entrada guarda `extraordinario:true` (campo nuevo del movimiento; no aplica a saldos iniciales).
+- `Periodo.balanceDelMes` devuelve `ingresosExtra` y `balanceRecurrente` ahora también lo descuenta: un mes con aguinaldo que tapa el déficit sigue contando como déficit para la racha y el flujo habitual. `balance` (real) no cambia.
+- Análisis: el balance del mes dice «Incluye $X de ingresos extraordinarios · sin ellos, tu balance fue …».
+- Limitación: el ingreso típico (`ingresoPromedioPrevio`) sigue incluyendo lo extraordinario; no hay forma aún de marcar uno ya registrado.
+- Test: `B5` (extraordinario).
+
+---
+
 ## Presupuestos con ritmo y «¿pagar o ahorrar?» (2026-11-05, SW v100)
 
 - **Presupuestos:** cada uno muestra «A día 10 ya llevas 70 % (lo esperado: 33 %)» cuando vas 15 puntos o más por delante del mes (desde el día 5, y solo si aún no te pasaste). `Periodo.ritmoPresupuesto` (pura). Además, aviso si la **suma de presupuestos supera tu ingreso típico** (promedio de 3 meses).

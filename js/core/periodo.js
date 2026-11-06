@@ -382,8 +382,10 @@ const Periodo = (() => {
     const gastos = gastosDelMes(mes, estado);
     const balance = ingresos.total - gastos.total;
     // balanceRecurrente: el balance sin las compras grandes (el ritmo del mes). `balance` sigue siendo el real.
-    const balanceRecurrente = balance + gastos.extraTotal;
-    return { mes, ingresos, gastos, balance, balanceRecurrente, extraordinarios: gastos.extraTotal, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
+    // Un ingreso marcado «extraordinario» (aguinaldo, venta, premio: `extraordinario:true` en la entrada) tampoco es el ritmo del mes.
+    const ingresosExtra = entradasIngresoReal(estado).reduce((a, m) => m.extraordinario && mesKey(m.fecha) === mes ? a + (m.monto || 0) : a, 0);
+    const balanceRecurrente = balance + gastos.extraTotal - ingresosExtra;
+    return { mes, ingresos, gastos, balance, balanceRecurrente, extraordinarios: gastos.extraTotal, ingresosExtra, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }
 
   // Día de un mes «YYYY-MM» (entero 1–31, recortado al último día del mes: un «31» cae el 28 en febrero) y cuántos días faltan desde

@@ -817,6 +817,7 @@ function abrirAgregarDinero(fuente,nombre){
   document.getElementById('adMonto').value='';
   document.getElementById('adDesc').value='';
   document.getElementById('adFecha').value=hoy();
+  const _xa=document.getElementById('adEsExtra'); if(_xa)_xa.checked=false;
   const adNotaEl=document.getElementById('adNota');
   if(adNotaEl)adNotaEl.value='';
   document.getElementById('adPreview').textContent='';
@@ -857,7 +858,7 @@ function _aperturaToggleUI(ids){
   }
 }
 
-function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota){
+function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota,extraordinario){
   // Aplica el monto a la fuente y registra el movimiento con el tipo correcto.
   // Devuelve la descripción final (por si el caller la necesita para toasts/log).
   // `nota` es opcional — ver auditoria-tecnica.md / guia-estilo-sheets.md
@@ -872,6 +873,7 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota){
     mov={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto,fecha,desc:desc||''};
   }
   if(nota)mov.nota=nota;
+  if(extraordinario&&!esApertura)mov.extraordinario=true;
   S.movimientos.push(mov);
   sumarFuente(fuente,monto,_ogCta(mov.id)); // el saldo se aplica una vez creado el movimiento, para que el libro apunte a su id
   return mov.desc;
@@ -917,7 +919,7 @@ function confirmarAgregarDinero(){
   if(!v){toast('Ingresa un monto válido','err');return;}
   if(!adFuente)return;
   // Los intereses de una cajita se materializan solos al sumar (sumarFuente, core-state.js).
-  const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura,nota);
+  const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura,nota,document.getElementById('adEsExtra')?.checked||false);
   save();
   closeSheet('agregar-dinero');
   refresh();
@@ -936,6 +938,7 @@ function openSheet_adMenu(){
   document.getElementById('adMenuMonto').value='';
   document.getElementById('adMenuDesc').value='';
   document.getElementById('adMenuFecha').value=hoy();
+  const _xm=document.getElementById('adMenuEsExtra'); if(_xm)_xm.checked=false;
   const adMenuNotaEl=document.getElementById('adMenuNota');
   if(adMenuNotaEl)adMenuNotaEl.value='';
   document.getElementById('adMenuPreview').textContent='';
@@ -969,6 +972,7 @@ function confirmarAgregarDineroMenu(){
   if(!S.movimientos)S.movimientos=[];
   const _movAdMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
   if(nota)_movAdMenu.nota=nota;
+  if(document.getElementById('adMenuEsExtra')?.checked)_movAdMenu.extraordinario=true;
   S.movimientos.push(_movAdMenu);
   sumarFuente(fuente,v,_ogCta(_movAdMenu.id));
   save();

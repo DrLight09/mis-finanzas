@@ -1106,3 +1106,14 @@ test('P3. el plan de deudas compara la tasa de la tarjeta con lo que rinde la ca
   ctx.renderPlanDeudas();
   assert.match(el.innerHTML, /Tu cajita rinde 9 % y «Visa» cuesta 28 %/);
 });
+
+test('B5. un ingreso marcado extraordinario cuenta en el balance real pero no en el balanceRecurrente', () => {
+  const mes = mesAct;
+  const ctx = app({ cuentas: cuentas(0), movimientos: [
+    { id: 'a', tipo: 'entrada', clase: 'ingreso', fuente: 'nequi', monto: 1000000, fecha: mes + '-02', desc: 'Sueldo' },
+    { id: 'b', tipo: 'entrada', clase: 'ingreso', fuente: 'nequi', monto: 800000, fecha: mes + '-03', desc: 'Aguinaldo', extraordinario: true },
+  ] });
+  const b = ctx.Periodo.balanceDelMes(mes);
+  assert.equal(b.ingresosExtra, 800000);
+  assert.equal(b.balance - b.balanceRecurrente, 800000);
+});

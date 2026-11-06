@@ -106,6 +106,7 @@ function renderAnalisis(){
       <div class="an-hero-msg">${mensaje}</div>
       ${(typeof calcEstadoSituacion==='function'&&(()=>{const e=calcEstadoSituacion();return e&&e.serio;})())?html`<div class="an-hero-rend">Tu situación está en ${calcEstadoSituacion().etiqueta.toLowerCase()}: antes de mirar el detalle, prioriza deudas y gastos fijos.</div>`:''}
       ${(!sinIngresos&&_rendNu>0.5)?raw(`<div class="an-hero-rend">Incluye ${fmt(_rendNu)} de rendimientos de Nu <span class="an-opaco">(intereses de cajitas y CDT)</span></div>`):''}
+      ${(_bal.ingresosExtra>0.5)?html`<div class="an-hero-rend">Incluye ${fmt(_bal.ingresosExtra)} de ingresos extraordinarios <span class="an-opaco">· sin ellos, tu balance del mes fue ${(_bal.balanceRecurrente>=0?'+':'')+fmt(_bal.balanceRecurrente)}</span></div>`:''}
       ${(!sinIngresos&&_bal.extraordinarios>0.5)?html`<div class="an-hero-rend">Incluye ${fmt(_bal.extraordinarios)} en ${_bal.gastos.extraordinarios.length===1?'una compra grande':'compras grandes'} (${_bal.gastos.extraordinarios.slice(0,2).map(g=>g.desc||'sin nombre').join(', ')}) <span class="an-opaco">· sin ${_bal.gastos.extraordinarios.length===1?'ella':'ellas'}, tu balance del mes fue ${(_bal.balanceRecurrente>=0?'+':'')+fmt(_bal.balanceRecurrente)}</span></div>`:''}
     `;
   }

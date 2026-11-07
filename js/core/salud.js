@@ -284,7 +284,7 @@ const Salud = (() => {
   //   aviso      → conviene mirarlo (ámbar, advertencia)
   //   sugerencia → oportunidad o tarea pendiente, no un logro (neutro, ícono de información); `ir` = pantalla donde se resuelve
   const consejos = [];
-  const add = (texto, tipo, ir) => { consejos.push({ texto, tipo, ir: ir || '' }); };
+  const add = (texto, tipo, ir, id) => { consejos.push({ texto, tipo, ir: ir || '', id: id || '' }); }; // `id`: solo para los que la interfaz trata aparte (p. ej. 'registro')
 
   // ── Cálculos base ────────────────────────────────────────────────────
   // Patrimonio VISIBLE (sin alcancía) — mismo criterio que renderProyeccion().
@@ -460,7 +460,7 @@ const Salud = (() => {
   const sinHistorial = tieneAlgo && (sinBase || (liquidoReal > 0 && gastoRef <= 0));
   if(sinIngresos || sinHistorial){
     // El texto no acusa lo que no falta: si ya hay ingresos, se pide seguir registrando; si no hay ninguno, se piden.
-    add(ingresoRef <= 0 ? 'Registra tus ingresos y gastos para una evaluación más precisa.' : 'Sigue registrando tus ingresos y gastos: con un mes completo la evaluación será más precisa.','sugerencia', ingresoRef <= 0 ? 'analisis/ingresos' : 'gastos');
+    add(ingresoRef <= 0 ? 'Registra tus ingresos y gastos para una evaluación más precisa.' : 'Sigue registrando tus ingresos y gastos: con un mes completo la evaluación será más precisa.','sugerencia', ingresoRef <= 0 ? 'analisis/ingresos' : 'gastos', 'registro');
   }
   score = Math.max(0, Math.min(100, score));
   if(!consejos.length){

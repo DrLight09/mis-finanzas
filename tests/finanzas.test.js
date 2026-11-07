@@ -1011,13 +1011,14 @@ test('B1. calcLiquidez expone neta (lo ajeno de la tarjeta lo pagan) y netaPeorC
   assert.ok(l.netaPeorCaso <= l.neta + 1e-9, 'el peor caso nunca supera a la neta');
 });
 
-test('B3. con saldos pero sin historial la tarjeta de Salud dice «Empezando», sin puntaje ni «Regular»', () => {
+test('B3. con saldos pero sin historial la tarjeta de Salud es un solo bloque («Todavía no hay datos suficientes»), sin puntaje ni «Regular»', () => {
   const ctx = app({ cuentas: cuentas(500000) });
   const el = { innerHTML: '', style: {} };
   ctx.document.getElementById = id => id === 'health-score-card' ? el : null;
   ctx.renderHealthScore();
-  assert.ok(el.innerHTML.includes('Empezando'));
-  assert.ok(el.innerHTML.includes('inicio-estado-neutro'));
+  assert.ok(el.innerHTML.includes('Todavía no hay datos suficientes'));
+  assert.ok(el.innerHTML.includes('inicio-inicial'));
+  assert.ok(!el.innerHTML.includes('Sin deudas propias'), 'sin deudas no se muestra el pilar de Deuda');
   assert.ok(!el.innerHTML.includes('Regular'));
   assert.ok(!el.innerHTML.includes('health-ring'));
 });
@@ -1087,9 +1088,10 @@ test('Análisis: gastos sin ingresos anotados → balance neutro («—», sin r
   assert.match(String(hero.className), /an-hero-neu/, 'sin ingresos registrados no hay déficit: tono neutro');
   const h = String(hero.innerHTML);
   assert.doesNotMatch(h, /c-red/); assert.match(h, /—/); assert.doesNotMatch(h, /−|-\$/);
-  assert.match(h, /no se puede calcular el balance/);
+  assert.match(h, /Registra tus ingresos para ver el balance del mes\./);
+  assert.doesNotMatch(h, /historial suficiente/, 'un solo mensaje corto');
   const pat = String(dom.el('an-patrimonio-chart').innerHTML);
-  if (pat) { assert.doesNotMatch(pat, /c-red/); assert.doesNotMatch(pat, /causa principal/); }
+  if (pat) { assert.doesNotMatch(pat, /c-red/); assert.doesNotMatch(pat, /causa principal/); assert.doesNotMatch(pat, /an-pat-sels/, 'con menos de 30 días de historia el selector de ventana no cambia nada: no se muestra'); }
 });
 
 test('irConsejo: «pantalla/detalle» abre la pantalla y el sitio exacto (cuenta Nu, pestaña de Préstamos); sin detalle solo la pantalla', () => {
@@ -1101,6 +1103,28 @@ test('irConsejo: «pantalla/detalle» abre la pantalla y el sitio exacto (cuenta
   ctx.cambiarTabPrestamos = t => llamadas.push('tab:' + t);
   ctx._irADestino('cuentas/nu'); ctx._irADestino('prestamos/yo-debo'); ctx._irADestino('gastos'); ctx._irADestino('prestamos/otra');
   assert.deepEqual(Array.from(llamadas), ['pantalla:cuentas', 'cuenta:nu', 'pantalla:prestamos', 'tab:yo-debo', 'pantalla:gastos', 'pantalla:prestamos']);
+});
+
+test('Historial de patrimonio: el saldo inicial es el punto de partida (la línea termina en el patrimonio real, no bajo cero) y el selector aparece solo si cambia algo', () => {
+  const pintar = hist => {
+    const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('cobros.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), MOD('analisis.js')], { permissive: true });
+    Object.assign(ctx.S, { patrimonioHistorial: hist });
+    const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+    const dom = createFakeDom(); ctx.document = dom.document;
+    ['analisis-balance-hero', 'an-patrimonio-chart'].forEach(id => dom.el(id));
+    ctx.renderAnalisis();
+    return String(dom.el('an-patrimonio-chart').innerHTML);
+  };
+  // Caso real: el 5 el patrimonio era 0; el 6 se registró un saldo inicial de 3.336.666.666 y se gastaron 2.000.000.
+  const h = pintar([{ fecha: '2026-11-05', valor: 0, valorVisible: 0 }, { fecha: '2026-11-06', valor: 3334666666, valorVisible: 3334666666, montoBase: 3336666666 }]);
+  const pts = JSON.parse(h.match(/data-pts='([^']*)'/)[1]);
+  assert.equal(pts[1].valor, 3334666666, 'el último punto es el patrimonio real de hoy');
+  assert.equal(pts[0].valor, 3336666666, 'el 5 de nov incluye el saldo inicial: ya era plata tuya');
+  assert.ok(pts[0].valor > 0 && pts[1].valor > 0, 'ningún punto queda bajo cero');
+  assert.doesNotMatch(h, /an-pat-sels/, '2 días de historia: sin selector');
+  // Con 40 días de historia: 30 y 90 días; con 100: 30, 90 y 1 año.
+  const sels = n => (pintar([{ fecha: fechaHace(n), valor: 100, valorVisible: 100 }, { fecha: fechaHace(0), valor: 200, valorVisible: 200 }]).match(/an-pat-sel(?![a-z-])/g) || []).length;
+  assert.equal(sels(10), 0); assert.equal(sels(30), 0); assert.equal(sels(40), 2); assert.equal(sels(100), 3);
 });
 
 test('B5. resumenFlujo cuenta superávit/déficit solo en meses con movimiento y acumula', () => {

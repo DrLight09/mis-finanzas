@@ -375,7 +375,10 @@ function renderHealthScore(){
     aviso:      { clase: 'inicio-tip-warn', ico: 'fa-triangle-exclamation' },
     sugerencia: { clase: 'inicio-tip-info', ico: 'fa-circle-info' }
   };
-  const tipsHtml = consejos.slice(0, SALUD_MAX_CONSEJOS).map(c => {
+  const est = Salud.estado(sit);
+  // Sin base, el bloque «Todavía no hay datos suficientes» ya pide registrar: ese consejo no se repite.
+  const inicial = sinBase && !!est && est.id === 'inicial';
+  const tipsHtml = consejos.filter(c => !(inicial && c.id === 'registro')).slice(0, SALUD_MAX_CONSEJOS).map(c => {
     const e = ESTILO[c.tipo] || ESTILO.sugerencia;
     const cuerpo = `<i class="fa-solid ${e.ico} inicio-tip-ico"></i><span>${escHtml(c.texto)}</span>`;
     // Un consejo accionable lleva a donde se resuelve.
@@ -383,8 +386,7 @@ function renderHealthScore(){
       ? `<button type="button" class="inicio-tip ${e.clase} inicio-tip-accion" ${Events.attr('inicio:irConsejo', c.ir)}>${cuerpo}<i class="fa-solid fa-arrow-right inicio-tip-ir"></i></button>`
       : `<div class="inicio-tip ${e.clase}">${cuerpo}</div>`;
   }).join('');
-  // Estado global (6 niveles) y cuatro pilares con semáforo: el número solo no dice CUÁL de las cuatro cosas va mal. Ver js/core/salud.js.
-  const est = Salud.estado(sit);
+  // Estado global (6 niveles) y pilares con semáforo: el número solo no dice CUÁL de las cosas va mal. Ver js/core/salud.js.
   const irBtn = (ir, cuerpo, clase) => ir
     ? `<button type="button" class="${clase} inicio-pilar-accion" ${Events.attr('inicio:irConsejo', ir)}>${cuerpo}</button>`
     : `<div class="${clase}">${cuerpo}</div>`;
@@ -392,11 +394,23 @@ function renderHealthScore(){
       <div class="inicio-estado-cab"><span class="inicio-estado-etq">${escHtml(est.etiqueta)}</span><span class="inicio-estado-frase">${escHtml(est.frase)}</span></div>
       ${est.acciones.map(a => irBtn(a.ir, `<i class="fa-solid fa-arrow-right inicio-estado-ico"></i><span>${escHtml(a.texto)}</span>`, 'inicio-estado-accion')).join('')}
     </div>`;
-  // Un pilar sin datos es ruido para quien apenas empieza: solo se muestran los que ya se pueden leer.
-  const pilares = Salud.pilares(sit).filter(p => !sinBase || p.nivel !== 'sin');
+  // Pilares: sin deudas propias no se muestra el de Deuda (un «sin deudas» como tarjeta suelta suena a que algo falta, y nunca es una tarea).
+  // Sin base solo se muestran los que ya señalan algo (ámbar o rojo): un pilar sin datos o en verde no dice nada de quien apenas empieza.
+  const pilares = Salud.pilares(sit).filter(p => !(p.id === 'deuda' && !(sit.deudaPropia > 0)) && (!sinBase || p.nivel === 'ambar' || p.nivel === 'rojo'));
   const pilaresHtml = !pilares.length ? '' : `<div class="inicio-pilares">${pilares.map(p =>
     irBtn(p.ir, `<span class="inicio-pilar-punto inicio-pilar-${p.nivel}" aria-hidden="true"></span><span class="inicio-pilar-tit">${escHtml(p.titulo)}</span><span class="inicio-pilar-txt">${escHtml(p.texto)}</span>`, 'inicio-pilar')
   ).join('')}</div>`;
+  if(inicial){
+    // Usuario nuevo: un solo bloque tranquilo (sin puntaje, sin «estado», sin pilares vacíos) que dice qué falta y lleva a registrarlo.
+    const irA = sit.ingresoRef > 0 ? 'gastos' : 'analisis/ingresos';
+    const btn = sit.ingresoRef > 0 ? 'Registrar gastos' : 'Registrar ingresos';
+    el.innerHTML = `<div class="inicio-inicial">
+      <div class="inicio-inicial-tit">Todavía no hay datos suficientes</div>
+      <div class="inicio-inicial-txt">Registra tus ingresos y gastos durante un mes y aquí verás la evaluación de tus finanzas.</div>
+      <button type="button" class="inicio-inicial-btn" ${Events.attr('inicio:irConsejo', irA)}>${btn} <i class="fa-solid fa-arrow-right"></i></button>
+    </div>${tipsHtml ? `<div class="inicio-salud-tips">${tipsHtml}</div>` : ''}${pilaresHtml}`;
+    return;
+  }
   if(sinBase){
     el.innerHTML = `${estadoHtml}<div class="inicio-salud-tips">${tipsHtml}</div>${pilaresHtml}`;
     return;

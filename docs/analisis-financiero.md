@@ -35,11 +35,11 @@ Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
   | Escenario | Estado | Monto | Mensaje |
   |---|---|---|---|
   | Sin ingresos ni gastos | neutro | `$0` | «Aún no hay ingresos ni gastos que cuenten para este mes.» |
-  | Sin ingresos y con gastos | neutro | `—` | «Has gastado $X este mes y aún no hay ingresos registrados, así que todavía no se puede calcular el balance. Registra tus ingresos para verlo.» (falta información, no un déficit) |
+  | Sin ingresos y con gastos | neutro | `—` | «Registra tus ingresos para ver el balance del mes.» (falta información, no un déficit; el gasto ya se ve en las tarjetas de abajo) |
   | Ingresos > gastos | verde | `+$X` | «Por ahora vas bien: has gastado menos de lo que has recibido este mes.» |
   | Ingresos = gastos | neutro | `$0` | «Por ahora has gastado todo lo que has recibido este mes.» |
 
-  **Sin base (usuario nuevo).** Mientras `calcSinBase()` (inicio.js, ver `salud-financiera.md`) sea verdadero, el hero pinta en neutro también con ingresos > gastos o gastos > ingresos, con mensajes «por ahora… has registrado como ingreso» y la nota de que aún no hay historial para evaluar el flujo. La gráfica de patrimonio con una ventana menor a 30 días de historial muestra el cambio en gris, sin porcentaje ni «causa principal» (no es una tendencia). La «causa principal» tampoco se dice si ningún mes de la ventana tiene ingresos registrados.
+  **Sin base (usuario nuevo).** Mientras `calcSinBase()` (inicio.js, ver `salud-financiera.md`) sea verdadero, el hero pinta en neutro también con ingresos > gastos o gastos > ingresos, con el mismo texto corto de siempre pero sin «vas bien». La gráfica de patrimonio con una ventana menor a 30 días de historial muestra el cambio en gris, sin porcentaje ni «causa principal» (no es una tendencia). La «causa principal» tampoco se dice si ningún mes de la ventana tiene ingresos registrados.
 
   **Un saldo inicial no es ingreso ni gasto.** Los movimientos `tipo: 'apertura'` (`clase: 'ajuste'`) quedan fuera de ingresos y gastos y entran al historial como `montoBase`. Un mes con gastos y **sin ingresos registrados** no se evalúa (`Periodo.balanceEvaluable`): no cuenta como déficit en la racha, el resumen de flujo, los pilares ni el plan de deudas.
 
@@ -186,3 +186,8 @@ nu (cajitas Nu) + CDTs + Nequi + Efectivo + prestado (Me deben) + cuentas person
 Un saldo (Efectivo, Nequi, cuenta personalizada) puede quedar temporalmente negativo tras borrar un movimiento cuyo dinero ya se gastó (reversión sin piso en 0, 2026-09-30): el patrimonio lo suma tal cual, sin recortarlo, y vuelve al valor correcto al rehacer el movimiento.
 
 Todo lo que es plata **ajena** que solo estás cuidando (encargos, plata comprometida de otra persona, lo que le debés a alguien) se resta para que el patrimonio refleje solo lo que es realmente tuyo. Ver [`CHANGELOG.md`](./CHANGELOG.md#patrimonio-y-cálculos-globales) para el detalle de qué faltaba restar acá y ya se corrigió.
+
+## Historial de patrimonio: saldo inicial y selector (2026-11-06)
+
+- La serie se dibuja «como si el saldo inicial siempre hubiera estado»: a cada punto se le suman los `montoBase` registrados después. El último punto es el patrimonio real de hoy, la línea nunca queda bajo cero por registrar un saldo inicial y el cambio de la ventana (último − primero) no varía.
+- El selector 30 días / 90 días / 1 año solo aparece si cambia lo que se ve: 30 días con más de 30 días de historia total, 90 días igual, 1 año con más de 90. Con 30 o menos no hay selector (las tres ventanas serían iguales).

@@ -932,6 +932,12 @@ input.split-monto{width:96px;padding:8px 10px;background:var(--bg3);border:1px s
 .inicio-tip-warn{color:var(--amber);}
 .inicio-tip-info{color:var(--text2);}
 .inicio-tip-info .inicio-tip-ico{color:var(--blue);}
+.inicio-inicial-tit{font-size:13px;font-weight:600;}
+.inicio-inicial-txt{margin-top:4px;font-size:12px;line-height:1.45;color:var(--text2);}
+.inicio-inicial-btn{display:inline-flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;border:1px solid var(--border2);border-radius:9px;background:var(--bg3);color:var(--text);font-family:inherit;font-size:12.5px;cursor:pointer;}
+.inicio-inicial-btn .fa-arrow-right{font-size:10px;color:var(--text3);}
+.inicio-inicial + .inicio-salud-tips{margin-top:10px;}
+.inicio-pilar:last-child:nth-child(odd){grid-column:1 / -1;}
 .inicio-salud-tips{margin-bottom:2px;}
 .inicio-salud-tips .inicio-tip:first-child{margin-top:0;}
 button.inicio-tip-accion{width:100%;padding:0;background:none;border:0;font-family:inherit;text-align:left;cursor:pointer;}

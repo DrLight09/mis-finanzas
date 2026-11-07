@@ -99,11 +99,10 @@ function renderAnalisis(){
       :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
     let mensaje, monto;
     if(sinMovs){ mensaje='Aún no hay ingresos ni gastos que cuenten para este mes.'; monto=fmt(0); }
-    else if(sinIngresos){ mensaje=`Has gastado ${fmt(gastosTotalMes)} este mes y aún no hay ingresos registrados, así que todavía no se puede calcular el balance. Registra tus ingresos para verlo.`; monto='—'; }
+    else if(sinIngresos){ mensaje='Registra tus ingresos para ver el balance del mes.'; monto='—'; }
     else if(_cero){ mensaje='Por ahora has gastado todo lo que has recibido este mes.'; monto=fmt(0); }
-    else if(balance>0){ mensaje=sinBase?'Por ahora has gastado menos de lo que has registrado como ingreso este mes.':'Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }
-    else { mensaje=sinBase?'Por ahora has gastado más de lo que has registrado como ingreso este mes.':'Por ahora has gastado más de lo que has recibido este mes.'; monto=fmt(balance); }
-    if(sinBase&&!sinMovs) mensaje+=' Aún no hay historial suficiente para evaluar tu flujo: sigue registrando tus movimientos.';
+    else if(balance>0){ mensaje=sinBase?'Por ahora has gastado menos de lo que has recibido este mes.':'Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }
+    else { mensaje='Por ahora has gastado más de lo que has recibido este mes.'; monto=fmt(balance); }
     hero.className='ix-analisis-balance-hero '+{pos:'an-hero-pos',neg:'an-hero-neg',neu:'an-hero-neu'}[estado];
     hero.innerHTML=html`
       <div class="an-hero-lbl ${claseTono}">${raw(icono)} Balance de ${mes2d}</div>
@@ -335,7 +334,12 @@ function renderAnalisis(){
   const patriEl=document.getElementById('an-patrimonio-chart');
   if(patriEl){
     // Ventana elegible (30 / 90 / 365 días): por FECHA, no por número de registros (un registro solo se guarda los días que usas la app).
-    const ventana=_anPatDias;
+    // El selector (30 días / 90 días / 1 año) solo aparece si cambia lo que se ve: con una historia total de 30 días o menos, las tres
+    // ventanas muestran lo mismo. Cada botón se ofrece solo si hay datos más viejos que la ventana anterior (90 si la historia pasa de 30; 1 año si pasa de 90).
+    const _todoFechas=(S.patrimonioHistorial||[]).map(h=>_fechaSafe(h.fecha).getTime()).filter(isFinite);
+    const _spanTotal=_todoFechas.length>1?Math.round((Math.max(..._todoFechas)-Math.min(..._todoFechas))/86400000):0;
+    const _opcionesVent=[30,90,365].filter((d,i)=>i===0?_spanTotal>30:_spanTotal>[30,90,365][i-1]);
+    const ventana=_opcionesVent.length?(_opcionesVent.includes(_anPatDias)?_anPatDias:_opcionesVent[0]):365;
     const corte=(()=>{const d=_fechaSafe(hoy());d.setDate(d.getDate()-ventana);return d;})();
     const todo=S.patrimonioHistorial||[];
     let hist=todo.filter(h=>_fechaSafe(h.fecha)>=corte);
@@ -343,12 +347,12 @@ function renderAnalisis(){
     if(hist.length<2){
       patriEl.innerHTML='<div class="an-vacio an-vacio-c20">Aún no hay suficiente historial. Vuelve mañana.</div>';
     } else {
-      let aperturaAcumulada = 0;
-      const valsReales = hist.map(h=>{
-        aperturaAcumulada += (h.montoBase || 0);
-        const base = (h.valorVisible!=null) ? h.valorVisible : h.valor;
-        return base - aperturaAcumulada;
-      });
+      // Serie «como si el saldo inicial siempre hubiera estado»: a cada punto se le suman los saldos iniciales (montoBase) registrados DESPUÉS.
+      // Así el último punto es el patrimonio real de hoy, y registrar un saldo inicial no se ve como una caída ni deja la línea bajo cero (antes
+      // se le RESTABA a los puntos posteriores: la línea terminaba en −$2 M mientras el número decía $3.334 M). El cambio de la ventana
+      // (último − primero) es exactamente el mismo: lo que entró como saldo inicial nunca es crecimiento ni pérdida.
+      const _vp=h=>(h.valorVisible!=null)?h.valorVisible:h.valor;
+      const valsReales = hist.map((h,i)=>_vp(h)+hist.slice(i+1).reduce((a,x)=>a+(x.montoBase||0),0));
       const maxV=Math.max(...valsReales);
       const minV=Math.min(...valsReales);
       const rng=maxV-minV||1;
@@ -393,9 +397,9 @@ function renderAnalisis(){
       // Una ventana corta no es una tendencia: con menos de UMBRALES.salud.pilares.tendencia.minDias de historial el cambio se muestra
       // sin juicio (gris, sin porcentaje ni causa). Un saldo inicial gastado en dos días no es «el patrimonio cayó 2 millones».
       const frasePat=_corta?'Aún es pronto para hablar de tendencia: se necesitan al menos '+UMBRALES.salud.pilares.tendencia.minDias+' días de historial.':frasePatLarga;
-      const selector=[30,90,365].map(d=>`<button type="button" class="an-pat-sel${d===ventana?' an-pat-sel-on':''}" ${Events.attr('analisis:patDias',d)}>${d===365?'1 año':d+' días'}</button>`).join('');
+      const selector=_opcionesVent.length?_opcionesVent.map(d=>`<button type="button" class="an-pat-sel${d===ventana?' an-pat-sel-on':''}" ${Events.attr('analisis:patDias',d)}>${d===365?'1 año':d+' días'}</button>`).join(''):'';
       patriEl.innerHTML=`
-        <div class="an-pat-sels">${selector}</div>
+        ${selector?`<div class="an-pat-sels">${selector}</div>`:''}
         <div class="an-pat-cab">
           <div>
             <div class="an-pat-tit">Últimos ${_diasVentana} días</div>
@@ -420,7 +424,7 @@ function renderAnalisis(){
             <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" class="an-pe-none"/>
           </svg>
           <div id="_pat-tt" class="an-pat-tt" style="display:none;"></div>
-          <div id="_pat-overlay" class="an-pat-overlay" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:(hist[i].valorVisible!=null?hist[i].valorVisible:hist[i].valor)})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
+          <div id="_pat-overlay" class="an-pat-overlay" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:valsReales[i]})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
         </div>
         <div class="an-pat-pie">
           <span class="an-pat-fecha">${primero.fecha.slice(5)}</span>

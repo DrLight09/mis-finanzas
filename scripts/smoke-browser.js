@@ -203,7 +203,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     let r6 = esc6(0, 0);
     c4(r6.cls === 'an-hero-neu' && /Aún no hay ingresos ni gastos que cuenten para este mes/.test(r6.msg), 'Balance sin ingresos ni gastos: neutro con «Aún no hay ingresos ni gastos que cuenten para este mes.»');
     r6 = esc6(0, 33.33);
-    c4(r6.cls === 'an-hero-neu' && r6.monto === '—' && /Has gastado \$33,33 este mes y aún no hay ingresos registrados/.test(r6.msg) && /Registra tus ingresos para verlo/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ing === '—', 'Balance sin ingresos y con gastos: neutro, «—» y mensaje de registrar ingresos (falta información, no un déficit)');
+    c4(r6.cls === 'an-hero-neu' && r6.monto === '—' && /^Registra tus ingresos para ver el balance del mes\.$/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ing === '—', 'Balance sin ingresos y con gastos: neutro, «—» y mensaje de registrar ingresos (falta información, no un déficit)');
     r6 = esc6(100000, 30000);
     c4(r6.cls === 'an-hero-pos' && r6.monto === '+$70.000' && /vas bien: has gastado menos de lo que has recibido/.test(r6.msg), 'Balance con ingresos > gastos: verde con signo +');
     r6 = esc6(50000, 50000);

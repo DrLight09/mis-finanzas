@@ -35,9 +35,13 @@ Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
   | Escenario | Estado | Monto | Mensaje |
   |---|---|---|---|
   | Sin ingresos ni gastos | neutro | `$0` | «Aún no hay ingresos ni gastos que cuenten para este mes.» |
-  | Sin ingresos y con gastos | rojo | `-$X` | «Has gastado $X y aún no registras ingresos este mes. Registra tus ingresos para ver el balance del mes.» |
+  | Sin ingresos y con gastos | neutro | `—` | «Has gastado $X este mes y aún no hay ingresos registrados, así que todavía no se puede calcular el balance. Registra tus ingresos para verlo.» (falta información, no un déficit) |
   | Ingresos > gastos | verde | `+$X` | «Por ahora vas bien: has gastado menos de lo que has recibido este mes.» |
   | Ingresos = gastos | neutro | `$0` | «Por ahora has gastado todo lo que has recibido este mes.» |
+
+  **Sin base (usuario nuevo).** Mientras `calcSinBase()` (inicio.js, ver `salud-financiera.md`) sea verdadero, el hero pinta en neutro también con ingresos > gastos o gastos > ingresos, con mensajes «por ahora… has registrado como ingreso» y la nota de que aún no hay historial para evaluar el flujo. La gráfica de patrimonio con una ventana menor a 30 días de historial muestra el cambio en gris, sin porcentaje ni «causa principal» (no es una tendencia). La «causa principal» tampoco se dice si ningún mes de la ventana tiene ingresos registrados.
+
+  **Un saldo inicial no es ingreso ni gasto.** Los movimientos `tipo: 'apertura'` (`clase: 'ajuste'`) quedan fuera de ingresos y gastos y entran al historial como `montoBase`. Un mes con gastos y **sin ingresos registrados** no se evalúa (`Periodo.balanceEvaluable`): no cuenta como déficit en la racha, el resumen de flujo, los pilares ni el plan de deudas.
 
   **Regla de caja de los ingresos.** Un ingreso cuenta en el mes en que la plata ENTRÓ. La Mesada también: cuenta en el mes de la fecha en que te la pagaron (y cada abono de un pendiente, en la suya), no en el mes que cubre su clave (`S.mesadas[padre].pagos['YYYY-<mes 0-11>']`, que solo sirve para saber qué mes está pagado en la pantalla de Mesada). Así el balance del mes y el historial de patrimonio dicen lo mismo: una mesada de enero que te pagan el 26 de octubre es ingreso de octubre. Es la única definición, en `Periodo.mesadaEntradas()`/`mesadaDelMes()`; Inicio, Salud, Análisis, cierre de mes y Wrapped la piden ahí.
   | Gastos > ingresos | rojo | `-$X` | «Por ahora has gastado más de lo que has recibido este mes.» |

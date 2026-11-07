@@ -55,7 +55,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 63 | 4 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 83 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
-| `js/modules/inicio.js` | de entrada (defer) | 26 | 0 |
+| `js/modules/inicio.js` | de entrada (defer) | 28 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 57 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 57 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
@@ -367,7 +367,9 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_balancePromedioReciente`, `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `_textoRunway`, `calcCalendarioCaja`, `calcEstadoHero`, `calcEstadoSituacion`, `calcHealthScore`, `calcImpactoCompra`, `planDeudasDatos`, `renderAttencion`, `renderFranjaEstado`, `renderHealthScore`, `renderHeroEstado`, `renderPlanDeudas`, `renderProyeccion`
+**Funciones:** `_balancePromedioReciente`, `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_diasDeUso`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_irADestino`, `_mesesCubiertos`, `_nivelRunway`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `_textoRunway`, `calcCalendarioCaja`, `calcEstadoHero`, `calcEstadoSituacion`, `calcHealthScore`, `calcImpactoCompra`, `calcSinBase`, `planDeudasDatos`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderPlanDeudas`, `renderProyeccion`
+
+**Globales:** `SALUD_MAX_CONSEJOS`
 
 ### `js/modules/mesada.js`
 
@@ -575,6 +577,7 @@ Ninguno.
 | `_deudaTieneCuentaAfectada` | `js/modules/prestado.js` |
 | `_dialogResolve` | `js/core/core-state.js` (window._dialogResolve = …) |
 | `_diasDesde` | `js/modules/alcancia.js` |
+| `_diasDeUso` | `js/modules/inicio.js` |
 | `_diasEntreFechas` | `js/core/nu-calc.js` |
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js` |
@@ -636,6 +639,7 @@ Ninguno.
 | `_inyectarAlcanciaSheets` | `js/modules/alcancia.js` |
 | `_inyectarMasMenuItem` | `js/modules/alcancia.js` |
 | `_inyectarPersonaSheets` | `js/modules/personas.js` |
+| `_irADestino` | `js/modules/inicio.js` |
 | `_irADeudor` | `js/modules/prestado.js` |
 | `_irAEncargo` | `js/modules/encargos.js` |
 | `_irAMiDeuda` | `js/modules/prestado.js` |
@@ -1048,6 +1052,7 @@ Ninguno.
 | `calcRendimientoCDTMes` | `js/core/nu-calc.js` |
 | `calcRendimientoCDTsMes` | `js/core/nu-calc.js` |
 | `calcSaldoInicialPendiente` | `js/core/core-state.js` |
+| `calcSinBase` | `js/modules/inicio.js` |
 | `calcularSerieTasaImplicitaNu` | `js/modules/nu.js` |
 | `calcValorBien` | `js/core/core-state.js` |
 | `cambiarAnio` | `js/modules/mesada.js` |
@@ -1353,7 +1358,6 @@ Ninguno.
 | `renderEncargoParts` | `js/modules/encargos.js` |
 | `renderEncargosEnCuenta` | `js/modules/encargos.js` |
 | `renderEncargosList` | `js/modules/encargos.js` |
-| `renderFranjaEstado` | `js/modules/inicio.js` |
 | `renderGastosFijos` | `js/modules/gastos.js` |
 | `renderGastosVar` | `js/modules/gastos.js` |
 | `renderHealthScore` | `js/modules/inicio.js` |
@@ -1385,6 +1389,7 @@ Ninguno.
 | `Reversibles` | `js/core/core-state.js` |
 | `S` | `js/core/core-state.js` |
 | `Salud` | `js/core/salud.js` |
+| `SALUD_MAX_CONSEJOS` | `js/modules/inicio.js` |
 | `save` | `js/core/core-state.js` |
 | `saveAndRefresh` | `js/core/sheet-stack.js` |
 | `SCHEMA_BASE` | `js/core/core-state.js` |

@@ -192,9 +192,10 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(q('#md_monto').classList.contains('input-error') && q('#md_monto_err').textContent === 'Ingresa un monto mayor a 0', 'Yo debo: monto vacío debe marcar el campo con «Ingresa un monto mayor a 0»');
     ev(`closeSheet('mov-mi-deuda')`);
 
-    // Mejora 6: balance de Análisis — un color, un signo y un mensaje por escenario
+    // Mejora 6: balance de Análisis — un color, un signo y un mensaje por escenario. Con ingresos hay 2 meses previos con ingreso (base para evaluar);
+    // gastos SIN ingresos anotados es información que falta, no un déficit: neutro y sin «−$X».
     const esc6 = (ing, gas) => {
-      ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing},cobros:[{id:'c6',mesCubre:mesActual(),monto:${ing},fecha:mesActual()+'-01'}]}]` : '[]'};` +
+      ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing},cobros:[{id:'c6',mesCubre:mesActual(),monto:${ing},fecha:mesActual()+'-01'},{id:'c6a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c6b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}]}]` : '[]'};` +
          (gas ? `S.gastosVar=[{id:'g6',desc:'Compra',monto:${gas},fecha:hoy(),cat:'Comida',fuente:'efectivo',clase:'gasto'}];` : '') + `renderAnalisis()`);
       const h = q('#analisis-balance-hero');
       return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: h.querySelector('.an-hero-monto').textContent.trim(), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: q('#an-ingresos').textContent.trim() };
@@ -202,7 +203,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     let r6 = esc6(0, 0);
     c4(r6.cls === 'an-hero-neu' && /Aún no hay ingresos ni gastos que cuenten para este mes/.test(r6.msg), 'Balance sin ingresos ni gastos: neutro con «Aún no hay ingresos ni gastos que cuenten para este mes.»');
     r6 = esc6(0, 33.33);
-    c4(r6.cls === 'an-hero-neg' && r6.monto === '-$33,33' && /Has gastado \$33,33 y aún no registras ingresos/.test(r6.msg) && /Registra tus ingresos para ver el balance del mes/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ing === '—', 'Balance sin ingresos y con gastos: rojo, -$33,33 y mensaje de registrar ingresos');
+    c4(r6.cls === 'an-hero-neu' && r6.monto === '—' && /Has gastado \$33,33 este mes y aún no hay ingresos registrados/.test(r6.msg) && /Registra tus ingresos para verlo/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ing === '—', 'Balance sin ingresos y con gastos: neutro, «—» y mensaje de registrar ingresos (falta información, no un déficit)');
     r6 = esc6(100000, 30000);
     c4(r6.cls === 'an-hero-pos' && r6.monto === '+$70.000' && /vas bien: has gastado menos de lo que has recibido/.test(r6.msg), 'Balance con ingresos > gastos: verde con signo +');
     r6 = esc6(50000, 50000);
@@ -215,7 +216,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.ingresosFijos=[]; S.modulos=Object.assign({},S.modulos,{mesada:true});` +
        `const kOtro=new Date().getFullYear()+'-'+((new Date().getMonth()+1)%12); S.mesadas={papa:{cuotas:{},pagos:{[kOtro]:{monto:80000,fecha:hoy()}}},mama:{cuotas:{},pagos:{}}}; renderAnalisis()`);
     const h3 = q('#analisis-balance-hero');
-    c4(h3.className.includes('an-hero-pos') && h3.querySelector('.an-hero-monto').textContent.trim() === '+$80.000' && q('#an-ingresos').textContent.trim() === '$80.000', 'Balance: una mesada cobrada este mes que cubre otro mes cuenta como ingreso de este mes (+$80.000)');
+    c4(h3.className.includes('an-hero-neu') && h3.querySelector('.an-hero-monto').textContent.trim() === '+$80.000' && q('#an-ingresos').textContent.trim() === '$80.000', 'Balance: una mesada cobrada este mes que cubre otro mes cuenta como ingreso de este mes (+$80.000; sin historial, en tono neutro)');
     ev(`S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}}; renderAnalisis()`);
     c4(q('#analisis-balance-hero').className.includes('an-hero-neu') && q('#an-ingresos').textContent.trim() === '—', 'Balance: sin mesada vuelve a neutro');
     // 5b / 5c · historial de patrimonio: sin base no hay porcentaje; el título cuenta días y el eje va por fecha
@@ -233,8 +234,8 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(fh + `S.patrimonioHistorial=[{fecha:dia(35),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
     c4(pr.querySelectorAll('.inicio-proy-card').length === 3 && !/PRELIMINAR/.test(pr.textContent), 'Proyección: con 35 días sí muestra las 3 cifras, sin chip PRELIMINAR');
 
-    // Mejora 11: «Salud financiera» — el consejo del CDT es una sugerencia (no un check verde) y lleva a Cuentas
-    ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000,cobros:[{id:'c11',mesCubre:mesActual(),monto:3000000,fecha:mesActual()+'-01'}]}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000}}; renderHealthScore()`);
+    // Mejora 11: «Salud financiera» — el consejo del CDT es una sugerencia (no un check verde) y lleva a Cuentas (a Nu). Necesita gasto típico: 2 meses previos con datos
+    ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000,cobros:[{id:'c11',mesCubre:mesActual(),monto:3000000,fecha:mesActual()+'-01'}]}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000},['f11_'+Periodo.mesDesplazado(mesActual(),-1)]:{monto:1000000,fecha:Periodo.mesDesplazado(mesActual(),-1)+'-02'},['f11_'+Periodo.mesDesplazado(mesActual(),-2)]:{monto:1000000,fecha:Periodo.mesDesplazado(mesActual(),-2)+'-02'}}; S.ingresosFijos[0].cobros.push({id:'c11a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:3000000,fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c11b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:3000000,fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}); renderHealthScore()`);
     const tipCdt = [...w.document.querySelectorAll('#health-score-card .inicio-tip')].find(t => /CDT/.test(t.textContent));
     c4(!!tipCdt && tipCdt.classList.contains('inicio-tip-info') && !tipCdt.classList.contains('inicio-tip-ok') && !!tipCdt.querySelector('.fa-circle-info') && !tipCdt.querySelector('svg'), 'Salud financiera: el consejo del CDT debe verse como sugerencia (ícono de información, no check verde)');
     c4(!w.document.querySelector('#health-score-card .inicio-tip-ok'), 'Salud financiera: no debe haber checks verdes en recomendaciones');

@@ -375,7 +375,7 @@ const _UI_LISTA = {
     // Estado vacío (emptyState de core-state.js): mismo molde en las dos listas; cambian el icono,
     // el título y la descripción, que dicen quién le debe a quién. Los dos botones abren el mismo
     // selector de personas, por eso los dos se llaman «Agregar persona».
-    btnPie: 'btn-nueva-persona', btnAccion: 'prestado:abrirSheetNuevaPersona',
+    btnPie: 'btn-nueva-persona', titulo: 'titulo-deudores', btnAccion: 'prestado:abrirSheetNuevaPersona',
     vacioIcono: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>',
     vacioTitulo: 'Nadie te debe por ahora',
     vacio: 'Agrega a quien le prestes plata para llevar el registro de lo que te debe.',
@@ -386,7 +386,7 @@ const _UI_LISTA = {
   contra: {
     el: 'misDeudasList', abrir: 'prestado:abrirMiDeuda',
     avatarAccion: d => d.personaId ? ['prestado:abrirPerfilPersonaDeDeuda', d.personaId] : ['prestado:abrirMiDeuda', d.id],
-    btnPie: 'btn-nueva-deuda', btnAccion: 'prestado:abrirSheetNuevaDeuda',
+    btnPie: 'btn-nueva-deuda', titulo: 'titulo-mis-deudas', btnAccion: 'prestado:abrirSheetNuevaDeuda',
     vacioIcono: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
     vacioTitulo: 'No le debes a nadie por ahora',
     vacio: 'Agrega a quien te preste plata para llevar el registro de lo que le debes.',
@@ -411,6 +411,8 @@ function _renderListaDeudas(dir) {
   if (dir === 'favor' && typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
   // El estado vacío ya trae su botón: el de pie solo aparece cuando hay personas.
   mostrarSi(document.getElementById(ui.btnPie), list.length > 0);
+  // Lo mismo con el título de la sección: sin personas, el estado vacío ya explica de qué va; el título aparece al agregar la primera.
+  mostrarSi(document.getElementById(ui.titulo), list.length > 0);
   if (!list.length) {
     el.innerHTML = emptyState(ui.vacioIcono, ui.vacioTitulo, ui.vacio, 'Agregar persona', { action: ui.btnAccion });
     return;

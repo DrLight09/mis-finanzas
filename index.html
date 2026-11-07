@@ -682,7 +682,6 @@
               <div class="ix-hero-change-indicator" id="hero-change-indicator"></div>
             </div>
           </div>
-          <div id="inicio-franja-estado" class="inicio-franja" hidden></div>
           <div class="grid3">
             <div class="stat"><div class="stat-label">Disponible</div><div
                 class="stat-value c-green" id="s-disp">$0</div></div>
@@ -1288,7 +1287,7 @@
             </button>
           </div>
           <div id="deudoresView">
-            <div class="sec-title">Personas a quienes les presté dinero</div>
+            <div class="sec-title" id="titulo-deudores">Personas a quienes les presté dinero</div>
             <div id="deudoresList"></div>
             <button type="button" class="btn btn-ghost" id="btn-nueva-persona" data-action="prestado:abrirSheetNuevaPersona" data-args="[]">
               <span class="ix-span-080">
@@ -1400,7 +1399,7 @@
 
           <!-- YO DEBO -->
           <div id="misDeudasView" style="display:none;">
-            <div class="sec-title">Personas a quienes les debo dinero</div>
+            <div class="sec-title" id="titulo-mis-deudas">Personas a quienes les debo dinero</div>
             <div id="misDeudasList"></div>
             <button type="button" class="btn btn-ghost" id="btn-nueva-deuda" data-action="prestado:abrirSheetNuevaDeuda" data-args="[]">
               <span class="ix-span-080">

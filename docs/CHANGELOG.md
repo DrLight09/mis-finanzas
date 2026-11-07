@@ -4,6 +4,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Salud financiera sin historial y tarjeta rediseñada (2026-11-06, SW v112)
+
+Ver `salud-financiera.md` («Rediseño de la tarjeta…») y `analisis-financiero.md`.
+
+- **Bug:** con un saldo inicial gastado en dos días y sin ingresos anotados, Análisis mostraba balance `−$2.000.000` en rojo y «el patrimonio bajó $2.000.000», mientras Inicio decía «Estable»: el estado caía al último `else` sin tener base. Ahora hay estado neutro «Empezando» y ninguna conclusión de flujo sin base.
+- **Bug:** un mes con gastos y sin ingresos registrados contaba como déficit (racha, pilar Flujo, resumen de 6 meses, plan de deudas). Nueva regla única `Periodo.balanceEvaluable`.
+- **Bug:** el consejo del CDT salía sin gasto típico y podía dejar la reserva bajo 3 meses; el consejo de deuda mandaba a Préstamos aunque fuera de tarjeta.
+- **Quitado:** franja `#inicio-franja-estado`, consejo «Registra las categorías», línea de runway de la tarjeta, textos genéricos de relleno.
+- Tests: franja y «Sin base» actualizados; nuevos casos del saldo inicial, `tieneBase`, destinos y Análisis neutro.
+
+---
+
 ## Sync con `rev`, extraordinarios, cierres y patrimonio cayendo (2026-11-06, SW v111)
 
 Origen: `mejoras-mis-finanzas.md`, que seguía listando como pendientes cosas ya hechas (A1–A4, A9, B1, B5, B7, P8/P9 estaban resueltas en v95–v110); se comprobó cada punto contra el código antes de tocarlo. Pruebas: **823** (11 nuevas).

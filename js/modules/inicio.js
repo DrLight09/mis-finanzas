@@ -54,31 +54,46 @@
 // Aquí solo se arman los HECHOS que las reglas necesitan (`_ctxReglas`) y se pinta el resultado.
 // Situación: las métricas que leen Salud (pilares, estado) y las reglas de situación — una sola vez por render, con las definiciones
 // únicas de la app (calcLiquidez, Periodo, calcPatrimonioVisible).
+// Días desde el primer punto del historial de patrimonio (la primera vez que se guardó algo); null si aún no hay. Sirve para saber si un
+// «mes completo» de referencia fue en realidad tres días de uso (ver Salud.tieneBase).
+function _diasDeUso(){
+  const t=(S.patrimonioHistorial||[]).map(p=>p&&p.fecha?_fechaSafe(p.fecha).getTime():NaN).filter(isFinite);
+  if(!t.length) return null;
+  const d=Math.round((_fechaSafe(hoy()).getTime()-Math.min(...t))/86400000);
+  return isFinite(d)?Math.max(0,d):null;
+}
 function _situacion(){
   const mes=mesActual();
   const U=UMBRALES.salud;
   const liq=calcLiquidez();
-  const gastoTipico=Periodo.gastoPromedioPrevio(mes,U.mesesReferencia).promedio;
-  const ingresoTipico=Periodo.ingresoPromedioPrevio(mes,U.mesesReferencia).promedio;
+  const gP=Periodo.gastoPromedioPrevio(mes,U.mesesReferencia), iP=Periodo.ingresoPromedioPrevio(mes,U.mesesReferencia);
+  const gastoTipico=gP.promedio;
+  const ingresoTipico=iP.promedio;
   const ingresosMes=Periodo.ingresosDelMes(mes).total;
   const ingresoRef=Math.max(ingresosMes,ingresoTipico);
   const racha=Periodo.rachaDeficit(mes,6);
   const balances=[];
   for(let i=1;i<=UMBRALES.salud.pilares.flujo.meses;i++){
     const b=Periodo.balanceDelMes(Periodo.mesDesplazado(mes,-i));
-    if(b.ingresos.total>0||b.gastos.recurrenteTotal>0) balances.push(b.balanceRecurrente); // un mes sin movimiento no es superávit ni déficit
+    if(Periodo.balanceEvaluable(b)) balances.push(b.balanceRecurrente); // un mes sin movimiento, o con gastos y sin ingresos anotados, no es superávit ni déficit
   }
   const patrimonio=calcPatrimonioVisible();
-  return {
+  const m={
     patrimonio, liquidezNeta:liq.neta, activosLiquidos:liq.libre+liq.cdtsVencidos,
     tcPropia:liq.tcPropia, deudaPropia:liq.tcPropia+liq.yoDebo, meDeben:liq.meDeben,
     ingresoTipico, ingresoRef, gastoTipico, mesesCubiertos:_mesesCubiertos(liq.neta,gastoTipico),
     racha, balances, deficitMesActual:ingresoRef>0&&Periodo.gastosDelMes(mes).total>ingresoRef,
     tendencia:Salud.tendenciaPatrimonio(S.patrimonioHistorial,hoy()),
     patrimonioCayendo:Salud.mesesCayendo(S.patrimonioCierres,mes,{gastoTipico}),
+    mesesReferencia:Math.max(gP.meses,iP.meses), diasDeUso:_diasDeUso(),
     sinDatos:patrimonio===0&&liq.libre===0&&liq.cdts===0&&liq.tcPropia===0&&liq.yoDebo===0&&liq.meDeben===0&&liq.ajeno===0&&Periodo.gastosDelMes(mes).total===0,
   };
+  // Sin base (usuario nuevo): no hay con qué evaluar ahorro, flujo ni tendencia. La falta de registros no es una situación negativa.
+  m.sinBase=!Salud.tieneBase(m);
+  return m;
 }
+// ¿Estamos sin base para evaluar? Lo leen Análisis y el aviso del hero para no dar por «déficit» lo que es solo falta de historial.
+function calcSinBase(){ return _situacion().sinBase; }
 
 // El contexto de las reglas del canal 'atencion'. `api`: lo que solo la app sabe calcular. Cada función se omite si su módulo (lazy) aún no
 // cargó, y la regla correspondiente simplemente no dice nada (mismo criterio de antes con los `typeof … === 'function'`).
@@ -307,9 +322,10 @@ function calcImpactoCompra(monto){
 // no haber anotado ingresos) y sin un fondo sólido (≥ 6 meses de gasto) que la absorba.
 function _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos){ return Reglas.rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos, UMBRALES); }
 
-function calcHealthScore(){
+function calcHealthScore(sit){
   const S = window.S || {};
   if(!S.cajitas) return null;
+  sit = sit || _situacion(); // renderHealthScore pasa la suya: una sola lectura de la situación por render
   const mes = window.mesActual ? window.mesActual() : '';
   const U = UMBRALES.salud;
   const _gMes = Periodo.gastosDelMes(mes);
@@ -326,31 +342,68 @@ function calcHealthScore(){
     ingresoTipico: Periodo.ingresoPromedioPrevio(mes, U.mesesReferencia).promedio,
     racha: Periodo.rachaDeficit(mes, 6),
     cdtsActivos: (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0),
-    catsCount: new Set((S.gastosVar||[]).slice(-20).map(g=>g.cat)).size,
     comprasGrandes: Periodo.comprasGrandesEntre(_desde90, hoy()),
+    sinBase: sit.sinBase,
     fmt
   };
   const r = Salud.puntaje(e);
   return Object.assign(r, { ingresosMes, rendimientoCDTMes: Periodo.rendimientosDelMes(mes).total }); // los CDT rinden pero siguen bloqueados: no son flujo de caja
 }
 
+// Tarjeta de Salud financiera. De arriba abajo: el estado (una sola vez; en presión y crisis, con sus acciones), el puntaje con lo que
+// conviene hacer (máx. 3, lo urgente primero, cada uno lleva a donde se resuelve) y los cuatro pilares con semáforo. Sin base (usuario nuevo)
+// no hay puntaje —un número inventado— ni pilares sin datos: solo el estado neutro, lo que sí se sabe y qué registrar.
+// No se repite la misma cifra en tres sitios: el runway («Cubres X meses») vive solo en el pilar Liquidez.
+const SALUD_MAX_CONSEJOS = 3;
 function renderHealthScore(){
   const el = document.getElementById('health-score-card');
   if(!el) return;
-  const res = calcHealthScore();
+  const sit = _situacion();
+  const res = calcHealthScore(sit);
   // El min-height:148px inline (ver comentario en index.html) solo existe para
   // que el skeleton no cause CLS mientras carga. Una vez que hay contenido real
   // (con o sin datos) el alto lo debe definir el contenido, no el skeleton —
   // si no, queda espacio vacío de sobra cuando el contenido es corto.
   el.style.minHeight = '';
   if(!res || res.sinDatos){ el.innerHTML = '<div class="inicio-salud-vacio">Registra más datos para calcular tu salud financiera.</div>'; return; }
-  const { score, consejos, mesesCubiertos } = res;
-  // «Sin base»: hay saldos pero ningún historial (sin gasto típico, sin meses completos, sin tendencia). El 50 de piso sería un «Regular» inventado.
-  const sit = _situacion();
-  const sinBase = !(sit.gastoTipico > 0) && !(sit.balances || []).length && !sit.tendencia;
-  const col = sinBase ? 'var(--text3)' : score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
-  const claseSalud = sinBase ? 'inicio-salud-base' : score >= 75 ? 'inicio-salud-ok' : score >= 50 ? 'inicio-salud-warn' : 'inicio-salud-mal';
-  const label = sinBase ? 'Sin base' : score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
+  const { score, consejos } = res;
+  const sinBase = sit.sinBase;
+  // Un solo punto asigna color e ícono según el TIPO del consejo (no según su texto). Íconos de Font Awesome de la app.
+  const ESTILO = {
+    ok:         { clase: 'inicio-tip-ok',   ico: 'fa-circle-check' },
+    alerta:     { clase: 'inicio-tip-mal',  ico: 'fa-triangle-exclamation' },
+    aviso:      { clase: 'inicio-tip-warn', ico: 'fa-triangle-exclamation' },
+    sugerencia: { clase: 'inicio-tip-info', ico: 'fa-circle-info' }
+  };
+  const tipsHtml = consejos.slice(0, SALUD_MAX_CONSEJOS).map(c => {
+    const e = ESTILO[c.tipo] || ESTILO.sugerencia;
+    const cuerpo = `<i class="fa-solid ${e.ico} inicio-tip-ico"></i><span>${escHtml(c.texto)}</span>`;
+    // Un consejo accionable lleva a donde se resuelve.
+    return c.ir
+      ? `<button type="button" class="inicio-tip ${e.clase} inicio-tip-accion" ${Events.attr('inicio:irConsejo', c.ir)}>${cuerpo}<i class="fa-solid fa-arrow-right inicio-tip-ir"></i></button>`
+      : `<div class="inicio-tip ${e.clase}">${cuerpo}</div>`;
+  }).join('');
+  // Estado global (6 niveles) y cuatro pilares con semáforo: el número solo no dice CUÁL de las cuatro cosas va mal. Ver js/core/salud.js.
+  const est = Salud.estado(sit);
+  const irBtn = (ir, cuerpo, clase) => ir
+    ? `<button type="button" class="${clase} inicio-pilar-accion" ${Events.attr('inicio:irConsejo', ir)}>${cuerpo}</button>`
+    : `<div class="${clase}">${cuerpo}</div>`;
+  const estadoHtml = !est ? '' : `<div class="inicio-estado inicio-estado-${est.tono}">
+      <div class="inicio-estado-cab"><span class="inicio-estado-etq">${escHtml(est.etiqueta)}</span><span class="inicio-estado-frase">${escHtml(est.frase)}</span></div>
+      ${est.acciones.map(a => irBtn(a.ir, `<i class="fa-solid fa-arrow-right inicio-estado-ico"></i><span>${escHtml(a.texto)}</span>`, 'inicio-estado-accion')).join('')}
+    </div>`;
+  // Un pilar sin datos es ruido para quien apenas empieza: solo se muestran los que ya se pueden leer.
+  const pilares = Salud.pilares(sit).filter(p => !sinBase || p.nivel !== 'sin');
+  const pilaresHtml = !pilares.length ? '' : `<div class="inicio-pilares">${pilares.map(p =>
+    irBtn(p.ir, `<span class="inicio-pilar-punto inicio-pilar-${p.nivel}" aria-hidden="true"></span><span class="inicio-pilar-tit">${escHtml(p.titulo)}</span><span class="inicio-pilar-txt">${escHtml(p.texto)}</span>`, 'inicio-pilar')
+  ).join('')}</div>`;
+  if(sinBase){
+    el.innerHTML = `${estadoHtml}<div class="inicio-salud-tips">${tipsHtml}</div>${pilaresHtml}`;
+    return;
+  }
+  const col = score >= 75 ? 'var(--accent)' : score >= 50 ? 'var(--amber)' : 'var(--red)';
+  const claseSalud = score >= 75 ? 'inicio-salud-ok' : score >= 50 ? 'inicio-salud-warn' : 'inicio-salud-mal';
+  const label = score >= 75 ? 'Excelente' : score >= 50 ? 'Regular' : 'Necesita atención';
   const r = 28, circ = 2 * Math.PI * r;
   // A score=100 el patrón dash/gap (dash=circ, gap=circ) con linecap round deja
   // una costura visible donde el trazo se "cierra" sobre sí mismo — el cap
@@ -361,35 +414,6 @@ function renderHealthScore(){
   const dash = (score / 100) * circ;
   const dasharrayAttr = lleno ? '' : `stroke-dasharray="${dash.toFixed(1)} ${circ.toFixed(1)}"`;
   const linecap = lleno ? 'butt' : 'round';
-  // Un solo punto asigna color e ícono según el TIPO del consejo (no según su texto). Íconos de Font Awesome de la app.
-  const ESTILO = {
-    ok:         { clase: 'inicio-tip-ok',   ico: 'fa-circle-check' },
-    alerta:     { clase: 'inicio-tip-mal',  ico: 'fa-triangle-exclamation' },
-    aviso:      { clase: 'inicio-tip-warn', ico: 'fa-triangle-exclamation' },
-    sugerencia: { clase: 'inicio-tip-info', ico: 'fa-circle-info' }
-  };
-  const tipsHtml = consejos.map(c => {
-    const e = ESTILO[c.tipo] || ESTILO.sugerencia;
-    const cuerpo = `<i class="fa-solid ${e.ico} inicio-tip-ico"></i><span>${escHtml(c.texto)}</span>`;
-    // Un consejo accionable lleva a donde se resuelve.
-    return c.ir
-      ? `<button type="button" class="inicio-tip ${e.clase} inicio-tip-accion" ${Events.attr('inicio:irConsejo', c.ir)}>${cuerpo}<i class="fa-solid fa-arrow-right inicio-tip-ir"></i></button>`
-      : `<div class="inicio-tip ${e.clase}">${cuerpo}</div>`;
-  }).join('');
-  // «Cubres X meses de gastos»: la cifra más útil en una crisis. Solo con gasto típico (sin él no hay con qué medir).
-  const runwayHtml = mesesCubiertos == null ? '' : `<div class="inicio-salud-runway inicio-runway-${_nivelRunway(mesesCubiertos)}">${_textoRunway(mesesCubiertos)}</div>`;
-  // Estado global (5 niveles) y cuatro pilares con semáforo: el número solo no dice CUÁL de las cuatro cosas va mal. Ver js/core/salud.js.
-  const est = Salud.estado(sit);
-  const irBtn = (ir, cuerpo, clase) => ir
-    ? `<button type="button" class="${clase} inicio-pilar-accion" ${Events.attr('inicio:irConsejo', ir)}>${cuerpo}</button>`
-    : `<div class="${clase}">${cuerpo}</div>`;
-  const estadoHtml = !est ? '' : `<div class="inicio-estado inicio-estado-${est.tono}">
-      <div class="inicio-estado-cab"><span class="inicio-estado-etq">${escHtml(est.etiqueta)}</span><span class="inicio-estado-frase">${escHtml(est.frase)}</span></div>
-      ${est.acciones.map(a => irBtn(a.ir, `<i class="fa-solid fa-arrow-right inicio-estado-ico"></i><span>${escHtml(a.texto)}</span>`, 'inicio-estado-accion')).join('')}
-    </div>`;
-  const pilaresHtml = `<div class="inicio-pilares">${Salud.pilares(sit).map(p =>
-    irBtn(p.ir, `<span class="inicio-pilar-punto inicio-pilar-${p.nivel}" aria-hidden="true"></span><span class="inicio-pilar-tit">${escHtml(p.titulo)}</span><span class="inicio-pilar-txt">${escHtml(p.texto)}</span>`, 'inicio-pilar')
-  ).join('')}</div>`;
   el.innerHTML = `${estadoHtml}<div class="health-ring-wrap inicio-salud-wrap">
     <svg aria-hidden="true" width="76" height="76" viewBox="0 0 76 76" class="health-ring inicio-salud-anillo">
       <circle cx="38" cy="38" r="${r}" fill="none" stroke="var(--bg3)" stroke-width="7"/>
@@ -401,8 +425,6 @@ function renderHealthScore(){
     </svg>
     <div class="health-details">
       <div class="health-score-num ${claseSalud}">${label}</div>
-      ${sinBase ? '<div class="inicio-salud-runway">Aún no hay historial para calificarte: el puntaje aparecerá con tus primeros meses.</div>' : ''}
-      ${runwayHtml}
       ${tipsHtml}
     </div>
   </div>${pilaresHtml}`;
@@ -423,12 +445,12 @@ function _deudasPropias(){
   }
   return out;
 }
-// Lo que sobra al mes, en promedio, de los últimos meses completos con movimiento (balance recurrente: sin compras grandes aisladas).
+// Lo que sobra al mes, en promedio, de los últimos meses completos con ingresos registrados (balance recurrente: sin compras grandes aisladas).
 function _balancePromedioReciente(){
   const mes = mesActual(), v = [];
   for(let i = 1; i <= UMBRALES.salud.pilares.flujo.meses; i++){
     const b = Periodo.balanceDelMes(Periodo.mesDesplazado(mes, -i));
-    if(b.ingresos.total > 0 || b.gastos.recurrenteTotal > 0) v.push(b.balanceRecurrente);
+    if(Periodo.balanceEvaluable(b)) v.push(b.balanceRecurrente); // sin ingresos anotados el mes no se puede juzgar
   }
   return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null;
 }
@@ -515,23 +537,12 @@ function renderHeroEstado(d){
   if(e.tono) el.classList.add('ix-hero-estado-' + e.tono);
 }
 
-// Estado de situación (Creciendo … Crisis) o null sin datos. Lo leen la franja de Inicio y cualquier pantalla que deba ajustar el tono
+// Estado de situación (Empezando, Creciendo … Crisis) o null sin datos. Lo leen la tarjeta de Salud y cualquier pantalla que deba ajustar el tono
 // (Análisis, Wrapped): con `serio` (presión o crisis) no se celebra, se habla claro y se señala la acción.
 function calcEstadoSituacion(){
   const est = Salud.estado(_situacion());
   return est ? Object.assign({ serio: est.id === 'presion' || est.id === 'crisis' }, est) : null;
 }
-// Franja bajo el hero: una línea con el estado y su frase. Toca para ver el detalle en la tarjeta de Salud.
-function renderFranjaEstado(){
-  const el = document.getElementById('inicio-franja-estado');
-  if(!el) return;
-  const est = calcEstadoSituacion();
-  if(!est){ el.hidden = true; el.innerHTML = ''; return; }
-  el.hidden = false;
-  el.className = { verde: 'inicio-franja inicio-franja-verde', ambar: 'inicio-franja inicio-franja-ambar', rojo: 'inicio-franja inicio-franja-rojo' }[est.tono] || 'inicio-franja';
-  el.innerHTML = `<span class="inicio-franja-etq">${escHtml(est.etiqueta)}</span><span class="inicio-franja-frase">${escHtml(est.frase)}</span>`;
-}
-Refresh.registrar('inicio-franja-estado', renderFranjaEstado, { pantalla: 'inicio' });
 
 /* ====================================================
    PROYECCIÓN FINANCIERA
@@ -804,7 +815,10 @@ function _checkGastoAlto() {
   const ingresoRef = Math.max(Periodo.ingresosDelMes(mes).total, Periodo.ingresoPromedioPrevio(mes, UMBRALES.salud.mesesReferencia).promedio);
   let nivel = '', texto = '';
   if (ingresoRef > 0) {
-    if (gastoMes > ingresoRef) { nivel = 'red'; texto = 'Gastas más de lo que ingresas'; }
+    // Sin base (usuario nuevo) no se concluye «gastas más de lo que ingresas»: en el primer mes los ingresos pueden estar a medio anotar
+    // (o gastarse de un saldo inicial, que no es ingreso). Mismo criterio que la tarjeta de Salud y Análisis.
+    if (calcSinBase()) { /* sin aviso: aún no hay con qué comparar */ }
+    else if (gastoMes > ingresoRef) { nivel = 'red'; texto = 'Gastas más de lo que ingresas'; }
     else if (gastoMes >= ingresoRef * UMBRALES.gastoAlto.fraccionDelIngreso) { nivel = 'amber'; texto = 'Gastos altos'; }
   } else if (gastoMes > 0) {
     // Sin ingresos registrados no hay contra qué comparar: solo se avisa si ya no queda plata disponible.
@@ -915,8 +929,28 @@ _renderDispNetoTC();
   }
 })();
 
-// Consejo de «Salud financiera» accionable: abre la pantalla donde se resuelve.
+// Destino de un consejo o pilar: «pantalla» o «pantalla/detalle». El detalle lleva al sitio exacto donde se hace lo recomendado:
+//   cuentas/<fuente>        abre esa cuenta (cuentas/nu → Nu, donde se crea un CDT)
+//   prestamos/me-deben|yo-debo   abre esa pestaña de Préstamos
+//   analisis/ingresos       deja a la vista los ingresos fijos (donde se registra un cobro)
+// Una pantalla lazy puede no haber cargado: se espera a que cargue antes de abrir el detalle. Sin detalle (o sin su función) queda en la pantalla.
+function _irADestino(destino){
+  const [pantalla, detalle] = String(destino || '').split('/');
+  if (typeof showScreen !== 'function' || !document.getElementById('screen-' + pantalla)) return;
+  const abrirDetalle = () => {
+    if (!detalle) return;
+    if (pantalla === 'cuentas' && typeof abrirCuenta === 'function') abrirCuenta(detalle);
+    else if (pantalla === 'prestamos' && typeof cambiarTabPrestamos === 'function' && (detalle === 'me-deben' || detalle === 'yo-debo')) cambiarTabPrestamos(detalle);
+    else if (pantalla === 'analisis' && detalle === 'ingresos') { const e = document.getElementById('an-ingresos-fijos-list'); if (e && e.scrollIntoView) e.scrollIntoView({ block: 'center' }); }
+  };
+  showScreen(pantalla);
+  if (!detalle) return;
+  if (typeof Loader !== 'undefined' && Loader.GROUPS[pantalla] && !Loader.isLoaded(pantalla)) Loader.ensure(pantalla).then(() => setTimeout(abrirDetalle, 0)).catch(() => {});
+  else abrirDetalle();
+}
+
+// Consejo de «Salud financiera» accionable: abre la pantalla donde se resuelve (y, si el destino lo pide, el lugar exacto).
 Events.registerAll('inicio', {
   planEstrategia: (id) => { if(id !== 'avalancha' && id !== 'bola') return; S.planDeudasEstrategia = id; save(); renderPlanDeudas(); },
-  irConsejo: (destino) => { if (typeof showScreen === 'function' && document.getElementById('screen-' + destino)) showScreen(destino); }
+  irConsejo: (destino) => _irADestino(destino)
 });

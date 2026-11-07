@@ -216,16 +216,25 @@ describe('calcHealthScore', () => {
     assert.equal(r.score, 35, '50 − 15 por liquidez negativa; la misma deuda no resta de nuevo');
   });
 
-  test('calcHealthScore — gastando más de lo que ingresa este mes avisa', () => {
+  test('calcHealthScore — gastando más de lo que ingresa este mes avisa (con historial) y no concluye nada en el primer mes (sin base)', () => {
     const mes = currentMonthKey();
-    const ctx = freshApp({
+    const ingreso = { id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 1000000, fecha: mes + '-01' }] };
+    // Primer mes de uso: en el mes en curso los ingresos pueden estar a medio anotar; «gastas más de lo que ingresas» sería una conclusión precipitada.
+    const primerMes = freshApp({
+      cuentas: cuentas({ nequi: 2000000 }), ingresosFijos: [ingreso],
+      gastosFijos: [{ id: 'g1', monto: 1500000 }], pagosGastosFijos: { ['g1_' + mes]: { monto: 1500000 } },
+    }).calcHealthScore();
+    assert.equal(primerMes.sinBase, true);
+    assert.ok(!primerMes.tips.some((t) => t.includes('gastando más de lo que ingresas')), 'sin base no se juzga el flujo');
+    // Con dos meses completos de historial sí se avisa.
+    const conHistorial = freshApp({
       cuentas: cuentas({ nequi: 2000000 }),
-      ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 1000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 1000000, fecha: mes + '-01' }] }],
+      ingresosFijos: [{ ...ingreso, cobros: [...ingreso.cobros, ...[1, 2].map((n) => ({ id: 'p' + n, mesCubre: mesHace(n), monto: 1000000, fecha: mesHace(n) + '-15' }))] }],
       gastosFijos: [{ id: 'g1', monto: 1500000 }],
-      pagosGastosFijos: { ['g1_' + mes]: { monto: 1500000 } },
-    });
-    const r = ctx.calcHealthScore();
-    assert.ok(r.tips.some((t) => t.includes('gastando más de lo que ingresas')));
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1500000 }, ...pagosPrevios(500000, 2) },
+    }).calcHealthScore();
+    assert.equal(conHistorial.sinBase, false);
+    assert.ok(conHistorial.tips.some((t) => t.includes('gastando más de lo que ingresas')));
   });
 
   // Meses previos con ingreso: un cobro de ingreso fijo en el día 15 de cada uno de los últimos `n` meses.
@@ -270,12 +279,16 @@ describe('calcHealthScore', () => {
       cuentas: cuentas({ nequi: 9000000 }), // 9 meses de reserva: el fondo de emergencia ya está cubierto
       ingresosFijos: [{ id: 'i1', nombre: 'Sueldo', monto: 3000000, desde: '2020-01', cobros: [{ id: 'c1', mesCubre: mes, monto: 3000000, fecha: mes + '-01' }] }],
       gastosFijos: [{ id: 'g1', monto: 1000000 }],
-      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } },
+      pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 }, ...pagosPrevios(1000000, 3) }, // con gasto típico medido: sin él no se sabe cuánto sobra
     });
     const cdt = ctx.calcHealthScore().consejos.find((c) => c.texto.includes('CDT'));
     assert.ok(cdt, 'con ahorros que sobran se sugiere el CDT');
     assert.equal(cdt.tipo, 'sugerencia');
-    assert.equal(cdt.ir, 'cuentas');
+    assert.equal(cdt.ir, 'cuentas/nu', 'lleva directo a la cuenta Nu, donde se crea el CDT');
+    assert.match(cdt.texto, /Te sobran .* por encima de tus 3 meses de reserva/, 'dice cuánto sobra: lo que se pone en el CDT no toca el fondo mínimo');
+    // Sin gasto típico (usuario nuevo) no se sabe qué es «de sobra»: no se sugiere.
+    const sinGastoTipico = freshApp({ cuentas: cuentas({ nequi: 9000000 }), gastosFijos: [{ id: 'g1', monto: 1000000 }], pagosGastosFijos: { ['g1_' + mes]: { monto: 1000000 } } });
+    assert.ok(!sinGastoTipico.calcHealthScore().tips.some((t) => t.includes('CDT')));
   });
 
   test('calcHealthScore — el CDT no se sugiere si las reservas no llegan a 3 meses ni con deuda de tarjeta', () => {
@@ -360,7 +373,7 @@ describe('calcHealthScore', () => {
     // Sin ningún mes anterior con gastos no hay con qué medir: ni puntos ni consejo de reservas.
     const sinHistorial = freshApp({ ...base, pagosGastosFijos: { ['g1_' + mes]: { monto: 25000 } } }).calcHealthScore();
     assert.ok(!sinHistorial.tips.some((t) => t.includes('menos de 3 meses')), 'sin gasto típico no se puntúa ni se aconseja sobre las reservas');
-    assert.ok(sinHistorial.tips.some((t) => t.includes('Cuando completes un mes de gastos')), 'pero se explica por qué todavía no hay medición');
+    assert.ok(sinHistorial.tips.some((t) => t.includes('Sigue registrando tus ingresos y gastos')), 'pero se explica por qué todavía no hay medición');
     assert.equal(sinHistorial.score, 50 + 5 /* sin deudas */, 'ni +20 de reservas inflado ni +10 gratis por un mes que apenas empieza (el ratio de gasto mide meses completos)');
   });
 

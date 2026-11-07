@@ -25,6 +25,8 @@ const UMBRALES = (() => {
       tcSobreIngreso: { alto: 1.5, critico: 3 },                   // deuda de tarjeta propia ÷ ingreso típico (en «meses de ingreso»)
       prestadoSobreLiquidez: { vigilar: 0.4, comprometido: 1, vulnerable: 2 }, // lo que te deben ÷ tu liquidez
       gastoSobreIngreso: { sano: 0.7, ajustado: 0.9, deficit: 1 }, // gasto típico ÷ ingreso típico
+      historial: { mesesCompletos: 2, minDias: 30 },               // «base» para evaluar: 2 meses completos con datos, o 1 mes y 30 días de uso. Con menos no se concluye nada de ahorro, flujo ni tendencia (Salud.tieneBase)
+      cdtExcedenteMeses: 1,                                        // se sugiere un CDT solo con ≥ 1 mes de gasto por ENCIMA del fondo mínimo (poner en CDT lo que ya es reserva la dejaría por debajo)
       cdtPesoCompleto: 0.10,                                       // el CDT puntúa completo cuando pesa ≥ 10 % de tu plata (cuentas libres + CDTs)
       patrimonioCayendo: { aviso: 2, alerta: 3, ruidoGastoPct: 10 }, // meses completos seguidos con el patrimonio (sin depósitos ni retiros) bajando; una baja menor al 10 % del gasto típico mensual es ruido
       rachaDeficitMeses: { aviso: 2, alerta: 3 },                  // meses completos seguidos con balance negativo

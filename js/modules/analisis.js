@@ -87,7 +87,11 @@ function renderAnalisis(){
     //   ingresos = gastos → neutro · gastos > ingresos → rojo
     const sinIngresos=!_hayIngresos;
     const sinMovs=sinIngresos&&gastosTotalMes<0.005;
-    const estado=sinMovs?'neu':sinIngresos?'neg':_cero?'neu':balance>0?'pos':'neg';
+    // Sin base (usuario nuevo) el balance del mes no es una conclusión: los ingresos pueden estar a medio anotar o el gasto salir de un saldo
+    // inicial (que no es ingreso). Se muestra el dato, en tono neutro y sin juicio. Mismo criterio que la tarjeta de Salud de Inicio.
+    const sinBase=typeof calcSinBase==='function'&&calcSinBase();
+    // Gastos sin ningún ingreso anotado: falta información, no un déficit. Nunca rojo ni «−$X».
+    const estado=(sinMovs||sinIngresos||sinBase)?'neu':_cero?'neu':balance>0?'pos':'neg';
     const claseTono={pos:'c-green',neg:'c-red',neu:'an-t-muted'}[estado];
     const mes2d=MESES_NOMBRE[mesNum]+' '+anio;
     const flecha=trazo=>`<svg aria-hidden="true" class="an-hero-flecha" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
@@ -95,10 +99,11 @@ function renderAnalisis(){
       :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
     let mensaje, monto;
     if(sinMovs){ mensaje='Aún no hay ingresos ni gastos que cuenten para este mes.'; monto=fmt(0); }
-    else if(sinIngresos){ mensaje=`Has gastado ${fmt(gastosTotalMes)} y aún no registras ingresos este mes. Registra tus ingresos para ver el balance del mes.`; monto=fmt(gastosTotalMes*-1); }
+    else if(sinIngresos){ mensaje=`Has gastado ${fmt(gastosTotalMes)} este mes y aún no hay ingresos registrados, así que todavía no se puede calcular el balance. Registra tus ingresos para verlo.`; monto='—'; }
     else if(_cero){ mensaje='Por ahora has gastado todo lo que has recibido este mes.'; monto=fmt(0); }
-    else if(balance>0){ mensaje='Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }
-    else { mensaje='Por ahora has gastado más de lo que has recibido este mes.'; monto=fmt(balance); }
+    else if(balance>0){ mensaje=sinBase?'Por ahora has gastado menos de lo que has registrado como ingreso este mes.':'Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }
+    else { mensaje=sinBase?'Por ahora has gastado más de lo que has registrado como ingreso este mes.':'Por ahora has gastado más de lo que has recibido este mes.'; monto=fmt(balance); }
+    if(sinBase&&!sinMovs) mensaje+=' Aún no hay historial suficiente para evaluar tu flujo: sigue registrando tus movimientos.';
     hero.className='ix-analisis-balance-hero '+{pos:'an-hero-pos',neg:'an-hero-neg',neu:'an-hero-neu'}[estado];
     hero.innerHTML=html`
       <div class="an-hero-lbl ${claseTono}">${raw(icono)} Balance de ${mes2d}</div>
@@ -369,20 +374,25 @@ function renderAnalisis(){
       const ultimoReal = valsReales[valsReales.length-1];
       const diffTotal = ultimoReal - primeroReal;
       // Sin cambio en la ventana (p. ej. todo en $0): ni «+», ni verde, ni rojo; la línea se pinta neutra.
+      const _corta=_diasVentana<UMBRALES.salud.pilares.tendencia.minDias; // ventana demasiado corta para hablar de tendencia (ver más abajo)
       const sinCambio=Math.abs(diffTotal)<0.005;
-      const diffColor=sinCambio?'var(--text3)':(diffTotal>=0?'var(--accent)':'var(--red)'); // para el trazo SVG y data-diffcolor (el JS del tooltip lo lee)
-      const diffColorGrad=sinCambio?'#8e8e84':(diffTotal>=0?'#c8f060':'#f06868');
-      const diffClasePat=sinCambio?'an-t-muted':(diffTotal>=0?'c-green':'c-red');
+      const diffColor=(sinCambio||_corta)?'var(--text3)':(diffTotal>=0?'var(--accent)':'var(--red)'); // para el trazo SVG y data-diffcolor (el JS del tooltip lo lee)
+      const diffColorGrad=(sinCambio||_corta)?'#8e8e84':(diffTotal>=0?'#c8f060':'#f06868');
+      const diffClasePat=(sinCambio||_corta)?'an-t-muted':(diffTotal>=0?'c-green':'c-red');
       const diffSigno=sinCambio?'':(diffTotal>=0?'+':'');
       // Sin base positiva (el primer punto vale 0 o es negativo) un porcentaje no tiene sentido: pasar de −$1.000.000 a −$500.000 daba
       // «+50 %» en verde con el patrimonio todavía en deuda. Se muestra «—» y, si el valor final sigue bajo cero, «En números rojos».
       const diffPct = primeroReal>0 ? diffTotal/primeroReal*100 : null;
       const enRojos = ultimoReal<0;
-      const diffPctTxt = enRojos ? 'En números rojos' : diffPct===null ? '—' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
-      const diffClasePct = enRojos ? 'c-red' : diffClasePat;
+      const diffPctTxt = _corta ? '—' : enRojos ? 'En números rojos' : diffPct===null ? '—' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
+      const diffClasePct = (enRojos&&!_corta) ? 'c-red' : diffClasePat;
       const _mesesVent=Math.max(1,Math.min(12,Math.round(_diasVentana/30)));
       const _flujoVent=Periodo.resumenFlujo(_mesesVent,mes);
-      const frasePat=Salud.fraseTendencia(diffTotal,_diasVentana,_flujoVent.conDatos?_flujoVent.acumulado:null,primeroReal);
+      // «Causa principal» solo si hay meses con ingresos registrados que la sostengan (sin ellos «gastaste más de lo que ingresó» sería falso).
+      const frasePatLarga=Salud.fraseTendencia(diffTotal,_diasVentana,_flujoVent.conDatos?_flujoVent.acumulado:null,primeroReal);
+      // Una ventana corta no es una tendencia: con menos de UMBRALES.salud.pilares.tendencia.minDias de historial el cambio se muestra
+      // sin juicio (gris, sin porcentaje ni causa). Un saldo inicial gastado en dos días no es «el patrimonio cayó 2 millones».
+      const frasePat=_corta?'Aún es pronto para hablar de tendencia: se necesitan al menos '+UMBRALES.salud.pilares.tendencia.minDias+' días de historial.':frasePatLarga;
       const selector=[30,90,365].map(d=>`<button type="button" class="an-pat-sel${d===ventana?' an-pat-sel-on':''}" ${Events.attr('analisis:patDias',d)}>${d===365?'1 año':d+' días'}</button>`).join('');
       patriEl.innerHTML=`
         <div class="an-pat-sels">${selector}</div>

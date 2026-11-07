@@ -185,7 +185,7 @@ test('runway: «cubres X meses» = liquidez ÷ gasto típico; 0 si no hay liquid
 
 test('con ahorros y sin gasto típico se explica por qué no hay medición (no queda un «Regular» mudo)', () => {
   const r = score({ cuentas: cuentas(3000000), ingresosFijos: ingresosEn(1000000, ultimosN(3)) });
-  assert.ok(r.tips.some(t => t.includes('Cuando completes un mes de gastos')));
+  assert.ok(r.tips.some(t => t.includes('Sigue registrando tus ingresos y gastos')));
 });
 
 test('el criterio de «configurar la app» ya no puntúa (≥ 2 gastos fijos / una sola categoría)', () => {
@@ -925,8 +925,22 @@ test('Salud en la app: el estado y los 4 pilares salen de las mismas métricas q
   const h = String(dom.el('health-score-card').innerHTML);
   assert.match(h, /inicio-estado-rojo/, 'patrimonio negativo con liquidez negativa = crisis');
   assert.match(h, /Lo urgente primero/);
-  assert.equal((h.match(/class="inicio-pilar /g) || []).length, 4);
+  // Sin base (sin historial) solo se pintan los pilares que ya se pueden leer: aquí Liquidez y Deuda (flujo y tendencia no tienen datos).
+  assert.equal((h.match(/class="inicio-pilar /g) || []).length, 2);
   assert.match(h, /inicio-pilar-rojo/);
+  assert.doesNotMatch(h, /health-ring/, 'sin base no hay puntaje inventado');
+});
+
+test('Salud en la app: con historial se pintan el puntaje, los 4 pilares y como máximo 3 consejos', () => {
+  const ctx = app({ cuentas: cuentas(3000000), ingresosFijos: ingresosEn(2000000, ultimosN(3)), ...gastosEn(1500000, ultimosN(3)), misDeudas: yoDebo(100000) });
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ctx.renderHealthScore();
+  const h = String(dom.el('health-score-card').innerHTML);
+  assert.equal((h.match(/class="inicio-pilar /g) || []).length, 4);
+  assert.match(h, /health-ring/);
+  assert.ok((h.match(/class="inicio-tip /g) || []).length + (h.match(/inicio-tip-accion/g) || []).length <= 3 * 2);
+  assert.doesNotMatch(h, /inicio-salud-runway/, 'el runway vive solo en el pilar Liquidez');
 });
 
 /* ================= P6: conciliación («¿por qué cambió mi patrimonio?») ================= */
@@ -997,25 +1011,96 @@ test('B1. calcLiquidez expone neta (lo ajeno de la tarjeta lo pagan) y netaPeorC
   assert.ok(l.netaPeorCaso <= l.neta + 1e-9, 'el peor caso nunca supera a la neta');
 });
 
-test('B3. con saldos pero sin historial la tarjeta de Salud dice «Sin base», no «Regular»', () => {
+test('B3. con saldos pero sin historial la tarjeta de Salud dice «Empezando», sin puntaje ni «Regular»', () => {
   const ctx = app({ cuentas: cuentas(500000) });
   const el = { innerHTML: '', style: {} };
   ctx.document.getElementById = id => id === 'health-score-card' ? el : null;
   ctx.renderHealthScore();
-  assert.ok(el.innerHTML.includes('Sin base'));
+  assert.ok(el.innerHTML.includes('Empezando'));
+  assert.ok(el.innerHTML.includes('inicio-estado-neutro'));
   assert.ok(!el.innerHTML.includes('Regular'));
+  assert.ok(!el.innerHTML.includes('health-ring'));
 });
 
-test('P1. calcEstadoSituacion marca «serio» solo en presión/crisis y la franja se pinta bajo el hero', () => {
+test('Saldo inicial gastado sin ingresos registrados: estado neutro, no «Estable», y ninguna conclusión de déficit', () => {
+  // Escenario de mejoras.md §3: 2.000.000 de saldo inicial (apertura) y 2.000.000 gastados en dos días, sin ingresos anotados.
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const ctx = app({
+    cuentas: cuentas(0),
+    movimientos: [{ id: 'a1', tipo: 'apertura', clase: 'ajuste', monto: 2000000, fecha: hoyStr, desc: 'Saldo inicial' }],
+    gastosVar: [{ id: 'g1', fecha: hoyStr, monto: 2000000, cat: 'Otro', desc: 'Arriendo' }],
+    patrimonioHistorial: [{ fecha: hoyStr, valor: 0, valorVisible: 0, montoBase: 2000000 }],
+  });
+  assert.equal(ctx.Periodo.ingresosDelMes(mesAct).total, 0, 'un saldo inicial no es un ingreso del mes');
+  const sit = ctx._situacion();
+  assert.equal(sit.sinBase, true);
+  assert.equal(ctx.calcSinBase(), true);
+  const est = ctx.Salud.estado(sit);
+  assert.equal(est.id, 'inicial');
+  assert.notEqual(est.id, 'estable');
+  assert.equal(ctx.Periodo.balanceEvaluable(ctx.Periodo.balanceDelMes(mesAct)), false, 'gastos sin ingresos anotados: mes sin evaluar');
+  const r = ctx.calcHealthScore();
+  assert.ok(!r.tips.some(t => /gastando más de lo que ingresas/.test(t)));
+  assert.ok(r.tips.some(t => t.includes('Registra tus ingresos y gastos')));
+});
+
+test('Un mes con gastos y sin ingresos anotados no es «déficit»: ni racha, ni flujo, ni plan de deudas', () => {
+  const ctx = app({ cuentas: cuentas(1000000), ...gastosEn(1500000, ultimosN(3)) });
+  assert.equal(ctx.Periodo.rachaDeficit(mesAct, 6).meses, 0);
+  assert.deepEqual(Array.from(ctx._situacion().balances), []);
+  assert.equal(ctx._balancePromedioReciente(), null);
+  const f = ctx.Periodo.resumenFlujo(6, mesAct);
+  assert.equal(f.deficit, 0); assert.equal(f.conDatos, 0);
+});
+
+test('Los consejos ya no enseñan a usar la app ni a endeudarse: sin «registra las categorías» y «sin deudas» es favorable', () => {
+  const r = score({ cuentas: cuentas(3000000), ingresosFijos: ingresosEn(2000000, ultimosN(3)), ...gastosEn(1000000, ultimosN(3)), gastosVar: [{ id: 'g', fecha: mesAct + '-02', monto: 10000, cat: 'Otro', desc: 'x' }] });
+  assert.ok(!r.tips.some(t => /categor/i.test(t)));
+  assert.ok(!r.tips.some(t => /endeud|préstamo|crédito/i.test(t)));
+  const ctx = app({ cuentas: cuentas(3000000) });
+  const d = ctx.Salud.pilares(ctx._situacion()).find(p => p.id === 'deuda');
+  assert.equal(d.nivel, 'verde');
+});
+
+test('P1. calcEstadoSituacion marca «serio» solo en presión/crisis; la franja bajo el hero ya no existe (un solo estado, en la tarjeta de Salud)', () => {
   const crisis = app({ cuentas: cuentas(0), misDeudas: yoDebo(900000) });
   const e = crisis.calcEstadoSituacion();
   assert.ok(e && e.serio, 'patrimonio negativo y sin liquidez → serio');
-  const el = { hidden: true, innerHTML: '', className: '' };
-  crisis.document.getElementById = id => id === 'inicio-franja-estado' ? el : null;
-  crisis.renderFranjaEstado();
-  assert.equal(el.hidden, false);
-  assert.ok(el.innerHTML.includes(e.etiqueta));
+  assert.equal(typeof crisis.renderFranjaEstado, 'undefined');
   assert.equal(app({}).calcEstadoSituacion(), null, 'sin datos no hay estado');
+});
+
+test('Análisis: gastos sin ingresos anotados → balance neutro («—», sin rojo) y ventana corta de patrimonio sin juicio ni causa', () => {
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('cobros.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), MOD('analisis.js')], { permissive: true });
+  Object.assign(ctx.S, {
+    cuentas: cuentas(0),
+    movimientos: [{ id: 'a1', tipo: 'apertura', clase: 'ajuste', monto: 2000000, fecha: hoyStr, desc: 'Saldo inicial' }],
+    gastosVar: [{ id: 'g1', fecha: hoyStr, monto: 2000000, cat: 'Otro', desc: 'Arriendo' }],
+    patrimonioHistorial: [{ fecha: mesAct + '-01', valor: 2000000, valorVisible: 2000000, montoBase: 2000000 }, { fecha: hoyStr, valor: 0, valorVisible: 0 }],
+  });
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ['analisis-balance-hero', 'an-patrimonio-chart'].forEach(id => dom.el(id));
+  ctx.renderAnalisis();
+  const hero = dom.el('analisis-balance-hero');
+  assert.match(String(hero.className), /an-hero-neu/, 'sin ingresos registrados no hay déficit: tono neutro');
+  const h = String(hero.innerHTML);
+  assert.doesNotMatch(h, /c-red/); assert.match(h, /—/); assert.doesNotMatch(h, /−|-\$/);
+  assert.match(h, /no se puede calcular el balance/);
+  const pat = String(dom.el('an-patrimonio-chart').innerHTML);
+  if (pat) { assert.doesNotMatch(pat, /c-red/); assert.doesNotMatch(pat, /causa principal/); }
+});
+
+test('irConsejo: «pantalla/detalle» abre la pantalla y el sitio exacto (cuenta Nu, pestaña de Préstamos); sin detalle solo la pantalla', () => {
+  const ctx = app({ cuentas: cuentas(1) });
+  const llamadas = [];
+  ctx.document.getElementById = id => (/^screen-/.test(id) ? {} : null);
+  ctx.showScreen = n => llamadas.push('pantalla:' + n);
+  ctx.abrirCuenta = f => llamadas.push('cuenta:' + f);
+  ctx.cambiarTabPrestamos = t => llamadas.push('tab:' + t);
+  ctx._irADestino('cuentas/nu'); ctx._irADestino('prestamos/yo-debo'); ctx._irADestino('gastos'); ctx._irADestino('prestamos/otra');
+  assert.deepEqual(Array.from(llamadas), ['pantalla:cuentas', 'cuenta:nu', 'pantalla:prestamos', 'tab:yo-debo', 'pantalla:gastos', 'pantalla:prestamos']);
 });
 
 test('B5. resumenFlujo cuenta superávit/déficit solo en meses con movimiento y acumula', () => {
@@ -1377,6 +1462,23 @@ test('fechaAgotamiento (P4): cuándo se acaba la plata disponible al ritmo actua
   assert.equal(Salud.fechaAgotamiento(0, -1, '2026-11-05'), null);
   assert.equal(Salud.fechaAgotamiento(5, 100, '2026-11-05'), null);
   assert.equal(Salud.fechaAgotamiento(-5, -100, '2026-11-05'), null);
+});
+
+test('Sin base el usuario con deuda sí ve su situación: patrimonio negativo no se oculta tras «Empezando»', () => {
+  const sit = base({ patrimonio: -1e6, liquidezNeta: 5e6, balances: [], tendencia: null, gastoTipico: 0, mesesCubiertos: null, mesesReferencia: 0 });
+  assert.equal(Salud.tieneBase(sit), false);
+  assert.equal(Salud.estado(sit).id, 'atencion');
+  assert.equal(Salud.estado(base({ balances: [], tendencia: null, gastoTipico: 0, mesesCubiertos: null, mesesReferencia: 0 })).id, 'inicial');
+});
+
+test('tieneBase: dos meses completos, o un mes con 30 días de uso; un «mes» de tres días de uso no alcanza', () => {
+  const m = o => ({ tendencia: null, balances: [], gastoTipico: 1, ...o });
+  assert.equal(Salud.tieneBase(m({ mesesReferencia: 2, diasDeUso: 10 })), true);
+  assert.equal(Salud.tieneBase(m({ mesesReferencia: 1, diasDeUso: 9 })), false);
+  assert.equal(Salud.tieneBase(m({ mesesReferencia: 1, diasDeUso: 31 })), true);
+  assert.equal(Salud.tieneBase(m({ mesesReferencia: 1, diasDeUso: null })), true);
+  assert.equal(Salud.tieneBase(m({ mesesReferencia: 0 })), false);
+  assert.equal(Salud.tieneBase({ tendencia: { dias: 90 } }), true);
 });
 
 /* ================= Salud.puntaje: puro, corre en Node sin S ni DOM ================= */

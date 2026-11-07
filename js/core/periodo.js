@@ -476,6 +476,12 @@ const Periodo = (() => {
     return { saldoInicial, final: saldo, limite, puntos, minimo, primerDeficit };
   }
 
+  // ¿Se puede juzgar el balance de un mes (`b` = balanceDelMes)? Solo si tiene ingresos registrados. Un mes con gastos y SIN ningún ingreso
+  // anotado no es un déficit: lo más probable es que el usuario no registró lo que recibió (o que gastó de lo que ya tenía ahorrado, p. ej.
+  // un saldo inicial, que NO es un ingreso del mes). Ausencia de registros ≠ situación negativa: ese mes queda «sin evaluar», ni déficit ni
+  // superávit. Lo usan la racha de déficit, el resumen de flujo, los pilares de Salud y el plan de deudas (una sola definición).
+  const balanceEvaluable = b => !!b && b.ingresos.total > 0;
+
   // Racha de déficit: cuántos meses COMPLETOS seguidos, terminando en el mes anterior a `mes`, cerraron con balance negativo (gastaste
   // más de lo que entró, flujo de caja operativo, sin rendimientos: la misma base de Salud y del cierre de mes). Un mes sin ningún
   // movimiento ni ingreso ni gasto no es déficit ni superávit: corta la racha (no hay nada que juzgar). `max` limita cuántos meses
@@ -488,7 +494,8 @@ const Periodo = (() => {
       const b = balanceDelMes(m, estado);
       // Se mide el balance RECURRENTE: un mes de déficit solo por una compra grande aislada no es un hábito de gastar más de lo que
       // entra (el golpe ya lo cuentan la liquidez y el runway). Un mes con solo la compra grande y nada más no tiene qué juzgar.
-      if (!(b.ingresos.total > 0 || b.gastos.recurrenteTotal > 0) || b.balanceRecurrente >= 0) break;
+      // Un mes SIN ingresos registrados tampoco: gastos sin ingresos anotados es información que falta, no un déficit (ver balanceEvaluable).
+      if (!balanceEvaluable(b) || b.balanceRecurrente >= 0) break;
       balances.push({ mes: m, balance: b.balanceRecurrente });
     }
     return { meses: balances.length, balances, acumulado: balances.reduce((a, x) => a + x.balance, 0) };
@@ -528,13 +535,15 @@ const Periodo = (() => {
   }
 
   // Resumen de flujo de los últimos `n` meses (el actual incluido): ingreso, gasto y balance de cada uno, cuántos cerraron en superávit o déficit
-  // y el acumulado. Un mes sin ningún movimiento no cuenta ni como superávit ni como déficit.
+  // y el acumulado. Un mes sin ningún movimiento, o con gastos pero sin ingresos registrados, no cuenta ni como superávit ni como déficit.
   function resumenFlujo(n, hasta, estado) {
     const meses = ultimosMeses(n, hasta).map(m => {
       const b = balanceDelMes(m, estado);
-      return { mes: m, ingresos: b.ingresos.total, gastos: b.gastos.total, balance: b.balance, conDatos: b.ingresos.total > 0 || b.gastos.total > 0 };
+      return { mes: m, ingresos: b.ingresos.total, gastos: b.gastos.total, balance: b.balance, conDatos: b.ingresos.total > 0 || b.gastos.total > 0, evaluable: balanceEvaluable(b) };
     });
-    const c = meses.filter(x => x.conDatos);
+    // Los totales de superávit/déficit/acumulado solo cuentan meses EVALUABLES (con ingresos registrados): un mes con gastos y sin
+    // ingresos anotados no es un «déficit» (ver balanceEvaluable). `conDatos` (del resultado) = cuántos meses se pudieron evaluar.
+    const c = meses.filter(x => x.evaluable);
     return { meses, conDatos: c.length, superavit: c.filter(x => x.balance >= 0).length, deficit: c.filter(x => x.balance < 0).length, acumulado: c.reduce((a, x) => a + x.balance, 0) };
   }
 
@@ -550,7 +559,7 @@ const Periodo = (() => {
   }
 
   return { gastoPromedioPorCategoria, ritmoPresupuesto, resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
-           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosFijosSinDia, conciliar, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, rachaDeficit, VENTANA_REFERENCIA_MESES };
+           pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosFijosSinDia, conciliar, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, balanceEvaluable, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.

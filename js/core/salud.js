@@ -21,7 +21,11 @@
      balances          balance recurrente de los últimos meses completos, del más reciente al más viejo: [number]
      deficitMesActual  true si lo gastado en el mes en curso ya supera el ingreso de referencia (el mes cierra en déficit pase lo que pase)
      tendencia         resultado de tendenciaPatrimonio (o null)
+     mesesReferencia   cuántos meses completos con datos (gasto o ingreso) hay detrás de los «típicos» (opcional)
+     diasDeUso         días desde el primer punto del historial de patrimonio (null si no hay; opcional)
      sinDatos          true si no hay nada que evaluar todavía
+   «Base» (tieneBase): hay con qué evaluar ahorro, flujo y tendencia. Sin base (usuario nuevo) se evalúa solo lo que no necesita historial
+   —deudas, liquidez negativa, patrimonio negativo— y lo demás se dice «sin evaluar»: la falta de registros no es una situación negativa.
    Los límites salen de UMBRALES (js/core/umbrales.js): se pasan como segundo argumento o se leen del global/CommonJS.
    ================================================================ */
 const Salud = (() => {
@@ -29,6 +33,19 @@ const Salud = (() => {
   const _U = () => (typeof UMBRALES !== 'undefined' ? UMBRALES : (typeof require === 'function' ? require('./umbrales.js') : null));
   const NIVELES = ['verde', 'ambar', 'rojo']; // de menos a más grave: 'sin' (sin datos) queda fuera del orden
   const peor = (a, b) => NIVELES.indexOf(a) >= NIVELES.indexOf(b) ? a : b;
+
+  // ¿Hay base para juzgar el ahorro, el flujo y la tendencia? Sí con una tendencia de patrimonio (≥ 30 días de historial), con 2 meses
+  // completos con datos, o con 1 mes completo y 30 días de uso. Un solo mes «completo» que en realidad fueron tres días de uso (se empezó a
+  // usar la app el 29) NO alcanza: su gasto típico sería ruido. Sin `mesesReferencia` (las pruebas y quien arma `m` a mano) se infiere de
+  // si hay gasto típico o balances. `diasDeUso` null = no se sabe: no bloquea.
+  function tieneBase(m, umbrales) {
+    const H = ((umbrales || _U()).salud || {}).historial || { mesesCompletos: 2, minDias: 30 };
+    if (m.tendencia) return true;
+    const meses = typeof m.mesesReferencia === 'number' ? m.mesesReferencia : ((m.gastoTipico > 0 || (m.balances || []).length) ? 1 : 0);
+    if (meses >= H.mesesCompletos) return true;
+    if (meses >= 1) return m.diasDeUso == null || m.diasDeUso >= H.minDias;
+    return false;
+  }
 
   const _d = f => { const [y, m, d] = String(f).split('T')[0].split('-').map(Number); return Date.UTC(y, m - 1, d); };
   const _dias = (a, b) => Math.round((_d(b) - _d(a)) / 86400000);
@@ -84,6 +101,7 @@ const Salud = (() => {
 
   function pilares(m, umbrales) {
     const U = umbrales || _U(), P = U.salud.pilares;
+    const sb = !tieneBase(m, U);
     const out = [];
 
     // 1) Liquidez: meses de gasto cubiertos con la liquidez NETA (lo que se puede usar ya, después de deudas).
@@ -91,6 +109,8 @@ const Salud = (() => {
       let nivel = 'sin', texto = 'Registra un mes completo de gastos para medirla', valor = null;
       if (m.liquidezNeta != null && m.liquidezNeta <= 0 && (m.deudaPropia > 0 || m.mesesCubiertos != null || m.activosLiquidos > 0)) {
         nivel = 'rojo'; texto = 'Tus deudas superan tu plata disponible'; valor = 0;
+      } else if (sb && m.mesesCubiertos != null) {
+        texto = 'Aún no hay historial para medirla'; // sin base el gasto típico es ruido: no se mide
       } else if (m.mesesCubiertos != null) {
         valor = m.mesesCubiertos;
         nivel = m.mesesCubiertos < U.runway.critico ? 'rojo' : m.mesesCubiertos < U.runway.atencion ? 'ambar' : 'verde';
@@ -119,7 +139,7 @@ const Salud = (() => {
 
     // 3) Flujo: de los últimos 3 meses completos, cuántos cerraron en déficit.
     {
-      const b = (m.balances || []).slice(0, P.flujo.meses);
+      const b = sb ? [] : (m.balances || []).slice(0, P.flujo.meses);
       let nivel = 'sin', texto = 'Aún no hay meses completos para medirlo', valor = null;
       if (b.length) {
         const n = b.filter(x => x < 0).length;
@@ -144,23 +164,29 @@ const Salud = (() => {
     return out;
   }
 
-  // Estado global. Prioridad: crisis > presión > atención > creciendo > estable. null si no hay nada que evaluar.
+  // Estado global. Prioridad: crisis > presión > atención > inicial > creciendo > estable. null si no hay nada que evaluar.
   //   crisis    patrimonio < 0 y (liquidez neta ≤ 0 o el último mes cerró en déficit)
   //   presión   liquidez neta ≤ 0 con patrimonio positivo, o 2+ meses seguidos de déficit con menos de 1 mes de reservas
   //   atención  patrimonio negativo (aunque mejore: no se celebra), patrimonio cayendo, o reservas de 1 a 3 meses, o déficit este mes
+  //   inicial   sin base (ver tieneBase) y sin deudas ni patrimonio negativo: neutro, no se afirma ni «estable» ni un problema
   //   creciendo patrimonio subiendo y balance ≥ 0 en 2 de los últimos 3 meses
   //   estable   patrimonio plano (±3 %) y reservas ≥ 3 meses; lo demás con datos, también
   function estado(m, umbrales) {
     const U = umbrales || _U();
     if (m.sinDatos) return null;
     const dir = _direccion(m.tendencia, m, U.salud.pilares.tendencia);
-    const ultimoDeficit = (m.balances || [])[0] < 0;
-    const rachaMeses = (m.racha && m.racha.meses) || 0;
-    const reservas = m.mesesCubiertos;
+    const sb = !tieneBase(m, U);
+    // Sin base no se juzga el flujo: un «déficit» de los primeros días puede ser solo no haber anotado los ingresos.
+    const ultimoDeficit = !sb && (m.balances || [])[0] < 0;
+    const rachaMeses = sb ? 0 : ((m.racha && m.racha.meses) || 0);
+    const reservas = sb ? null : m.mesesCubiertos;
     let id;
     if (m.patrimonio < 0 && (m.liquidezNeta <= 0 || ultimoDeficit)) id = 'crisis';
     else if ((m.patrimonio > 0 && m.liquidezNeta <= 0) || (rachaMeses >= U.salud.rachaDeficitMeses.aviso && reservas != null && reservas < U.runway.critico)) id = 'presion';
-    else if (m.patrimonio < 0 || dir === 'cae' || (reservas != null && reservas < U.runway.atencion) || m.deficitMesActual) id = 'atencion';
+    else if (m.patrimonio < 0) id = 'atencion';
+    // Usuario nuevo, sin deudas ni patrimonio negativo: no hay con qué evaluar. Ni «Estable» (afirmaría algo que no sabemos) ni «Atención».
+    else if (sb) id = 'inicial';
+    else if (dir === 'cae' || (reservas != null && reservas < U.runway.atencion) || m.deficitMesActual) id = 'atencion';
     else if (dir === 'sube' && (m.balances || []).slice(0, 3).filter(x => x >= 0).length >= 2) id = 'creciendo';
     else id = 'estable';
     return Object.assign({ id }, ESTADOS[id], { acciones: id === 'presion' || id === 'crisis' ? accionesUrgentes(m) : [] });
@@ -169,6 +195,7 @@ const Salud = (() => {
   const ESTADOS = {
     creciendo: { etiqueta: 'Creciendo', tono: 'verde', frase: 'Tu patrimonio va en aumento y tus cuentas cierran en positivo.' },
     estable:   { etiqueta: 'Estable',   tono: 'verde', frase: 'Tus finanzas están en equilibrio.' },
+    inicial:   { etiqueta: 'Empezando', tono: 'neutro', frase: 'Aún no hay historial suficiente para evaluar tus finanzas. Sigue registrando tus movimientos.' },
     atencion:  { etiqueta: 'Atención',  tono: 'ambar', frase: 'Hay señales que conviene mirar a tiempo.' },
     presion:   { etiqueta: 'Presión',   tono: 'rojo',  frase: 'Lo urgente primero.' },
     crisis:    { etiqueta: 'Crisis',    tono: 'rojo',  frase: 'Lo urgente primero.' },
@@ -244,7 +271,12 @@ const Salud = (() => {
   function puntaje(e){
   const R = _R(), U0 = _U();
   const fmt = e.fmt || (n => String(n));
-  const { patrimonio, gvMes, gastosMes, deudaTC, ingresoRef, liq, gastoRef, ingresoTipico, racha } = e;
+  const { patrimonio, gastosMes, deudaTC, ingresoRef, liq } = e;
+  // Sin base (usuario nuevo, ver tieneBase) no se concluye nada de ahorro, flujo ni tendencia: el «gasto típico» sería de tres días de uso y
+  // el «déficit» solo la falta de ingresos anotados. Esas medidas se anulan; lo que no necesita historial (deudas, liquidez negativa,
+  // lo prestado) se evalúa igual.
+  const sinBase = !!e.sinBase;
+  const gastoRef = sinBase ? 0 : e.gastoRef, ingresoTipico = sinBase ? 0 : e.ingresoTipico, racha = sinBase ? { meses: 0 } : e.racha;
   let score = 50;
   // Cada consejo lleva su TIPO explícito (no se deduce del texto):
   //   ok         → algo ya cumplido o bien hecho (check verde)
@@ -316,8 +348,10 @@ const Salud = (() => {
       : (liq.tcPropia <= 0 && liq.ajeno <= 0) ? 'Lo que debes a personas supera'
       : 'Tus deudas y la plata ajena que guardas superan';
     avisoDeudaTC = liq.tcPropia > 0;
-    if(liquidoConCDTs >= 0){ score -= 8; add(`${quien} la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs.`,'aviso','prestamos'); }
-    else { score -= 15; add(`${quien} la plata que tienes disponible.`,'alerta','prestamos'); }
+    // El botón lleva a donde se paga esa deuda: la tarjeta, la pestaña «Yo debo» o (si es mezcla) Préstamos.
+    const irDeuda = (liq.yoDebo <= 0 && liq.ajeno <= 0) ? 'tarjetas' : (liq.tcPropia <= 0 && liq.ajeno <= 0) ? 'prestamos/yo-debo' : 'prestamos';
+    if(liquidoConCDTs >= 0){ score -= 8; add(`${quien} la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs.`,'aviso',irDeuda); }
+    else { score -= 15; add(`${quien} la plata que tienes disponible.`,'alerta',irDeuda); }
   } else if((gastosMes > 0 || gastoRef > 0) && liquidoConCDTs > 0){
     // Liquidez justo en cero y solo CDTs sin vencer: el ahorro existe pero no está libre.
     score -= 8; add('Tu liquidez disponible es muy baja — tus ahorros están en CDTs, no en cuentas libres.','aviso','cuentas');
@@ -348,16 +382,16 @@ const Salud = (() => {
   if(prest > 0){
     if(liquidoReal <= 0){
       // Sin liquidez libre y con plata prestada sin cobrar — caso crítico (la liquidez puede estar en cero por lo prestado o por lo que debes)
-      score -= 15; add('No te queda liquidez libre y tienes plata prestada sin cobrar — no tienes nada disponible para emergencias.','alerta','prestamos');
+      score -= 15; add('No te queda liquidez libre y tienes plata prestada sin cobrar — no tienes nada disponible para emergencias.','alerta','prestamos/me-deben');
       ratioPrest = Infinity;
     } else {
       ratioPrest = prest / liquidoReal;
       if(ratioPrest > U.prestadoSobreLiquidez.vulnerable){
-        score -= 18; add('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.','alerta','prestamos');
+        score -= 18; add('Tienes más del doble de tu liquidez prestada — tu situación financiera es muy vulnerable.','alerta','prestamos/me-deben');
       } else if(ratioPrest > U.prestadoSobreLiquidez.comprometido){
-        score -= 13; add('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.','alerta','prestamos');
+        score -= 13; add('Tienes más plata prestada que tu liquidez disponible — queda poco para emergencias.','alerta','prestamos/me-deben');
       } else if(ratioPrest > U.prestadoSobreLiquidez.vigilar){
-        score -= 8; add('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).','aviso','prestamos');
+        score -= 8; add('Tienes mucho dinero prestado sin cobrar (>40% de tu liquidez).','aviso','prestamos/me-deben');
       }
       // ratioPrest <= 0.4: situación sana, no penalizar
     }
@@ -383,7 +417,8 @@ const Salud = (() => {
     else if(ratioGasto <= U.gastoSobreIngreso.ajustado) score += 5;
     else if(ratioGasto > U.gastoSobreIngreso.deficit && !enDeficit){ score -= 10; enDeficit = true; add('Vienes gastando más de lo que ingresas.','aviso','gastos'); }
   }
-  if(!enDeficit && ingresoRef > 0 && gastosMes > ingresoRef){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso','gastos'); }
+  // El mes en curso solo se juzga con base: en el primer mes un ingreso aún sin anotar haría ver un «déficit» que no existe.
+  if(!sinBase && !enDeficit && ingresoRef > 0 && gastosMes > ingresoRef){ score -= 10; add('Por ahora estás gastando más de lo que ingresas.','aviso','gastos'); }
 
   // e) CDTs activos (ahorro estructurado)
   // Si el riesgo de prestado es alto (ratio > 1) o la liquidez es negativa, el CDT no compensa — bonus reducido a +3.
@@ -395,15 +430,19 @@ const Salud = (() => {
     const cdtBonusMax = (ratioPrest > U.prestadoSobreLiquidez.comprometido || liquidoReal < 0) ? 3 : 10;
     const pesoCDT = liquidoConCDTs > 0 ? cdtVal / liquidoConCDTs : 0;
     score += Math.round(cdtBonusMax * Math.min(1, pesoCDT / U.cdtPesoCompleto));
-  } else if(tieneAlgo && liquidoReal > 0 && deudaTC <= 0 && ratioPrest <= U.prestadoSobreLiquidez.comprometido && (gastoRef <= 0 || liquidoReal >= gastoRef * U.fondoMeses.minimo)){
-    // Solo se sugiere con ahorros que sobran: fondo de emergencia cubierto (≥ 3 meses de gasto típico), sin deuda de tarjeta propia
-    // y sin tener prestado más de lo que tienes disponible (junto a «tu situación es muy vulnerable» sonaba contradictorio).
-    add('Considera poner algo en un CDT para hacer crecer tus ahorros.','sugerencia','cuentas');
+  } else if(tieneAlgo && gastoRef > 0 && deudaTC <= 0 && liq.yoDebo <= 0 && ratioPrest <= U.prestadoSobreLiquidez.comprometido){
+    // Un CDT bloquea la plata (no cuenta como liquidez), así que solo se sugiere lo que SOBRA por encima del fondo mínimo: sin deudas (ni de
+    // tarjeta ni con personas: pagarlas rinde más que cualquier CDT), sin tener prestado más de lo que tienes disponible, y con gasto típico
+    // medido (sin él no se sabe cuánto es «de sobra»). Antes se sugería también sin gasto típico, y poner en CDT parte de la reserva la dejaba
+    // por debajo de 3 meses y disparaba el aviso contrario. Lleva a la cuenta Nu, donde se crea el CDT.
+    const excedente = liquidoReal - gastoRef * U.fondoMeses.minimo;
+    if(excedente >= gastoRef * U.cdtExcedenteMeses)
+      add(`Te sobran ${fmt(Math.floor(excedente))} por encima de tus ${U.fondoMeses.minimo} meses de reserva: podrías ponerlos en un CDT para que crezcan.`,'sugerencia','cuentas/nu');
   }
 
   // f) y g) (≥ 2 gastos fijos configurados: +5; una sola categoría en gastos variables: −5) ya NO puntúan: miden cómo usas la app, no
-  // tu salud financiera, y mezclaban dos cosas distintas en un mismo número. La sugerencia de categorías se conserva como consejo.
-  if(gvMes > 0 && e.catsCount <= 1) add('Registra las categorías de tus gastos para mejor control.','sugerencia','gastos');
+  // tu salud financiera. Tampoco se aconseja ya «registra las categorías de tus gastos»: eso es configurar la app (Configuración), no mejorar
+  // tus finanzas; lo que sí aporta es registrar los gastos, y eso lo cubre el consejo unificado de más abajo.
 
   // Una compra grande reciente (marcada por el usuario) que dejó las reservas bajas: no resta puntos propios (la liquidez baja y el
   // runway ya lo cuentan), pero se nombra para que la causa no sea un misterio y se sepa qué hacer: reconstruir el fondo.
@@ -413,20 +452,21 @@ const Salud = (() => {
     add(`Tu compra grande reciente (${_mayor.desc || 'sin nombre'}, ${fmt(_mayor.monto||0)}) pesa en tus reservas: antes de otro gasto grande, reconstruir tu fondo es la prioridad.`,'sugerencia','cuentas');
   }
 
-  // Sin gasto típico no se puede medir cuántos meses cubren tus reservas: se dice en vez de quedarse en un «Regular» mudo.
-  if(tieneAlgo && liquidoReal > 0 && gastoRef <= 0) add('Cuando completes un mes de gastos podremos medir cuántos meses cubren tus reservas.','sugerencia');
-
-  // Sin ingresos registrados no se puede evaluar la disciplina de gasto ni el endeudamiento (los ratios b y d se saltan):
-  // no puede salir «Excelente», y se avisa igual que el balance de Análisis.
+  // Sin ingresos registrados no se puede evaluar la disciplina de gasto ni el endeudamiento (los ratios b y d se saltan): no puede salir
+  // «Excelente». Y sin gasto típico (o sin base) no se puede medir cuántos meses cubren tus reservas. Las dos carencias se dicen con UN
+  // solo consejo, corto, que lleva a donde falta el dato: los ingresos (Análisis) o, si ya hay, los gastos.
   const sinIngresos = ingresoRef <= 0 && gastosMes > 0;
-  if(sinIngresos){
-    score = Math.min(score, 74);
-    add('Registra tus ingresos para que la calificación pueda evaluar tus gastos y deudas.','sugerencia','analisis');
+  if(sinIngresos) score = Math.min(score, 74);
+  const sinHistorial = tieneAlgo && (sinBase || (liquidoReal > 0 && gastoRef <= 0));
+  if(sinIngresos || sinHistorial){
+    // El texto no acusa lo que no falta: si ya hay ingresos, se pide seguir registrando; si no hay ninguno, se piden.
+    add(ingresoRef <= 0 ? 'Registra tus ingresos y gastos para una evaluación más precisa.' : 'Sigue registrando tus ingresos y gastos: con un mes completo la evaluación será más precisa.','sugerencia', ingresoRef <= 0 ? 'analisis/ingresos' : 'gastos');
   }
   score = Math.max(0, Math.min(100, score));
   if(!consejos.length){
+    // Sin alertas ni tareas pendientes: se dice, sin inventar una recomendación genérica.
     if(score >= 80) add('¡Excelente! Tus finanzas están muy bien.','ok');
-    else if(score >= 60) add('Vas bien — diversifica tus ahorros o reduce gastos variables para subir tu puntaje.','sugerencia');
+    else if(score >= 60) add('Sin alertas por ahora. Sigue así.','ok');
     else if(tieneAlgo) add('Hay espacio para mejorar: revisa tus gastos y ahorros para subir tu puntaje.','sugerencia','gastos');
     else add('Registra más movimientos para un análisis más preciso.','sugerencia');
   }
@@ -434,10 +474,10 @@ const Salud = (() => {
   const ORDEN = { alerta: 0, aviso: 1, sugerencia: 2, ok: 3 };
   consejos.sort((a, b) => ORDEN[a.tipo] - ORDEN[b.tipo]);
   const tips = consejos.map(c => c.texto); // los textos, para quien solo necesita la lista
-  return { score, tips, consejos, sinDatos: !tieneAlgo, mesesCubiertos, rachaDeficit: rachaMeses };
+  return { score, tips, consejos, sinDatos: !tieneAlgo, sinBase, mesesCubiertos, rachaDeficit: rachaMeses };
 }
 
-  return { puntaje, simular, fraseTendencia, pilares, estado, tendenciaPatrimonio, mesesCayendo, fechaAgotamiento, accionesUrgentes, ESTADOS };
+  return { puntaje, simular, fraseTendencia, pilares, estado, tieneBase, tendenciaPatrimonio, mesesCayendo, fechaAgotamiento, accionesUrgentes, ESTADOS };
 })();
 if (typeof window !== 'undefined') window.Salud = Salud;
 if (typeof module !== 'undefined' && module.exports) module.exports = Salud;

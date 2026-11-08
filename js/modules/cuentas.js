@@ -56,16 +56,39 @@ function abrirCuenta(fuente) {
   const pantalla = CuentaPantallas[d.tipo]; // clase de cuenta con pantalla propia (ahorro): su archivo la registra
   if (d.pantallaPropia && !pantalla) return;
   cuentaActual = fuente;
+  _volverA = d.archivada ? 'archivadas' : 'selector';
   _reiniciarPantallasCuenta();
   _showCuentasPanel(pantalla ? pantalla.panel : 'cuentas-detalle-simple');
   renderDetalleCuenta(fuente);
   document.getElementById('scrollArea').scrollTop = 0;
 }
+// Desde dónde se abrió el detalle: una cuenta archivada se abre desde la pantalla «Cuentas archivadas» y «volver» regresa allí.
+let _volverA = 'selector';
 function volverSelector() {
+  const aArchivadas = _volverA === 'archivadas' && _cuentasSelector({ archivadas: true }).length > 0;
+  _volverA = 'selector';
   cuentaActual = '';
   _reiniciarPantallasCuenta();
+  if (aArchivadas) { abrirArchivadas(); return; }
   _showCuentasPanel('cuentas-selector');
   document.getElementById('scrollArea').scrollTop = 0;
+}
+
+// Pantalla aparte con las cuentas archivadas (el selector solo muestra un botón con su cantidad, para no ver siempre lo que ya no se usa).
+function renderArchivadas() {
+  const el = document.getElementById('archivadas-lista');
+  if (!el) return;
+  const arch = _cuentasSelector({ archivadas: true });
+  el.innerHTML = arch.length
+    ? html`<div class="cuentas-selector-grid">${arch.map(d => _cuentaSelectorHtml({ ...d, archivada: true }))}</div>`
+    : html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-txt">No tienes cuentas archivadas.</div></div>`;
+}
+function abrirArchivadas() {
+  _volverA = 'selector';
+  cuentaActual = '';
+  renderArchivadas();
+  _showCuentasPanel('cuentas-archivadas');
+  const sa = document.getElementById('scrollArea'); if (sa) sa.scrollTop = 0;
 }
 
 function renderDetalleCuenta(fuente) {
@@ -357,7 +380,7 @@ function renderSelectorCuentas(){
     return;
   }
   const tarjetas=cuentas;
-  el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<div class="sec-title ix-mt12">Archivadas</div><div class="cuentas-selector-grid cuentas-archivadas">${archivadas.map(d=>_cuentaSelectorHtml({...d,archivada:true}))}</div>`:''}`;
+  el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<button type="button" class="btn-cuentas-archivadas" ${raw(Events.attr('cuentas:abrirArchivadas'))}>Cuentas archivadas (${archivadas.length})<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>`:''}`;
 }
 function hexToRgb(hex){
   if(!hex||hex.length<7)return'96,176,240';
@@ -538,7 +561,7 @@ function _resetSheetNuevaCuenta(){
 
 function _showCuentasPanel(panelId){
   // Los paneles de cada cuenta con pantalla propia (Nu) los aporta su registro en CuentaPantallas.
-  const panels=['cuentas-selector','cuentas-detalle-simple'].concat(...Object.values(CuentaPantallas).map(p=>p.paneles||[]));
+  const panels=['cuentas-selector','cuentas-archivadas','cuentas-detalle-simple'].concat(...Object.values(CuentaPantallas).map(p=>p.paneles||[]));
   panels.forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.style.display = id===panelId ? '' : 'none';
@@ -1511,6 +1534,7 @@ Events.registerAll('cuentas', {
   selIconoNC,
   selTipoNC,
   alternarAhorroNC,
+  abrirArchivadas,
   selColorNC,
   abrirOnboarding,
   reactivarCuenta,
@@ -1568,6 +1592,13 @@ if (_selectorCuentasLista) _selectorCuentasLista.addEventListener('click', e => 
   const item = e.target.closest('[data-fuente]');
   if (item) abrirCuenta(item.dataset.fuente);
 });
+const _archivadasLista = document.getElementById('archivadas-lista');
+if (_archivadasLista) _archivadasLista.addEventListener('click', e => {
+  const item = e.target.closest('[data-fuente]');
+  if (item) abrirCuenta(item.dataset.fuente);
+});
+const _volverDeArchivadas = document.getElementById('btn-volver-archivadas');
+if (_volverDeArchivadas) _volverDeArchivadas.addEventListener('click', () => { _volverA = 'selector'; volverSelector(); });
 document.querySelectorAll('.btn-volver-selector').forEach(btn => {
   btn.addEventListener('click', volverSelector);
 });

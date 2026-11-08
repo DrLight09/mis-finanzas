@@ -2537,17 +2537,19 @@ describe('cuentas-colores-legibles', () => {
     assert.notEqual(app.colorCuenta(c), '#000000');
     assert.equal(c.color, '#000000');
   });
-  test('las archivadas salen en el selector como tarjetas abribles (con su fuente), y una cuenta sin movimientos no ofrece archivar', () => {
+  test('las archivadas no se ven en el selector (solo un botón con la cantidad); su pantalla aparte las lista como tarjetas abribles', () => {
     const app = loadApp([core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), (f => path.join(__dirname, '..', 'js', 'modules', f))('nu.js'), (f => path.join(__dirname, '..', 'js', 'modules', f))('cuentas.js')], { permissive: true });
     Object.assign(app.S, { libro: [], movimientos: [{ id: 'm', tipo: 'entrada', fuente: 'cuenta:b', monto: 5, fecha: '2026-10-01' }], encargos: [], cajitas: [],
       cuentas: [{ id: 'a', tipo: 'banco', nombre: 'A', saldo: 0 }, { id: 'b', tipo: 'banco', nombre: 'B', saldo: 0, archivada: true }] });
-    const el = { innerHTML: '' };
-    app.document.getElementById = id => (id === 'selector-cuentas-lista' ? el : { style: {}, setAttribute() {}, querySelector: () => null });
+    const sel = { innerHTML: '' }, lista = { innerHTML: '' };
+    app.document.getElementById = id => (id === 'selector-cuentas-lista' ? sel : id === 'archivadas-lista' ? lista : { style: {}, setAttribute() {}, querySelector: () => null });
     app.renderSelectorCuentas();
-    const out = String(el.innerHTML);
-    assert.ok(out.includes('Archivadas'));
-    assert.ok(/cuenta-card cuenta-card-archivada" data-fuente="cuenta:b"/.test(out), 'la archivada es una tarjeta con data-fuente');
+    const out = String(sel.innerHTML);
+    assert.ok(out.includes('Cuentas archivadas (1)'), 'botón con la cantidad');
+    assert.ok(!out.includes('data-fuente="cuenta:b"'), 'la archivada no se pinta en el selector');
     assert.ok(out.includes('data-fuente="cuenta:a"'));
+    app.renderArchivadas();
+    assert.ok(/cuenta-card cuenta-card-archivada" data-fuente="cuenta:b"/.test(String(lista.innerHTML)), 'la archivada es una tarjeta con data-fuente');
     assert.equal(app.cuentaSePuedeEliminar('a'), true);
   });
 });

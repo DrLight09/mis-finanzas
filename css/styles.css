@@ -2376,3 +2376,4 @@ button.inicio-pilar-accion{cursor:pointer;}
 .stat-span2{grid-column:span 2;}
 .stat-span3{grid-column:1 / -1;}
 .cuenta-card-archivada{opacity:.65;}
+.btn-cuentas-archivadas{width:100%;margin-top:8px;padding:11px 14px;display:flex;align-items:center;justify-content:space-between;background:none;border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text3);font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;}

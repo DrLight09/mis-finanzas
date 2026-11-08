@@ -689,11 +689,12 @@
                 class="stat-value c-amber" id="s-prest">$0</div></div>
             <div class="stat" id="s-cdt-tile"><div class="stat-label">CDTs</div><div
                 class="stat-value c-purple" id="s-cdt">$0</div></div>
+            <!-- Un recuadro por cada cuenta activa: lo pinta renderCuentasInicio() (core-state.js) desde S.cuentas. Va DENTRO de la
+                 misma cuadrícula (display:contents), así todos los recuadros se reparten en filas sin huecos. -->
+            <div id="inicio-cuentas" class="stat-contents"></div>
           </div>
           <div class="ix-s-disp-neto-tc" id="s-disp-neto-tc">
           </div>
-          <!-- Un recuadro por cada cuenta activa: lo pinta renderCuentasInicio() (core-state.js) desde S.cuentas -->
-          <div id="inicio-cuentas"></div>
           <div id="tc-deuda-card" style="display:none;"></div>
           <div class="sec-title">Gastos del mes</div>
           <div class="grid2 ix-mb9">

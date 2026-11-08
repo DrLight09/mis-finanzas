@@ -2486,4 +2486,19 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
     const app = entorno({ cuentas: [{ id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
     assert.equal(app._descriptorCuenta('cuenta:efectivo').estilo, 'tarjeta');
   });
+  test('Inicio: los recuadros de cuentas completan la fila de 3 sin huecos (el último se estira)', () => {
+    const casos = [[1, 0, ''], [2, 0, 'stat-span3'], [3, 0, 'stat-span2'], [4, 0, ''], [1, 1, 'stat-span3'], [2, 1, 'stat-span2']]; // [cuentas, hay ahorro, clase esperada del último]
+    for (const [n, ahorro, esperada] of casos) {
+      const app = entorno();
+      const cuentas = Array.from({ length: n }, (_, i) => ({ id: 'b' + i, tipo: 'banco', nombre: 'B' + i, saldo: 0, color: '#112233' }));
+      if (ahorro) { cuentas.pop(); cuentas.push({ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9 }); }
+      app.S.cuentas = cuentas;
+      const el = { innerHTML: '', querySelectorAll: () => [] };
+      app.document.getElementById = () => el;
+      app.renderCuentasInicio();
+      const clases = [...String(el.innerHTML).matchAll(/class="stat( stat-span\d)?"/g)].map(m => (m[1] || '').trim());
+      assert.equal(clases.length, n, 'un recuadro por cuenta');
+      assert.equal(clases[clases.length - 1], esperada, n + ' cuentas, ahorro=' + ahorro);
+    }
+  });
 });

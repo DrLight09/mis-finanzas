@@ -461,8 +461,15 @@ function editarCuenta(id){
   _ncColorSel=c.color||'#60b0f0';
   _renderTiposNC();
   selTipoNC(c.tipo);
+  // En edición el tipo no se cambia: se oculta el bloque entero (rótulo incluido). Efectivo deja solo una nota.
   const tipos=document.getElementById('nc-tipos');
   if(tipos)tipos.style.display='none';
+  const bloqueTipo=tipos&&tipos.closest&&tipos.closest('.ig');
+  if(bloqueTipo)bloqueTipo.style.display=esCuentaFija(c)?'':'none';
+  const rotuloTipo=bloqueTipo&&bloqueTipo.querySelector?bloqueTipo.querySelector('.il'):null;
+  if(rotuloTipo)rotuloTipo.style.display=esCuentaFija(c)?'none':'';
+  const notaTipo=document.getElementById('nc_tipo_nota');
+  if(notaTipo)notaTipo.textContent=esCuentaFija(c)?'Es tu cuenta de efectivo: permanente (no se archiva ni se elimina). Nombre, color e ícono los defines tú.':'';
   marcarColorSeleccionado('.nc-color-opt', _ncColorSel); // js/core/color-picker.js
   // Se vuelve a dibujar el grid (así marca SU ícono; antes se dejaba el que hubiera quedado marcado de la última vez)
   renderIconGrid();
@@ -509,6 +516,8 @@ function _resetSheetNuevaCuenta(){
   if(si&&si.closest('.ig')) si.closest('.ig').style.display=_ncTipoSel==='ahorro'?'none':'';
   const tipos=document.getElementById('nc-tipos');
   if(tipos)tipos.style.display='';
+  const bloqueTipo=tipos&&tipos.closest&&tipos.closest('.ig');
+  if(bloqueTipo&&bloqueTipo.style){bloqueTipo.style.display='';const r=bloqueTipo.querySelector?bloqueTipo.querySelector('.il'):null;if(r)r.style.display='';}
 }
 /* ---- FIN CUENTAS PERSONALIZADAS ---- */
 

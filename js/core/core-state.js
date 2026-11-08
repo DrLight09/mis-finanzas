@@ -1756,11 +1756,19 @@ function renderCuentasInicio(){
   const activas=cuentasActivas();
   const soloEfectivo=activas.length>0&&activas.every(esCuentaFija);
   if(!activas.length){
-    el.innerHTML=html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-tit">Aún no tienes cuentas</div><div class="ix-cuentas-vacio-txt">Agrega dónde guardas tu plata (un banco, Nequi, efectivo…) para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar mi primera cuenta</button></div>`;
+    el.innerHTML=html`<div class="card ix-cuentas-vacio stat-span3"><div class="ix-cuentas-vacio-tit">Aún no tienes cuentas</div><div class="ix-cuentas-vacio-txt">Agrega dónde guardas tu plata (un banco, Nequi, efectivo…) para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar mi primera cuenta</button></div>`;
     return;
   }
-  const tile=(nombre,monto,color)=>html`<div class="stat"><div class="stat-label">${nombre}</div><div class="stat-value" data-color="${_colorSeguro(color)}">${fmtNoCents(monto)}</div></div>`;
-  el.innerHTML=html`<div class="grid3">${activas.map(c=>tile(esCuentaAhorro(c)?c.nombre+' libre':c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),c.color))}</div>${soloEfectivo?html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-txt">Agrega tu banco, Nequi o cuenta de ahorro para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar cuenta</button></div>`:''}`;
+  // Los recuadros comparten la cuadrícula de 3 columnas con Disponible / Prestado / CDTs: si la última fila queda incompleta, el
+  // último recuadro se estira para ocuparla (nunca quedan huecos).
+  const fijos=2+(cuentasAhorro({soloActivas:true}).length?1:0);
+  const resto=(fijos+activas.length)%3;
+  const tile=(nombre,monto,color,extra)=>html`<div class="stat${extra}"><div class="stat-label">${nombre}</div><div class="stat-value" data-color="${_colorSeguro(color)}">${fmtNoCents(monto)}</div></div>`;
+  el.innerHTML=html`${activas.map((c,i)=>{
+    const ult=i===activas.length-1;
+    const extra=ult&&resto===1?' stat-span3':ult&&resto===2?' stat-span2':'';
+    return tile(esCuentaAhorro(c)?c.nombre+' libre':c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),c.color,extra);
+  })}${soloEfectivo?html`<div class="card ix-cuentas-vacio stat-span3"><div class="ix-cuentas-vacio-txt">Agrega tu banco, Nequi o cuenta de ahorro para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar cuenta</button></div>`:''}`;
   el.querySelectorAll('[data-color]').forEach(n=>{n.style.color=n.dataset.color;}); // color calculado: se asigna por DOM
 }
 

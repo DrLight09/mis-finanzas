@@ -70,10 +70,10 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   const chequea = (cond, msg) => { if (!cond) fallos.push(msg); };
   const visibles = () => ev(`['selector','detalle-simple','detalle-nu','detalle-cajita','sub-meta','sub-cdts'].filter(i=>{const e=document.getElementById('cuentas-'+i);return e&&e.style.display!=='none'}).join(',')`);
   const hoy = new Date(), iso = n => { const d = new Date(hoy); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-  ev(`S.nuRate=9.25; if(!S.historialTasasNu)S.historialTasasNu=[];
-      S.cajitas.push({id:'ca',nombre:'Mi cajita',saldo:100000,fecha:'${iso(-8)}',cdts:[{id:'cd1',monto:20000,tasa:9,rte:0,inicio:'${iso(-3)}',vence:'${iso(60)}',nombre:'CDT uno'}]});
+  ev(`S.cuentas=[{id:'nequi',tipo:'billetera',nombre:'Nequi',saldo:0},{id:'efectivo',tipo:'efectivo',nombre:'Efectivo',saldo:0},{id:'nu',tipo:'ahorro',nombre:'Nu',tasaEA:9.25}];
+      S.cajitas.push({id:'ca',cuentaId:'nu',nombre:'Mi cajita',saldo:100000,fecha:'${iso(-8)}',cdts:[{id:'cd1',monto:20000,tasa:9,rte:0,inicio:'${iso(-3)}',vence:'${iso(60)}',nombre:'CDT uno'}]});
       S.libro.push({id:'lca',fecha:'${iso(-8)}',cuenta:'cajita:ca',monto:100000,tipo:'apertura',origen:{modulo:'smoke'}});
-      S.cuentas.find(c=>c.id==='nequi').saldo=50000; S.libro.push({id:'lnq',fecha:'${iso(-8)}',cuenta:'nequi',monto:50000,tipo:'apertura',origen:{modulo:'smoke'}});`);
+      S.cuentas.find(c=>c.id==='nequi').saldo=50000; S.libro.push({id:'lnq',fecha:'${iso(-8)}',cuenta:'cuenta:nequi',monto:50000,tipo:'apertura',origen:{modulo:'smoke'}});`);
   const acc0 = new Set(acciones);
   const tocar = async (etapa) => {
     const nuevos = [...new Set([...w.document.querySelectorAll('#screen-cuentas [data-action]')].map(e => e.dataset.action))].filter(a => /^(nu|cuentas):/.test(a));
@@ -88,23 +88,23 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
       logs.error.slice(e0).forEach(m => fallos.push(`${etapa}: ${a} → console.error: ${m.slice(0, 120)}`));
       try { ev('closeAllSheets()'); } catch (e) {}
       // el clic puede haber navegado; volver a la pantalla de la etapa
-      if (etapa === 'Nu') ev(`abrirCuenta('nu')`); else if (etapa === 'cajita') ev(`abrirCuenta('nu'); abrirDetalleCajita('ca')`); else ev(`volverSelector()`);
+      if (etapa === 'Nu') ev(`abrirCuenta('cuenta:nu')`); else if (etapa === 'cajita') ev(`abrirCuenta('cuenta:nu'); abrirDetalleCajita('ca')`); else ev(`volverSelector()`);
     }
     return nuevos;
   };
   ev(`volverSelector()`); chequea(visibles() === 'selector', 'volverSelector no deja solo el selector: ' + visibles());
   const tSel = await tocar('selector');
-  ev(`abrirCuenta('nu')`); chequea(visibles() === 'detalle-nu', 'abrirCuenta(nu) no muestra solo el detalle de Nu: ' + visibles()); chequea(ev('cuentaActual') === 'nu', 'cuentaActual != nu');
+  ev(`abrirCuenta('cuenta:nu')`); chequea(visibles() === 'detalle-nu', 'abrirCuenta(nu) no muestra solo el detalle de Nu: ' + visibles()); chequea(ev('cuentaActual') === 'cuenta:nu', 'cuentaActual != cuenta:nu');
   const tNu = await tocar('Nu');
-  ev(`abrirCuenta('nu'); abrirDetalleCajita('ca')`); chequea(visibles() === 'detalle-cajita', 'abrirDetalleCajita no muestra solo el detalle de la cajita: ' + visibles()); chequea(ev('_cajitaActualId') === 'ca', '_cajitaActualId no quedó en ca');
+  ev(`abrirCuenta('cuenta:nu'); abrirDetalleCajita('ca')`); chequea(visibles() === 'detalle-cajita', 'abrirDetalleCajita no muestra solo el detalle de la cajita: ' + visibles()); chequea(ev('_cajitaActualId') === 'ca', '_cajitaActualId no quedó en ca');
   const tCaj = await tocar('cajita');
-  ev(`abrirCuenta('nu'); abrirDetalleCajita('ca'); volverSelector()`); chequea(visibles() === 'selector', 'volver desde la cajita: ' + visibles()); chequea(ev('_cajitaActualId') === null, 'volverSelector no reinició la cajita abierta');
-  ev(`abrirCuenta('nequi')`); chequea(visibles() === 'detalle-simple', 'abrirCuenta(nequi) no muestra el detalle simple: ' + visibles()); chequea(ev('_cajitaActualId') === null, 'quedó una cajita abierta al entrar a Nequi');
+  ev(`abrirCuenta('cuenta:nu'); abrirDetalleCajita('ca'); volverSelector()`); chequea(visibles() === 'selector', 'volver desde la cajita: ' + visibles()); chequea(ev('_cajitaActualId') === null, 'volverSelector no reinició la cajita abierta');
+  ev(`abrirCuenta('cuenta:nequi')`); chequea(visibles() === 'detalle-simple', 'abrirCuenta(nequi) no muestra el detalle simple: ' + visibles()); chequea(ev('_cajitaActualId') === null, 'quedó una cajita abierta al entrar a Nequi');
   const tSim = await tocar('simple');
-  ev(`abrirCuenta('nequi'); renderDetalleCuenta('nequi')`);
+  ev(`abrirCuenta('cuenta:nequi'); renderDetalleCuenta('cuenta:nequi')`);
   // Escenario de Spotify con datos (S.spotify): pinta la pantalla y toca sus botones
   ev(`S.spotify.costo=17500; S.spotify.personas.push({id:'sp1',nombre:'Ana',monto:5000,pagado:false,proximoPago:'${iso(5)}',fechaIngreso:'${iso(-30)}',ultimoDestino:'',mesesAdelantados:1});
-      S.spotify.historial.push({id:'h1',tipo:'cobro',spId:'sp1',nombre:'Ana',fuente:'nequi',fecha:'${iso(-2)}',monto:5000});`);
+      S.spotify.historial.push({id:'h1',tipo:'cobro',spId:'sp1',nombre:'Ana',fuente:'cuenta:nequi',fecha:'${iso(-2)}',monto:5000});`);
   try { ev(`renderSpotify(); renderSpHistorial(); renderSpStats()`); } catch (e) { fallos.push('Spotify: render lanzó ' + e.message); }
   chequea(/Ana/.test(ev(`document.getElementById('spotifyList').innerHTML`)), 'Spotify: la lista no muestra al integrante guardado en S.spotify.personas');
   const accSp = [...new Set([...w.document.querySelectorAll('#screen-spotify [data-action]')].map(e => e.dataset.action))];
@@ -133,7 +133,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(nBtn(q('#gastosVarList')) === 1 && !viz(q('.btn-open-gasto-var')), 'Gastos vacío: debe haber un solo botón (el del estado vacío)');
     c4(!viz(q('#gvTotalCard')), 'Gastos vacío: «Total filtrado» debe estar oculto');
     c4(sinSvg(q('#gastosVarList')), 'Gastos vacío: aparece el texto «svg»');
-    ev(`S.gastosVar=[{id:'g1',desc:'Almuerzo',monto:10000,fecha:'2020-01-15',cat:'Comida',fuente:'efectivo',clase:'gasto'}]; mesFilter='2026-10'; renderGastosVar()`);
+    ev(`S.gastosVar=[{id:'g1',desc:'Almuerzo',monto:10000,fecha:'2020-01-15',cat:'Comida',fuente:'cuenta:efectivo',clase:'gasto'}]; mesFilter='2026-10'; renderGastosVar()`);
     c4(nBtn(q('#gastosVarList')) === 0 && viz(q('.btn-open-gasto-var')) && !viz(q('#gvTotalCard')), 'Gastos: un mes sin gastos debe dejar el botón de pie (no hay botón en su estado vacío) y ocultar el total');
     ev(`mesFilter='todos'; renderGastosVar()`);
     c4(nBtn(q('#gastosVarList')) === 0 && viz(q('.btn-open-gasto-var')) && viz(q('#gvTotalCard')), 'Gastos con datos: faltan el botón de pie o el total');
@@ -196,7 +196,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     // gastos SIN ingresos anotados es información que falta, no un déficit: neutro y sin «−$X».
     const esc6 = (ing, gas) => {
       ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing},cobros:[{id:'c6',mesCubre:mesActual(),monto:${ing},fecha:mesActual()+'-01'},{id:'c6a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c6b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}]}]` : '[]'};` +
-         (gas ? `S.gastosVar=[{id:'g6',desc:'Compra',monto:${gas},fecha:hoy(),cat:'Comida',fuente:'efectivo',clase:'gasto'}];` : '') + `renderAnalisis()`);
+         (gas ? `S.gastosVar=[{id:'g6',desc:'Compra',monto:${gas},fecha:hoy(),cat:'Comida',fuente:'cuenta:efectivo',clase:'gasto'}];` : '') + `renderAnalisis()`);
       const h = q('#analisis-balance-hero');
       return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: h.querySelector('.an-hero-monto').textContent.trim(), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: q('#an-ingresos').textContent.trim() };
     };
@@ -228,14 +228,14 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(/Últimos 12 días/.test(pat.querySelector('.an-pat-tit').textContent), 'Historial de patrimonio: «Últimos N días» cuenta días de la ventana (3 registros en 12 días → 12), no registros');
     c4(pts.length === 3 && pts[1].px < 40 && pts[2].px > 300, 'Historial de patrimonio: el eje reparte por fecha (el 2.º punto, a 1 día del 1.º, queda pegado al inicio; no a la mitad)');
     // 2 · Proyección: con menos de 30 días no hay cifras a 3/6/12 meses
-    ev(fh + `S.cuentas=[{id:'nequi',tipo:'nequi',saldo:500000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.patrimonioHistorial=[{fecha:dia(9),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
+    ev(fh + `S.cuentas=[{id:'nequi',tipo:'billetera',nombre:'Nequi',saldo:500000},{id:'efectivo',tipo:'efectivo',nombre:'Efectivo',saldo:0}]; S.patrimonioHistorial=[{fecha:dia(9),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
     const pr = q('#proyeccion-card');
     c4(/llevas 9 de 30 días/.test(pr.textContent) && !pr.querySelector('.inicio-proy-card') && /—/.test(pr.textContent), 'Proyección: con 9 días de historial no muestra 3/6/12 meses y dice cuánto falta (llevas 9 de 30)');
     ev(fh + `S.patrimonioHistorial=[{fecha:dia(35),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
     c4(pr.querySelectorAll('.inicio-proy-card').length === 3 && !/PRELIMINAR/.test(pr.textContent), 'Proyección: con 35 días sí muestra las 3 cifras, sin chip PRELIMINAR');
 
     // Mejora 11: «Salud financiera» — el consejo del CDT es una sugerencia (no un check verde) y lleva a Cuentas (a Nu). Necesita gasto típico: 2 meses previos con datos
-    ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000,cobros:[{id:'c11',mesCubre:mesActual(),monto:3000000,fecha:mesActual()+'-01'}]}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000},['f11_'+Periodo.mesDesplazado(mesActual(),-1)]:{monto:1000000,fecha:Periodo.mesDesplazado(mesActual(),-1)+'-02'},['f11_'+Periodo.mesDesplazado(mesActual(),-2)]:{monto:1000000,fecha:Periodo.mesDesplazado(mesActual(),-2)+'-02'}}; S.ingresosFijos[0].cobros.push({id:'c11a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:3000000,fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c11b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:3000000,fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}); renderHealthScore()`);
+    ev(`S.movimientos=[]; S.gastosVar=[]; S.tarjetasCredito=[]; S.cajitas=S.cajitas||[]; S.cuentas=[{id:'nequi',tipo:'billetera',nombre:'Nequi',saldo:9000000},{id:'efectivo',tipo:'efectivo',nombre:'Efectivo',saldo:0}]; S.ingresosFijos=[{id:'i11',nombre:'Sueldo',monto:3000000,cobros:[{id:'c11',mesCubre:mesActual(),monto:3000000,fecha:mesActual()+'-01'}]}]; S.gastosFijos=[{id:'f11',monto:1000000}]; S.pagosGastosFijos={['f11_'+mesActual()]:{monto:1000000},['f11_'+Periodo.mesDesplazado(mesActual(),-1)]:{monto:1000000,fecha:Periodo.mesDesplazado(mesActual(),-1)+'-02'},['f11_'+Periodo.mesDesplazado(mesActual(),-2)]:{monto:1000000,fecha:Periodo.mesDesplazado(mesActual(),-2)+'-02'}}; S.ingresosFijos[0].cobros.push({id:'c11a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:3000000,fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c11b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:3000000,fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}); renderHealthScore()`);
     const tipCdt = [...w.document.querySelectorAll('#health-score-card .inicio-tip')].find(t => /CDT/.test(t.textContent));
     c4(!!tipCdt && tipCdt.classList.contains('inicio-tip-info') && !tipCdt.classList.contains('inicio-tip-ok') && !!tipCdt.querySelector('.fa-circle-info') && !tipCdt.querySelector('svg'), 'Salud financiera: el consejo del CDT debe verse como sugerencia (ícono de información, no check verde)');
     c4(!w.document.querySelector('#health-score-card .inicio-tip-ok'), 'Salud financiera: no debe haber checks verdes en recomendaciones');

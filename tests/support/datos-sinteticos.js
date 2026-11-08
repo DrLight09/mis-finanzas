@@ -48,7 +48,7 @@ function estadoBase(ctx) {
   Object.assign(ctx.S, {
     modulos: {}, libro: [], movimientos: [], gastosVar: [], transferencias: [], pagosGastosFijos: {}, gastosFijos: [{ id: 'gfRenta', nombre: 'Arriendo', monto: 600000, cat: 'Hogar', dia: 5 }],
     tarjetasCredito: [], tcMovimientos: [], encargos: [], deudores: [], misDeudas: [], personas: [{ id: 'pAna', nombre: 'Ana' }, { id: 'pLuis', nombre: 'Luis' }],
-    cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }], cajitas: [], patrimonioHistorial: [], alcancia: null,
+    cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, { id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9.25 }], cajitas: [], patrimonioHistorial: [], alcancia: null,
   });
 }
 
@@ -66,24 +66,24 @@ function generar(ctx, { desde = '2024-01-01', dias = 1000, semilla = 7 } = {}) {
     const f = suma(desde, i), dia = Number(f.slice(8, 10)), mes = f.slice(0, 7);
     if (dia === 1) { // ingreso del mes
       const id = ctx.uid(), monto = 3500000;
-      S.movimientos.push({ id, tipo: 'entrada', fuente: 'nequi', monto, fecha: f, desc: 'Sueldo', clase: 'ingreso' });
-      con({ modulo: 'ingresos', ref: id }, () => ctx.sumarFuente('nequi', monto, { fecha: f }));
+      S.movimientos.push({ id, tipo: 'entrada', fuente: 'cuenta:nequi', monto, fecha: f, desc: 'Sueldo', clase: 'ingreso' });
+      con({ modulo: 'ingresos', ref: id }, () => ctx.sumarFuente('cuenta:nequi', monto, { fecha: f }));
     }
     if (dia === 5) { // gasto fijo
-      S.pagosGastosFijos['gfRenta_' + mes] = { fecha: f, fuente: 'nequi', monto: 600000, cat: 'Hogar', nombre: 'Arriendo' };
-      con({ modulo: 'gastos-fijos', ref: 'gfRenta_' + mes }, () => ctx.descontarFuente('nequi', 600000, { fecha: f }));
+      S.pagosGastosFijos['gfRenta_' + mes] = { fecha: f, fuente: 'cuenta:nequi', monto: 600000, cat: 'Hogar', nombre: 'Arriendo' };
+      con({ modulo: 'gastos-fijos', ref: 'gfRenta_' + mes }, () => ctx.descontarFuente('cuenta:nequi', 600000, { fecha: f }));
     }
     for (let k = 0; k < 3; k++) { // gastos del día
-      const id = ctx.uid(), monto = Math.round(8000 + azar() * 60000), fuente = k % 2 ? 'efectivo' : 'nequi';
+      const id = ctx.uid(), monto = Math.round(8000 + azar() * 60000), fuente = k % 2 ? 'cuenta:efectivo' : 'cuenta:nequi';
       S.gastosVar.push({ id, desc: 'Compra ' + k, monto, fecha: f, cat: cats[Math.floor(azar() * cats.length)], fuente, clase: 'gasto' });
       con({ modulo: 'gastos', ref: id }, () => ctx.descontarFuente(fuente, monto, { fecha: f }));
     }
     { // transferencia nequi → efectivo: una fila en S.transferencias, dos espejos y dos patas en el libro, todos ligados por el id
       const tid = ctx.uid(), monto = Math.round(20000 + azar() * 100000);
-      S.transferencias.push({ id: tid, fecha: f, origen: 'nequi', destino: 'efectivo', monto });
-      ctx.registrarMovEspejo({ cuenta: 'nequi', flujo: 'salida', monto, fecha: f, desc: 'Transferencia a Efectivo', origen: 'Cuentas', extra: { _transferenciaId: tid } });
-      ctx.registrarMovEspejo({ cuenta: 'efectivo', flujo: 'entrada', monto, fecha: f, desc: 'Transferencia desde Nequi', origen: 'Cuentas', extra: { _transferenciaId: tid } });
-      con({ modulo: 'cuentas', ref: tid }, () => { ctx.descontarFuente('nequi', monto, { fecha: f }); ctx.sumarFuente('efectivo', monto, { fecha: f }); });
+      S.transferencias.push({ id: tid, fecha: f, origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto });
+      ctx.registrarMovEspejo({ cuenta: 'cuenta:nequi', flujo: 'salida', monto, fecha: f, desc: 'Transferencia a Efectivo', origen: 'Cuentas', extra: { _transferenciaId: tid } });
+      ctx.registrarMovEspejo({ cuenta: 'cuenta:efectivo', flujo: 'entrada', monto, fecha: f, desc: 'Transferencia desde Nequi', origen: 'Cuentas', extra: { _transferenciaId: tid } });
+      con({ modulo: 'cuentas', ref: tid }, () => { ctx.descontarFuente('cuenta:nequi', monto, { fecha: f }); ctx.sumarFuente('cuenta:efectivo', monto, { fecha: f }); });
     }
     if (dia === 15 && Number(mes.slice(5)) % 3 === 0) { // compra trimestral con tarjeta
       const tc = f < '2025-07-01' ? tcCerrada : tcAbierta, monto = 400000;
@@ -98,11 +98,11 @@ function generar(ctx, { desde = '2024-01-01', dias = 1000, semilla = 7 } = {}) {
   // Encargos: cada movimiento lleva `cuenta` (dónde está guardada esa plata) y el saldo se deriva, nunca se guarda.
   S.encargos.push(
     { id: 'encCerrado', nombre: 'Mamá', personaId: 'pAna', saldoInicial: 0, cuentaInicial: '', partes: [], movimientos: [
-      { id: ctx.uid(), tipo: 'entrada', monto: 500000, fecha: '2024-02-10', cuenta: 'efectivo', desc: 'Me dio' },
-      { id: ctx.uid(), tipo: 'salida', monto: 500000, fecha: '2024-03-05', cuenta: 'efectivo', desc: 'Pagué por ella' }] },
-    { id: 'encAbierto', nombre: 'Tío', personaId: 'pLuis', saldoInicial: 100000, cuentaInicial: 'nequi', partes: [], movimientos: [
-      { id: ctx.uid(), tipo: 'entrada', monto: 300000, fecha: '2024-06-01', cuenta: 'nequi', desc: 'Me dio' },
-      { id: ctx.uid(), tipo: 'salida', monto: 50000, fecha: hoyIso, cuenta: 'nequi', desc: 'Mandado' }] });
+      { id: ctx.uid(), tipo: 'entrada', monto: 500000, fecha: '2024-02-10', cuenta: 'cuenta:efectivo', desc: 'Me dio' },
+      { id: ctx.uid(), tipo: 'salida', monto: 500000, fecha: '2024-03-05', cuenta: 'cuenta:efectivo', desc: 'Pagué por ella' }] },
+    { id: 'encAbierto', nombre: 'Tío', personaId: 'pLuis', saldoInicial: 100000, cuentaInicial: 'cuenta:nequi', partes: [], movimientos: [
+      { id: ctx.uid(), tipo: 'entrada', monto: 300000, fecha: '2024-06-01', cuenta: 'cuenta:nequi', desc: 'Me dio' },
+      { id: ctx.uid(), tipo: 'salida', monto: 50000, fecha: hoyIso, cuenta: 'cuenta:nequi', desc: 'Mandado' }] });
   // Deudas: saldo = abre (prestamo/recibido) − el resto de los tipos.
   S.deudores.push(
     { id: 'favorCerrada', personaId: 'pAna', nombre: 'Ana', grupos: [], movimientos: [

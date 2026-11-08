@@ -102,7 +102,7 @@ Esta función es el corazón del módulo. La proyección hereda todo lo que ella
 | Saldo Nequi | `S.cuentas` (cuenta `nequi`, vía `getSaldoFuente('nequi')`) |
 | Saldo Efectivo | `S.cuentas` (cuenta `efectivo`, vía `getSaldoFuente('efectivo')`) |
 | Saldo deudores (lo que me deben, positivo únicamente) | `S.deudores` → `getDeudorSaldoPatrimonio(d)` |
-| Cuentas personalizadas (todas, sin filtro) | `S.cuentas` con `tipo: 'custom'` (`cuentasCustom()`) → suma de `saldo` |
+| Cuentas personalizadas (todas, sin filtro) | `S.cuentas` activas que no son de ahorro (`cuentasActivas()`) → suma de `saldo` |
 | Alcancía oculta (saldo registrado mientras está activa) | `S.alcancia.saldoRegistrado` |
 
 ### Resta (pasivos)

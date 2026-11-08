@@ -2359,3 +2359,13 @@ button.inicio-pilar-accion{cursor:pointer;}
 .an-presup-ritmo{margin-top:4px;font-size:11px;color:var(--text3);}
 
 .an-presup-sug{margin-top:4px;font-size:11px;color:var(--text3);background:none;border:none;padding:0;text-align:left;text-decoration:underline;}
+
+/* ===== Cuentas: modelo único (sin cuentas fijas) ===== */
+.ix-cuentas-vacio{text-align:center;padding:22px 16px;margin-top:12px;}
+.ix-cuentas-vacio-tit{font-weight:700;font-size:15px;margin-bottom:6px;}
+.ix-cuentas-vacio-txt{font-size:12.5px;color:var(--text3);line-height:1.5;margin-bottom:12px;}
+.cuenta-tipos{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+.cuenta-tipo-opt{background:var(--bg3);border:1px solid var(--border2);color:var(--text2);border-radius:999px;padding:8px 14px;font-family:inherit;font-size:13px;cursor:pointer;}
+.cuenta-tipo-opt.cuenta-tipo-sel{border-color:var(--accent);color:var(--accent);background:rgba(200,240,96,.08);font-weight:700;}
+.cuenta-archivada-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:10px 12px;margin:10px 0;font-size:12px;color:var(--text2);}
+.cuentas-archivadas{margin-top:16px;}

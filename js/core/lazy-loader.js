@@ -147,13 +147,13 @@ const Loader = (function () {
     prestamos: ['js/modules/prestado.js'],
     // cuentas: REACTIVADO como lazy (2026-08-13, segundo intento). El primer
     // intento se revirtió por 3 ReferenceError encadenados al arrancar
-    // (nuTotal/getNuTasaGlobal llamados sin guard
+    // (ahorroTotal/getTasaCuenta llamados sin guard
     // desde core-state.js y firebase-sync.js). Se recibieron y auditaron
     // los 5 archivos núcleo que faltaban (core-state.js, firebase-sync.js,
     // pin-bio.js, gastos-fijos-progress.js, mejoras.js — este último
     // fusionado con mejoras-adicionales.js el 2026-09-10, ver CHANGELOG.md):
     // los tres puntos del error, más calcC/calcCDT/materializarIntereses/
-    // registrarTasaNuHistorial/verificarVencimientosCDT (todo lo demás que
+    // registrarTasaHistorial/verificarVencimientosCDT (todo lo demás que
     // cuentas.js expone y que estos archivos llegan a tocar), ya tienen
     // guard `typeof` — confirmado contra el código real, no por inferencia.
     // pin-bio.js/mejoras-adicionales.js/gastos-fijos-progress.js no llaman
@@ -229,7 +229,7 @@ const Loader = (function () {
   // ── Precarga total en segundo plano ───────────────────────────────────────
   // Por qué existe: dos módulos lazy alimentan cálculos que corren fuera de
   // sus propias pantallas — cuentas.js (calcC, calcCDT, calcRendimientoCDTsMes,
-  // nuTotal) y prestado.js (getDeudorSaldoPatrimonio, totalMisDeudasPendiente,
+  // ahorroTotal) y prestado.js (getDeudorSaldoPatrimonio, totalMisDeudasPendiente,
   // totalPrestadoPendiente):
   //   - snapshotPatrimonio() (core-state.js, corre en cada save()) no graba el
   //     punto del historial de patrimonio hasta que calcC, calcCDT,

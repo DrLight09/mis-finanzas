@@ -59,8 +59,7 @@ const Cierre = (() => {
   _plana('gastosVar', 'Gastos variables', 'gastosVar');
   _plana('transferencias', 'Transferencias', 'transferencias');
   _plana('ingresosExtra', 'Ingresos extra', 'ingresosExtra');
-  _plana('chequeosNu', 'Chequeos de Nu', 'chequeosNu');
-  _plana('historialTasasNu', 'Historial de tasas de Nu', 'historialTasasNu');
+  _plana('chequeosAhorro', 'Chequeos de ahorro', 'chequeosAhorro');
   _plana('patrimonioHistorial', 'Historial de patrimonio', 'patrimonioHistorial');
   registrarFuente({ clave: 'patrimonioCierres', etiqueta: 'Cierres mensuales de patrimonio', raiz: ['patrimonioCierres'], registros: st =>
     Object.keys(_obj(st.patrimonioCierres)).map(k => ({ obj: _obj(st.patrimonioCierres[k]), id: 'pc:' + k, entidad: null, fecha: k + '-01' })) });
@@ -121,14 +120,14 @@ const Cierre = (() => {
      registros con fecha que un cierre pueda mover. Una clave nueva sin clasificar hace fallar la prueba `clasificacion`. */
   const CLASIFICACION = {
     libro: 'historica', movimientos: 'historica', gastosVar: 'historica', transferencias: 'historica', ingresosExtra: 'historica',
-    chequeosNu: 'historica', historialTasasNu: 'historica', patrimonioHistorial: 'historica', patrimonioCierres: 'historica', pagosGastosFijos: 'historica', tcMovimientos: 'historica',
+    chequeosAhorro: 'historica', patrimonioHistorial: 'historica', patrimonioCierres: 'historica', pagosGastosFijos: 'historica', tcMovimientos: 'historica',
     tarjetasCredito: 'entidad-con-historia', deudores: 'entidad-con-historia', misDeudas: 'entidad-con-historia', encargos: 'entidad-con-historia',
     alcancia: 'entidad-con-historia', spotify: 'entidad-con-historia', mesadas: 'entidad-con-historia', ingresosFijos: 'entidad-con-historia', cajitas: 'entidad-con-historia',
     alcanciaSaldoOfuscado: 'derivada',
     // Resultado ya calculado que NO se puede recalcular tras podar el detalle (Wrapped que el usuario guardó, HTML congelado): un cierre no lo
     // toca; si falta el de un año con datos suficientes, analizar() lo avisa (no lo bloquea).
     wrappedAnios: 'congelada',
-    cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', bienes: 'estado-actual', plataComprometida: 'estado-actual', nuRate: 'estado-actual',
+    cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', bienes: 'estado-actual', plataComprometida: 'estado-actual',
     catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion', planDeudasEstrategia: 'configuracion',
     schemaVersion: 'meta', _esquemaAnterior: 'meta', _ultimoMesVisto: 'meta', _ajustesBaseLog: 'meta', cdts: 'meta', nequiSaldo: 'meta', efectivoSaldo: 'meta', cuentasPersonalizadas: 'meta',
   };

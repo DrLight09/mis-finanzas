@@ -685,22 +685,15 @@
           <div class="grid3">
             <div class="stat"><div class="stat-label">Disponible</div><div
                 class="stat-value c-green" id="s-disp">$0</div></div>
-            <div class="stat"><div class="stat-label">Nu libre</div><div
-                class="stat-value c-nu" id="s-nu">$0</div></div>
-            <div class="stat"><div class="stat-label">Efectivo</div><div
-                class="stat-value c-amber" id="s-ef">$0</div></div>
+            <div class="stat"><div class="stat-label">Prestado</div><div
+                class="stat-value c-amber" id="s-prest">$0</div></div>
+            <div class="stat" id="s-cdt-tile"><div class="stat-label">CDTs</div><div
+                class="stat-value c-purple" id="s-cdt">$0</div></div>
           </div>
           <div class="ix-s-disp-neto-tc" id="s-disp-neto-tc">
           </div>
-          <div class="grid3">
-            <div class="stat"><div class="stat-label">Nequi</div><div
-                class="stat-value ix-cff4da6"
-                id="s-nequi">$0</div></div>
-            <div class="stat"><div class="stat-label">Prestado</div><div
-                class="stat-value c-amber" id="s-prest">$0</div></div>
-            <div class="stat"><div class="stat-label">CDTs Nu</div><div
-                class="stat-value c-purple" id="s-cdt">$0</div></div>
-          </div>
+          <!-- Un recuadro por cada cuenta activa: lo pinta renderCuentasInicio() (core-state.js) desde S.cuentas -->
+          <div id="inicio-cuentas"></div>
           <div id="tc-deuda-card" style="display:none;"></div>
           <div class="sec-title">Gastos del mes</div>
           <div class="grid2 ix-mb9">
@@ -923,7 +916,7 @@
             </button>
           </div>
 
-          <!-- Detalle de cuenta simple (Nequi, Efectivo y personalizadas): una sola pantalla.
+          <!-- Detalle de cuenta simple (banco, billetera, efectivo): una sola pantalla.
                La pinta renderDetalleCuenta() (cuentas.js); el color de la cuenta llega por las
                variables --cuenta / --cuenta-rgb puestas sobre este contenedor. -->
           <div id="cuentas-detalle-simple" style="display:none;">
@@ -938,6 +931,11 @@
               <div class="detail-header-title ix-det-cuenta-nombre" id="det-cuenta-nombre">Cuenta</div>
               <!-- Editar / eliminar: solo cuentas personalizadas -->
               <div class="ix-det-cuenta-acciones-custom" id="det-cuenta-acciones-custom" style="display:none;">
+                <button type="button" class="detail-header-action btn-icon" id="btn-archivar-cuenta"
+                  title="Archivar cuenta" aria-label="Archivar cuenta">
+                  <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                </button>
                 <button type="button" class="detail-header-action btn-icon ix-btn-editar-cuenta-custom"
                   id="btn-editar-cuenta-custom"
                   title="Editar cuenta" aria-label="Editar cuenta">
@@ -992,6 +990,7 @@
                 </button>
               </div>
             </div>
+            <div id="banner-archivada"></div>
             <div id="banner-apertura-cuenta"></div>
             <div id="det-cuenta-encargos"></div>
             <div class="cuenta-movs-bloque">
@@ -1024,18 +1023,18 @@
               <div class="ix-div-070">
                 <div>
                   <div class="ix-div-071">Tasa
-                    EA % (aplica a todas las cajitas)</div>
+                    EA % (aplica a las cajitas de esta cuenta)</div>
                   <div class="ix-div-072">Crece
                     cada día a las 12:00 a.m.</div>
                 </div>
                 <div class="ix-div-073">
                   <input class="ix-nutasaglobal" type="text" inputmode="decimal" id="nuTasaGlobal"
-                    value placeholder="9,25" maxlength="8" autocomplete="off" aria-label="Tasa EA de las cajitas de Nu">
+                    value placeholder="9,25" maxlength="8" autocomplete="off" aria-label="Tasa EA de las cajitas de esta cuenta">
                   <span class="ix-span-075">%</span>
                 </div>
               </div>
               <div class="ix-nutasaaviso" id="nuTasaAviso" style="display:none;">Escribe la
-                tasa EA de Nu para poder crear cajitas. Todas las cajitas usan esta misma tasa.</div>
+                tasa EA de la cuenta para poder crear cajitas. Todas sus cajitas usan esta misma tasa.</div>
               <button class="ix-btn-nu-chequeo" type="button" id="btn-nu-chequeo" data-action="nu:abrirChequeoNu" data-args="[]">Chequeo
                 rápido de cajitas</button>
               <div class="ix-nuchequeoaviso" id="nuChequeoAviso" style="display:none;"></div>
@@ -1083,7 +1082,7 @@
             <!-- Mismo orden que Nequi y las demás cuentas: Encargos → Movimientos -->
             <div id="det-nu-encargos"></div>
             <div class="cuenta-movs-bloque">
-              <div class="sec-title">Movimientos registrados en Nu</div>
+              <div class="sec-title">Movimientos de la cuenta</div>
               <div id="movs-filtros-nu" class="movs-filtros-wrap"></div>
               <div id="det-nu-movs"></div>
             </div>
@@ -1576,8 +1575,7 @@
             <div class="divider ix-m8-0"></div>
             <div class="row">
               <div>
-                <div class="ix-fs11-ctext2">Cajita Spotify
-                  (Nu)</div>
+                <div class="ix-fs11-ctext2">Cajita Spotify</div>
                 <div class="ix-div-122">Plata
                   guardada para pagar</div>
               </div>
@@ -1998,7 +1996,7 @@
               <div class="cfg-toggle-info">
                 <div class="cfg-toggle-label">Saldo inicial</div>
                 <div class="cfg-toggle-sub">Muestra el banner de saldo inicial
-                  en Nequi y Efectivo</div>
+                  en tus cuentas</div>
               </div>
               <label class="toggle-sw">
                 <input type="checkbox" id="cfg-corregirSaldo"
@@ -2378,7 +2376,7 @@
                 width="20" height="13" rx="2" /><path d="M2 10h20" /><circle
                 cx="12" cy="15" r="2" /><path d="M17 15h2M5 15h2" /></svg>
             <div><div class="action-card-label">Agregar dinero</div><div
-                class="action-card-sub">Agregar a Nequi, cajita...</div></div>
+                class="action-card-sub">Agregar a una cuenta, cajita...</div></div>
           </div>
 
         </div>
@@ -2390,9 +2388,14 @@
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Nueva cuenta</div>
+        <div class="ig">
+          <div class="il">Tipo de cuenta</div>
+          <div class="cuenta-tipos" id="nc-tipos"></div>
+          <div class="ix-fs11-ctext2" id="nc_tipo_nota"></div>
+        </div>
         <div class="ig"><label class="il" for="nc_nombre">Nombre de la
             cuenta</label><input type="text" id="nc_nombre" maxlength="30"
-            placeholder="Ej: Nequi trabajo, Bancolombia..."></div>
+            placeholder="Ej: Mi banco, Nequi trabajo..."></div>
         <div class="ig"><label class="il" for="nc_saldo">Saldo
             inicial</label><input type="text" inputmode="decimal" id="nc_saldo"
             placeholder="0,00" class="money-input"></div>
@@ -2437,9 +2440,9 @@
     <div class="overlay" id="sheet-chequeo-nu" data-sheet-id="chequeo-nu">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">Chequeo rápido — cajitas Nu</div>
+        <div class="sheet-title">Chequeo rápido — cajitas</div>
         <div class="ix-div-205">
-          Pon el saldo TOTAL que ves AHORA MISMO en cada cajita de Nu, tal cual lo muestra su
+          Pon el saldo TOTAL que ves AHORA MISMO en cada cajita, tal cual lo muestra su
                   app (si guardas dinero de encargos ahí, va incluido; al lado de cada cajita ves lo
                   que debería marcar). Si el crecimiento real ya no cuadra con la tasa que tienes
                   registrada, la app te va a avisar y te ofrece corregirla con un clic. Si algún saldo
@@ -2456,7 +2459,7 @@
     <div class="overlay" id="sheet-confirmar-tasa-nu" data-sheet-id="confirmar-tasa-nu">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">Cambio de tasa Nu detectado</div>
+        <div class="sheet-title">Cambio de tasa detectado</div>
         <div class="ix-ctn-msg" id="ctn-msg"></div>
         <div class="ig"><label class="il" for="ctn-tasa">Nueva tasa EA %</label><input
             type="text" inputmode="decimal" id="ctn-tasa" placeholder="9,25" maxlength="8" autocomplete="off" data-tasa-ea></div>
@@ -4339,7 +4342,7 @@
     <div class="overlay" id="sheet-nu-movimiento" data-sheet-id="nu-movimiento">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title" id="nuMovTitle">Agregar a Nu</div>
+        <div class="sheet-title" id="nuMovTitle">Agregar a la cuenta</div>
         <p class="ix-div-211" id="nuMovSubtitle">El valor
           se <b class="ix-cnu-light">sumará</b> a la cajita que
           elijas.</p>
@@ -4514,11 +4517,11 @@
             placeholder="9,25" maxlength="8" autocomplete="off" data-tasa-ea></div>
         <div class="ig"><label class="il" for="cdt_inicio">Fecha de apertura
             <span class="ix-span-262">(cuándo
-              abriste el CDT en Nu)</span></label><input type="date"
+              abriste el CDT)</span></label><input type="date"
             id="cdt_inicio"></div>
         <div class="ig"><label class="il" for="cdt_vence">Fecha de
             vencimiento</label><input type="date" id="cdt_vence"></div>
-        <div class="ig"><label class="il" for="cdt_rte">Retefuente % <span class="ix-span-262">(Nu
+        <div class="ig"><label class="il" for="cdt_rte">Retefuente % <span class="ix-span-262">(el banco
               retiene sobre intereses · por defecto 4%)</span></label><input
             type="text" inputmode="decimal" id="cdt_rte"
             placeholder="4,00"></div>
@@ -4547,7 +4550,7 @@
             id="cobrar_detalle_est"></div>
         </div>
         <div class="ig">
-          <label class="il" for="cobrar_valor">Valor real depositado por Nu
+          <label class="il" for="cobrar_valor">Valor real depositado por tu banco
             <span class="ix-span-262">(copia
               el "Total neto actual" de la app)</span></label>
           <input type="text" inputmode="decimal" id="cobrar_valor"

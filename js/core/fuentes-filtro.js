@@ -58,8 +58,7 @@ const FuentesFiltro = (() => {
   // 'ganancia', opciones especiales) nunca se filtra.
   function esCuenta(val) {
     if (!val || typeof val !== 'string') return false;
-    return val === 'nequi' || val === 'efectivo' ||
-      val.startsWith('cajita:') || val.startsWith('custom:') || val.startsWith('tc:');
+    return esFuenteCuenta(val) || val.startsWith('cajita:') || val.startsWith('tc:');
   }
 
   // ¿Esta TC tiene cupo disponible >= min? Sin cupo configurado = sin cupo.
@@ -76,7 +75,8 @@ const FuentesFiltro = (() => {
   // Mínimo aplicable a una cuenta concreta (efectivo puede tener el suyo).
   function _minPara(val, opts) {
     const base = opts.minSaldo == null ? MIN.GENERAL : opts.minSaldo;
-    if (val === 'efectivo' && opts.minEfectivo != null) return opts.minEfectivo;
+    const c = getCuentaDeFuente(val);
+    if (c && c.tipo === 'efectivo' && opts.minEfectivo != null) return opts.minEfectivo;
     return base;
   }
 

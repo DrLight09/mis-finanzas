@@ -112,7 +112,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 }
 
 let S={
-  nuRate:null,cajitas:[], // nuRate: tasa EA % de TODAS las cajitas de Nu (null = sin configurar; ver nuTasaConfigurada() en nu-calc.js)
+  cajitas:[], // cajitas de las cuentas de ahorro: {id, cuentaId, nombre, saldo, fecha, cdts}; la tasa EA es de la CUENTA (cuenta.tasaEA)
   personas:[],
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
   spotify:{personas:[],costo:0,cajitaId:'',historial:[]}, // todo el estado de Spotify en una llave (migración v9); ver _ensureSpotify()
@@ -126,7 +126,7 @@ let S={
   modulos:{mesada:true,spotify:true},
   catsVar:[],
   catsFijo:[],
-  cuentas:[{id:'nequi',tipo:'nequi',saldo:0},{id:'efectivo',tipo:'efectivo',saldo:0}],
+  cuentas:[], // cuentas del usuario (ver "CUENTAS: MODELO ÚNICO"); nace vacío: la primera se crea al empezar
   patrimonioHistorial:[],
   patrimonioCierres:{},
   tarjetasCredito:[],
@@ -160,13 +160,12 @@ let S={
 // Exponer S globalmente para que el módulo de Firebase pueda accederlo
 window.S = S;
 // patrimonioHistorial: [{fecha:'YYYY-MM-DD', valor:number}]
-// cuentas: modelo único de cuentas (ver "CUENTAS: MODELO ÚNICO" más abajo). Nequi y Efectivo:
-//   {id:'nequi'|'efectivo', tipo, saldo}. Personalizadas:
-//   {id, tipo:'custom', nombre, icono, color, saldo, movimientos:[{id,tipo,monto,fecha,nota}]}
-// (reemplaza a S.nequiSaldo, S.efectivoSaldo y S.cuentasPersonalizadas)
+// cuentas: modelo único de cuentas (ver "CUENTAS: MODELO ÚNICO" más abajo):
+//   {id, tipo:'banco'|'billetera'|'efectivo'|'ahorro', nombre, icono, color, saldo, archivada?, movimientos:[{id,tipo,monto,fecha,nota}]}
+//   y, solo en las de ahorro: tasaEA (% EA, null = sin configurar) e historialTasas:[{fecha,tasa}] (sin `saldo` propio).
 // Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"),
 //   fecha (reloj de sus intereses: último sellado de intereses o primer depósito; NO la fecha de creación),
-//   cdts: [{monto, tasa, inicio, vence, ...}]}  — la tasa EA de la cajita es S.nuRate (una sola para todas);
+//   cdts: [{monto, tasa, inicio, vence, ...}]}  — la tasa EA de la cajita es la de su cuenta de ahorro (cuenta.tasaEA);
 //   solo cada CDT guarda su propia tasa.
 // El interés es diario compuesto: a las 12am cada día se "paga" el interés y queda en el saldo.
 // Nosotros simulamos esto: el saldo mostrado = saldo_guardado * (1 + tasaDiaria)^diasTranscurridos
@@ -265,65 +264,63 @@ function pintarAvatarPersona(av, persona, opts){
 }
 
 /* ---- CUENTAS: MODELO ÚNICO ----
-   S.cuentas es la única fuente de verdad de los saldos de Nequi, Efectivo y las cuentas
-   personalizadas (Nu sigue en S.cajitas). Antes eran tres campos distintos: S.nequiSaldo,
-   S.efectivoSaldo y S.cuentasPersonalizadas, y save() releía los dos primeros de inputs
-   ocultos del DOM. Ya no hay inputs: el saldo se lee y se escribe en el objeto de la cuenta.
-     Nequi / Efectivo : {id:'nequi'|'efectivo', tipo, saldo}   (nombre y color viven en el
-                         descriptor de cuentas.js: son cuentas fijas de la app)
-     Personalizada    : {id, tipo:'custom', nombre, icono, color, saldo, movimientos:[...]}
-   Identificador de fuente en toda la app: 'nequi' | 'efectivo' | 'custom:ID'.
-   Garantía (_cuentasArr): S.cuentas siempre existe y siempre trae Nequi y Efectivo; si faltan
-   (documento nuevo, nube vacía, backup sin 'cuentas') se crean en 0. La migración desde los campos
-   viejos (migrarCuentasLegacy) se eliminó el 2026-10-05: el único documento existente ya estaba
-   migrado y desde ahí las cuentas se crean ya en el modelo nuevo. Un backup en el formato viejo
-   se rechaza al importar (ver _validarEstructuraJSON en configuracion.js). */
-/* ---- CUENTAS FIJAS: nombre, color y badge en UN solo lugar ----
-   Nequi, Nu y Efectivo no viven en S.cuentas con nombre propio (Nu ni siquiera vive ahí), así que
-   antes su nombre/color/clase de badge estaban escritos a mano en fuenteLabel(), fuenteBadgeClass(),
-   getFuentes() y en cuentas.js. Ahora esos datos salen de acá. cuentas.js (lazy) le suma a cada
-   descriptor lo que solo él necesita: ícono, saldo, estilo del selector (CUENTAS_FIJAS_SELECTOR).
-   Campos: fuente ('nequi'|'nu'|'efectivo'), nombre, color (texto, puede ser var(--x)),
-   rgb ("r,g,b" para bordes/fondos), badge (clase CSS de fuenteBadgeClass). */
-const CUENTAS_FIJAS=[
-  {fuente:'nequi',   nombre:'Nequi',   color:'#ff4da6',         rgb:'229,0,116',  badge:'bg-nequi'},
-  {fuente:'nu',      nombre:'Nu',      color:'var(--nu-light)', rgb:'192,96,240', badge:'bg-nu'},
-  {fuente:'efectivo',nombre:'Efectivo',color:'var(--amber)',    rgb:'240,184,64', badge:'bg-amber'}
-];
-// Cuenta fija por su fuente; undefined si no es una de las tres (cajita:ID, custom:ID, tc:ID…).
-function getCuentaFija(fuente){return CUENTAS_FIJAS.find(d=>d.fuente===fuente);}
-/* Cuentas con pantalla propia (hoy solo Nu). cuentas.js es la capa genérica de cuentas y NO conoce a Nu: cada
-   cuenta con pantalla propia se registra acá (desde su archivo, al cargar) y cuentas.js le pregunta lo que necesita.
-   Vive en el núcleo para que el orden de carga de los archivos lazy no importe.
-   CuentaPantallas[fuente] = {
-     paneles: [ids de sus paneles dentro de #screen-cuentas],  // _showCuentasPanel los oculta/muestra
-     panel:   id del panel que se abre al tocar la cuenta en el selector,
-     reiniciar(),         // al abrir cualquier cuenta o volver al selector: deja en blanco su estado interno (cajita abierta…)
-     render(),            // pinta su detalle (renderDetalleCuenta)
-     actualizarBotones()  // botones de Mover/Transferir de sus pantallas (actualizarBotonesTransferir)
-   } */
+   Ninguna cuenta viene de fábrica: S.cuentas nace vacío y cada usuario crea las suyas (Nequi, Caja Social, efectivo, una
+   cuenta de ahorro…). Todas son del MISMO tipo de objeto y se identifican igual en toda la app:
+     cuenta  : {id, tipo, nombre, icono, color, saldo, archivada?, movimientos:[…]}
+     fuente  : 'cuenta:ID'  (los movimientos, el libro, los gastos, los encargos y los préstamos guardan este texto)
+   `tipo` solo describe qué clase de cuenta es y qué sabe hacer (ver TIPOS_CUENTA): 'banco', 'billetera', 'efectivo' y
+   'ahorro'. Una cuenta de AHORRO no guarda un saldo propio: su plata vive en cajitas (S.cajitas, fuente 'cajita:ID', cada
+   una con su `cuentaId`) que rinden intereses con la tasa EA de LA CUENTA (cuenta.tasaEA + cuenta.historialTasas) y pueden
+   tener CDTs. Nu es solo un preset del catálogo (catalogo-cuentas.js) que crea una cuenta de ahorro.
+   Cambiar de banco = crear la cuenta nueva, mover el saldo y ARCHIVAR la vieja: archivar no borra, la cuenta sigue en
+   S.cuentas (su historial se conserva y los movimientos viejos se siguen mostrando con su nombre), solo deja de ofrecerse
+   como origen/destino y de aparecer en el selector y en Inicio. Para archivar el saldo debe ser $0.
+   El saldo de una cuenta se lee y se escribe SOLO por sumarFuente/descontarFuente/ajustarSaldoCuenta (puerta única del
+   libro): ningún módulo toca `c.saldo` directamente. */
+const FUENTE_CUENTA_PREFIJO='cuenta:';
+// Clases de cuenta. `ahorro` es la única con cajitas y tasa; el resto solo guarda un saldo. `etiqueta` es lo que se ve en el
+// rótulo del saldo. Una clase nueva (p. ej. 'inversion') se agrega acá y en el catálogo, no repartida por el código.
+// Registro de pantallas propias por clase de cuenta (hoy solo 'ahorro'): cada módulo la presenta aquí al cargar y cuentas.js la
+// consulta sin importarlo. Forma: { paneles:[ids], panel:id, reiniciar(), ... }.
 const CuentaPantallas={};
+
+const TIPOS_CUENTA={
+  banco:    {nombre:'Cuenta bancaria',   etiqueta:'Saldo disponible'},
+  billetera:{nombre:'Billetera digital', etiqueta:'Saldo disponible'},
+  efectivo: {nombre:'Efectivo',          etiqueta:'Disponible en efectivo'},
+  ahorro:   {nombre:'Cuenta de ahorro',  etiqueta:'Total en ahorro'}
+};
+function esFuenteCuenta(f){return typeof f==='string'&&f.startsWith(FUENTE_CUENTA_PREFIJO);}
+function fuenteDeCuenta(id){return FUENTE_CUENTA_PREFIJO+id;}
+function idDeFuenteCuenta(f){return esFuenteCuenta(f)?f.slice(FUENTE_CUENTA_PREFIJO.length):'';}
 function _cuentasArr(){
   if(!Array.isArray(S.cuentas))S.cuentas=[];
-  ['nequi','efectivo'].forEach(id=>{if(!S.cuentas.some(c=>c.id===id))S.cuentas.push({id,tipo:id,saldo:0});});
   return S.cuentas;
 }
-// Cuenta por id: 'nequi' | 'efectivo' | id de una personalizada. undefined si no existe.
+// Cuenta por id; undefined si no existe.
 function getCuenta(id){return _cuentasArr().find(c=>c.id===id);}
-// Solo personalizadas (undefined si el id es de una cuenta fija o ya no existe).
-function getCuentaCustom(id){const c=getCuenta(id);return c&&c.tipo==='custom'?c:undefined;}
-// Lista de personalizadas, en el orden en que se crearon.
-function cuentasCustom(){return _cuentasArr().filter(c=>c.tipo==='custom');}
-// Cuenta a partir de una fuente ('nequi' | 'efectivo' | 'custom:ID'); undefined para el resto.
-function getCuentaDeFuente(fuente){
-  if(!fuente)return undefined;
-  if(fuente==='nequi'||fuente==='efectivo')return getCuenta(fuente);
-  if(fuente.startsWith('custom:'))return getCuentaCustom(fuente.slice('custom:'.length));
-  return undefined;
-}
+// Cuenta a partir de su fuente ('cuenta:ID'); undefined para el resto (cajita:ID, tc:ID…).
+function getCuentaDeFuente(fuente){return esFuenteCuenta(fuente)?getCuenta(idDeFuenteCuenta(fuente)):undefined;}
+// ¿Tiene cajitas y tasa propia? (cuenta de ahorro)
+function esCuentaAhorro(c){return !!c&&c.tipo==='ahorro';}
+// Todas las cuentas (activas y archivadas), solo las activas y las de ahorro / con saldo propio.
+function cuentasTodas(){return _cuentasArr();}
+function cuentasActivas(){return _cuentasArr().filter(c=>!c.archivada);}
+function cuentasAhorro(opts){return _cuentasArr().filter(c=>esCuentaAhorro(c)&&(!(opts&&opts.soloActivas)||!c.archivada));}
+function cuentasConSaldo(opts){return _cuentasArr().filter(c=>!esCuentaAhorro(c)&&(!(opts&&opts.soloActivas)||!c.archivada));}
+// Cajitas de una cuenta de ahorro (las que no son CDT sueltos).
+function cajitasDeCuenta(cuentaId){return (S.cajitas||[]).filter(c=>c.cuentaId===cuentaId);}
+// Cuenta de ahorro a la que pertenece una cajita (undefined si la cajita quedó huérfana).
+function cuentaDeCajita(c){return c&&c.cuentaId?getCuenta(c.cuentaId):undefined;}
+// Nombre de una cuenta para mostrar; las fuentes que ya no existen se muestran como «Cuenta eliminada».
+function nombreCuenta(c){return c?(c.nombre||'Cuenta'):'Cuenta eliminada';}
+// Color de una cuenta (hex); gris neutro si no tiene.
+function colorCuenta(c){return (c&&c.color)||'#888880';}
+// "Cuenta Mínima" en pesos para mostrar un saldo cuando hay varias cuentas.
+function saldoCuentas(opts){return cuentasConSaldo(opts).reduce((a,c)=>a+(c.saldo||0),0);}
 
 /* ---- LIBRO DE MOVIMIENTOS ----
-   S.libro es la lista de entradas de plata de las cuentas con saldo (nequi, efectivo, custom:ID, cajita:ID): una entrada por
+   S.libro es la lista de entradas de plata de las cuentas con saldo (cuenta:ID, cajita:ID): una entrada por
    cada cambio de saldo. Regla central: el saldo guardado de una cuenta == la suma de sus entradas (Libro.verificar).
    Vive en el núcleo porque sumarFuente/descontarFuente (la puerta única de saldos) lo necesitan en CUALQUIER pantalla.
    Entrada: { id, fecha, cuenta, monto (con signo), tipo, desc?, origen:{modulo, ref?, rev?} }
@@ -334,12 +331,17 @@ const Libro = (() => {
   let _seq = 0, _ctx = null;
   const _arr = x => (Array.isArray(x) ? x : []);
   const _id = () => 'l' + Date.now().toString(36) + (_seq++).toString(36);
-  const esCuenta = k => typeof k === 'string' && (k === 'nequi' || k === 'efectivo' || k.startsWith('custom:') || k.startsWith('cajita:'));
+  const esCuenta = k => typeof k === 'string' && (esFuenteCuenta(k) || k.startsWith('cajita:'));
 
   function _cuentasDe(st) {
     const out = {};
-    _arr(st.cuentas).forEach(c => { if (c && c.id) out[c.tipo === 'custom' ? 'custom:' + c.id : c.id] = { saldo: c.saldo || 0, nombre: c.tipo === 'custom' ? (c.nombre || c.id) : c.id }; });
-    _arr(st.cajitas).forEach(c => { if (c && c.id) out['cajita:' + c.id] = { saldo: c.saldo || 0, nombre: (c.nombre || 'Cajita') + ' (Nu)' }; });
+    // Una cuenta de ahorro no tiene saldo propio (su plata está en las cajitas): solo las demás entran al libro por su cuenta.
+    _arr(st.cuentas).forEach(c => { if (c && c.id && c.tipo !== 'ahorro') out[FUENTE_CUENTA_PREFIJO + c.id] = { saldo: c.saldo || 0, nombre: c.nombre || c.id }; });
+    _arr(st.cajitas).forEach(c => {
+      if (!c || !c.id) return;
+      const madre = _arr(st.cuentas).find(x => x && x.id === c.cuentaId);
+      out['cajita:' + c.id] = { saldo: c.saldo || 0, nombre: (c.nombre || 'Cajita') + (madre ? ' (' + (madre.nombre || 'ahorro') + ')' : '') };
+    });
     return out;
   }
 
@@ -396,7 +398,7 @@ const Libro = (() => {
 if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen como ctx.Libro
 
 /* ---- MOVER PLATA ENTRE CUENTAS ---- */
-// Todo cambio de saldo de una cuenta con saldo (Nequi, Efectivo, personalizadas, cajitas de Nu) pasa por sumarFuente /
+// Todo cambio de saldo de una cuenta con saldo (cuentas y cajitas de las cuentas de ahorro) pasa por sumarFuente /
 // descontarFuente / ajustarSaldoCuenta y deja una entrada en S.libro, de modo que el saldo guardado SIEMPRE sea la suma
 // del libro. Ningún módulo debe escribir `c.saldo` directamente.
 // `opts` (opcional, en ambas): { tipo, desc, origen:{modulo, ref, rev}, fecha } — qué es el movimiento y quién lo originó.
@@ -406,7 +408,7 @@ const _libroPata = (fuente, monto, opts) => Libro.registrar(fuente, monto, opts)
 // libro. Devuelve esa diferencia. Es la única forma permitida de asignar un saldo "absoluto".
 function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
   const c=fuente.startsWith('cajita:')?(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]):getCuentaDeFuente(fuente);
-  if(!c)return 0;
+  if(!c||esCuentaAhorro(c))return 0;
   const delta=nuevoSaldo-(c.saldo||0);
   c.saldo=nuevoSaldo;
   if(Math.abs(delta)>1e-9)_libroPata(fuente,delta,opts);
@@ -421,9 +423,9 @@ function descontarFuente(fuente,monto,opts){
     // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
     return;
   }
-  if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
+  if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c){c.saldo=(c.saldo||0)-monto;_libroPata(fuente,-monto,opts);}
+    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)-monto;_libroPata(fuente,-monto,opts);}
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -451,9 +453,9 @@ function descontarFuente(fuente,monto,opts){
 }
 function sumarFuente(fuente,monto,opts){
   if(!fuente||!monto)return;
-  if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
+  if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c){c.saldo=(c.saldo||0)+monto;_libroPata(fuente,monto,opts);}
+    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)+monto;_libroPata(fuente,monto,opts);}
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -472,15 +474,18 @@ function sumarFuente(fuente,monto,opts){
   }
 }
 
-// Cuentas personalizadas migradas a js/modules/cuentas.js (ver docs/cuentas.md).
-// Lista de cuentas que se pueden elegir como origen/destino. Orden: cajitas de Nu, Nequi, Efectivo,
-// personalizadas y (si incluirTC) tarjetas activas. getFuentes() y getFuentesSinTC() son la misma
-// lista, con y sin TC — antes eran dos copias casi idénticas.
+// Lista de cuentas que se pueden elegir como origen/destino: las cajitas de cada cuenta de ahorro activa, las demás cuentas
+// activas (en el orden en que se crearon) y, si incluirTC, las tarjetas activas. Las archivadas no se ofrecen. getFuentes() y
+// getFuentesSinTC() son la misma lista, con y sin TC.
 function _listaFuentes(incluirTC){
   const arr=[];
-  (S.cajitas||[]).forEach(c=>{if(!c.esCDT)arr.push({val:'cajita:'+c.id,label:c.nombre+' (Nu)'});});
-  ['nequi','efectivo'].forEach(f=>arr.push({val:f,label:getCuentaFija(f).nombre}));
-  cuentasCustom().forEach(c=>arr.push({val:'custom:'+c.id,label:c.nombre}));
+  const activas=cuentasActivas();
+  const activasId=new Set(activas.map(c=>c.id));
+  (S.cajitas||[]).forEach(c=>{
+    if(c.esCDT||!activasId.has(c.cuentaId))return;
+    arr.push({val:'cajita:'+c.id,label:c.nombre+' ('+nombreCuenta(getCuenta(c.cuentaId))+')'});
+  });
+  activas.filter(c=>!esCuentaAhorro(c)).forEach(c=>arr.push({val:fuenteDeCuenta(c.id),label:c.nombre}));
   if(incluirTC)(S.tarjetasCredito||[]).filter(tc=>(tc.estado||'activa')==='activa').forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
   return arr;
 }
@@ -491,16 +496,11 @@ function fuenteLabel(val){
   if(!val)return'Sin especificar';
   if(val==='alcancia')return'Alcancía';
   if(val==='ganancia')return'<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
-  if(val==='nequi'||val==='efectivo')return getCuentaFija(val).nombre;
+  if(esFuenteCuenta(val))return nombreCuenta(getCuentaDeFuente(val));
   if(val.startsWith('cajita:')){
     const id=val.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
-    return c?c.nombre+' (Nu)':'Cajita Nu';
-  }
-  if(val.startsWith('custom:')){
-    const id=val.split(':')[1];
-    const c=getCuentaCustom(id);
-    return c?c.nombre:val;
+    return c?c.nombre+' ('+nombreCuenta(cuentaDeCajita(c))+')':'Cajita eliminada';
   }
   if(val.startsWith('tc:')){
     const id=val.split(':')[1];
@@ -510,14 +510,31 @@ function fuenteLabel(val){
   return val;
 }
 
+/* Clase de «badge» de una fuente. Cada cuenta tiene su propio color, así que la clase se genera por cuenta (bg-cta-<id>) y su regla
+   se inyecta una sola vez en <style id="badges-cuentas">: los sitios que escriben class="badge ${fuenteBadgeClass(f)}" no cambian. */
+const _badgesInyectados=new Set();
+function _clasePorCuenta(c){
+  const hex=colorCuenta(c);
+  const clase='bg-cta-'+String(c.id).replace(/[^a-zA-Z0-9_-]/g,'');
+  try{
+    if(typeof document!=='undefined'&&document&&typeof document.createElement==='function'&&!_badgesInyectados.has(clase+hex)){
+      let st=document.getElementById('badges-cuentas');
+      if(!st){st=document.createElement('style');st.id='badges-cuentas';(document.head||document.documentElement).appendChild(st);}
+      const m=/^#?([0-9a-f]{6})$/i.exec(hex.trim());
+      const rgb=m?[0,2,4].map(i=>parseInt(m[1].slice(i,i+2),16)).join(','):'136,136,128';
+      st.appendChild(document.createTextNode('.'+clase+'{background:rgba('+rgb+',.12);color:'+(m?'#'+m[1]:'var(--text2)')+';}'));
+      _badgesInyectados.add(clase+hex);
+    }
+  }catch(e){/* sin DOM (tests): la clase se devuelve igual */}
+  return clase;
+}
 function fuenteBadgeClass(val){
   if(!val)return'bg-blue';
   if(val==='ganancia')return'bg-green';
-  if(val==='nequi'||val==='efectivo')return getCuentaFija(val).badge;
-  if(val.startsWith('cajita:'))return getCuentaFija('nu').badge;
-  if(val.startsWith('custom:'))return'bg-blue';
+  if(esFuenteCuenta(val)){const c=getCuentaDeFuente(val);return c?_clasePorCuenta(c):'bg-blue';}
+  if(val.startsWith('cajita:')){const c=cuentaDeCajita((S.cajitas||[]).find(x=>x.id===val.split(':')[1]));return c?_clasePorCuenta(c):'bg-blue';}
   if(val.startsWith('tc:'))return'bg-red';
-  return'bg-nu';
+  return'bg-blue';
 }
 
 function poblarFuente(selectId, required=false, incluirTC=true){
@@ -528,9 +545,10 @@ function poblarFuente(selectId, required=false, incluirTC=true){
 
 function getSaldoFuente(fuente){
   if(!fuente)return 0;
-  if(fuente==='nequi'||fuente==='efectivo'||fuente.startsWith('custom:')){
+  if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    return c?c.saldo||0:0;
+    if(!c)return 0;
+    return esCuentaAhorro(c)?ahorroTotal(c.id):(c.saldo||0);
   }
   if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
@@ -616,7 +634,7 @@ function movimientosSinClase(estado){
 
 /* ---- VERSIÓN DEL MODELO DE DATOS ----
    Esta versión de la app nació limpia en el esquema 9 (2026-10-18): NO migra datos de versiones anteriores y no arrastra
-   migraciones antiguas (las de las versiones 8 y 9 se plegaron en el modelo actual: una sola tasa de Nu, S.nuRate, y todo
+   migraciones antiguas (las de las versiones 8 y 9 se plegaron en el modelo actual: una sola tasa de Nu, y todo
    Spotify en S.spotify). Quien trae datos de un esquema menor los ve marcados (S._esquemaAnterior) y empieza de cero
    (Configuración → Borrar todo); un backup de esa versión se rechaza al importar.
 
@@ -624,7 +642,7 @@ function movimientosSinClase(estado){
    recibe el objeto de datos y lo modifica en sitio; debe ser idempotente. Nunca editar ni reordenar una existente. Corren UNA
    vez, en orden, sobre el estado cargado de Firestore y, vía aplicarMigraciones(), sobre un backup JSON antes de importarlo.
    La versión guardada vive en S.schemaVersion. */
-const SCHEMA_BASE = 9;     // primera versión compatible (y la actual mientras MIGRACIONES esté vacía)
+const SCHEMA_BASE = 10;    // primera versión compatible (y la actual mientras MIGRACIONES esté vacía)
 const MIGRACIONES = [];
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
 
@@ -692,7 +710,7 @@ function load(){
   if(!S.encargos)S.encargos=[];
   if(!S.movimientos)S.movimientos=[];
   if(!Array.isArray(S.libro))S.libro=[];
-  _cuentasArr(); // garantiza S.cuentas con Nequi y Efectivo (ver "CUENTAS: MODELO ÚNICO")
+  _cuentasArr(); // garantiza que S.cuentas sea un arreglo (ver "CUENTAS: MODELO ÚNICO")
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
@@ -729,8 +747,6 @@ function load(){
   }
   if(S.gastosFijos){S.gastosFijos=S.gastosFijos.filter(x=>!(x.id==='gf1'&&x.nombre==='Spotify Premium'&&(x.monto||0)===0));}
   if(!S.pagosGastosFijos)S.pagosGastosFijos={};
-  const nuTasaEl=document.getElementById('nuTasaGlobal');
-  if(nuTasaEl)nuTasaEl.value=nuTasaConfigurada()?nuTasaATexto(S.nuRate):'';
   if(typeof _getCuotaAnio==='function'){
     if(document.getElementById('mesadaMontoPapa'))document.getElementById('mesadaMontoPapa').value=fmtInput(_getCuotaAnio('papa',S.mesadaAnio||new Date().getFullYear()));
     if(document.getElementById('mesadaMontoMama'))document.getElementById('mesadaMontoMama').value=fmtInput(_getCuotaAnio('mama',S.mesadaAnio||new Date().getFullYear()));
@@ -810,7 +826,7 @@ function save(){
 function _saldoCPAjeno(){
   // Calcula cuánta plata comprometida ajena está físicamente en cuentas propias.
   // Son destinos de ingresos ya recibidos donde el dinero es de otra persona
-  // (gastos de cajita/nequi/efectivo pendientes de pagar, y plata para TC aún en cajita).
+  // (gastos de cuentas y cajitas pendientes de pagar, y plata para TC aún en cajita).
   // Una vez que se paga (yaPague=true) la plata ya salió → no restar.
   let total = 0;
   (S.plataComprometida||[]).forEach(item => {
@@ -907,7 +923,7 @@ function calcDeudaTcPropia() {
    bloque y todo lo demás sigue igual; tests/nucleo.test.js («patrimonio — fuente única») lo vigila.
 
    PATRIMONIO = activos − pasivos (patrimonio NETO)
-     activos : cajitas de Nu (con su interés), CDTs, Nequi, Efectivo, cuentas propias, «Me deben» y Alcancía.
+     activos : cajitas de las cuentas de ahorro (con su interés), CDTs, el saldo de las demás cuentas, «Me deben» y Alcancía.
      pasivos : deuda de tarjetas (completa), «Yo debo» (deudas con personas) y plata ajena que guardas en tus cuentas.
    Las deudas con personas cuentan completas aunque no tengan fecha de pago: un pasivo sin vencimiento sigue siendo un pasivo
    (entre amigos casi nunca hay fecha, y no por eso la plata deja de ser de otro). Lo mismo vale para «Me deben»: es un
@@ -916,7 +932,7 @@ function calcDeudaTcPropia() {
    `valorVisible`. El total real (con Alcancía) solo se usa por dentro.
 
    LIQUIDEZ = lo que podrías usar ya, sin vender nada ni esperar a nadie (para el fondo de emergencia de Salud financiera).
-     suma  : cajitas, Nequi, Efectivo y cuentas propias.
+     suma  : cajitas y el saldo de las demás cuentas.
      resta : deuda de tarjeta PROPIA, «Yo debo» y plata ajena (esas tres salen de tu bolsillo o ya tienen dueño).
      no suma: CDTs sin vencer (bloqueados), «Me deben» (sin fecha cierta no es plata disponible) ni Alcancía (oculta).
      sí suma: un CDT ya VENCIDO (cdtVencido, nu-calc.js): la plata se puede retirar aunque sigas sin «liberarla» en la cajita.
@@ -924,19 +940,17 @@ function calcDeudaTcPropia() {
 function calcPatrimonioDesglose(){
   const cajitas=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
-  // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
-  // personalizadas. Registrar una entrada de encargo con esa cuenta es solo
+  // NOTA: ya NO se resta plata de encargos guardada en las cuentas con saldo.
+  // Registrar una entrada de encargo con esa cuenta es solo
   // metadata de dónde está físicamente esa plata — nunca suma nada al saldo
-  // real de la cuenta (a diferencia de una cajita de Nu, donde sí forma parte
+  // real de la cuenta (a diferencia de una cajita de ahorro, donde sí forma parte
   // de la base que gana interés en calcC()/_saldoEncargosEnCajita()). Restarla
   // acá contaba de menos un patrimonio que en realidad nunca se sumó. Ver
   // CHANGELOG.md#encargos.
-  const nequi=getSaldoFuente('nequi');
-  const efectivo=getSaldoFuente('efectivo');
+  const cuentas=saldoCuentas(); // todas las cuentas con saldo propio (las de ahorro cuentan por sus cajitas, arriba)
   // Deudas (calc-helpers.js, carga de entrada) — calcPatrimonioTotal() corre en
   // CADA save() de la app (vía snapshotPatrimonio), no solo en refresh().
   const meDeben=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
-  const custom=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
   // Alcancía: el saldo registrado es plata real tuya aunque esté "oculta"
   const alcancia=(S.alcancia&&S.alcancia.saldoRegistrado)?S.alcancia.saldoRegistrado:0;
   // Math.max(0, …) por tarjeta: un saldo a favor (tc.deuda negativo: pagaste de más; el flujo normal de pagos lo recorta en 0, así que
@@ -949,11 +963,11 @@ function calcPatrimonioDesglose(){
   // Restar plata comprometida ajena que está físicamente en cuentas propias
   // (igual que se restan encargos) — es plata de otras personas que administras
   const ajeno=_saldoCPAjeno();
-  const activos=cajitas+cdts+nequi+efectivo+meDeben+custom+alcancia;
+  const activos=cajitas+cdts+cuentas+meDeben+alcancia;
   const pasivos=deudaTC+yoDebo+ajeno;
-  const total=cajitas+cdts+nequi+efectivo+meDeben+custom+alcancia-deudaTC-yoDebo-ajeno;
+  const total=cajitas+cdts+cuentas+meDeben+alcancia-deudaTC-yoDebo-ajeno;
   return {
-    cajitas, cdts, nequi, efectivo, custom, meDeben, alcancia,      // activos
+    cajitas, cdts, cuentas, meDeben, alcancia,                      // activos
     deudaTC, yoDebo, ajeno,                                         // pasivos
     activos, pasivos,
     total,                    // patrimonio neto real (con Alcancía)
@@ -1007,7 +1021,7 @@ function patrimonioFormulaTexto(d){
 // tarjeta que es de un préstamo o un encargo se cubre con lo que te deben, que tampoco entra aquí.
 function calcLiquidez(){
   const d=calcPatrimonioDesglose();
-  const libre=d.cajitas+d.nequi+d.efectivo+d.custom;
+  const libre=d.cajitas+d.cuentas;
   // CDT ya vencidos: dejaron de estar bloqueados. Antes seguían fuera de la liquidez hasta «liberarlos», y con 20 M vencidos y nada en
   // cuentas la Salud decía «tus ahorros están en CDTs» aunque ya se podían cobrar (Inicio sí avisa «venció — ¡libera tu plata!»).
   const ahora=new Date();
@@ -1275,7 +1289,7 @@ function purgarAperturaDelHistorial(m){
 // Calcula cuánta plata de encargos (dinero que estás cuidando de otra persona,
 // "No es tuyo") está guardada físicamente en una cuenta cualquiera — cajita de Nu,
 // Nequi, Efectivo o una cuenta personalizada. cuentaKey usa el mismo formato que
-// getFuentesSinTC(): 'cajita:ID', 'nequi', 'efectivo', 'custom:ID'.
+// getFuentesSinTC(): 'cajita:ID', 'cuenta:ID'.
 function _saldoEncargosEnCuenta(cuentaKey){
   if(!S||!S.encargos||!cuentaKey)return 0;
   let total=0;
@@ -1722,16 +1736,30 @@ function refresh(){
   Refresh.ejecutar();
 }
 
+/* Resumen de cuentas de Inicio: un recuadro por cada cuenta activa (con su color), más «Prestado» y los CDTs si hay una cuenta de
+   ahorro. Se pinta desde S.cuentas, no desde HTML fijo: quien tiene dos cuentas ve dos recuadros, quien tiene seis ve seis. */
+function _colorSeguro(c){return /^#[0-9a-fA-F]{6}$/.test(String(c||''))?c:'var(--text2)';}
+function renderCuentasInicio(){
+  const el=document.getElementById('inicio-cuentas');
+  if(!el)return;
+  const activas=cuentasActivas();
+  if(!activas.length){
+    el.innerHTML=html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-tit">Aún no tienes cuentas</div><div class="ix-cuentas-vacio-txt">Agrega dónde guardas tu plata (un banco, Nequi, efectivo…) para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar mi primera cuenta</button></div>`;
+    return;
+  }
+  const tile=(nombre,monto,color)=>html`<div class="stat"><div class="stat-label">${nombre}</div><div class="stat-value" data-color="${_colorSeguro(color)}">${fmtNoCents(monto)}</div></div>`;
+  el.innerHTML=html`<div class="grid3">${activas.map(c=>tile(esCuentaAhorro(c)?c.nombre+' libre':c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),c.color))}</div>`;
+  el.querySelectorAll('[data-color]').forEach(n=>{n.style.color=n.dataset.color;}); // color calculado: se asigna por DOM
+}
+
 function _refreshNucleo(){
   // Auto-sanación de tarjetas de crédito: agrega campos nuevos, infiere el
   // saldo inicial de tarjetas migradas y recalcula la deuda de cada una a
   // partir de sus movimientos (regla de consistencia). Es idempotente.
   if(typeof tcNormalizarTarjetas==='function') tcNormalizarTarjetas();
-  const nu=nuTotal();
-  // NOTA: ya NO se resta plata de encargos guardada en Nequi/Efectivo/cuentas
-  // personalizadas — mismo criterio y misma razón que en calcPatrimonioTotal().
-  const nequi=getSaldoFuente('nequi');
-  const ef=getSaldoFuente('efectivo');
+  // NOTA: ya NO se resta plata de encargos guardada en las cuentas con saldo — mismo criterio y misma razón que en
+  // calcPatrimonioTotal().
+  const cuentasSaldo=saldoCuentas({soloActivas:true});
   // FIX 2026-08-13: totalPrestadoPendiente (prestado.js, grupo lazy) sin
   // guard — mismo patrón de fallback (0) que ya usa inicio.js línea ~253
   // (window.totalPrestadoPendiente?...:0) para el mismo caso.
@@ -1739,9 +1767,7 @@ function _refreshNucleo(){
   // CDTs value comes from calcCDT nested in cajitas
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
-  // Cuentas personalizadas marcadas para incluir en total
-  const customTotal=cuentasCustom().reduce((a,c)=>a+(c.saldo||0),0);
-  const disp=cajitasLibres+nequi+ef+customTotal;
+  const disp=cajitasLibres+cuentasSaldo;
   // Expuesto para que inicio.js (Neto de TC) reste la deuda de TC de este
   // MISMO número en vez de recalcular "disponible" por su cuenta — evita
   // que ambos cálculos se desalineen (ver CHANGELOG.md#inicio, 2026-09-20).
@@ -1754,14 +1780,14 @@ function _refreshNucleo(){
   const gvMes=_gastosMesHoy.gvTotal;
 
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
-  const _globalTasa=getNuTasaGlobal();
-  const interesesTotalHoy=(S.cajitas||[]).reduce((a,c)=>{
+  const interesesDe=cajitas=>cajitas.reduce((a,c)=>{
     const k=calcC(c);
-    const tasaCajita=_globalTasa; // una sola tasa para todas las cajitas
+    const tasaCajita=getTasaCuenta(c.cuentaId); // la tasa EA de la cuenta de ahorro a la que pertenece
     // Incluir saldo de encargos en la base del interés (son intereses a mi favor)
     const baseInteres=k.val+(k.saldoEncargos||0);
     return a+(baseInteres>0?baseInteres*(Math.pow(1+tasaCajita/100,1/365)-1):0);
   },0);
+  const interesesTotalHoy=interesesDe(S.cajitas||[]);
 
   // El patrimonio del hero NO se arma aquí: sale de calcPatrimonioDesglose() (arriba, junto a calcPatrimonioTotal), la misma
   // cuenta que usan el historial, la gráfica de Análisis, la Proyección y Salud. Así el hero no puede desalinearse de ellos
@@ -1800,17 +1826,14 @@ function _refreshNucleo(){
     }
   }
   document.getElementById('s-disp').textContent=fmtNoCents(disp);
-  document.getElementById('s-nu').textContent=fmtNoCents(cajitasLibres);
-  document.getElementById('s-ef').textContent=fmtNoCents(ef);
-  const sNequiEl=document.getElementById('s-nequi');if(sNequiEl)sNequiEl.textContent=fmtNoCents(nequi);
+  renderCuentasInicio();
   document.getElementById('s-prest').textContent=fmtNoCents(prest);
   document.getElementById('s-cdt').textContent=fmtNoCents(cdts);
+  const _cdtTile=document.getElementById('s-cdt-tile');if(_cdtTile)_cdtTile.style.display=cuentasAhorro({soloActivas:true}).length?'':'none';
   document.getElementById('s-gf').textContent=fmtNoCents(gfTotal);
   document.getElementById('s-gv').textContent=fmtNoCents(gvMes);
   document.getElementById('s-gtotal').textContent=fmtNoCents(gfTotal+gvMes);
-  document.getElementById('nuTotalDisp').textContent=fmt(nu);
-  const nuInterEl=document.getElementById('nuTotalIntereses');
-  if(nuInterEl)nuInterEl.textContent=interesesTotalHoy>0.5?'+'+fmt(interesesTotalHoy)+' intereses estimados hoy':'';
+  // El total de la cuenta de ahorro abierta y sus intereses de hoy los pinta su pantalla (nu.js, renderDetalleAhorro).
 
   // Si hay una cuenta abierta, actualizar su detalle
   // FIX (auditoria-tecnica.md #5): las llamadas de este bloque no tenían
@@ -1825,8 +1848,7 @@ function _refreshNucleo(){
   // typeof fn==='function'), estas se referenciaban bare (if(cuentaActual)),
   // lo que también tira ReferenceError si cuentas.js no cargó. Mismo
   // guard typeof!=='undefined' que ya usa este archivo para Events.
-  // Detalle de la cuenta abierta (Nequi, Nu, Efectivo o personalizada): renderDetalleCuenta()
-  // recibe la fuente ('custom:ID' para las personalizadas) y ya ignora una cuenta borrada.
+  // Detalle de la cuenta abierta: renderDetalleCuenta() recibe su fuente ('cuenta:ID') y ya ignora una cuenta borrada.
   if(typeof renderDetalleCuenta==='function' && typeof cuentaActual!=='undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
   // Siempre actualizar el detalle/sub-pantallas de cajita si hay una abierta
   if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();

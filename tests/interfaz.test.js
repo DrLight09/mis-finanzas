@@ -287,7 +287,7 @@ test('eliminar cuenta: el botón de confirmar es rojo con una regla que gana a l
 // oculta sin movimientos, dejando solo el estado vacío).
 test('detalle de cuenta: Encargos antes que el bloque de Movimientos, y el bloque se oculta sin movimientos', () => {
   const html = leer('index.html');
-  for (const [enc, titulo] of [['det-cuenta-encargos', 'Movimientos registrados</div>'], ['det-nu-encargos', 'Movimientos registrados en Nu</div>']]) {
+  for (const [enc, titulo] of [['det-cuenta-encargos', 'Movimientos registrados</div>'], ['det-nu-encargos', 'Movimientos de la cuenta</div>']]) {
     const iEnc = html.indexOf('id="' + enc + '"'), iBloque = html.indexOf('class="cuenta-movs-bloque"', iEnc);
     assert.ok(iEnc > 0 && iBloque > iEnc, enc + ' va antes de su bloque de movimientos');
     assert.ok(html.slice(iBloque, iBloque + 400).includes(titulo), 'el título vive dentro del bloque');

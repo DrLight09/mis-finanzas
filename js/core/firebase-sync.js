@@ -266,33 +266,7 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
   // ── Inicializar la app una sola vez tras la primera carga ─────────────────
   function _initAppUI() {
     load();
-    (function(){
-      const el=document.getElementById('nuTasaGlobal');
-      if(el&&nuTasaConfigurada())el.value=nuTasaATexto(window.S.nuRate);
-      if(el){
-        // La tasa es UNA para todas las cajitas (S.nuRate): solo números con coma o punto decimal, y no se puede dejar en
-        // blanco ni en 0. Mientras se escribe solo se quita lo que no sirve (letras, signos): NO se guarda ni se anota nada
-        // a medias (antes cada tecla válida —«1» camino a «10,5»— guardaba una tasa de paso y la anotaba en el historial).
-        // El cambio se aplica al confirmar (salir del campo o Enter) y solo si el valor realmente cambió; un valor
-        // incompleto o inválido se descarta y se restaura la tasa anterior. Cambiarla NO recalcula nada hacia atrás: el
-        // historial interno de tasas (S.historialTasasNu) la aplica desde hoy y los intereses ya sellados no se reabren.
-        // Para contrastar con la app de Nu está el Chequeo rápido de cajitas.
-        el.addEventListener('input',function(){
-          const limpio=nuTasaSanear(this.value);
-          if(limpio!==this.value)this.value=limpio;
-        });
-        el.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); this.blur(); } });
-        el.addEventListener('change',function(){
-          const r=nuAplicarTasaEscrita(this.value);
-          if(r==='invalida')return; // el blur restaura la tasa anterior
-          this.value=nuTasaATexto(window.S.nuRate);
-          if(r==='cambio'){save();refresh();}
-        });
-        el.addEventListener('blur',function(){
-          if(nuTasaDesdeTexto(this.value)==null) this.value=nuTasaConfigurada()?nuTasaATexto(window.S.nuRate):'';
-        });
-      }
-    })();
+    // El campo de tasa EA de una cuenta de ahorro lo cablea su pantalla (nu.js), porque la tasa es de CADA cuenta.
     // Materializar intereses de todas las cajitas al arrancar la app.
     // Así la fecha base nunca queda muy atrás y los redondeos acumulados
     // respecto a Nu son mínimos (máx. 1 día de diferencia).

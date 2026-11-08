@@ -4,6 +4,33 @@
 // Corre con:  node --test tests/cuentas.test.js   (o todo: npm test)
 const { describe } = require('node:test');
 
+// Deja abierta la pantalla de una cuenta de ahorro (lo que hace el usuario al tocarla) sin pintarla: estos tests miran la lógica.
+function abrirAhorro(app, id = 'nu') {
+  const real = app.renderDetalleCuenta;
+  app.renderDetalleCuenta = () => {};
+  app.abrirCuenta('cuenta:' + id);
+  app.renderDetalleCuenta = real;
+}
+
+// Estado de prueba en la forma del modelo único: no hay cuentas fijas. `aplicar` acepta además los atajos de Nu de los
+// tests ("nuRate", "historialTasasNu", "chequeosNu"): los vuelve la cuenta de ahorro 'nu' (tasaEA, historialTasas) y
+// S.chequeosAhorro, y pone cuentaId:'nu' a las cajitas que no lo traen.
+function aplicar(S, over = {}) {
+  const o = { ...over };
+  const cuentas = (o.cuentas || S.cuentas || []).slice();
+  const hayNu = 'nuRate' in o || 'historialTasasNu' in o || (o.cajitas || []).some(c => !c.cuentaId);
+  if (hayNu && !cuentas.some(c => c.id === 'nu')) cuentas.push({ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: null });
+  const nu = cuentas.find(c => c.id === 'nu');
+  if (nu && 'nuRate' in o) nu.tasaEA = o.nuRate;
+  if (nu && o.historialTasasNu) nu.historialTasas = o.historialTasasNu;
+  if ('chequeosNu' in o) o.chequeosAhorro = o.chequeosNu;
+  if (o.cajitas) o.cajitas = o.cajitas.map(c => (c.cuentaId ? c : { ...c, cuentaId: 'nu' }));
+  delete o.nuRate; delete o.historialTasasNu; delete o.chequeosNu;
+  if (cuentas.length || 'cuentas' in o) o.cuentas = cuentas;
+  Object.assign(S, o);
+  return S;
+}
+
 describe('historial-cuenta', () => {
   // tests/historial-cuenta.test.js — historial de una cuenta: UNA función (cuentas.js)
   //
@@ -26,88 +53,89 @@ describe('historial-cuenta', () => {
   function fixture(S) {
     const D = (n) => '2026-10-0' + n;
     S.cuentas = [
-      { id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 },
-      { id: 'z', tipo: 'custom', nombre: 'Ahorro', saldo: 0 }, { id: 'y', tipo: 'custom', nombre: 'Otra', saldo: 0 },
+      { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 },
+      { id: 'z', tipo: 'banco', nombre: 'Ahorro', saldo: 0 }, { id: 'y', tipo: 'banco', nombre: 'Otra', saldo: 0 },
+      { id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9.25 },
     ];
-    S.cajitas = [{ id: 'k1', nombre: 'K1', saldo: 0 }, { id: 'k2', nombre: 'K2', saldo: 0 }];
+    S.cajitas = [{ id: 'k1', cuentaId: 'nu', nombre: 'K1', saldo: 0 }, { id: 'k2', cuentaId: 'nu', nombre: 'K2', saldo: 0 }];
     S.libro = [];
     S.movimientos = [
-      { id: 'm01', tipo: 'entrada', fuente: 'nequi', monto: 100000, fecha: D(1), desc: 'Sueldo' },
-      { id: 'm02', tipo: 'salida_manual', fuente: 'efectivo', monto: 5000, fecha: D(1), desc: 'Almuerzo' },
-      { id: 'm03', tipo: 'entrada', fuente: 'efectivo', monto: 800, fecha: D(1) },
-      { id: 'm04', tipo: 'salida_manual', fuente: 'nequi', monto: 700, fecha: D(1) },
-      { id: 'm05', tipo: 'apertura', fuente: 'nequi', monto: 60000, fecha: '2026-09-01' },
-      { id: 'm06', tipo: 'transferencia', fuente: 'nequi', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioSalida: true, _fuenteDestino: 'efectivo' },
-      { id: 'm07', tipo: 'transferencia', fuente: 'efectivo', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioEntrada: true, _fuenteDestino: 'nequi' },
-      { id: 'm08', tipo: 'transferencia', fuente: 'nequi', monto: 12, fecha: D(2), _fuenteDestino: 'efectivo' },
-      { id: 'm09', tipo: 'entrada', fuente: 'nequi', monto: 50, fecha: D(2), _esReposicionCP: true, desc: 'Reposición: algo' },
-      { id: 'm10', tipo: 'entrada', fuente: 'nequi', monto: 60, fecha: D(2), desc: 'Margen de encargo' },
-      { id: 'm11', tipo: 'entrada', fuente: 'nequi', monto: 8000, fecha: D(3), desc: 'Mesada papá', _secundario: true, _origenSeccion: 'Mesada' },
-      { id: 'm12', tipo: 'entrada', fuente: 'nequi', monto: 99, fecha: D(3), _esAlcanciaIngreso: true, desc: 'alc' },
+      { id: 'm01', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 100000, fecha: D(1), desc: 'Sueldo' },
+      { id: 'm02', tipo: 'salida_manual', fuente: 'cuenta:efectivo', monto: 5000, fecha: D(1), desc: 'Almuerzo' },
+      { id: 'm03', tipo: 'entrada', fuente: 'cuenta:efectivo', monto: 800, fecha: D(1) },
+      { id: 'm04', tipo: 'salida_manual', fuente: 'cuenta:nequi', monto: 700, fecha: D(1) },
+      { id: 'm05', tipo: 'apertura', fuente: 'cuenta:nequi', monto: 60000, fecha: '2026-09-01' },
+      { id: 'm06', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioSalida: true, _fuenteDestino: 'cuenta:efectivo' },
+      { id: 'm07', tipo: 'transferencia', fuente: 'cuenta:efectivo', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioEntrada: true, _fuenteDestino: 'cuenta:nequi' },
+      { id: 'm08', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 12, fecha: D(2), _fuenteDestino: 'cuenta:efectivo' },
+      { id: 'm09', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 50, fecha: D(2), _esReposicionCP: true, desc: 'Reposición: algo' },
+      { id: 'm10', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 60, fecha: D(2), desc: 'Margen de encargo' },
+      { id: 'm11', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 8000, fecha: D(3), desc: 'Mesada papá', _secundario: true, _origenSeccion: 'Mesada' },
+      { id: 'm12', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 99, fecha: D(3), _esAlcanciaIngreso: true, desc: 'alc' },
       { id: 'm13', tipo: 'entrada', fuente: 'cajita:k1', monto: 400, fecha: D(3), desc: 'Sueldo cajita' },
       { id: 'm14', tipo: 'salida_manual', fuente: 'cajita:k2', monto: 40, fecha: D(3) },
-      { id: 'm15', tipo: 'entrada', fuente: 'custom:z', monto: 70, fecha: D(3), desc: 'Propina' },
-      { id: 'm16', tipo: 'salida_manual', fuente: 'custom:z', monto: 80, fecha: D(3), desc: 'Retiro S' },
-      { id: 'm17', tipo: 'transferencia', fuente: 'custom:z', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioSalida: true, _fuenteDestino: 'nequi' },
-      { id: 'm18', tipo: 'transferencia', fuente: 'nequi', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioEntrada: true, _fuenteDestino: 'custom:z' },
-      { id: 'm19', tipo: 'entrada', fuente: 'custom:z', monto: 6000, fecha: D(4), desc: 'Mesada mamá', _secundario: true, _origenSeccion: 'Mesada' },
-      { id: 'm20', tipo: 'entrada', fuente: 'custom:z', monto: 99, fecha: D(4), _esAlcanciaIngreso: true },
-      { id: 'm21', tipo: 'entrada', fuente: 'custom:z', monto: 45, fecha: D(4), desc: 'Encargo X' },
-      { id: 'm22', tipo: 'entrada', fuente: 'custom:y', monto: 11, fecha: D(4), desc: 'otra cuenta' },
+      { id: 'm15', tipo: 'entrada', fuente: 'cuenta:z', monto: 70, fecha: D(3), desc: 'Propina' },
+      { id: 'm16', tipo: 'salida_manual', fuente: 'cuenta:z', monto: 80, fecha: D(3), desc: 'Retiro S' },
+      { id: 'm17', tipo: 'transferencia', fuente: 'cuenta:z', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioSalida: true, _fuenteDestino: 'cuenta:nequi' },
+      { id: 'm18', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioEntrada: true, _fuenteDestino: 'cuenta:z' },
+      { id: 'm19', tipo: 'entrada', fuente: 'cuenta:z', monto: 6000, fecha: D(4), desc: 'Mesada mamá', _secundario: true, _origenSeccion: 'Mesada' },
+      { id: 'm20', tipo: 'entrada', fuente: 'cuenta:z', monto: 99, fecha: D(4), _esAlcanciaIngreso: true },
+      { id: 'm21', tipo: 'entrada', fuente: 'cuenta:z', monto: 45, fecha: D(4), desc: 'Encargo X' },
+      { id: 'm22', tipo: 'entrada', fuente: 'cuenta:y', monto: 11, fecha: D(4), desc: 'otra cuenta' },
       // lo que antes vivía en cuenta.movimientos / cajita.historial, ya en la lista única
-      { id: 'zc1', tipo: 'entrada', fuente: 'custom:z', monto: 1000, fecha: D(2), desc: 'ingreso de la cuenta' },
-      { id: 'zc2', tipo: 'salida', fuente: 'custom:z', monto: 200, fecha: D(3), desc: 'retiro propio' },
-      { id: 'zc3', tipo: 'apertura', fuente: 'custom:z', monto: 5000, fecha: '2026-09-01' },
-      { id: 'zc4', tipo: 'entrada', fuente: 'custom:z', monto: 300, fecha: D(4), desc: 'espejo', _secundario: true, _esEspejo: true, _origenSeccion: 'Prestado · Me deben' },
-      { id: 'zc7', tipo: 'salida', fuente: 'custom:z', monto: 15, fecha: D(5) },
-      { id: 'zc8', tipo: 'entrada', fuente: 'custom:z', monto: 9, fecha: D(5) },
-      { id: 'yc1', tipo: 'entrada', fuente: 'custom:y', monto: 7, fecha: D(5), desc: 'y' },
+      { id: 'zc1', tipo: 'entrada', fuente: 'cuenta:z', monto: 1000, fecha: D(2), desc: 'ingreso de la cuenta' },
+      { id: 'zc2', tipo: 'salida', fuente: 'cuenta:z', monto: 200, fecha: D(3), desc: 'retiro propio' },
+      { id: 'zc3', tipo: 'apertura', fuente: 'cuenta:z', monto: 5000, fecha: '2026-09-01' },
+      { id: 'zc4', tipo: 'entrada', fuente: 'cuenta:z', monto: 300, fecha: D(4), desc: 'espejo', _secundario: true, _esEspejo: true, _origenSeccion: 'Prestado · Me deben' },
+      { id: 'zc7', tipo: 'salida', fuente: 'cuenta:z', monto: 15, fecha: D(5) },
+      { id: 'zc8', tipo: 'entrada', fuente: 'cuenta:z', monto: 9, fecha: D(5) },
+      { id: 'yc1', tipo: 'entrada', fuente: 'cuenta:y', monto: 7, fecha: D(5), desc: 'y' },
       { id: 'h1', tipo: 'entrada', fuente: 'cajita:k1', monto: 100, fecha: D(2), desc: 'espejo', _secundario: true, _origenSeccion: 'Prestado · Me deben' },
       { id: 'h2', tipo: 'salida', fuente: 'cajita:k1', monto: 50, fecha: D(3), desc: 'x', _secundario: true },
       { id: 'h4', tipo: 'salida', fuente: 'cajita:k2', monto: 4, fecha: D(1), _secundario: true },
-      { tipo: 'entrada', fuente: 'nequi', monto: 1, fecha: D(5), desc: 'sin id A' },     // legado sin id: el orden depende de _idx
-      { tipo: 'salida_manual', fuente: 'nequi', monto: 2, fecha: D(5), desc: 'sin id B' },
+      { tipo: 'entrada', fuente: 'cuenta:nequi', monto: 1, fecha: D(5), desc: 'sin id A' },     // legado sin id: el orden depende de _idx
+      { tipo: 'salida_manual', fuente: 'cuenta:nequi', monto: 2, fecha: D(5), desc: 'sin id B' },
     ];
     S.gastosVar = [
-      { id: 'g01', fuente: 'nequi', desc: 'Mercado', cat: 'Comida', nota: 'n1', monto: 9000, fecha: D(2) },
-      { id: 'g02', fuente: 'efectivo', desc: 'Fijo', esPagoGastoFijo: true, monto: 100, fecha: D(2) },
-      { id: 'g03', fuente: 'nequi', desc: 'Pago TC', _esPagoTC: true, monto: 200, fecha: D(2) },
-      { id: 'g04', fuente: 'nequi', desc: 'Extra', _esExtraPrestamo: true, monto: 300, fecha: D(2) },
-      { id: 'g05', fuente: 'nequi', desc: 'Con nota', nota: 'pagado por encargo', monto: 400, fecha: D(2) },
-      { id: 'g07', fuente: 'nequi', desc: 'Espejo', _secundario: true, _origenSeccion: 'Prestado · Me deben', monto: 600, fecha: D(3) },
+      { id: 'g01', fuente: 'cuenta:nequi', desc: 'Mercado', cat: 'Comida', nota: 'n1', monto: 9000, fecha: D(2) },
+      { id: 'g02', fuente: 'cuenta:efectivo', desc: 'Fijo', esPagoGastoFijo: true, monto: 100, fecha: D(2) },
+      { id: 'g03', fuente: 'cuenta:nequi', desc: 'Pago TC', _esPagoTC: true, monto: 200, fecha: D(2) },
+      { id: 'g04', fuente: 'cuenta:nequi', desc: 'Extra', _esExtraPrestamo: true, monto: 300, fecha: D(2) },
+      { id: 'g05', fuente: 'cuenta:nequi', desc: 'Con nota', nota: 'pagado por encargo', monto: 400, fecha: D(2) },
+      { id: 'g07', fuente: 'cuenta:nequi', desc: 'Espejo', _secundario: true, _origenSeccion: 'Prestado · Me deben', monto: 600, fecha: D(3) },
       { id: 'g08', fuente: 'cajita:k1', desc: 'Gasto cajita', cat: 'Otro', monto: 77, fecha: D(3) },
-      { id: 'g09', fuente: 'custom:z', desc: 'Cine', cat: 'Ocio', nota: 'zn', monto: 88, fecha: D(3) },
-      { id: 'g10', fuente: 'custom:z', desc: 'Mandado', nota: 'encargo foo', monto: 89, fecha: D(3) },
-      { id: 'g12', fuente: 'custom:z', desc: 'Fijo z', esPagoGastoFijo: true, monto: 91, fecha: D(3) },
-      { id: 'g13', fuente: 'custom:y', desc: 'y', monto: 3, fecha: D(3) },
-      { fuente: 'nequi', desc: 'gasto sin id', monto: 5, fecha: D(5) },
+      { id: 'g09', fuente: 'cuenta:z', desc: 'Cine', cat: 'Ocio', nota: 'zn', monto: 88, fecha: D(3) },
+      { id: 'g10', fuente: 'cuenta:z', desc: 'Mandado', nota: 'encargo foo', monto: 89, fecha: D(3) },
+      { id: 'g12', fuente: 'cuenta:z', desc: 'Fijo z', esPagoGastoFijo: true, monto: 91, fecha: D(3) },
+      { id: 'g13', fuente: 'cuenta:y', desc: 'y', monto: 3, fecha: D(3) },
+      { fuente: 'cuenta:nequi', desc: 'gasto sin id', monto: 5, fecha: D(5) },
     ];
     S.deudores = [{ id: 'd1', nombre: 'Ana', movimientos: [
-      { id: 'p1', tipo: 'prestamo', fuente: 'nequi', monto: 30000, fecha: D(2), nota: 'a' },
-      { id: 'p2', tipo: 'prestamo', fuente: '', monto: 30000, fecha: D(2), fuentes: [{ fuente: 'efectivo', monto: 20000 }, { fuente: 'nequi', monto: 10000 }] },
-      { id: 'p3', tipo: 'prestamo', fuente: 'custom:z', monto: 5000, fecha: D(2) },
-      { id: 'p4', tipo: 'prestamo', fuente: '', monto: 300, fecha: D(3), fuentes: [{ fuente: 'custom:z', monto: 100 }, { fuente: 'cajita:k1', monto: 200 }] },
-      { id: 'p5', tipo: 'prestamo', fuente: 'nequi', monto: 50, fecha: D(3), fuentes: [{ fuente: 'efectivo', monto: 5 }] },
-      { id: 'p6', tipo: 'abono', fuente: 'nequi', monto: 10, fecha: D(3) },
+      { id: 'p1', tipo: 'prestamo', fuente: 'cuenta:nequi', monto: 30000, fecha: D(2), nota: 'a' },
+      { id: 'p2', tipo: 'prestamo', fuente: '', monto: 30000, fecha: D(2), fuentes: [{ fuente: 'cuenta:efectivo', monto: 20000 }, { fuente: 'cuenta:nequi', monto: 10000 }] },
+      { id: 'p3', tipo: 'prestamo', fuente: 'cuenta:z', monto: 5000, fecha: D(2) },
+      { id: 'p4', tipo: 'prestamo', fuente: '', monto: 300, fecha: D(3), fuentes: [{ fuente: 'cuenta:z', monto: 100 }, { fuente: 'cajita:k1', monto: 200 }] },
+      { id: 'p5', tipo: 'prestamo', fuente: 'cuenta:nequi', monto: 50, fecha: D(3), fuentes: [{ fuente: 'cuenta:efectivo', monto: 5 }] },
+      { id: 'p6', tipo: 'abono', fuente: 'cuenta:nequi', monto: 10, fecha: D(3) },
       { id: 'p7', tipo: 'prestamo', fuente: 'cajita:k2', monto: 9, fecha: D(3) },
     ] }];
     S.spotify.historial = [
-      { id: 'sp1', tipo: 'cobro', nombre: 'Ana', fuente: 'nequi', fecha: D(2), monto: 15000, pendienteHistorial: [
-        { id: 'ab1', fecha: D(3), monto: 5000, destino: 'efectivo' }, { id: 'ab2', fecha: D(3), monto: 2000, destino: 'custom:z' }, { id: 'ab3', fecha: D(3), monto: 1000, destino: 'cajita:k1' }] },
-      { id: 'sp9', tipo: 'cobro', nombre: 'Ana', fuente: 'custom:z', fecha: D(3), monto: 700 },
-      { id: 'sp3', tipo: 'pago', nombre: 'Plan', fuente: 'nequi', fecha: D(3), monto: 1 },
+      { id: 'sp1', tipo: 'cobro', nombre: 'Ana', fuente: 'cuenta:nequi', fecha: D(2), monto: 15000, pendienteHistorial: [
+        { id: 'ab1', fecha: D(3), monto: 5000, destino: 'cuenta:efectivo' }, { id: 'ab2', fecha: D(3), monto: 2000, destino: 'cuenta:z' }, { id: 'ab3', fecha: D(3), monto: 1000, destino: 'cajita:k1' }] },
+      { id: 'sp9', tipo: 'cobro', nombre: 'Ana', fuente: 'cuenta:z', fecha: D(3), monto: 700 },
+      { id: 'sp3', tipo: 'pago', nombre: 'Plan', fuente: 'cuenta:nequi', fecha: D(3), monto: 1 },
       { id: 'sp4', tipo: 'cobro', nombre: 'Beto', fuente: 'cajita:k1', fecha: D(4), monto: 600 },
     ];
     S.transferencias = [
-      { id: 't01', origen: 'nequi', destino: 'efectivo', monto: 1000, fecha: D(2), nota: 'nt' },
-      { id: 't02', origen: 'efectivo', destino: 'cajita:k1', monto: 200, fecha: D(2) },
+      { id: 't01', origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 1000, fecha: D(2), nota: 'nt' },
+      { id: 't02', origen: 'cuenta:efectivo', destino: 'cajita:k1', monto: 200, fecha: D(2) },
       { id: 't03', origen: 'cajita:k1', destino: 'cajita:k2', monto: 33, fecha: D(3) },
-      { id: 't04', origen: 'nequi', destino: 'alcancia', monto: 44, fecha: D(3), desc: 'Depósito' },
-      { id: 't05', origen: 'custom:z', destino: 'nequi', monto: 55, fecha: D(3) },
-      { id: 't06', origen: 'nequi', destino: 'custom:z', monto: 66, fecha: D(3), _secundario: true },
-      { id: 't07', origen: 'custom:y', destino: 'custom:z', monto: 12, fecha: D(3) },
-      { origen: 'nequi', destino: 'efectivo', monto: 1, fecha: D(5) },
-      { id: 't09', origen: 'custom:z', destino: 'alcancia', monto: 13, fecha: D(3) },
+      { id: 't04', origen: 'cuenta:nequi', destino: 'alcancia', monto: 44, fecha: D(3), desc: 'Depósito' },
+      { id: 't05', origen: 'cuenta:z', destino: 'cuenta:nequi', monto: 55, fecha: D(3) },
+      { id: 't06', origen: 'cuenta:nequi', destino: 'cuenta:z', monto: 66, fecha: D(3), _secundario: true },
+      { id: 't07', origen: 'cuenta:y', destino: 'cuenta:z', monto: 12, fecha: D(3) },
+      { origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 1, fecha: D(5) },
+      { id: 't09', origen: 'cuenta:z', destino: 'alcancia', monto: 13, fecha: D(3) },
     ];
   }
 
@@ -122,12 +150,12 @@ describe('historial-cuenta', () => {
 
   describe('qué filas muestra cada cuenta, y en qué orden (fecha desc; misma fecha: id más reciente primero)', () => {
     const ESPERADO = {
-      'nequi': '?,?,?,?,m18,t06,t05,t04,p5,m11,g07,t01,sp1,p2,p1,m10,m09,m08,m06,g05,g04,g03,g01,m04,m01,m05',
-      'efectivo': '?,p5,ab1,t02,t01,p2,m07,g02,m03,m02',
-      'nu': 'sp4,t03,t03,p7,p4,m14,m13,h2,g08,ab3,t02,h1,h4',
+      'cuenta:nequi': '?,?,?,?,m18,t06,t05,t04,p5,m11,g07,t01,sp1,p2,p1,m10,m09,m08,m06,g05,g04,g03,g01,m04,m01,m05',
+      'cuenta:efectivo': '?,p5,ab1,t02,t01,p2,m07,g02,m03,m02',
+      'cuenta:nu': 'sp4,t03,t03,p7,p4,m14,m13,h2,g08,ab3,t02,h1,h4',
       'cajita:k1': 'sp4,t03,p4,m13,h2,g08,ab3,t02,h1',
-      'custom:z': 'zc8,zc7,zc4,m21,m19,m17,zc2,t09,t07,t06,t05,sp9,p4,m16,m15,g12,g10,g09,ab2,zc1,p3,zc3',
-      'custom:y': 'yc1,m22,t07,g13',
+      'cuenta:z': 'zc8,zc7,zc4,m21,m19,m17,zc2,t09,t07,t06,t05,sp9,p4,m16,m15,g12,g10,g09,ab2,zc1,p3,zc3',
+      'cuenta:y': 'yc1,m22,t07,g13',
     };
     for (const [cuenta, esperado] of Object.entries(ESPERADO)) {
       test(cuenta, () => assert.equal(ids(cargar(), cuenta).join(','), esperado));
@@ -135,40 +163,40 @@ describe('historial-cuenta', () => {
     test('una cuenta cuyo historial está todo en S.movimientos no necesita ninguna lista propia', () => {
       const app = cargar();
       assert.ok(app.S.cuentas.every(c => !('movimientos' in c)) && app.S.cajitas.every(c => !('historial' in c)));
-      assert.ok(filas(app, 'custom:z').length > 0 && filas(app, 'cajita:k1').length > 0);
+      assert.ok(filas(app, 'cuenta:z').length > 0 && filas(app, 'cajita:k1').length > 0);
     });
   });
 
   describe('el tipo de una salida manual es el mismo en todas las cuentas (movimientos.js elige el borrado por ese tipo)', () => {
     test('cuenta personalizada: "salida_manual", como las demás (ya no existe "egreso")', () => {
       const app = cargar();
-      assert.equal(fila(app, 'custom:z', 'm16').tipo, 'salida_manual');
-      assert.equal(fila(app, 'custom:z', 'zc2').tipo, 'salida_manual');
-      assert.ok(!filas(app, 'custom:z').some(m => m.tipo === 'egreso'));
+      assert.equal(fila(app, 'cuenta:z', 'm16').tipo, 'salida_manual');
+      assert.equal(fila(app, 'cuenta:z', 'zc2').tipo, 'salida_manual');
+      assert.ok(!filas(app, 'cuenta:z').some(m => m.tipo === 'egreso'));
     });
     test('Nequi, Efectivo y cajitas: "salida_manual"', () => {
       const app = cargar();
-      for (const [tipo, id] of [['nequi', 'm04'], ['efectivo', 'm02'], ['nu', 'm14']]) assert.equal(fila(app, tipo, id).tipo, 'salida_manual', tipo);
+      for (const [tipo, id] of [['cuenta:nequi', 'm04'], ['cuenta:efectivo', 'm02'], ['cuenta:nu', 'm14']]) assert.equal(fila(app, tipo, id).tipo, 'salida_manual', tipo);
     });
   });
 
   describe('cómo se presenta cada fila', () => {
     test('un gasto trae categoría y nota', () => {
-      const g = fila(cargar(), 'custom:z', 'g09');
+      const g = fila(cargar(), 'cuenta:z', 'g09');
       assert.equal(g.cat, 'Ocio'); assert.equal(g.nota, 'zn');
     });
     test('un gasto con "encargo" en la nota se etiqueta Encargos', () => {
       const app = cargar();
-      assert.equal(fila(app, 'custom:z', 'g10')._origen, 'Encargos');
-      assert.equal(fila(app, 'nequi', 'g05')._origen, 'Encargos');
+      assert.equal(fila(app, 'cuenta:z', 'g10')._origen, 'Encargos');
+      assert.equal(fila(app, 'cuenta:nequi', 'g05')._origen, 'Encargos');
     });
     test('un préstamo dividido muestra las otras cuentas', () => {
-      assert.deepEqual(fila(cargar(), 'custom:z', 'p4')._otrasCuentas, [{ fuente: 'cajita:k1', monto: -200 }]);
+      assert.deepEqual(fila(cargar(), 'cuenta:z', 'p4')._otrasCuentas, [{ fuente: 'cajita:k1', monto: -200 }]);
     });
     test('un movimiento automático lleva la sección que lo originó (Mesada, Préstamos…) y candado', () => {
       const app = cargar();
-      assert.equal(fila(app, 'custom:z', 'm19')._origen, 'Mesada');
-      assert.equal(fila(app, 'custom:z', 'm19')._secundario, true);
+      assert.equal(fila(app, 'cuenta:z', 'm19')._origen, 'Mesada');
+      assert.equal(fila(app, 'cuenta:z', 'm19')._secundario, true);
       assert.equal(fila(app, 'cajita:k1', 'h1')._origen, 'Prestado · Me deben');
     });
   });
@@ -176,44 +204,44 @@ describe('historial-cuenta', () => {
   describe('reglas que la función debe cumplir', () => {
     test('un ingreso de Alcancía sin cuenta de origen no aparece en el historial', () => {
       const app = cargar();
-      for (const tipo of ['nequi', 'custom:z']) assert.ok(!filas(app, tipo).some(m => m._movId === 'm12' || m._movId === 'm20'), tipo);
+      for (const tipo of ['cuenta:nequi', 'cuenta:z']) assert.ok(!filas(app, tipo).some(m => m._movId === 'm12' || m._movId === 'm20'), tipo);
     });
     test('un depósito a la alcancía sale como fila "alcancia" con monto oculto, en cuenta estándar y personalizada', () => {
       const app = cargar();
-      const e = fila(app, 'nequi', 't04'), c = fila(app, 'custom:z', 't09');
+      const e = fila(app, 'cuenta:nequi', 't04'), c = fila(app, 'cuenta:z', 't09');
       assert.equal(e.tipo, 'alcancia'); assert.equal(e._alcOculto, true);
       assert.equal(c.tipo, 'alcancia'); assert.equal(c._alcOculto, true);
     });
     test('el cobro de Spotify descuenta los abonos ya recibidos (no cuenta la plata dos veces)', () => {
       const app = cargar();
-      assert.equal(fila(app, 'nequi', 'sp1').monto, 15000 - (5000 + 2000 + 1000));
-      assert.equal(fila(app, 'efectivo', 'ab1').monto, 5000);
-      assert.equal(fila(app, 'custom:z', 'ab2').monto, 2000);
+      assert.equal(fila(app, 'cuenta:nequi', 'sp1').monto, 15000 - (5000 + 2000 + 1000));
+      assert.equal(fila(app, 'cuenta:efectivo', 'ab1').monto, 5000);
+      assert.equal(fila(app, 'cuenta:z', 'ab2').monto, 2000);
     });
     test('la pantalla de Nu ("nu") junta las filas de TODAS las cajitas, y solo de cajitas', () => {
-      const fuentes = new Set(filas(cargar(), 'nu').map(m => m.fuente));
+      const fuentes = new Set(filas(cargar(), 'cuenta:nu').map(m => m.fuente));
       assert.ok(fuentes.has('cajita:k1') && fuentes.has('cajita:k2'));
       assert.ok([...fuentes].every(f => f.startsWith('cajita:')));
     });
     test('los espejos de una cajita salen en su cajita y en "nu", no en otras cuentas', () => {
       const app = cargar();
-      const nu = ids(app, 'nu');
+      const nu = ids(app, 'cuenta:nu');
       assert.ok(nu.includes('h1') && nu.includes('h2') && nu.includes('h4'));
       assert.ok(ids(app, 'cajita:k1').includes('h2') && !ids(app, 'cajita:k1').includes('h4'));
-      assert.ok(!ids(app, 'nequi').includes('h1'));
+      assert.ok(!ids(app, 'cuenta:nequi').includes('h1'));
     });
     test('una cuenta personalizada que ya no existe no revienta y aún muestra lo que apuntaba a ella', () => {
       const app = cargar();
       app.S.cuentas = app.S.cuentas.filter(c => c.id !== 'z');
-      assert.ok(ids(app, 'custom:z').includes('zc1'));
+      assert.ok(ids(app, 'cuenta:z').includes('zc1'));
     });
     test('sin datos devuelve una lista vacía', () => {
       const app = loadApp(ARCHIVOS, { permissive: true });
-      assert.deepEqual(plano(app.getMovimientosCuenta('nequi')), []);
-      assert.deepEqual(plano(app.getMovimientosCuenta('custom:nada')), []);
+      assert.deepEqual(plano(app.getMovimientosCuenta('cuenta:nequi')), []);
+      assert.deepEqual(plano(app.getMovimientosCuenta('cuenta:nada')), []);
     });
     test('orden: fecha descendente', () => {
-      const fs = filas(cargar(), 'nequi').map(m => m.fecha);
+      const fs = filas(cargar(), 'cuenta:nequi').map(m => m.fecha);
       assert.deepEqual(fs, [...fs].sort((a, b) => b.localeCompare(a)));
     });
   });
@@ -224,25 +252,25 @@ describe('historial-cuenta', () => {
       app.S.libro = [
         { id: 'l1', fecha: '2026-10-05', cuenta: 'cajita:k1', monto: 12.5, tipo: 'rendimiento', desc: 'Intereses de Nu', origen: { modulo: 'cuentas' } },
         { id: 'l2', fecha: '2026-10-06', cuenta: 'cajita:k2', monto: -2000, tipo: 'cdt', desc: 'Capital invertido en CDT', origen: { modulo: 'cuentas' } },
-        { id: 'l3', fecha: '2026-10-07', cuenta: 'efectivo', monto: -30, tipo: 'ajuste', desc: 'Diferencia sin explicar', origen: { modulo: 'cuentas' } },
-        { id: 'l4', fecha: '2026-10-07', cuenta: 'efectivo', monto: 99, tipo: 'movimiento', origen: { modulo: 'prestado', ref: 'x' } },
+        { id: 'l3', fecha: '2026-10-07', cuenta: 'cuenta:efectivo', monto: -30, tipo: 'ajuste', desc: 'Diferencia sin explicar', origen: { modulo: 'cuentas' } },
+        { id: 'l4', fecha: '2026-10-07', cuenta: 'cuenta:efectivo', monto: 99, tipo: 'movimiento', origen: { modulo: 'prestado', ref: 'x' } },
       ];
       return app;
     };
     test('aparecen en la cuenta que cambiaron, en "nu" para las cajitas, con candado y origen "Libro"', () => {
       const app = conLibro();
       const r = fila(app, 'cajita:k1', 'l1');
-      assert.deepEqual([r.tipo, r.monto, r._secundario, r._origen], ['ingreso', 12.5, true, 'Libro · Intereses de Nu']);
-      assert.ok(ids(app, 'nu').includes('l1') && ids(app, 'nu').includes('l2'));
-      const c = fila(app, 'nu', 'l2');
+      assert.deepEqual([r.tipo, r.monto, r._secundario, r._origen], ['ingreso', 12.5, true, 'Libro · Intereses']);
+      assert.ok(ids(app, 'cuenta:nu').includes('l1') && ids(app, 'cuenta:nu').includes('l2'));
+      const c = fila(app, 'cuenta:nu', 'l2');
       assert.deepEqual([c.tipo, c.monto, c._origen], ['salida_manual', -2000, 'Libro · CDT']);
-      assert.deepEqual([fila(app, 'efectivo', 'l3').tipo, fila(app, 'efectivo', 'l3')._origen], ['salida_manual', 'Libro · Ajuste']);
+      assert.deepEqual([fila(app, 'cuenta:efectivo', 'l3').tipo, fila(app, 'cuenta:efectivo', 'l3')._origen], ['salida_manual', 'Libro · Ajuste']);
     });
     test('los movimientos de módulos del libro NO se duplican como fila: ya tienen la suya', () => {
-      assert.ok(!ids(conLibro(), 'efectivo').includes('l4'));
+      assert.ok(!ids(conLibro(), 'cuenta:efectivo').includes('l4'));
     });
     test('no aparecen en otras cuentas', () => {
-      assert.ok(!ids(conLibro(), 'nequi').includes('l1') && !ids(conLibro(), 'custom:z').includes('l3'));
+      assert.ok(!ids(conLibro(), 'cuenta:nequi').includes('l1') && !ids(conLibro(), 'cuenta:z').includes('l3'));
     });
   });
 });
@@ -280,7 +308,7 @@ describe('calcC-calcCDT', () => {
       path.join(MODULES_DIR, 'cuentas.js'),
       path.join(CORE_DIR, 'split.js'), path.join(CORE_DIR, 'diferencial.js'), path.join(MODULES_DIR, 'prestado.js'),
     ], { permissive: true });
-    Object.assign(ctx.S, sOverrides);
+    aplicar(ctx.S, sOverrides);
     return ctx;
   }
 
@@ -291,7 +319,7 @@ describe('calcC-calcCDT', () => {
 
   test('calcC — cajita sin fecha (recién creada, saldo aún no empezó a ganar) devuelve el saldo tal cual', () => {
     const ctx = freshApp({ nuRate: 9.3 });
-    const c = { id: 'nu1', nombre: 'Ahorros', saldo: 500000, fecha: null };
+    const c = { id: 'nu1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 500000, fecha: null };
     const r = ctx.calcC(c);
     assert.equal(r.val, 500000);
     assert.equal(r.ganado, 0);
@@ -304,7 +332,7 @@ describe('calcC-calcCDT', () => {
     // tasa EA X% debe dar como resultado EXACTAMENTE X% de crecimiento —
     // es la propiedad matemática que define qué es una tasa "efectiva anual".
     const ctx = freshApp({ nuRate: 9.3003 });
-    const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(365) };
+    const c = { id: 'nu1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(365) };
     const r = ctx.calcC(c);
     const esperado = 1000000 * 1.093003;
     assert.ok(Math.abs(r.val - esperado) < 1, `esperaba ~${esperado}, dio ${r.val}`);
@@ -333,11 +361,11 @@ describe('calcC-calcCDT', () => {
         { fecha: fechaCambio, tasa: tasaNueva },
       ],
     });
-    const c1 = { id: 'nu1', saldo: 1000000, fecha: inicioPeriodo };
+    const c1 = { id: 'nu1', cuentaId: 'nu', saldo: 1000000, fecha: inicioPeriodo };
     const porTramos = ctxTramos.calcC(c1).val;
 
     const ctxIngenuo = freshApp({ nuRate: tasaNueva }); // sin historial → toda la tasa nueva
-    const c2 = { id: 'nu1', saldo: 1000000, fecha: inicioPeriodo };
+    const c2 = { id: 'nu1', cuentaId: 'nu', saldo: 1000000, fecha: inicioPeriodo };
     const ingenuo = ctxIngenuo.calcC(c2).val;
 
     // Con tasa nueva > tasa vieja, componer 10 días a la vieja + 10 a la
@@ -348,7 +376,7 @@ describe('calcC-calcCDT', () => {
   test('calcC — incluye el saldo de encargos guardados en esa cajita como base del interés (gana intereses también)', () => {
     const ctx = freshApp({
       nuRate: 9.3,
-      cajitas: [{ id: 'nu1', saldo: 500000, fecha: daysAgo(30) }],
+      cajitas: [{ id: 'nu1', cuentaId: 'nu', saldo: 500000, fecha: daysAgo(30) }],
       encargos: [{ saldoInicial: 200000, cuentaInicial: 'cajita:nu1', movimientos: [] }],
     });
     const c = ctx.S.cajitas[0];
@@ -356,7 +384,7 @@ describe('calcC-calcCDT', () => {
 
     const ctxSinEncargo = freshApp({
       nuRate: 9.3,
-      cajitas: [{ id: 'nu1', saldo: 500000, fecha: daysAgo(30) }],
+      cajitas: [{ id: 'nu1', cuentaId: 'nu', saldo: 500000, fecha: daysAgo(30) }],
     });
     const sinEncargo = ctxSinEncargo.calcC(ctxSinEncargo.S.cajitas[0]).val;
 
@@ -401,7 +429,7 @@ describe('calcC-calcCDT', () => {
   test('calcPatrimonioTotal — usa calcC (interés real de nu-calc.js), no el saldo crudo', () => {
     const ctx = freshApp({
       nuRate: 9.3003,
-      cajitas: [{ id: 'nu1', saldo: 1000000, fecha: daysAgo(365) }],
+      cajitas: [{ id: 'nu1', cuentaId: 'nu', saldo: 1000000, fecha: daysAgo(365) }],
     });
     const patrimonio = ctx.calcPatrimonioTotal();
     // Sin interés daría exactamente 1000000; con calcC debe ser ~1093003 (ver test de 365 días arriba).
@@ -414,7 +442,7 @@ describe('calcC-calcCDT', () => {
 
   test('rendimientoCajitaPorMes — repartido por mes suma exactamente calcC(c).ganado y cada mes cae en su mes', () => {
     const ctx = freshApp({ nuRate: 9.3, cajitas: [] });
-    const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
+    const c = { id: 'nu1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
     const porMes = ctx.rendimientoCajitaPorMes(c);
     const suma = Object.values(porMes).reduce((a, b) => a + b, 0);
     assert.ok(Math.abs(suma - ctx.calcC(c).ganado) < 0.01, `suma ${suma} vs ${ctx.calcC(c).ganado}`);
@@ -425,14 +453,14 @@ describe('calcC-calcCDT', () => {
 
   test('calcC(c, hasta) — sin argumento es idéntico a antes; con una fecha pasada da el valor a ese día', () => {
     const ctx = freshApp({ nuRate: 9.3 });
-    const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(40) };
+    const c = { id: 'nu1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(40) };
     assert.equal(ctx.calcC(c).val, ctx.calcC(c, daysAgo(0)).val);
     assert.equal(ctx.calcC(c, c.fecha).ganado, 0);
     assert.ok(ctx.calcC(c, daysAgo(20)).ganado < ctx.calcC(c).ganado);
   });
 
   test('materializarIntereses — anota lo ganado por mes en c.rendimientos y Periodo.rendimientosDelMes lo reporta sin tocar el ingreso', () => {
-    const c = { id: 'nu1', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
+    const c = { id: 'nu1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: daysAgo(75) };
     const ctx = freshApp({ nuRate: 9.3, cajitas: [c], movimientos: [], gastosVar: [], modulos: {}, ingresosFijos: [], pagosGastosFijos: {} });
     const ganado = ctx.calcC(c).ganado;
     ctx.materializarIntereses(c);
@@ -514,9 +542,9 @@ describe('cdt-campos', () => {
     }
     function entorno({ saldo }) {
       const app = loadApp(ARCHIVOS, { permissive: true });
-      Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
-        cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
-        cajitas: [{ id: 'a', nombre: 'A', saldo, fecha: app.hoy(),
+      aplicar(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
+        cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
+        cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'A', saldo, fecha: app.hoy(),
           cdts: [{ id: 'd1', monto: 1000000, tasa: 9.25, rte: 4, inicio: '2026-01-01', vence: '2027-01-01' }] }] });
       const campos = domFalso(app);
       const toasts = [], cerrados = [];
@@ -606,9 +634,10 @@ describe('chequeo-nu', () => {
     // 'chequeo-nu — qué cajitas entran').
     const hace3 = new Date(Date.now() - 3 * 86400000);
     const fechaApta = hace3.getFullYear() + '-' + String(hace3.getMonth() + 1).padStart(2, '0') + '-' + String(hace3.getDate()).padStart(2, '0');
-    Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], chequeosNu: [], historialTasasNu: [], nuRate: 9.3,
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
+    aplicar(app.S, { movimientos: [], gastosVar: [], encargos: [], chequeosNu: [], historialTasasNu: [], nuRate: 9.3,
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
       cajitas: cajitas.map(c => ({ nombre: c.id.toUpperCase(), fecha: fechaApta, ...c })) });
+    abrirAhorro(app);
     const inputs = Object.entries(lecturas).map(([id, value]) => ({ value, dataset: { chqCajita: id } }));
     app.document.querySelectorAll = sel => (String(sel).includes('data-chq-cajita') ? inputs : []);
     const toasts = [], dialogos = [], cerrados = [];
@@ -624,28 +653,28 @@ describe('chequeo-nu', () => {
 
   describe('guardarChequeoNu — campos sin anotar', () => {
     test('una cajita real + otra que se tocó y quedó en 0,00: solo se guarda la real', async () => {
-      const e = entornoChequeo({ cajitas: [{ id: 'a', saldo: 100000 }, { id: 'b', saldo: 500000 }], lecturas: { a: '100.500,00', b: '0,00' } });
+      const e = entornoChequeo({ cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 100000 }, { id: 'b', cuentaId: 'nu', saldo: 500000 }], lecturas: { a: '100.500,00', b: '0,00' } });
       await e.app.guardarChequeoNu();
       assert.equal(e.cajita('a').saldo, 100500);
       assert.equal(e.cajita('b').saldo, 500000, 'la cajita sin anotar no se toca (antes quedaba en 0)');
-      assert.deepEqual(plano(e.app.S.chequeosNu), [{ fecha: e.hoyStr, cajitaId: 'a', saldoReal: 100500 }]);
+      assert.deepEqual(plano(e.app.S.chequeosAhorro), [{ fecha: e.hoyStr, cajitaId: 'a', saldoReal: 100500 }]);
       assert.equal(e.guardados(), 1);
     });
     test('una cajita con saldo chico (< $1.000) tampoco se pone en 0 por tocarla', async () => {
       // Con el código anterior el aviso de "se aleja mucho" no saltaba por debajo de $1.000: se ponía en 0 en silencio.
-      const e = entornoChequeo({ cajitas: [{ id: 'a', saldo: 100000 }, { id: 'b', saldo: 800 }], lecturas: { a: '100.000,00', b: '0,00' } });
+      const e = entornoChequeo({ cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 100000 }, { id: 'b', cuentaId: 'nu', saldo: 800 }], lecturas: { a: '100.000,00', b: '0,00' } });
       await e.app.guardarChequeoNu();
       assert.equal(e.cajita('b').saldo, 800);
-      assert.equal(e.app.S.chequeosNu.some(c => c.cajitaId === 'b'), false);
+      assert.equal(e.app.S.chequeosAhorro.some(c => c.cajitaId === 'b'), false);
     });
     test('todo en 0,00 o vacío: avisa y no guarda nada', async () => {
       for (const lecturas of [{ a: '0,00', b: '0,00' }, { a: '', b: '' }]) {
-        const e = entornoChequeo({ cajitas: [{ id: 'a', saldo: 1000 }, { id: 'b', saldo: 2000 }], lecturas });
+        const e = entornoChequeo({ cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 1000 }, { id: 'b', cuentaId: 'nu', saldo: 2000 }], lecturas });
         await e.app.guardarChequeoNu();
         assert.match(e.toasts.at(-1).msg, /No pusiste ningún saldo/);
         assert.equal(e.guardados(), 0);
         assert.equal(e.cerrados.length, 0);
-        assert.equal(e.app.S.chequeosNu.length, 0);
+        assert.equal(e.app.S.chequeosAhorro.length, 0);
         assert.equal(e.cajita('a').saldo, 1000);
       }
     });
@@ -653,42 +682,42 @@ describe('chequeo-nu', () => {
 
   describe('guardarChequeoNu — comportamiento que no debe cambiar', () => {
     test('una lectura normal corrige el saldo, la fecha y guarda el chequeo', async () => {
-      const e = entornoChequeo({ cajitas: [{ id: 'a', saldo: 100000, fecha: '2026-01-01' }], lecturas: { a: '100.300,00' } });
+      const e = entornoChequeo({ cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 100000, fecha: '2026-01-01' }], lecturas: { a: '100.300,00' } });
       // fecha vieja → el calculado ya incluye intereses de meses: se acepta lo anotado de todos modos
       await e.app.guardarChequeoNu();
       assert.equal(e.cajita('a').saldo, 100300);
       assert.equal(e.cajita('a').fecha, e.hoyStr);
-      assert.equal(e.app.S.chequeosNu.length, 1);
+      assert.equal(e.app.S.chequeosAhorro.length, 1);
     });
     test('un valor muy lejano al calculado pide confirmación; si se cancela no se guarda nada', async () => {
-      const e = entornoChequeo({ cajitas: [{ id: 'a', saldo: 100000 }], lecturas: { a: '900.000,00' }, dialogoRespuesta: false });
+      const e = entornoChequeo({ cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 100000 }], lecturas: { a: '900.000,00' }, dialogoRespuesta: false });
       await e.app.guardarChequeoNu();
       assert.equal(e.dialogos.length, 1);
       assert.equal(e.cajita('a').saldo, 100000);
-      assert.equal(e.app.S.chequeosNu.length, 0);
+      assert.equal(e.app.S.chequeosAhorro.length, 0);
       assert.equal(e.guardados(), 0);
     });
     test('si se confirma el aviso, se guarda', async () => {
-      const e = entornoChequeo({ cajitas: [{ id: 'a', saldo: 100000 }], lecturas: { a: '900.000,00' }, dialogoRespuesta: true });
+      const e = entornoChequeo({ cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 100000 }], lecturas: { a: '900.000,00' }, dialogoRespuesta: true });
       await e.app.guardarChequeoNu();
       assert.equal(e.cajita('a').saldo, 900000);
-      assert.equal(e.app.S.chequeosNu.length, 1);
+      assert.equal(e.app.S.chequeosAhorro.length, 1);
     });
     test('un segundo chequeo el mismo día reemplaza al primero (no duplica)', async () => {
-      const e = entornoChequeo({ cajitas: [{ id: 'a', saldo: 100000 }], lecturas: { a: '100.100,00' } });
+      const e = entornoChequeo({ cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 100000 }], lecturas: { a: '100.100,00' } });
       await e.app.guardarChequeoNu();
       e.app.document.querySelectorAll = () => [{ value: '100.200,00', dataset: { chqCajita: 'a' } }];
       await e.app.guardarChequeoNu();
-      assert.equal(e.app.S.chequeosNu.length, 1);
-      assert.equal(e.app.S.chequeosNu[0].saldoReal, 100200);
+      assert.equal(e.app.S.chequeosAhorro.length, 1);
+      assert.equal(e.app.S.chequeosAhorro[0].saldoReal, 100200);
     });
   });
 
   describe('confirmarAgregarDinero', () => {
     function entornoAgregar({ monto, desc = 'Mesada' }) {
       const app = loadApp(ARCHIVOS, { permissive: true });
-      Object.assign(app.S, { cajitas: [], movimientos: [], gastosVar: [],
-        cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 1000 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }] });
+      aplicar(app.S, { cajitas: [], movimientos: [], gastosVar: [],
+        cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 1000 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
       const el = (x = {}) => ({ value: '', textContent: '', innerHTML: '', checked: false, style: {}, focus() {}, ...x });
       const campos = { adTitle: el(), adSaldoActual: el(), adMonto: el(), adDesc: el(), adFecha: el(), adNota: el(), adPreview: el(), adEsApertura: el(), adDescLabel: el() };
       app.document.getElementById = id => campos[id] || null;
@@ -699,11 +728,11 @@ describe('chequeo-nu', () => {
       app.openSheet = () => {};
       app.save = () => { guardados++; };
       app.refresh = () => {};
-      app.fuenteLabel = f => ({ nequi: 'Nequi' }[f] || f);
-      app.abrirAgregarDinero('nequi', 'Nequi');
+      app.fuenteLabel = f => ({ 'cuenta:nequi': 'Nequi' }[f] || f);
+      app.abrirAgregarDinero('cuenta:nequi', 'Nequi');
       guardados = 0;
       campos.adMonto.value = monto; campos.adDesc.value = desc; campos.adFecha.value = '2026-10-05';
-      return { app, toasts, cerrados, guardados: () => guardados, saldo: () => app.getSaldoFuente('nequi') };
+      return { app, toasts, cerrados, guardados: () => guardados, saldo: () => app.getSaldoFuente('cuenta:nequi') };
     }
     test('un monto válido suma, registra y cierra', () => {
       const e = entornoAgregar({ monto: '500,00' });
@@ -756,9 +785,9 @@ describe('nu-cdt', () => {
 
   function entornoNu({ tipo = 'salida', saldo = 5000, monto, desc = 'Pago', nombre = 'Cajita <A>' }) {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [], nuRate: 9.3,
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
-      cajitas: [{ id: 'a', nombre, saldo, fecha: app.hoy() }] });
+    aplicar(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [], nuRate: 9.3,
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
+      cajitas: [{ id: 'a', cuentaId: 'nu', nombre, saldo, fecha: app.hoy() }] });
     const campos = domFalso(app);
     // La cajita única se auto-selecciona al abrir: se simula el click que dispara el handler real.
     const cajitaEl = { dataset: { nuCajita: 'cajita:a' }, style: {}, handlers: {}, addEventListener(ev, fn) { this.handlers[ev] = fn; }, click() { this.handlers.click.call(this); } };
@@ -770,6 +799,7 @@ describe('nu-cdt', () => {
     app.openSheet = () => {};
     app.save = () => { guardados++; };
     app.refresh = () => {};
+    abrirAhorro(app);
     app.abrirNuMovimiento(tipo);
     guardados = 0;
     campos.nuMovMonto.value = monto; campos.nuMovDesc.value = desc; campos.nuMovFecha.value = '2026-10-05';
@@ -822,9 +852,9 @@ describe('nu-cdt', () => {
   describe('confirmarCrearCDT — RTE', () => {
     function entornoCDT({ rte, monto = '100.000,00', saldo = 1000000 }) {
       const app = loadApp(ARCHIVOS, { permissive: true });
-      Object.assign(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
-        cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }],
-        cajitas: [{ id: 'a', nombre: 'A', saldo, fecha: app.hoy() }] });
+      aplicar(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
+        cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
+        cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'A', saldo, fecha: app.hoy() }] });
       const campos = domFalso(app);
       const toasts = [], cerrados = [];
       let guardados = 0;
@@ -899,13 +929,13 @@ describe('restar-dinero', () => {
   const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  function entorno({ fuente = 'nequi', saldo = 5000, monto, desc = 'Retiro de prueba' }) {
+  function entorno({ fuente = 'cuenta:nequi', saldo = 5000, monto, desc = 'Retiro de prueba' }) {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    Object.assign(app.S, { cajitas: [], movimientos: [], gastosVar: [], cuentas: [
-      { id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 },
-      { id: 'z', tipo: 'custom', nombre: 'Ahorro <z>', saldo: 0, movimientos: [] }] });
-    app.getCuenta('nequi').saldo = fuente === 'nequi' ? saldo : 0;
-    app.getCuenta('z').saldo = fuente === 'custom:z' ? saldo : 0;
+    aplicar(app.S, { cajitas: [], movimientos: [], gastosVar: [], cuentas: [
+      { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 },
+      { id: 'z', tipo: 'banco', nombre: 'Ahorro <z>', saldo: 0, movimientos: [] }] });
+    app.getCuenta('nequi').saldo = fuente === 'cuenta:nequi' ? saldo : 0;
+    app.getCuenta('z').saldo = fuente === 'cuenta:z' ? saldo : 0;
     const el = (extra = {}) => ({ value: '', textContent: '', style: {}, focus() {}, ...extra });
     const campos = { rdMonto: el(), rdDesc: el(), rdFecha: el(), rdNota: el(), rdTitle: el(), rdSaldoActual: el(), rdPreview: el() };
     app.document.getElementById = id => campos[id] || null;
@@ -916,7 +946,7 @@ describe('restar-dinero', () => {
     app.openSheet = () => {};
     app.save = () => { guardados++; };
     app.refresh = () => {};
-    app.fuenteLabel = f => ({ nequi: 'Nequi', efectivo: 'Efectivo', 'custom:z': 'Ahorro <z>' }[f] || f);
+    app.fuenteLabel = f => ({ 'cuenta:nequi': 'Nequi', 'cuenta:efectivo': 'Efectivo', 'cuenta:z': 'Ahorro <z>' }[f] || f);
     app.abrirRestarDinero(fuente, 'Cuenta'); // abre el sheet y limpia los campos: se llenan DESPUÉS
     guardados = 0; // abrirRestarDinero() hace un save() al abrir: no cuenta como efecto de confirmar
     campos.rdMonto.value = monto; campos.rdDesc.value = desc; campos.rdFecha.value = '2026-10-05';
@@ -958,7 +988,7 @@ describe('restar-dinero', () => {
       assert.match(e.toasts.at(-1).msg, /Saldo insuficiente/);
     });
     test('el nombre de la cuenta va escapado en el aviso', () => {
-      const e = entorno({ fuente: 'custom:z', saldo: 100, monto: '500,00' });
+      const e = entorno({ fuente: 'cuenta:z', saldo: 100, monto: '500,00' });
       e.app.confirmarRestarDinero();
       assert.match(e.toasts.at(-1).msg, /Ahorro &lt;z&gt;/);
       assert.ok(!e.toasts.at(-1).msg.includes('<z>'));
@@ -1004,19 +1034,26 @@ describe('transferir', () => {
   const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const plano = x => JSON.parse(JSON.stringify(x)); // objetos del vm → datos planos
 
-  function cargar() { return loadApp(ARCHIVOS, { permissive: true }); }
+  function cargar() {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    app.S.cuentas = [
+      { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 },
+      { id: 'x', tipo: 'banco', nombre: 'Ahorro <x>', saldo: 0 },
+    ];
+    return app;
+  }
   const validar = cargar().validarTransferencia;
   const T = o => validar({ saldoOrigen: 1e9, ...o });
 
   describe('validarTransferencia — formulario incompleto o inválido', () => {
     test('sin origen o sin destino → falta_cuenta', () => {
-      assert.equal(T({ origen: '', destino: 'nequi', monto: 100 }).codigo, 'falta_cuenta');
-      assert.equal(T({ origen: 'nequi', destino: '', monto: 100 }).codigo, 'falta_cuenta');
+      assert.equal(T({ origen: '', destino: 'cuenta:nequi', monto: 100 }).codigo, 'falta_cuenta');
+      assert.equal(T({ origen: 'cuenta:nequi', destino: '', monto: 100 }).codigo, 'falta_cuenta');
       assert.equal(validar().codigo, 'falta_cuenta');
     });
     test('origen igual a destino → mismo (antes que el monto)', () => {
-      assert.equal(T({ origen: 'nequi', destino: 'nequi', monto: 100 }).codigo, 'mismo');
-      assert.equal(T({ origen: 'nequi', destino: 'nequi', monto: 0 }).codigo, 'mismo');
+      assert.equal(T({ origen: 'cuenta:nequi', destino: 'cuenta:nequi', monto: 100 }).codigo, 'mismo');
+      assert.equal(T({ origen: 'cuenta:nequi', destino: 'cuenta:nequi', monto: 0 }).codigo, 'mismo');
     });
     test('monto 0, negativo, NaN, Infinity, texto o ausente → sin_monto', () => {
       for (const monto of [0, -100, -0.01, NaN, Infinity, -Infinity, '100', null, undefined]) {
@@ -1036,31 +1073,31 @@ describe('transferir', () => {
       assert.deepEqual(plano(T({ origen: 'cajita:a', destino: 'cajita:b', monto: 0.01 })), { ok: true });
     });
     test('cajita → Nequi exige entero (9 y 10 sí, 9,90 no)', () => {
-      assert.equal(T({ origen: 'cajita:a', destino: 'nequi', monto: 9 }).ok, true);
-      assert.equal(T({ origen: 'cajita:a', destino: 'nequi', monto: 10 }).ok, true);
-      const r = T({ origen: 'cajita:a', destino: 'nequi', monto: 9.9 });
+      assert.equal(T({ origen: 'cajita:a', destino: 'cuenta:nequi', monto: 9 }).ok, true);
+      assert.equal(T({ origen: 'cajita:a', destino: 'cuenta:nequi', monto: 10 }).ok, true);
+      const r = T({ origen: 'cajita:a', destino: 'cuenta:nequi', monto: 9.9 });
       assert.equal(r.codigo, 'monto');
-      assert.match(r.mensaje, /Solo entre cajitas de Nu/);
+      assert.match(r.mensaje, /Solo entre cajitas de una cuenta de ahorro/);
     });
     test('con cuenta personalizada exige entero, en cualquier dirección', () => {
-      assert.equal(T({ origen: 'custom:x', destino: 'cajita:a', monto: 100.5 }).codigo, 'monto');
-      assert.equal(T({ origen: 'cajita:a', destino: 'custom:x', monto: 100.5 }).codigo, 'monto');
-      assert.equal(T({ origen: 'custom:x', destino: 'nequi', monto: 100.5 }).codigo, 'monto');
-      assert.equal(T({ origen: 'custom:x', destino: 'nequi', monto: 100 }).ok, true);
+      assert.equal(T({ origen: 'cuenta:x', destino: 'cajita:a', monto: 100.5 }).codigo, 'monto');
+      assert.equal(T({ origen: 'cajita:a', destino: 'cuenta:x', monto: 100.5 }).codigo, 'monto');
+      assert.equal(T({ origen: 'cuenta:x', destino: 'cuenta:nequi', monto: 100.5 }).codigo, 'monto');
+      assert.equal(T({ origen: 'cuenta:x', destino: 'cuenta:nequi', monto: 100 }).ok, true);
     });
     test('con Efectivo y centavos, el mensaje habla del efectivo', () => {
-      const r = T({ origen: 'efectivo', destino: 'nequi', monto: 100.5 });
+      const r = T({ origen: 'cuenta:efectivo', destino: 'cuenta:nequi', monto: 100.5 });
       assert.equal(r.codigo, 'monto');
       assert.match(r.mensaje, /El efectivo no tiene centavos/);
     });
     test('0,1 + 0,2 (flotantes) no cuela centavos falsos', () => {
-      assert.equal(T({ origen: 'nequi', destino: 'custom:x', monto: 0.1 + 0.2 }).codigo, 'monto');
+      assert.equal(T({ origen: 'cuenta:nequi', destino: 'cuenta:x', monto: 0.1 + 0.2 }).codigo, 'monto');
     });
   });
 
   describe('validarTransferencia — mínimo con Efectivo', () => {
     test('$49 falla, $50 pasa (desde y hacia Efectivo)', () => {
-      for (const [origen, destino] of [['efectivo', 'nequi'], ['nequi', 'efectivo'], ['cajita:a', 'efectivo'], ['efectivo', 'custom:x']]) {
+      for (const [origen, destino] of [['cuenta:efectivo', 'cuenta:nequi'], ['cuenta:nequi', 'cuenta:efectivo'], ['cajita:a', 'cuenta:efectivo'], ['cuenta:efectivo', 'cuenta:x']]) {
         const bajo = T({ origen, destino, monto: 49 });
         assert.equal(bajo.codigo, 'monto', `${origen}→${destino}`);
         assert.match(bajo.mensaje, /mínimo.*Efectivo/i);
@@ -1068,30 +1105,30 @@ describe('transferir', () => {
       }
     });
     test('sin Efectivo no hay mínimo ($1 entre Nequi y personalizada, o entre cajitas)', () => {
-      assert.equal(T({ origen: 'nequi', destino: 'custom:x', monto: 1 }).ok, true);
+      assert.equal(T({ origen: 'cuenta:nequi', destino: 'cuenta:x', monto: 1 }).ok, true);
       assert.equal(T({ origen: 'cajita:a', destino: 'cajita:b', monto: 1 }).ok, true);
     });
   });
 
   describe('validarTransferencia — saldo', () => {
     test('monto mayor al saldo → saldo, con la etiqueta recibida y fmt real', () => {
-      const r = validar({ origen: 'nequi', destino: 'efectivo', monto: 500, saldoOrigen: 499, etiquetaOrigen: 'Nequi' });
+      const r = validar({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 500, saldoOrigen: 499, etiquetaOrigen: 'Nequi' });
       assert.equal(r.codigo, 'saldo');
       assert.match(r.mensaje, /Saldo insuficiente en Nequi \(\$499\)/);
     });
     test('monto igual al saldo pasa (mover todo)', () => {
-      assert.equal(validar({ origen: 'nequi', destino: 'efectivo', monto: 500, saldoOrigen: 500 }).ok, true);
+      assert.equal(validar({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 500, saldoOrigen: 500 }).ok, true);
     });
     test('compara en centavos: 100,10 contra 100,10 pasa; contra 100,09 no', () => {
       assert.equal(validar({ origen: 'cajita:a', destino: 'cajita:b', monto: 100.1, saldoOrigen: 100.1 }).ok, true);
       assert.equal(validar({ origen: 'cajita:a', destino: 'cajita:b', monto: 100.1, saldoOrigen: 100.09 }).codigo, 'saldo');
     });
     test('sin saldoOrigen numérico no se valida saldo (uso de la vista previa)', () => {
-      assert.equal(validar({ origen: 'nequi', destino: 'efectivo', monto: 500 }).ok, true);
-      assert.equal(validar({ origen: 'nequi', destino: 'efectivo', monto: 500, saldoOrigen: NaN }).ok, true);
+      assert.equal(validar({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 500 }).ok, true);
+      assert.equal(validar({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 500, saldoOrigen: NaN }).ok, true);
     });
     test('un error de monto se avisa antes que el de saldo', () => {
-      assert.equal(validar({ origen: 'nequi', destino: 'efectivo', monto: 10, saldoOrigen: 1 }).codigo, 'monto');
+      assert.equal(validar({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 10, saldoOrigen: 1 }).codigo, 'monto');
     });
   });
 
@@ -1107,7 +1144,7 @@ describe('transferir', () => {
     app.closeSheet = n => cerrados.push(n);
     app.save = () => { guardados++; };
     app.refresh = () => {};
-    app.fuenteLabel = f => ({ nequi: 'Nequi', efectivo: 'Efectivo', 'custom:x': 'Ahorro <x>' }[f] || f);
+    app.fuenteLabel = f => ({ 'cuenta:nequi': 'Nequi', 'cuenta:efectivo': 'Efectivo', 'cuenta:x': 'Ahorro <x>' }[f] || f);
     // window.S === S (core-state.js:127), así que el test lee/escribe el estado real.
     // Los saldos viven en S.cuentas[] (no en S.nequiSaldo, que es el modelo viejo).
     app.getCuenta('nequi').saldo = nequi; app.getCuenta('efectivo').saldo = efectivo; app.S.transferencias = [];
@@ -1122,59 +1159,59 @@ describe('transferir', () => {
 
   describe('confirmarTransferir', () => {
     test('transferencia válida: mueve el saldo, registra, guarda y cierra', () => {
-      const e = entorno({ origen: 'nequi', destino: 'efectivo', monto: '1.000,00', nequi: 5000, efectivo: 200, nota: 'pasé plata' });
+      const e = entorno({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: '1.000,00', nequi: 5000, efectivo: 200, nota: 'pasé plata' });
       e.app.confirmarTransferir();
       const s = e.estado();
       assert.equal(s.n, 4000);
       assert.equal(s.e, 1200);
       assert.equal(s.t.length, 1);
-      assert.deepEqual({ ...s.t[0], id: 'x' }, { id: 'x', fecha: '2026-10-04', origen: 'nequi', destino: 'efectivo', monto: 1000, nota: 'pasé plata' });
+      assert.deepEqual({ ...s.t[0], id: 'x' }, { id: 'x', fecha: '2026-10-04', origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 1000, nota: 'pasé plata' });
       assert.equal(e.guardados(), 1);
       assert.deepEqual(plano(e.cerrados), ['transferir']);
       assert.equal(e.toasts.at(-1).tipo, 'ok');
     });
     test('la plata total no cambia (neto cero entre cuentas propias)', () => {
-      const e = entorno({ origen: 'efectivo', destino: 'nequi', monto: '250,00', nequi: 100, efectivo: 1000 });
+      const e = entorno({ origen: 'cuenta:efectivo', destino: 'cuenta:nequi', monto: '250,00', nequi: 100, efectivo: 1000 });
       e.app.confirmarTransferir();
       const s = e.estado();
       assert.equal(s.n + s.e, 1100);
     });
     test('monto negativo no mueve nada (red de seguridad: money-input no deja escribir "-")', () => {
-      const e = entorno({ origen: 'nequi', destino: 'efectivo', monto: '-500', nequi: 5000 });
+      const e = entorno({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: '-500', nequi: 5000 });
       e.app.confirmarTransferir();
       intacto(e, { n: 5000, e: 0, t: [] });
       assert.equal(e.toasts[0].msg, 'Ingresa un monto válido');
     });
     test('monto 0 o vacío no mueve nada', () => {
       for (const monto of ['0,00', '']) {
-        const e = entorno({ origen: 'nequi', destino: 'efectivo', monto, nequi: 5000 });
+        const e = entorno({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto, nequi: 5000 });
         e.app.confirmarTransferir();
         intacto(e, { n: 5000, e: 0, t: [] });
       }
     });
     test('origen = destino y falta de cuenta no mueven nada', () => {
-      let e = entorno({ origen: 'nequi', destino: 'nequi', monto: '100,00', nequi: 5000 });
+      let e = entorno({ origen: 'cuenta:nequi', destino: 'cuenta:nequi', monto: '100,00', nequi: 5000 });
       e.app.confirmarTransferir(); intacto(e, { n: 5000, e: 0, t: [] });
       assert.equal(e.toasts[0].msg, 'El origen y destino deben ser diferentes');
-      e = entorno({ origen: '', destino: 'nequi', monto: '100,00', nequi: 5000 });
+      e = entorno({ origen: '', destino: 'cuenta:nequi', monto: '100,00', nequi: 5000 });
       e.app.confirmarTransferir(); intacto(e, { n: 5000, e: 0, t: [] });
       assert.equal(e.toasts[0].msg, 'Elige origen y destino');
     });
     test('mínimo con Efectivo: aviso de 3500 ms y nada se mueve', () => {
-      const e = entorno({ origen: 'efectivo', destino: 'nequi', monto: '49,00', efectivo: 5000 });
+      const e = entorno({ origen: 'cuenta:efectivo', destino: 'cuenta:nequi', monto: '49,00', efectivo: 5000 });
       e.app.confirmarTransferir(); intacto(e, { n: 0, e: 5000, t: [] });
       assert.equal(e.toasts[0].ms, 3500);
       assert.match(e.toasts[0].msg, /mínimo/i);
     });
     test('saldo insuficiente: nada se mueve y el nombre de cuenta va escapado', () => {
-      // 'custom:x' no tiene saldo en el simulador → 0, monto 1.000 → insuficiente
-      const e = entorno({ origen: 'custom:x', destino: 'nequi', monto: '1.000,00' });
+      // 'cuenta:x' no tiene saldo en el simulador → 0, monto 1.000 → insuficiente
+      const e = entorno({ origen: 'cuenta:x', destino: 'cuenta:nequi', monto: '1.000,00' });
       e.app.confirmarTransferir(); intacto(e, { n: 0, e: 0, t: [] });
       assert.match(e.toasts[0].msg, /Saldo insuficiente en Ahorro &lt;x&gt; \(\$0\)/);
       assert.ok(!e.toasts[0].msg.includes('<x>'));
     });
     test('mover exactamente todo el saldo funciona', () => {
-      const e = entorno({ origen: 'nequi', destino: 'efectivo', monto: '5.000,00', nequi: 5000 });
+      const e = entorno({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: '5.000,00', nequi: 5000 });
       e.app.confirmarTransferir();
       assert.equal(e.estado().n, 0);
       assert.equal(e.estado().e, 5000);
@@ -1198,7 +1235,7 @@ describe('spotify-cajita', () => {
       path.join(CORE_DIR, 'core-state.js'), path.join(CORE_DIR, 'periodo.js'), path.join(CORE_DIR, 'nu-calc.js'),
       path.join(CORE_DIR, 'calc-helpers.js'), path.join(CORE_DIR, 'split.js'), path.join(MODULES_DIR, 'spotify.js'),
     ], { permissive: true });
-    Object.assign(ctx.S, S);
+    aplicar(ctx.S, S);
     return ctx;
   }
   const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
@@ -1208,12 +1245,12 @@ describe('spotify-cajita', () => {
   });
 
   test('getSpCajitaSaldo — cajita recién creada (sin fecha) vale su saldo', () => {
-    const ctx = freshApp({ cajitas: [{ id: 's1', nombre: 'Spotify', saldo: 12000 }] });
+    const ctx = freshApp({ cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 12000 }] });
     assert.equal(ctx.getSpCajitaSaldo(), 12000);
   });
 
   test('getSpCajitaSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
-    const ctx = freshApp({ nuRate: 9.3003, cajitas: [{ id: 's1', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }] });
+    const ctx = freshApp({ nuRate: 9.3003, cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }] });
     assert.ok(ctx.getSpCajitaSaldo() > 1050000);
   });
 });
@@ -1231,10 +1268,10 @@ describe('gastos-ida-y-vuelta', () => {
 
   function entorno(campos) {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], pagosGastosFijos: {}, tcMovimientos: [],
+    aplicar(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], pagosGastosFijos: {}, tcMovimientos: [],
       tarjetasCredito: [{ id: 'tc1', nombre: 'Visa', cupo: 1e6, deuda: 0, estado: 'activa', compras: [], pagos: [], saldoInicial: null }],
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }] });
-    app.sumarFuente('nequi', 100000, { origen: { modulo: 't', ref: 'base' } });
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
+    app.sumarFuente('cuenta:nequi', 100000, { origen: { modulo: 't', ref: 'base' } });
     const dom = createFakeDom({ gv_desc: { value: 'Almuerzo' }, gv_monto: { value: '25.000,00' }, gv_fecha: { value: '' }, gv_cat: { value: 'Comida' }, gv_nota: { value: '' }, ...campos });
     app.document = dom.document;
     app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {};
@@ -1244,10 +1281,10 @@ describe('gastos-ida-y-vuelta', () => {
   const netoLibroDesde = (S, n) => { const t = {}; S.libro.slice(n).forEach(e => { t[e.cuenta] = (t[e.cuenta] || 0) + e.monto; }); return Object.values(t).filter(v => Math.abs(v) > 1e-9); };
 
   test('gasto desde una cuenta: registrar y eliminar deja todo como estaba', async () => {
-    const app = entorno({ gv_fuente: { value: 'nequi' } });
+    const app = entorno({ gv_fuente: { value: 'cuenta:nequi' } });
     const antes = sinLibro(app.S), n = app.S.libro.length;
     app.addGastoVar();
-    assert.equal(app.getSaldoFuente('nequi'), 75000);
+    assert.equal(app.getSaldoFuente('cuenta:nequi'), 75000);
     assert.equal(app.S.gastosVar.length, 1);
     await app.deleteGastoVar(app.S.gastosVar[0].id);
     assert.deepEqual(sinLibro(app.S), antes);
@@ -1262,7 +1299,7 @@ describe('gastos-ida-y-vuelta', () => {
     await app.deleteGastoVar(app.S.gastosVar[0].id);
     assert.equal(app.S.gastosVar.length, 0);
     assert.equal(app.S.tarjetasCredito[0].deuda, 0);
-    assert.equal(app.getSaldoFuente('nequi'), 100000, 'ninguna cuenta se movió');
+    assert.equal(app.getSaldoFuente('cuenta:nequi'), 100000, 'ninguna cuenta se movió');
     app.tcNormalizarTarjetas();
     assert.equal(app.S.tarjetasCredito[0].deuda, 0, 'y sigue en 0 tras recalcular');
   });
@@ -1283,8 +1320,8 @@ describe('eliminar-movimiento', () => {
 
   function entorno(campos = {}) {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], transferencias: [], pagosGastosFijos: {}, tcMovimientos: [], tarjetasCredito: [],
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }, { id: 'z', tipo: 'custom', nombre: 'Z', saldo: 0 }] });
+    aplicar(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], transferencias: [], pagosGastosFijos: {}, tcMovimientos: [], tarjetasCredito: [],
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, { id: 'z', tipo: 'banco', nombre: 'Z', saldo: 0 }] });
     const dom = createFakeDom({ gv_desc: { value: 'Almuerzo' }, gv_monto: { value: '2.000,00' }, gv_fecha: { value: '' }, gv_cat: { value: 'Comida' }, gv_nota: { value: '' }, ...campos });
     app.document = dom.document;
     let dialogos = 0;
@@ -1298,11 +1335,11 @@ describe('eliminar-movimiento', () => {
 
   test('saldo inicial: eliminar lo deja en 0 (no en −10), con UN solo diálogo', async () => {
     const e = entorno();
-    e.app.registrarEntradaConApertura('efectivo', 10, HOY, 'Saldo inicial', true, '');
+    e.app.registrarEntradaConApertura('cuenta:efectivo', 10, HOY, 'Saldo inicial', true, '');
     const m = e.app.S.movimientos[0];
-    assert.equal(e.saldo('efectivo'), 10);
-    await e.app.eliminarMovimiento(boton('apertura', m.id, 'efectivo', 10));
-    assert.equal(e.saldo('efectivo'), 0);
+    assert.equal(e.saldo('cuenta:efectivo'), 10);
+    await e.app.eliminarMovimiento(boton('apertura', m.id, 'cuenta:efectivo', 10));
+    assert.equal(e.saldo('cuenta:efectivo'), 0);
     assert.equal(e.dialogos(), 1, 'una sola confirmación');
     assert.equal(e.app.S.movimientos.length, 0);
     assert.equal(e.app.Libro.verificar().ok, true);
@@ -1310,80 +1347,80 @@ describe('eliminar-movimiento', () => {
 
   test('retiro de una cuenta: 10.000 − 2.000 = 8.000 y al eliminar vuelve a 10.000 (no a 12.000)', async () => {
     const e = entorno({ rdMonto: { value: '2.000,00' } });
-    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
-    e.app.registrarSalida('nequi', 2000, HOY, 'Retiro', '');
-    assert.equal(e.saldo('nequi'), 8000);
+    e.app.sumarFuente('cuenta:nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.registrarSalida('cuenta:nequi', 2000, HOY, 'Retiro', '');
+    assert.equal(e.saldo('cuenta:nequi'), 8000);
     const m = e.app.S.movimientos.find(x => x.tipo === 'salida_manual');
-    await e.app.eliminarMovimiento(boton('salida_manual', m.id, 'nequi', 2000));
-    assert.equal(e.saldo('nequi'), 10000);
+    await e.app.eliminarMovimiento(boton('salida_manual', m.id, 'cuenta:nequi', 2000));
+    assert.equal(e.saldo('cuenta:nequi'), 10000);
     assert.equal(e.dialogos(), 1);
   });
 
   test('retiro de una cuenta personalizada: vuelve a 10.000 y no a 12.000', async () => {
     const e = entorno();
-    e.app.sumarFuente('custom:z', 10000, { origen: { modulo: 't', ref: 'base' } });
-    e.app.registrarSalida('custom:z', 2000, HOY, 'Retiro', '');
-    assert.equal(e.saldo('custom:z'), 8000);
+    e.app.sumarFuente('cuenta:z', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.registrarSalida('cuenta:z', 2000, HOY, 'Retiro', '');
+    assert.equal(e.saldo('cuenta:z'), 8000);
     const m = e.app.S.movimientos.find(x => x.tipo === 'salida_manual');
-    await e.app.eliminarMovimiento(boton('salida_manual', m.id, 'custom:z', 2000));
-    assert.equal(e.saldo('custom:z'), 10000);
+    await e.app.eliminarMovimiento(boton('salida_manual', m.id, 'cuenta:z', 2000));
+    assert.equal(e.saldo('cuenta:z'), 10000);
     assert.equal(e.dialogos(), 1);
     assert.equal(e.app.Libro.verificar().ok, true);
   });
 
   test('ingreso manual: eliminarlo baja el saldo una sola vez', async () => {
     const e = entorno();
-    e.app.registrarEntradaConApertura('nequi', 5000, HOY, 'Sueldo', false, '');
+    e.app.registrarEntradaConApertura('cuenta:nequi', 5000, HOY, 'Sueldo', false, '');
     const m = e.app.S.movimientos[0];
-    await e.app.eliminarMovimiento(boton('entrada', m.id, 'nequi', 5000));
-    assert.equal(e.saldo('nequi'), 0);
+    await e.app.eliminarMovimiento(boton('entrada', m.id, 'cuenta:nequi', 5000));
+    assert.equal(e.saldo('cuenta:nequi'), 0);
     assert.equal(e.dialogos(), 1);
   });
 
   test('transferencia: se revierte una sola vez, con UN solo diálogo', async () => {
-    const e = entorno({ tr_origen: { value: 'nequi' }, tr_destino: { value: 'efectivo' }, tr_monto: { value: '3.000,00' }, tr_nota: { value: '' }, tr_fecha: { value: HOY } });
-    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    const e = entorno({ tr_origen: { value: 'cuenta:nequi' }, tr_destino: { value: 'cuenta:efectivo' }, tr_monto: { value: '3.000,00' }, tr_nota: { value: '' }, tr_fecha: { value: HOY } });
+    e.app.sumarFuente('cuenta:nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
     e.app.confirmarTransferir();
-    assert.equal(e.saldo('nequi'), 7000); assert.equal(e.saldo('efectivo'), 3000);
+    assert.equal(e.saldo('cuenta:nequi'), 7000); assert.equal(e.saldo('cuenta:efectivo'), 3000);
     const t = e.app.S.transferencias[0];
-    await e.app.eliminarMovimiento(boton('transferencia', t.id, 'nequi', 3000));
-    assert.equal(e.saldo('nequi'), 10000); assert.equal(e.saldo('efectivo'), 0);
+    await e.app.eliminarMovimiento(boton('transferencia', t.id, 'cuenta:nequi', 3000));
+    assert.equal(e.saldo('cuenta:nequi'), 10000); assert.equal(e.saldo('cuenta:efectivo'), 0);
     assert.equal(e.dialogos(), 1);
   });
 
   test('gasto desde la cuenta: un solo diálogo y se revierte bien', async () => {
-    const e = entorno({ gv_fuente: { value: 'nequi' } });
-    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    const e = entorno({ gv_fuente: { value: 'cuenta:nequi' } });
+    e.app.sumarFuente('cuenta:nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
     e.app.addGastoVar();
-    assert.equal(e.saldo('nequi'), 8000);
+    assert.equal(e.saldo('cuenta:nequi'), 8000);
     const g = e.app.S.gastosVar[0];
-    await e.app.eliminarMovimiento(boton('gasto', g.id, 'nequi', 2000));
-    assert.equal(e.saldo('nequi'), 10000);
+    await e.app.eliminarMovimiento(boton('gasto', g.id, 'cuenta:nequi', 2000));
+    assert.equal(e.saldo('cuenta:nequi'), 10000);
     assert.equal(e.dialogos(), 1);
     assert.equal(e.app.S.gastosVar.length, 0);
   });
 
   test('SEGURIDAD — dos disparos del mismo clic: un diálogo, una reversión', async () => {
     const e = entorno();
-    e.app.registrarEntradaConApertura('efectivo', 10, HOY, 'Saldo inicial', true, '');
-    const m = e.app.S.movimientos[0], b = boton('apertura', m.id, 'efectivo', 10);
+    e.app.registrarEntradaConApertura('cuenta:efectivo', 10, HOY, 'Saldo inicial', true, '');
+    const m = e.app.S.movimientos[0], b = boton('apertura', m.id, 'cuenta:efectivo', 10);
     await Promise.all([e.app.eliminarMovimiento(b), e.app.eliminarMovimiento(b)]);
-    assert.equal(e.saldo('efectivo'), 0, 'antes: −10');
+    assert.equal(e.saldo('cuenta:efectivo'), 0, 'antes: −10');
     assert.equal(e.dialogos(), 1);
   });
 
   test('SEGURIDAD — un movimiento que ya no existe no pregunta ni revierte (la fila quedó pintada)', async () => {
     const e = entorno();
-    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
-    e.app.registrarSalida('nequi', 2000, HOY, 'Retiro', '');
+    e.app.sumarFuente('cuenta:nequi', 10000, { origen: { modulo: 't', ref: 'base' } });
+    e.app.registrarSalida('cuenta:nequi', 2000, HOY, 'Retiro', '');
     const m = e.app.S.movimientos.find(x => x.tipo === 'salida_manual');
-    const b = boton('salida_manual', m.id, 'nequi', 2000);
+    const b = boton('salida_manual', m.id, 'cuenta:nequi', 2000);
     await e.app.eliminarMovimiento(b);
-    assert.equal(e.saldo('nequi'), 10000);
+    assert.equal(e.saldo('cuenta:nequi'), 10000);
     await e.app.eliminarMovimiento(b); // la pantalla todavía mostraba la fila
-    assert.equal(e.saldo('nequi'), 10000, 'no se devuelve otra vez');
+    assert.equal(e.saldo('cuenta:nequi'), 10000, 'no se devuelve otra vez');
     assert.equal(e.dialogos(), 1, 'y no vuelve a preguntar');
-    for (const [tipo, fuente] of [['apertura', 'nequi'], ['salida_manual', 'custom:z'], ['entrada', 'nequi'], ['gasto', 'nequi'], ['transferencia', 'nequi']]) {
+    for (const [tipo, fuente] of [['apertura', 'cuenta:nequi'], ['salida_manual', 'cuenta:z'], ['entrada', 'cuenta:nequi'], ['gasto', 'cuenta:nequi'], ['transferencia', 'cuenta:nequi']]) {
       const antes = e.saldo(fuente);
       await e.app.eliminarMovimiento(boton(tipo, 'no-existe', fuente, 999));
       assert.equal(e.saldo(fuente), antes, `${tipo}: ningún saldo cambia`);
@@ -1393,21 +1430,21 @@ describe('eliminar-movimiento', () => {
 
   test('gasto dividido entre dos cuentas: aparece en CADA cuenta con su parte, y eliminarlo desde una devuelve las dos', async () => {
     const e = entorno();
-    e.app.sumarFuente('nequi', 10000, { origen: { modulo: 't', ref: 'b1' } });
-    e.app.sumarFuente('efectivo', 5000, { origen: { modulo: 't', ref: 'b2' } });
+    e.app.sumarFuente('cuenta:nequi', 10000, { origen: { modulo: 't', ref: 'b1' } });
+    e.app.sumarFuente('cuenta:efectivo', 5000, { origen: { modulo: 't', ref: 'b2' } });
     // lo que deja addGastoVar en modo dividido: sin `fuente` y con la lista `splits`
-    const g = { id: 'gs1', desc: 'Mercado', monto: 3000, fecha: HOY, cat: 'Comida', fuente: '', splits: [{ fuente: 'nequi', monto: 2000 }, { fuente: 'efectivo', monto: 1000 }], clase: 'gasto' };
+    const g = { id: 'gs1', desc: 'Mercado', monto: 3000, fecha: HOY, cat: 'Comida', fuente: '', splits: [{ fuente: 'cuenta:nequi', monto: 2000 }, { fuente: 'cuenta:efectivo', monto: 1000 }], clase: 'gasto' };
     e.app.S.gastosVar.push(g);
-    e.app.descontarFuente('nequi', 2000, { origen: { modulo: 'gastos', ref: 'gs1' } });
-    e.app.descontarFuente('efectivo', 1000, { origen: { modulo: 'gastos', ref: 'gs1' } });
+    e.app.descontarFuente('cuenta:nequi', 2000, { origen: { modulo: 'gastos', ref: 'gs1' } });
+    e.app.descontarFuente('cuenta:efectivo', 1000, { origen: { modulo: 'gastos', ref: 'gs1' } });
     const fila = (cuenta) => plano(e.app.getMovimientosCuenta(cuenta)).filter(m => m._movId === 'gs1');
-    const fn = fila('nequi'), fe = fila('efectivo');
+    const fn = fila('cuenta:nequi'), fe = fila('cuenta:efectivo');
     assert.equal(fn.length, 1, 'aparece en Nequi'); assert.equal(fe.length, 1, 'aparece en Efectivo');
     assert.equal(fn[0].monto, -2000); assert.equal(fe[0].monto, -1000);
-    assert.deepEqual(fn[0]._otrasCuentas, [{ fuente: 'efectivo', monto: -1000 }]);
-    assert.equal(fila('custom:z').length, 0, 'y en ninguna otra cuenta');
-    await e.app.eliminarMovimiento(boton('gasto', 'gs1', 'nequi', 2000));
-    assert.equal(e.saldo('nequi'), 10000); assert.equal(e.saldo('efectivo'), 5000);
+    assert.deepEqual(fn[0]._otrasCuentas, [{ fuente: 'cuenta:efectivo', monto: -1000 }]);
+    assert.equal(fila('cuenta:z').length, 0, 'y en ninguna otra cuenta');
+    await e.app.eliminarMovimiento(boton('gasto', 'gs1', 'cuenta:nequi', 2000));
+    assert.equal(e.saldo('cuenta:nequi'), 10000); assert.equal(e.saldo('cuenta:efectivo'), 5000);
     assert.equal(e.dialogos(), 1);
     assert.equal(e.app.S.gastosVar.length, 0);
   });
@@ -1426,7 +1463,7 @@ describe('cuenta-iconos-colores', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f);
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('color-picker.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
+  const ARCHIVOS = [core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('color-picker.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const ACENTO = '2px solid var(--accent)';
 
   // Círculos de color e íconos falsos: lo único que importa es qué borde les queda.
@@ -1451,21 +1488,23 @@ describe('cuenta-iconos-colores', () => {
     assert.deepEqual(p.circulos.map(c => c.style.border), ['2px solid transparent', '2px solid transparent', ACENTO]);
   });
 
-  test('elegir un ícono no lanza, lo marca, desmarca "Otra" y marca el color de esa marca', () => {
+  test('elegir un ícono no lanza, lo marca (el grid se redibuja), desmarca "Otra" y marca el color de esa marca', () => {
     const app = loadApp(ARCHIVOS, { permissive: true });
     const colorNequi = app.getIconoData('nequi').color;
-    const p = pantalla(app, { colores: ['#000001', colorNequi], iconos: ['otro', 'nequi'] });
-    p.botones[0].style.border = ACENTO; // "Otra" viene marcada por defecto
+    const p = pantalla(app, { colores: ['#000001', colorNequi] });
+    const grid = { innerHTML: '' };
+    const getReal = app.document.getElementById;
+    app.document.getElementById = id => (id === 'nc-icon-grid' ? grid : getReal.call(app.document, id));
     assert.doesNotThrow(() => app.selIconoNC('nequi'));
-    assert.equal(p.botones[1].style.border, ACENTO);
-    assert.notEqual(p.botones[0].style.border, ACENTO);
+    const sel = [...String(grid.innerHTML).matchAll(/class="[^"]*cuenta-ico-op-sel[^"]*"\s+data-icono="([^"]+)"/g)].map(m => m[1]);
+    assert.deepEqual(sel, ['nequi'], 'solo el ícono elegido queda marcado (no "Otra")');
     assert.equal(p.circulos[1].style.border, ACENTO, 'el color de la marca queda marcado');
     assert.equal(p.circulos[0].style.border, '2px solid transparent');
   });
 
   test('editar una cuenta vuelve a dibujar el grid de íconos (marca SU ícono, no el último que se dibujó)', () => {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    app.S.cuentas = [{ id: 'c1', tipo: 'custom', nombre: 'Mi banco', icono: 'bbva', color: '#60b0f0', saldo: 0 }];
+    app.S.cuentas = [{ id: 'c1', tipo: 'banco', nombre: 'Mi banco', icono: 'bbva', color: '#60b0f0', saldo: 0 }];
     const el = () => ({ value: '', style: {}, closest: () => ({ style: {} }), dataset: {} });
     app.document.getElementById = () => el();
     app.document.querySelector = () => el();
@@ -1473,13 +1512,14 @@ describe('cuenta-iconos-colores', () => {
     let dibujos = 0;
     app.renderIconGrid = () => { dibujos++; };
     app.openSheet = () => {};
-    app.editarCuentaCustom('c1');
+    app.editarCuenta('c1');
     assert.equal(dibujos, 1);
   });
 });
 
 describe('nu-tasa-global', () => {
-  // Una sola tasa EA para todas las cajitas de Nu: S.nuRate (null = sin configurar). Los CDT guardan la suya.
+  // Cada cuenta de ahorro tiene UNA tasa EA para todas sus cajitas: cuenta.tasaEA (null = sin configurar). Los CDT guardan la suya.
+  const plano = x => JSON.parse(JSON.stringify(x));
   const { test, describe } = require('node:test');
   const assert = require('node:assert/strict');
   const path = require('node:path');
@@ -1490,48 +1530,52 @@ describe('nu-tasa-global', () => {
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-  const app = (S = {}) => { const a = loadApp(ARCHIVOS, { permissive: true }); Object.assign(a.S, S); return a; };
+  const app = (S = {}) => { const a = loadApp(ARCHIVOS, { permissive: true }); aplicar(a.S, S); return a; };
 
   describe('qué cuenta como "tasa configurada"', () => {
     test('el estado nuevo no trae tasa (ya no se inventa 9,25)', () => {
       const a = app();
-      assert.equal(a.S.nuRate, null);
+      assert.deepEqual(plano(a.S.cuentas), [], 'sin cuentas fijas: el estado nuevo no trae ninguna');
+      assert.equal('nuRate' in a.S, false);
       assert.equal('nuTasaGlobal' in a.S, false);
-      assert.equal(a.nuTasaConfigurada(), false);
-      assert.equal(a.getNuTasaGlobal(), 0);
+      assert.equal(a.ahorroTasaConfigurada('nu'), false);
+      assert.equal(a.getTasaCuenta('nu'), 0);
+      const b = app({ cuentas: [{ id: 'nu', tipo: 'ahorro', nombre: 'Nu' }] });
+      assert.equal(b.getCuenta('nu').tasaEA == null, true, 'una cuenta de ahorro nueva no inventa tasa');
+      assert.equal(b.ahorroTasaConfigurada('nu'), false);
     });
     test('solo un número mayor que 0 cuenta', () => {
       for (const [v, ok] of [[9.25, true], [0.5, true], [0, false], [-1, false], [null, false], [undefined, false], ['9', false], [NaN, false]]) {
-        assert.equal(app({ nuRate: v }).nuTasaConfigurada(), ok, String(v));
+        assert.equal(app({ nuRate: v }).ahorroTasaConfigurada('nu'), ok, String(v));
       }
     });
-    test('nuTasaDesdeTexto: acepta "9,25" y "12.5"; vacío, texto, 0 y negativos son null', () => {
+    test('tasaDesdeTexto: acepta "9,25" y "12.5"; vacío, texto, 0 y negativos son null', () => {
       const a = app();
-      assert.equal(a.nuTasaDesdeTexto('9,25'), 9.25);
-      assert.equal(a.nuTasaDesdeTexto('12.5'), 12.5);
-      for (const t of ['', ' ', '0', '-3', 'abc', null, undefined]) assert.equal(a.nuTasaDesdeTexto(t), null, String(t));
+      assert.equal(a.tasaDesdeTexto('9,25'), 9.25);
+      assert.equal(a.tasaDesdeTexto('12.5'), 12.5);
+      for (const t of ['', ' ', '0', '-3', 'abc', null, undefined]) assert.equal(a.tasaDesdeTexto(t), null, String(t));
     });
   });
 
-  describe('todas las cajitas calculan con S.nuRate; el CDT con la suya', () => {
-    test('calcC usa nuRate (una cajita sin campo `tasa`)', () => {
+  describe('todas las cajitas de una cuenta calculan con la tasa de ESA cuenta; el CDT con la suya', () => {
+    test('calcC usa la tasa de la cuenta (una cajita sin campo `tasa`)', () => {
       const a = app({ nuRate: 12 });
-      const c = { id: 'a', saldo: 100000, fecha: hace(10) };
+      const c = { id: 'a', cuentaId: 'nu', saldo: 100000, fecha: hace(10) };
       assert.equal(a.calcC(c).tasa, 12);
       const esperado = 100000 * (Math.pow(1.12, 10 / 365) - 1);
       assert.ok(Math.abs(a.calcC(c).ganado - esperado) < 0.01);
     });
-    test('dos cajitas con distinto saldo usan la misma tasa; cambiar nuRate cambia las dos', () => {
+    test('dos cajitas con distinto saldo usan la misma tasa; cambiar la tasa de la cuenta cambia las dos', () => {
       const a = app({ nuRate: 10 });
-      const c1 = { id: 'a', saldo: 100000, fecha: hace(30) }, c2 = { id: 'b', saldo: 50000, fecha: hace(30) };
+      const c1 = { id: 'a', cuentaId: 'nu', saldo: 100000, fecha: hace(30) }, c2 = { id: 'b', cuentaId: 'nu', saldo: 50000, fecha: hace(30) };
       assert.equal(a.calcC(c1).tasa, a.calcC(c2).tasa);
       const antes = a.calcC(c1).ganado;
-      a.S.nuRate = 20;
+      a.getCuenta('nu').tasaEA = 20;
       assert.ok(a.calcC(c1).ganado > antes);
     });
     test('sin tasa configurada no hay intereses (en vez de inventar una)', () => {
       const a = app({ nuRate: null });
-      const r = a.calcC({ id: 'a', saldo: 100000, fecha: hace(30) });
+      const r = a.calcC({ id: 'a', cuentaId: 'nu', saldo: 100000, fecha: hace(30) });
       assert.equal(r.ganado, 0);
       assert.equal(r.val, 100000);
     });
@@ -1540,33 +1584,33 @@ describe('nu-tasa-global', () => {
       const cdt = { monto: 100000, tasa: 5, rte: 0, inicio: hace(73), vence: hace(-300) };
       const esperado = Math.round(100000 * (Math.pow(1.05, 73 / 365) - 1) * 2) / 2;
       assert.equal(a.calcCDT(cdt).ganado_bruto, esperado);
-      a.S.nuRate = 30;
+      a.getCuenta('nu').tasaEA = 30;
       assert.equal(a.calcCDT(cdt).ganado_bruto, esperado);
     });
-    test('el historial de tasas manda sobre nuRate para los días anteriores al cambio', () => {
+    test('el historial de tasas de la cuenta manda sobre su tasa actual para los días anteriores al cambio', () => {
       const a = app({ nuRate: 9.3, historialTasasNu: [{ fecha: hace(20), tasa: 9 }, { fecha: hace(10), tasa: 9.3 }] });
-      assert.equal(a.calcC({ id: 'a', saldo: 1000000, fecha: hace(20) }).tasa, 9.3, 'la tasa de hoy es la de nuRate');
-      assert.ok(a.calcC({ id: 'a', saldo: 1000000, fecha: hace(20) }).val < 1000000 * Math.pow(1.093, 20 / 365));
+      assert.equal(a.calcC({ id: 'a', cuentaId: 'nu', saldo: 1000000, fecha: hace(20) }).tasa, 9.3, 'la tasa de hoy es la de la cuenta');
+      assert.ok(a.calcC({ id: 'a', cuentaId: 'nu', saldo: 1000000, fecha: hace(20) }).val < 1000000 * Math.pow(1.093, 20 / 365));
     });
   });
 
   describe('el campo de tasa solo acepta números con coma o punto decimal', () => {
-    test('nuTasaSanear quita letras, signos y separadores de más mientras se escribe', () => {
+    test('tasaSanear quita letras, signos y separadores de más mientras se escribe', () => {
       const a = app();
       const casos = [['9,25', '9,25'], ['9.3', '9.3'], ['9abc,2', '9,2'], ['abc', ''], ['-9,2', '9,2'], ['1.234,5', '1.2345'],
         ['9,2,5', '9,25'], ['12345', '123'], ['9,123456', '9,1234'], ['', ''], [null, ''], ['9 %', '9']];
-      for (const [entra, sale] of casos) assert.equal(a.nuTasaSanear(entra), sale, String(entra));
+      for (const [entra, sale] of casos) assert.equal(a.tasaSanear(entra), sale, String(entra));
     });
-    test('nuTasaDesdeTexto solo da número con un valor completo y razonable', () => {
+    test('tasaDesdeTexto solo da número con un valor completo y razonable', () => {
       const a = app();
-      for (const [t, v] of [['9,25', 9.25], ['12.5', 12.5], ['9', 9], ['100', 100], ['0,5', 0.5], ['9.3003', 9.3003], [' 9,25 ', 9.25]]) assert.equal(a.nuTasaDesdeTexto(t), v, t);
-      for (const t of ['', ' ', '0', '0,0', '-3', 'abc', '9abc', '9,', ',5', '9,2,5', '1.234,5', '101', '1000', '9 %', null, undefined]) assert.equal(a.nuTasaDesdeTexto(t), null, String(t));
+      for (const [t, v] of [['9,25', 9.25], ['12.5', 12.5], ['9', 9], ['100', 100], ['0,5', 0.5], ['9.3003', 9.3003], [' 9,25 ', 9.25]]) assert.equal(a.tasaDesdeTexto(t), v, t);
+      for (const t of ['', ' ', '0', '0,0', '-3', 'abc', '9abc', '9,', ',5', '9,2,5', '1.234,5', '101', '1000', '9 %', null, undefined]) assert.equal(a.tasaDesdeTexto(t), null, String(t));
     });
-    test('nuTasaATexto la muestra con coma decimal y vuelve a ser la misma tasa', () => {
+    test('tasaATexto la muestra con coma decimal y vuelve a ser la misma tasa', () => {
       const a = app();
-      assert.equal(a.nuTasaATexto(9.25), '9,25');
-      assert.equal(a.nuTasaATexto(10), '10');
-      assert.equal(a.nuTasaDesdeTexto(a.nuTasaATexto(9.3003)), 9.3003);
+      assert.equal(a.tasaATexto(9.25), '9,25');
+      assert.equal(a.tasaATexto(10), '10');
+      assert.equal(a.tasaDesdeTexto(a.tasaATexto(9.3003)), 9.3003);
     });
     test('confirmarCambioTasaNu rechaza una tasa con letras o fuera de rango y no toca nada', () => {
       for (const malo of ['9abc', 'abc', '0', '150', '']) {
@@ -1575,10 +1619,10 @@ describe('nu-tasa-global', () => {
         a.toast = (m, t) => avisos.push({ m, t });
         a.closeSheet = () => {}; a.save = () => {}; a.refresh = () => {};
         a.document.getElementById = id => ({ id, value: id === 'ctn-tasa' ? malo : '', style: {} });
-        a._abrirConfirmarTasaNu({ sugerida: 10, desde: hace(5) });
+        a._abrirConfirmarTasaNu({ sugerida: 10, desde: hace(5) }, 'nu');
         a.confirmarCambioTasaNu();
-        assert.equal(a.S.nuRate, 9.3, malo);
-        assert.deepEqual(a.S.historialTasasNu, [], malo);
+        assert.equal(a.getCuenta('nu').tasaEA, 9.3, malo);
+        assert.deepEqual(plano(a.getCuenta('nu').historialTasas), [], malo);
         assert.equal(avisos.at(-1).t, 'err', malo);
       }
     });
@@ -1586,13 +1630,13 @@ describe('nu-tasa-global', () => {
 
   describe('guardar y precargar', () => {
     test('save() no copia la tasa a cada cajita', () => {
-      const a = app({ nuRate: 9.3, cajitas: [{ id: 'a', nombre: 'A', saldo: 0, cdts: [] }] });
+      const a = app({ nuRate: 9.3, cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'A', saldo: 0, cdts: [] }] });
       a.save();
       assert.equal('tasa' in a.S.cajitas[0], false);
     });
-    test('el CDT nuevo se precarga con la tasa global (se puede cambiar) y vacío si no hay tasa', () => {
+    test('el CDT nuevo se precarga con la tasa de su cuenta (se puede cambiar) y vacío si no hay tasa', () => {
       for (const [nuRate, esperado] of [[11.5, '11,5'], [null, '']]) {
-        const a = app({ nuRate, cajitas: [{ id: 'a', nombre: 'A', saldo: 5000, fecha: hace(2), cdts: [] }] });
+        const a = app({ nuRate, cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'A', saldo: 5000, fecha: hace(2), cdts: [] }] });
         const cache = {};
         const el = () => ({ value: 'x', textContent: '', innerHTML: '', style: {}, dataset: {}, focus() {}, readOnly: false });
         a.document.getElementById = id => (cache[id] = cache[id] || el());
@@ -1618,12 +1662,13 @@ describe('nu-acciones', () => {
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
   const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
-  const caja = (id, saldo, fecha) => ({ id, nombre: 'Cajita ' + id, saldo, fecha, cdts: [] });
+  const caja = (id, saldo, fecha) => ({ id, cuentaId: 'nu', nombre: 'Cajita ' + id, saldo, fecha, cdts: [] });
 
   function entorno({ nuRate = 9.3, cajitas = [], chequeosNu = [] } = {}) {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    Object.assign(app.S, { nuRate, cajitas, chequeosNu, movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [], libro: [],
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }] });
+    aplicar(app.S, { nuRate, cajitas, chequeosNu, movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [], libro: [],
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
+    abrirAhorro(app);
     const cache = {};
     const el = () => ({ value: '', textContent: '', innerHTML: '', disabled: false, title: '', style: {}, dataset: {}, attrs: {}, enfocado: false,
       setAttribute(k, v) { this.attrs[k] = v; }, focus() { this.enfocado = true; }, addEventListener() {},
@@ -1652,7 +1697,7 @@ describe('nu-acciones', () => {
       e.app.actualizarBotonesNu();
       assert.equal(e.btn('btnAddCajita').disabled, true);
       assert.notEqual(e.btn('nuTasaAviso').style.display, 'none');
-      e.app.S.nuRate = 9.3; e.app.actualizarBotonesNu();
+      e.app.getCuenta('nu').tasaEA = 9.3; e.app.actualizarBotonesNu();
       assert.equal(e.btn('btnAddCajita').disabled, false);
       assert.equal(e.btn('nuTasaAviso').style.display, 'none');
     });
@@ -1709,7 +1754,7 @@ describe('nu-acciones', () => {
       assert.equal(e.app.S.cajitas.length, 0);
       assert.match(e.toasts.at(-1).msg, /tasa/i);
       assert.equal(e.btn('nuTasaGlobal').enfocado, true);
-      e.app.S.nuRate = 9.3;
+      e.app.getCuenta('nu').tasaEA = 9.3;
       e.app.addCajita();
       assert.equal(e.app.S.cajitas.length, 1);
       assert.equal('tasa' in e.app.S.cajitas[0], false, 'la cajita no guarda tasa propia');
@@ -1737,7 +1782,7 @@ describe('nu-acciones', () => {
     test('una cajita ya chequeada HOY sigue disponible hoy (para corregir la lectura)', () => {
       const e = entorno({ cajitas: [caja('a', 100000, hace(0))], chequeosNu: [{ fecha: hace(0), cajitaId: 'a', saldoReal: 100000 }] });
       assert.deepEqual(e.app.cajitasChequeables().map(c => c.id), ['a']);
-      e.app.S.chequeosNu[0].fecha = hace(1);
+      e.app.S.chequeosAhorro[0].fecha = hace(1);
       assert.deepEqual(e.app.cajitasChequeables(), [], 'un chequeo de ayer no la mantiene');
     });
     test('abrirChequeoNu: no abre si ninguna cumple y explica; abre si alguna cumple', () => {
@@ -1756,13 +1801,13 @@ describe('nu-acciones', () => {
         ? [{ value: '100.500,00', dataset: { chqCajita: 'a' } }, { value: '999.999,00', dataset: { chqCajita: 'b' } }] : []);
       await e.app.guardarChequeoNu();
       assert.equal(e.app.S.cajitas[1].saldo, 100000, 'b no se toca');
-      assert.deepEqual(e.app.S.chequeosNu.map(c => c.cajitaId), ['a']);
+      assert.deepEqual(e.app.S.chequeosAhorro.map(c => c.cajitaId), ['a']);
     });
     test('guardarChequeoNu sin ninguna cajita que cumpla: avisa y no guarda', async () => {
       const e = entorno({ cajitas: [caja('b', 100000, hace(0))] });
       e.app.document.querySelectorAll = () => [{ value: '100.000,00', dataset: { chqCajita: 'b' } }];
       await e.app.guardarChequeoNu();
-      assert.deepEqual(e.app.S.chequeosNu, []);
+      assert.deepEqual(e.app.S.chequeosAhorro, []);
       assert.match(e.toasts.at(-1).msg, /día completo/);
     });
   });
@@ -1779,61 +1824,61 @@ describe('nu-acciones', () => {
     const texto = n => n.toFixed(2).replace('.', ',');
     const lectura = (e, valor) => { e.app.document.querySelectorAll = sel => (String(sel).includes('data-chq-cajita') ? [{ value: valor, dataset: { chqCajita: 'a' } }] : []); };
 
-    test('nuValorEsperadoCajita: total = propio con intereses + encargos guardados en la cajita', () => {
+    test('ahorroValorEsperadoCajita: total = propio con intereses + encargos guardados en la cajita', () => {
       const e = conEncargos();
-      const v = e.app.nuValorEsperadoCajita(e.app.S.cajitas[0]);
+      const v = e.app.ahorroValorEsperadoCajita(e.app.S.cajitas[0]);
       assert.equal(v.encargos, 200000);
       assert.ok(v.propio > 100000, 'el propio ya trae sus intereses');
       assert.ok(Math.abs(v.total - (v.propio + 200000)) < 0.001);
     });
     test('sin encargos el total es el propio (nada cambia para el resto de cajitas)', () => {
       const e = entorno({ cajitas: [caja('a', 100000, hace(3))] });
-      const v = e.app.nuValorEsperadoCajita(e.app.S.cajitas[0]);
+      const v = e.app.ahorroValorEsperadoCajita(e.app.S.cajitas[0]);
       assert.equal(v.encargos, 0);
       assert.equal(v.total, v.propio);
     });
     test('la lectura se interpreta siempre como total: saldo propio = lectura − encargos; la referencia es el total esperado', () => {
       const e = conEncargos();
       const c = e.app.S.cajitas[0];
-      const t = e.app.nuValorEsperadoCajita(c).total;
+      const t = e.app.ahorroValorEsperadoCajita(c).total;
       const r = e.app._interpretarLecturaChequeoNu(c, t);
-      assert.ok(Math.abs(r.saldoPropio - e.app.nuValorEsperadoCajita(c).propio) < 0.001);
+      assert.ok(Math.abs(r.saldoPropio - e.app.ahorroValorEsperadoCajita(c).propio) < 0.001);
       assert.equal(r.referencia, t);
       assert.equal(r.encargos, 200000);
     });
     test('anotar el total de Nu corrige el saldo propio SIN contar los encargos, y no pide confirmar', async () => {
       const e = conEncargos();
       const c = e.app.S.cajitas[0];
-      const total = Math.round(e.app.nuValorEsperadoCajita(c).total * 100) / 100;
+      const total = Math.round(e.app.ahorroValorEsperadoCajita(c).total * 100) / 100;
       let preguntas = 0;
       e.app.dialogo = async () => { preguntas++; return true; };
       lectura(e, texto(total));
       await e.app.guardarChequeoNu();
       assert.equal(preguntas, 0, 'es justo lo que se esperaba');
       assert.ok(Math.abs(c.saldo - (total - 200000)) < 0.01, 'el saldo propio no incluye los encargos');
-      assert.equal(e.app.S.chequeosNu.at(-1).saldoReal, total, 'el chequeo guarda lo que marcó Nu');
+      assert.equal(e.app.S.chequeosAhorro.at(-1).saldoReal, total, 'el chequeo guarda lo que marcó Nu');
     });
     test('anotar solo lo propio (como antes) ya no se acepta en silencio: avisa que es menor que los encargos y no guarda nada', async () => {
       const e = conEncargos();
       const c = e.app.S.cajitas[0];
       const antes = c.saldo;
-      lectura(e, texto(e.app.nuValorEsperadoCajita(c).propio));
+      lectura(e, texto(e.app.ahorroValorEsperadoCajita(c).propio));
       await e.app.guardarChequeoNu();
       assert.equal(c.saldo, antes);
-      assert.deepEqual(e.app.S.chequeosNu, []);
+      assert.deepEqual(e.app.S.chequeosAhorro, []);
       assert.equal(e.toasts.at(-1).tipo, 'err');
       assert.match(e.toasts.at(-1).msg, /encargos/);
     });
     test('un total que se aleja mucho de lo esperado sí pide confirmar (se compara contra el total, no contra lo propio)', async () => {
       const e = conEncargos();
       const c = e.app.S.cajitas[0];
-      const total = e.app.nuValorEsperadoCajita(c).total;
+      const total = e.app.ahorroValorEsperadoCajita(c).total;
       let mensaje = '';
       e.app.dialogo = async (t, m) => { mensaje = m; return false; };
       lectura(e, texto(total + 50000));
       await e.app.guardarChequeoNu();
       assert.match(mensaje, /anotaste/);
-      assert.deepEqual(e.app.S.chequeosNu, [], 'cancelado: no se guarda');
+      assert.deepEqual(e.app.S.chequeosAhorro, [], 'cancelado: no se guarda');
     });
   });
 
@@ -1872,13 +1917,13 @@ describe('retirar-sin-saldo', () => {
   const modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
 
-  const FUENTES = [['efectivo', 'efectivo'], ['Nequi', 'nequi'], ['cuenta personalizada', 'custom:z']];
+  const FUENTES = [['cuenta:efectivo', 'cuenta:efectivo'], ['Nequi', 'cuenta:nequi'], ['cuenta personalizada', 'cuenta:z']];
 
   function entorno(fuente, saldo) {
     const app = loadApp(ARCHIVOS, { permissive: true });
-    Object.assign(app.S, { cajitas: [], movimientos: [], gastosVar: [], cuentas: [
-      { id: 'nequi', tipo: 'nequi', saldo: fuente === 'nequi' ? saldo : 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: fuente === 'efectivo' ? saldo : 0 },
-      { id: 'z', tipo: 'custom', nombre: 'Ahorro', saldo: fuente === 'custom:z' ? saldo : 0 }] });
+    aplicar(app.S, { cajitas: [], movimientos: [], gastosVar: [], cuentas: [
+      { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: fuente === 'cuenta:nequi' ? saldo : 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: fuente === 'cuenta:efectivo' ? saldo : 0 },
+      { id: 'z', tipo: 'banco', nombre: 'Ahorro', saldo: fuente === 'cuenta:z' ? saldo : 0 }] });
     const campos = {};
     const el = () => ({ value: '', textContent: '', style: {}, disabled: false, title: '', attrs: {}, setAttribute(k, v) { this.attrs[k] = v; }, focus() {} });
     app.document.getElementById = id => (campos[id] = campos[id] || el());
@@ -1916,11 +1961,11 @@ describe('retirar-sin-saldo', () => {
     });
   }
   test('un centavo de saldo ya permite retirar; menos de un centavo no', () => {
-    const e = entorno('efectivo', 0.01);
-    e.app.actualizarBotonRetirar(e.boton, 'efectivo');
+    const e = entorno('cuenta:efectivo', 0.01);
+    e.app.actualizarBotonRetirar(e.boton, 'cuenta:efectivo');
     assert.equal(e.boton.disabled, false);
-    const e2 = entorno('efectivo', 0.004);
-    e2.app.actualizarBotonRetirar(e2.boton, 'efectivo');
+    const e2 = entorno('cuenta:efectivo', 0.004);
+    e2.app.actualizarBotonRetirar(e2.boton, 'cuenta:efectivo');
     assert.equal(e2.boton.disabled, true);
   });
 });
@@ -1949,7 +1994,7 @@ describe('cuentas-textos', () => {
   test('los sheets y mensajes del retiro y del movimiento de Nu usan "retirar"/"agregar", no "restar"/"entró"/"salió"', () => {
     assert.match(index, /id="rdTitle">Retirar dinero</);
     assert.match(index, /id="btn-confirmar-restar">\s*Retirar\s+del saldo/);
-    assert.match(index, /id="nuMovTitle">Agregar a Nu</);
+    assert.match(index, /id="nuMovTitle">Agregar a la cuenta</);
     for (const f of ['js/modules/cuentas.js', 'js/modules/nu.js']) assert.doesNotMatch(leer(f), /'Entró plata a |'Salió plata de |'Restar de /, f);
   });
   const etiquetaInput = id => { const i = index.indexOf('id="' + id + '"'); return index.slice(index.lastIndexOf('<', i), index.indexOf('>', i)); };
@@ -2029,15 +2074,15 @@ describe('cuentas-nu-archivos', () => {
   test('la dependencia va en UN solo sentido: cuentas.js no usa nada de nu.js (Nu se le presenta registrándose en CuentaPantallas)', () => {
     const usadas = usadasDe(sinComentarios(leer('js/modules/cuentas.js')), declaradas(leer('js/modules/nu.js')));
     assert.deepEqual(usadas, [], 'cuentas.js nombra cosas de nu.js: muévelas a nu.js o pásalas por CuentaPantallas');
-    assert.match(leer('js/modules/nu.js'), /CuentaPantallas\.nu\s*=/);
+    assert.match(leer('js/modules/nu.js'), /CuentaPantallas\.ahorro\s*=/);
     assert.match(leer('js/core/core-state.js'), /const CuentaPantallas\s*=\s*\{\s*\}/);
   });
 
   test('lo que Nu toma de cuentas.js es esta lista (si cambia, se decide a propósito y se actualiza la cabecera de nu.js)', () => {
     const usadas = usadasDe(sinComentarios(leer('js/modules/nu.js')), declaradas(leer('js/modules/cuentas.js')));
-    assert.deepEqual(usadas, ['_MIN_RETIRO', '_aperturaToggleUI', '_descriptorCuenta', '_setBtnEstado', '_setBtnTransferir', '_showCuentasPanel',
+    assert.deepEqual(usadas, ['_MIN_RETIRO', '_aperturaToggleUI', '_descriptorDeCuenta', '_setBtnEstado', '_setBtnTransferir', '_showCuentasPanel',
       '_tituloCuentaHtml', 'abrirAgregarDinero', 'abrirRestarDinero', 'abrirTransferir', 'actualizarBotonRetirar', 'actualizarBotonesTransferir',
-      'getMovimientosCuenta', 'registrarEntradaConApertura', 'registrarSalida', 'renderMovsCuenta']);
+      'cuentaActual', 'getMovimientosCuenta', 'registrarEntradaConApertura', 'registrarSalida', 'renderMovsCuenta']);
   });
 
   test('todo botón data-action="cuentas:…" / "nu:…" (en index.html y en el HTML que arman los módulos) está registrado en su namespace', () => {
@@ -2090,8 +2135,8 @@ describe('cuentas-abono-con-extra', () => {
   const cargar = movs => { const app = loadApp(ARCH, { permissive: true }); app.S.movimientos = movs; return app; };
 
   test('abono y extra a la misma cuenta: una sola fila por el total', () => {
-    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), espejo('m2', 'nequi', 5000, 'extra')]);
-    const filas = Array.from(app.getMovimientosCuenta('nequi'));
+    const app = cargar([espejo('m1', 'cuenta:nequi', 50000, 'abono'), espejo('m2', 'cuenta:nequi', 5000, 'extra')]);
+    const filas = Array.from(app.getMovimientosCuenta('cuenta:nequi'));
     assert.equal(filas.length, 1);
     assert.equal(filas[0].monto, 55000);
     assert.equal(filas[0]._movId, 'm1');
@@ -2099,23 +2144,23 @@ describe('cuentas-abono-con-extra', () => {
   });
 
   test('a cuentas distintas: una fila por cuenta, cada una con la otra en «otras cuentas»', () => {
-    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), espejo('m2', 'efectivo', 5000, 'extra')]);
-    const nequi = Array.from(app.getMovimientosCuenta('nequi')), efectivo = Array.from(app.getMovimientosCuenta('efectivo'));
+    const app = cargar([espejo('m1', 'cuenta:nequi', 50000, 'abono'), espejo('m2', 'cuenta:efectivo', 5000, 'extra')]);
+    const nequi = Array.from(app.getMovimientosCuenta('cuenta:nequi')), efectivo = Array.from(app.getMovimientosCuenta('cuenta:efectivo'));
     assert.equal(nequi.length, 1); assert.equal(efectivo.length, 1);
     assert.equal(nequi[0].monto, 50000); assert.equal(efectivo[0].monto, 5000);
-    assert.deepEqual(JSON.parse(JSON.stringify(nequi[0]._otrasCuentas)), [{ fuente: 'efectivo', monto: 5000 }]);
-    assert.deepEqual(JSON.parse(JSON.stringify(efectivo[0]._otrasCuentas)), [{ fuente: 'nequi', monto: 50000 }]);
+    assert.deepEqual(JSON.parse(JSON.stringify(nequi[0]._otrasCuentas)), [{ fuente: 'cuenta:efectivo', monto: 5000 }]);
+    assert.deepEqual(JSON.parse(JSON.stringify(efectivo[0]._otrasCuentas)), [{ fuente: 'cuenta:nequi', monto: 50000 }]);
   });
 
   test('un abono sin extra, y un extra ajeno al abono, no se tocan', () => {
-    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), { id: 'm9', tipo: 'entrada', fuente: 'nequi', monto: 7000, fecha: '2026-10-21', desc: 'Ingreso' }]);
-    const filas = Array.from(app.getMovimientosCuenta('nequi'));
+    const app = cargar([espejo('m1', 'cuenta:nequi', 50000, 'abono'), { id: 'm9', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 7000, fecha: '2026-10-21', desc: 'Ingreso' }]);
+    const filas = Array.from(app.getMovimientosCuenta('cuenta:nequi'));
     assert.equal(filas.length, 2);
     assert.deepEqual(filas.map(f => f.monto).sort((a, b) => a - b), [7000, 50000]);
   });
 
   test('los ingresos del mes siguen contando solo el extra (el abono no es plata nueva)', () => {
-    const app = cargar([espejo('m1', 'nequi', 50000, 'abono'), espejo('m2', 'nequi', 5000, 'extra')]);
+    const app = cargar([espejo('m1', 'cuenta:nequi', 50000, 'abono'), espejo('m2', 'cuenta:nequi', 5000, 'extra')]);
     assert.equal(Array.from(app.entradasIngresoReal()).reduce((a, m) => a + m.monto, 0), 5000);
   });
 });
@@ -2133,34 +2178,36 @@ describe('nu-cambio-de-tasa', () => {
     const app = loadApp(ARCH, { permissive: true });
     const hoy = app.hoy();
     const hace = n => { const d = new Date(hoy + 'T00:00:00'); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
-    app.S.nuRate = 9.25;
-    app.S.historialTasasNu = [{ fecha: hace(30), tasa: 9.25 }];
-    app.S.cajitas = [{ id: 'k1', nombre: 'Ahorros', saldo: 1000000, fecha: hace(20), cdts: [{ id: 'c1', monto: 500000, tasa: 11, fechaInicio: hace(10), dias: 90, rte: 7 }] }];
+    app.S.cuentas = [{ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9.25, historialTasas: [{ fecha: hace(30), tasa: 9.25 }] }];
+    app.S.cajitas = [{ id: 'k1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: hace(20), cdts: [{ id: 'c1', monto: 500000, tasa: 11, fechaInicio: hace(10), dias: 90, rte: 7 }] }];
     return { app, hoy, hace };
   }
   const foto = app => JSON.stringify({ val: app.calcC(app.S.cajitas[0]).val, cdt: app.calcCDT(app.S.cajitas[0].cdts[0]).val, saldo: app.S.cajitas[0].saldo, movs: (app.S.movimientos || []).length });
 
   test('una tasa nueva se anota desde hoy y no cambia saldos, intereses ya ganados ni el CDT', () => {
     const { app, hoy } = cargar(); const antes = foto(app);
-    assert.equal(app.nuAplicarTasaEscrita('10,5'), 'cambio');
-    assert.equal(app.S.nuRate, 10.5);
-    assert.equal(app.S.historialTasasNu.length, 2);
-    assert.equal(app.S.historialTasasNu[1].fecha, hoy);
+    const nu = app.getCuenta('nu');
+    assert.equal(app.ahorroAplicarTasaEscrita('nu', '10,5'), 'cambio');
+    assert.equal(nu.tasaEA, 10.5);
+    assert.equal(nu.historialTasas.length, 2);
+    assert.equal(nu.historialTasas[1].fecha, hoy);
     assert.equal(foto(app), antes, 'cambiar la tasa hoy no mueve nada hacia atrás');
   });
 
   test('la misma tasa no anota nada, y un texto que no sirve no toca nada', () => {
     const { app } = cargar(); const antes = foto(app);
-    assert.equal(app.nuAplicarTasaEscrita('9,25'), 'igual');
-    assert.equal(app.S.historialTasasNu.length, 1);
-    for (const malo of ['', '   ', '9abc', '9,', '0', '101', '-5', 'abc']) assert.equal(app.nuAplicarTasaEscrita(malo), 'invalida', malo);
-    assert.equal(app.S.nuRate, 9.25); assert.equal(app.S.historialTasasNu.length, 1);
+    const nu = app.getCuenta('nu');
+    assert.equal(app.ahorroAplicarTasaEscrita('nu', '9,25'), 'igual');
+    assert.equal(nu.historialTasas.length, 1);
+    for (const malo of ['', '   ', '9abc', '9,', '0', '101', '-5', 'abc']) assert.equal(app.ahorroAplicarTasaEscrita('nu', malo), 'invalida', malo);
+    assert.equal(app.ahorroAplicarTasaEscrita('no-existe', '10'), 'invalida', 'una cuenta que no existe no se toca');
+    assert.equal(nu.tasaEA, 9.25); assert.equal(nu.historialTasas.length, 1);
     assert.equal(foto(app), antes);
   });
 
   test('corregir con una fecha pasada solo recalcula el interés aún no sellado: saldos, movimientos y CDT siguen igual', () => {
     const { app, hace } = cargar(); const antes = JSON.parse(foto(app));
-    app.registrarTasaNuHistorial(hace(8), 10.5);
+    app.registrarTasaHistorial('nu', hace(8), 10.5);
     const despues = JSON.parse(foto(app));
     assert.ok(despues.val > antes.val, 'el interés pendiente se recalcula con la tasa corregida');
     assert.equal(despues.saldo, antes.saldo); assert.equal(despues.movs, antes.movs); assert.equal(despues.cdt, antes.cdt);
@@ -2173,3 +2220,203 @@ describe('nu-cambio-de-tasa', () => {
   });
 });
 
+
+describe('cuentas-modelo-unico', () => {
+  // Sin cuentas fijas: cada persona crea las suyas (un banco, Nequi, efectivo, una cuenta de ahorro…), puede archivar la que deja de usar
+  // y borrar solo la que nunca usó. Las cuentas de ahorro tienen cajitas, tasa EA propia y su total = cajitas + CDTs.
+  const { test, describe } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'),
+    core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
+  const plano = x => JSON.parse(JSON.stringify(x));
+  const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+
+  function entorno(S = {}) {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { libro: [], movimientos: [], encargos: [], cuentas: [], cajitas: [] }, S);
+    const toasts = [], dialogos = [];
+    let guardados = 0;
+    app.toast = (msg, tipo) => toasts.push({ msg, tipo });
+    app.dialogo = async (titulo, msg) => { dialogos.push({ titulo, msg }); return true; };
+    app.save = () => { guardados++; };
+    app.refresh = () => {}; app.volverSelector = () => {}; app.renderSelectorCuentas = () => {}; app.renderDetalleCuenta = () => {};
+    return { app, toasts, dialogos, guardados: () => guardados };
+  }
+  const banco = (id, extra = {}) => ({ id, tipo: 'banco', nombre: id.toUpperCase(), saldo: 0, ...extra });
+
+  describe('estado sin cuentas', () => {
+    test('el estado vacío no inventa ninguna cuenta y todo responde en cero', () => {
+      const { app } = entorno();
+      assert.deepEqual(plano(app.cuentasTodas()), []);
+      assert.deepEqual(plano(app.cuentasActivas()), []);
+      assert.equal(app.saldoCuentas({ soloActivas: true }), 0);
+      assert.equal(app.ahorroTotalGeneral(), 0);
+      assert.equal(app.mejorTasaAhorro(), null);
+      assert.equal(app.getCuenta('nequi'), undefined);
+      assert.deepEqual(plano(app.getMovimientosCuenta('cuenta:nequi')), []);
+    });
+    test('las fuentes disponibles son solo las cuentas que la persona creó', () => {
+      const { app } = entorno({ cuentas: [banco('cs'), { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }] });
+      const fuentes = plano(app.getFuentes()).map(f => f.val);
+      assert.ok(fuentes.includes('cuenta:cs') && fuentes.includes('cuenta:nequi'));
+      assert.ok(!fuentes.includes('cuenta:efectivo') && !fuentes.includes('cuenta:nu'));
+    });
+  });
+
+  describe('dos cuentas, sin las de la autora', () => {
+    test('quien usa solo Banco Caja Social + Nequi opera con ellas: sumar, descontar y saldo total', () => {
+      const { app } = entorno({ cuentas: [banco('cs', { saldo: 100000 }), { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 50000 }] });
+      app.sumarFuente('cuenta:cs', 20000, { origen: { modulo: 't', ref: 'x' } });
+      app.descontarFuente('cuenta:nequi', 10000, { origen: { modulo: 't', ref: 'y' } });
+      assert.equal(app.getCuenta('cs').saldo, 120000);
+      assert.equal(app.getCuenta('nequi').saldo, 40000);
+      assert.equal(app.saldoCuentas({ soloActivas: true }), 160000);
+      assert.equal(app.fuenteLabel('cuenta:cs'), 'CS');
+    });
+  });
+
+  describe('archivar, reactivar y eliminar', () => {
+    test('una cuenta con saldo no se archiva: avisa por qué y no cambia nada', async () => {
+      const e = entorno({ cuentas: [banco('a', { saldo: 5000 })] });
+      await e.app.archivarCuenta('a');
+      assert.equal(e.app.getCuenta('a').archivada, undefined);
+      assert.match(e.dialogos.at(-1).msg, /en cero/);
+      assert.equal(e.guardados(), 0);
+    });
+    test('una cuenta en cero se archiva, deja de salir como fuente, conserva su historial y se reactiva', async () => {
+      const e = entorno({ cuentas: [banco('a'), banco('b')], movimientos: [{ id: 'm1', tipo: 'entrada', fuente: 'cuenta:a', monto: 5, fecha: '2026-10-01' }] });
+      const { app } = e;
+      await app.archivarCuenta('a');
+      assert.equal(app.getCuenta('a').archivada, true);
+      assert.deepEqual(plano(app.cuentasActivas()).map(c => c.id), ['b']);
+      assert.deepEqual(plano(app.cuentasTodas()).map(c => c.id), ['a', 'b'], 'archivada sigue existiendo (el historial la nombra)');
+      assert.equal(app.getMovimientosCuenta('cuenta:a').length, 1);
+      assert.equal(app.nombreCuenta(app.getCuenta('a')), 'A');
+      app.reactivarCuenta('a');
+      assert.equal(app.getCuenta('a').archivada, undefined);
+      assert.deepEqual(plano(app.cuentasActivas()).map(c => c.id), ['a', 'b']);
+    });
+    test('una cuenta archivada no cuenta en el saldo de Inicio', async () => {
+      const e = entorno({ cuentas: [banco('a'), banco('b', { saldo: 700 })] });
+      await e.app.archivarCuenta('a');
+      assert.equal(e.app.saldoCuentas({ soloActivas: true }), 700);
+    });
+    test('solo se elimina una cuenta que nunca se usó; con movimientos o libro se archiva', async () => {
+      const e = entorno({ cuentas: [banco('nueva'), banco('usada'), banco('conLibro')],
+        movimientos: [{ id: 'm1', tipo: 'entrada', fuente: 'cuenta:usada', monto: 5, fecha: '2026-10-01' }],
+        libro: [{ id: 'l1', cuenta: 'cuenta:conLibro', monto: 5, tipo: 'movimiento', fecha: '2026-10-01', origen: { modulo: 'x', ref: 'r' } }] });
+      assert.equal(e.app.cuentaSePuedeEliminar('nueva'), true);
+      assert.equal(e.app.cuentaSePuedeEliminar('usada'), false);
+      assert.equal(e.app.cuentaSePuedeEliminar('conLibro'), false);
+      await e.app.eliminarCuenta('usada');
+      assert.ok(e.app.getCuenta('usada'), 'no se borra: pierde historial');
+      await e.app.eliminarCuenta('nueva');
+      assert.equal(e.app.getCuenta('nueva'), undefined);
+    });
+    test('una cuenta con plata de encargos guardada no se archiva', async () => {
+      const e = entorno({ cuentas: [banco('a')], encargos: [{ id: 'e1', nombre: 'Tío', saldoInicial: 3000, cuentaInicial: 'cuenta:a', movimientos: [] }] });
+      await e.app.archivarCuenta('a');
+      assert.equal(e.app.getCuenta('a').archivada, undefined);
+      assert.match(e.dialogos.at(-1).msg, /encargos/);
+    });
+  });
+
+  describe('crear cuentas desde el catálogo', () => {
+    test('cada preset del catálogo trae tipo, color e ícono válidos y ninguno es una cuenta fija', () => {
+      const { app } = entorno();
+      for (const id of ['nequi', 'nu', 'efectivo', 'cajasocial', 'otro']) {
+        const ic = app.getIconoData(id);
+        assert.equal(ic.id, id);
+        assert.match(ic.color, /^#[0-9a-f]{6}$/i, id);
+        assert.ok(['banco', 'billetera', 'efectivo', 'ahorro'].includes(ic.tipo || 'banco'), id + ' tiene un tipo conocido');
+        assert.ok(ic.svg, id);
+      }
+      const tipo = id => app.getIconoData(id).tipo;
+      assert.deepEqual([tipo('cajasocial'), tipo('nequi'), tipo('efectivo'), tipo('nu')], ['banco', 'billetera', 'efectivo', 'ahorro']);
+    });
+    test('elegir "Caja Social" fija nombre, color y clase de cuenta', () => {
+      const { app } = entorno();
+      const campos = {};
+      const el = id => (campos[id] = campos[id] || { value: '', style: {}, dataset: {}, closest: () => null, textContent: '' });
+      app.document.getElementById = el;
+      app.document.querySelectorAll = () => [];
+      app.selIconoNC('cajasocial');
+      assert.equal(campos.nc_nombre.value, app.getIconoData('cajasocial').label);
+    });
+    test('el id de la cuenta creada sale del nombre y los repetidos no chocan', async () => {
+      const e = entorno();
+      const campos = { nc_nombre: { value: 'Banco Caja Social', dataset: {} }, nc_saldo: { value: '1.000,00', closest: () => null, style: {} } };
+      e.app.document.getElementById = id => campos[id] || { value: '', style: {}, dataset: {}, closest: () => null };
+      e.app.document.querySelectorAll = () => [];
+      e.app.closeSheet = () => {};
+      e.app.selIconoNC('cajasocial');
+      campos.nc_nombre.value = 'Banco Caja Social';
+      await e.app.crearCuenta();
+      assert.equal(e.app.cuentasTodas().length, 1);
+      const c = e.app.cuentasTodas()[0];
+      assert.equal(c.nombre, 'Banco Caja Social');
+      assert.equal(c.tipo, 'banco');
+      assert.equal(c.saldo, 1000);
+      assert.equal(e.guardados() >= 1, true);
+      await e.app.crearCuenta();
+      assert.equal(e.app.cuentasTodas().length, 1, 'mismo nombre: no se duplica');
+      assert.equal(e.toasts.at(-1).tipo, 'err');
+    });
+  });
+
+  describe('dos cuentas de ahorro con tasas distintas', () => {
+    function dosAhorros() {
+      return entorno({
+        cuentas: [{ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9 }, { id: 'lulo', tipo: 'ahorro', nombre: 'Lulo', tasaEA: 12 }],
+        cajitas: [{ id: 'k1', cuentaId: 'nu', nombre: 'Viaje', saldo: 1000000, fecha: hace(365) }, { id: 'k2', cuentaId: 'lulo', nombre: 'Moto', saldo: 1000000, fecha: hace(365) }],
+      });
+    }
+    test('cada cajita gana con la tasa de SU cuenta', () => {
+      const { app } = dosAhorros();
+      const a = app.calcC(app.S.cajitas[0]), b = app.calcC(app.S.cajitas[1]);
+      assert.equal(a.tasa, 9); assert.equal(b.tasa, 12);
+      assert.ok(Math.abs(a.val - 1090000) < 1, String(a.val));
+      assert.ok(Math.abs(b.val - 1120000) < 1, String(b.val));
+    });
+    test('cambiar la tasa de una cuenta no toca a la otra y queda en su historial', () => {
+      const { app } = dosAhorros();
+      assert.equal(app.ahorroAplicarTasaEscrita('lulo', '13,5'), 'cambio');
+      assert.equal(app.getCuenta('lulo').tasaEA, 13.5);
+      assert.equal(app.getCuenta('nu').tasaEA, 9);
+      assert.equal(app.getCuenta('nu').historialTasas, undefined, 'la otra cuenta no anota nada');
+      assert.equal(app.getCuenta('lulo').historialTasas.at(-1).tasa, 13.5);
+      assert.equal(app.calcC(app.S.cajitas[0]).tasa, 9);
+    });
+    test('el total de cada cuenta suma solo sus cajitas, y la mejor tasa es la mayor', () => {
+      const { app } = dosAhorros();
+      assert.deepEqual(plano(app.cajitasDeCuenta('nu')).map(c => c.id), ['k1']);
+      assert.deepEqual(plano(app.cajitasDeCuenta('lulo')).map(c => c.id), ['k2']);
+      assert.ok(app.ahorroTotal('lulo') > app.ahorroTotal('nu'));
+      assert.ok(Math.abs(app.ahorroTotalGeneral() - (app.ahorroTotal('nu') + app.ahorroTotal('lulo'))) < 0.01);
+      assert.equal(app.mejorTasaAhorro(), 12);
+    });
+    test('una cuenta de ahorro con cajitas no se elimina ni se archiva con plata dentro', async () => {
+      const e = dosAhorros();
+      assert.equal(e.app.cuentaSePuedeEliminar('nu'), false);
+      await e.app.archivarCuenta('nu');
+      assert.equal(e.app.getCuenta('nu').archivada, undefined);
+    });
+    test('el chequeo rápido y los botones miran solo las cajitas de la cuenta abierta', () => {
+      const { app } = dosAhorros();
+      app.S.cajitas[0].fecha = hace(3); app.S.cajitas[1].fecha = hace(0);
+      assert.deepEqual(plano(app.cajitasChequeables('nu')).map(c => c.id), ['k1']);
+      assert.deepEqual(plano(app.cajitasChequeables('lulo')).map(c => c.id), []);
+    });
+    test('un cambio de tasa archivado no afecta a una cuenta archivada: sigue calculando con su tasa', async () => {
+      const { app } = dosAhorros();
+      app.getCuenta('lulo').archivada = true;
+      assert.equal(app.calcC(app.S.cajitas[1]).tasa, 12);
+      assert.deepEqual(plano(app.cuentasAhorro({ soloActivas: true })).map(c => c.id), ['nu']);
+    });
+  });
+});

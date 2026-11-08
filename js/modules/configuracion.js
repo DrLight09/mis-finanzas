@@ -188,7 +188,7 @@ function _validarEstructuraJSON(data){
     return ['El archivo no tiene el formato esperado (debe ser un objeto JSON).'];
   }
   // Verificar campos clave
-  const camposOpcionales=['nuRate','cajitas','cuentas',
+  const camposOpcionales=['cajitas','cuentas',
     'deudores','gastosFijos','gastosVar','modulos'];
   const tieneAlgunCampo=camposOpcionales.some(c=>c in data);
   if(!tieneAlgunCampo){
@@ -216,9 +216,18 @@ function _validarEstructuraJSON(data){
   if('deudores' in data&&!Array.isArray(data.deudores)){
     errores.push('El campo "deudores" debe ser un array.');
   }
-  // nuRate es la tasa EA de las cajitas de Nu; null = todavía sin configurar (un backup exportado así debe poder importarse).
-  if('nuRate' in data&&data.nuRate!==null&&typeof data.nuRate!=='number'){
-    errores.push('El campo "nuRate" debe ser un número (o null si no se configuró).');
+  // Cada cuenta lleva id, clase conocida y nombre; la tasa EA de una cuenta de ahorro es un número o null (sin configurar: un
+  // backup exportado así debe poder importarse). Una cajita apunta a una cuenta de ahorro que exista (cuentaId).
+  if(Array.isArray(data.cuentas)){
+    const ids=new Set();
+    data.cuentas.forEach((c,i)=>{
+      if(!c||typeof c!=='object'||!c.id||typeof c.nombre!=='string'||!['banco','billetera','efectivo','ahorro'].includes(c.tipo)){
+        errores.push('La cuenta #'+(i+1)+' no tiene id, nombre o tipo válidos.');return;
+      }
+      ids.add(c.id);
+      if(c.tipo==='ahorro'&&c.tasaEA!=null&&typeof c.tasaEA!=='number')errores.push('La tasa EA de "'+c.nombre+'" debe ser un número (o null si no se configuró).');
+    });
+    if(Array.isArray(data.cajitas)&&data.cajitas.some(k=>!k||!ids.has(k.cuentaId)))errores.push('Hay cajitas que no pertenecen a ninguna cuenta de ahorro del archivo.');
   }
   ['gastosFijos','ingresosFijos','movimientos','misDeudas','encargos','tarjetasCredito','personas','libro','bienes'].forEach(k=>{
     if(k in data&&!Array.isArray(data[k]))errores.push('El campo "'+k+'" debe ser un array.');

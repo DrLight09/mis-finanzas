@@ -79,20 +79,10 @@
       setTimeout(() => {
         if (typeof abrirEncargoDetalle === 'function') abrirEncargoDetalle(r.navId);
       }, 80);
-    } else if (r.navTipo === 'cuenta_custom') {
+    } else if (r.navTipo === 'cuenta') {
       showScreen('cuentas');
       setTimeout(() => {
         if (typeof abrirCuenta === 'function') abrirCuenta(r.navId);
-      }, 80);
-    } else if (r.navTipo === 'nequi') {
-      showScreen('cuentas');
-      setTimeout(() => {
-        if (typeof abrirCuenta === 'function') abrirCuenta('nequi');
-      }, 80);
-    } else if (r.navTipo === 'efectivo') {
-      showScreen('cuentas');
-      setTimeout(() => {
-        if (typeof abrirCuenta === 'function') abrirCuenta('efectivo');
       }, 80);
     } else if (r.navTipo === 'gastos') {
       showScreen('gastos');
@@ -131,9 +121,7 @@
       prestamo_mov: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
       encargo: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
       encargo_mov: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`,
-      cuenta_custom: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
-      nequi: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
-      efectivo: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>`,
+      cuenta: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>`,
       gastos: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>`,
       persona: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
       spotify: `<svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M8 11.8c2.5-1.1 5.5-1.1 8 0"/><path d="M7 15c2.9-1.2 6.1-1.2 9 0"/><path d="M9 8.6c2.1-.9 4.9-.9 7 0"/></svg>`,
@@ -145,10 +133,9 @@
   }
 
   // ── Flecha de navegación SVG ─────────────────────────────────────────────
-  // Texto plano de una fuente de movimiento para el meta del resultado ('nequi' → "Nequi",
-  // 'cajita:ID' → "Nombre (Nu)", 'custom:ID' → nombre de la cuenta, 'tc:ID' → nombre de la
-  // tarjeta). fuenteLabel() devuelve HTML (ícono) para 'ganancia' y deja el id crudo si la cuenta
-  // personalizada ya no existe: acá ambos casos se resuelven a texto legible.
+  // Texto plano de una fuente de movimiento para el meta del resultado ('cuenta:ID' → nombre de la cuenta,
+  // 'cajita:ID' → "Nombre (Cuenta)", 'tc:ID' → nombre de la tarjeta). fuenteLabel() devuelve HTML (ícono)
+  // para 'ganancia' y deja el id crudo si la cuenta ya no existe: acá ambos casos se resuelven a texto legible.
   const _fuenteTexto = f => {
     if(f === 'ganancia') return 'Ganancia';
     const l = typeof fuenteLabel === 'function' ? fuenteLabel(f) : f;
@@ -193,14 +180,15 @@
     (S.cajitas||[]).forEach(c => {
       if((c.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         const k = window.calcC ? window.calcC(c) : {val:c.saldo||0};
-        resultados.push({ tipo:'Cajita Nu', desc:c.nombre, meta: window.fmt?window.fmt(k.val):'', color:'var(--nu-light)', navTipo:'cajita', navId:c.id });
+        resultados.push({ tipo:'Cajita', desc:c.nombre, meta: window.fmt?window.fmt(k.val):'', color:'var(--nu-light)', navTipo:'cajita', navId:c.id });
       }
     });
 
-    // Cuentas personalizadas
-    cuentasCustom().forEach(c => {
+    // Cuentas
+    cuentasTodas().forEach(c => {
       if((c.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
-        resultados.push({ tipo:'Cuenta', desc:c.nombre, meta: window.fmt?window.fmt(c.saldo||0):'', color:'var(--blue)', navTipo:'cuenta_custom', navId:c.id });
+        const total = esCuentaAhorro(c) ? ahorroTotal(c.id) : (c.saldo||0);
+        resultados.push({ tipo:c.archivada?'Cuenta archivada':'Cuenta', desc:c.nombre, meta: window.fmt?window.fmt(total):'', color:colorCuenta(c), navTipo:'cuenta', navId:fuenteDeCuenta(c.id) });
       }
     });
 
@@ -274,9 +262,7 @@
     // Movimientos generales de cuentas (S.movimientos)
     // Ingresos neto-cero de Alcancía (`_esAlcanciaIngreso`): mismo criterio que los depósitos con cuenta
     // de origen (arriba, S.transferencias) — se agrupan como "Ahorro", monto oculto, y navegan a la
-    // pantalla de Alcancía en vez de a "Efectivo" (la `fuente:'efectivo'` de estas entradas es un truco
-    // interno para que cuenten en ingresosMes — ver alcancia.js — no es dónde realmente "vive" el registro,
-    // así que ir ahí con "Ir ahí" sería engañoso: cuentas.js las salta del historial de Efectivo a propósito).
+    // pantalla de Alcancía (su `fuente` es 'alcancia', no una cuenta: no hay historial de cuenta al que ir).
     // Los movimientos del destape (`_esAlcancia` en S.movimientos) NO se ocultan: el total ya se reveló al destapar.
     (S.movimientos||[]).forEach(m => {
       if((m.desc||m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
@@ -290,7 +276,7 @@
           meta: montoTxt+restoMeta,
           metaHtml: esAlcIngreso ? _iconoOculto + escHtml(restoMeta) : null,
           color:'var(--accent)',
-          navTipo: esAlcIngreso ? 'alcancia' : (m.fuente==='nequi'?'nequi':m.fuente==='efectivo'?'efectivo':'movimiento_general'),
+          navTipo: esAlcIngreso ? 'alcancia' : (esFuenteCuenta(m.fuente) ? 'cuenta' : 'movimiento_general'),
           navId: esAlcIngreso ? null : (m.fuente||null)
         });
       }

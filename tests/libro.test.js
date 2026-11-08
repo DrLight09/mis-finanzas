@@ -17,12 +17,12 @@ describe('libro', () => {
     const ctx = loadApp(['core-state.js', 'cuenta-efectos.js', 'periodo.js', 'nu-calc.js'].map(f => path.join(CORE, f)), { permissive: true });
     Object.assign(ctx.S, {
       modulos: {}, libro: [], movimientos: [], gastosVar: [], tarjetasCredito: [],
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }, { id: 'cu1', tipo: 'custom', nombre: 'Madre', saldo: 0 }],
-      cajitas: [{ id: 'c1', nombre: 'Sobra', saldo: 0 }],
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, { id: 'cu1', tipo: 'banco', nombre: 'Madre', saldo: 0 }, { id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9.25 }],
+      cajitas: [{ id: 'c1', nombre: 'Sobra', cuentaId: 'nu', saldo: 0 }],
     }, estado);
     return ctx;
   }
-  const saldo = (ctx, id) => ctx.S.cuentas.concat(ctx.S.cajitas).find(c => c.id === id).saldo;
+  const saldo = (ctx, id) => ctx.S.cuentas.concat(ctx.S.cajitas).find(c => c.id === String(id).replace(/^cuenta:/, '')).saldo;
 
   test('Libro.origen — fábrica del origen por módulo: sin ref/rev no deja claves vacías; con rev marca la reversión', () => {
     const ctx = app();
@@ -32,8 +32,8 @@ describe('libro', () => {
     assert.deepEqual(plano(og('g1', true)), { origen: { modulo: 'gastos', ref: 'g1', rev: true } });
     assert.equal('rev' in og('g1').origen, false, 'rev ausente no deja `rev: undefined` en la entrada');
     // Pasada como `opts` de la puerta única, queda en el libro tal cual y la entrada de reversión se tipa sola.
-    ctx.sumarFuente('nequi', 100, { ...og('g1'), fecha: '2026-10-01' });
-    ctx.descontarFuente('nequi', 100, { ...og('g1', true), fecha: '2026-10-02' });
+    ctx.sumarFuente('cuenta:nequi', 100, { ...og('g1'), fecha: '2026-10-01' });
+    ctx.descontarFuente('cuenta:nequi', 100, { ...og('g1', true), fecha: '2026-10-02' });
     assert.deepEqual(plano(ctx.S.libro.map(l => [l.tipo, l.monto, l.origen.modulo, l.origen.ref, l.origen.rev === true])),
       [['movimiento', 100, 'gastos', 'g1', false], ['reversion', -100, 'gastos', 'g1', true]]);
     assert.equal(ctx.Libro.verificar().ok, true);
@@ -41,12 +41,12 @@ describe('libro', () => {
 
   test('registrar — tipo "movimiento" y origen "sin-origen" por defecto; solo cuentas con saldo; monto 0 no entra', () => {
     const ctx = app();
-    const id = ctx.Libro.registrar('nequi', 100, { fecha: '2026-10-01' });
+    const id = ctx.Libro.registrar('cuenta:nequi', 100, { fecha: '2026-10-01' });
     const e = plano(ctx.S.libro[0]);
-    assert.deepEqual([e.id === id, e.cuenta, e.monto, e.tipo, e.origen.modulo], [true, 'nequi', 100, 'movimiento', 'sin-origen']);
+    assert.deepEqual([e.id === id, e.cuenta, e.monto, e.tipo, e.origen.modulo], [true, 'cuenta:nequi', 100, 'movimiento', 'sin-origen']);
     assert.equal(ctx.Libro.registrar('tc:x', 5, {}), null, 'una tarjeta de crédito no es cuenta con saldo');
     assert.equal(ctx.Libro.registrar('alcancia', 5, {}), null);
-    assert.equal(ctx.Libro.registrar('nequi', 0, {}), null);
+    assert.equal(ctx.Libro.registrar('cuenta:nequi', 0, {}), null);
     assert.equal(ctx.S.libro.length, 1);
   });
 
@@ -61,30 +61,30 @@ describe('libro', () => {
 
   test('conOrigen — lo que se mueva dentro lleva ese origen; con rev:true es una "reversion" con el mismo ref', () => {
     const ctx = app();
-    ctx.Libro.conOrigen({ modulo: 'prestado', ref: 'm1' }, () => ctx.sumarFuente('nequi', 10));
-    ctx.Libro.conOrigen({ modulo: 'prestado', ref: 'm1', rev: true }, () => ctx.descontarFuente('nequi', 10));
+    ctx.Libro.conOrigen({ modulo: 'prestado', ref: 'm1' }, () => ctx.sumarFuente('cuenta:nequi', 10));
+    ctx.Libro.conOrigen({ modulo: 'prestado', ref: 'm1', rev: true }, () => ctx.descontarFuente('cuenta:nequi', 10));
     const [a, b] = plano(ctx.S.libro);
     assert.deepEqual([a.tipo, a.monto, a.origen.ref, b.tipo, b.monto, b.origen.ref, b.origen.rev], ['movimiento', 10, 'm1', 'reversion', -10, 'm1', true]);
-    ctx.sumarFuente('nequi', 1);
+    ctx.sumarFuente('cuenta:nequi', 1);
     assert.equal(plano(ctx.S.libro[2]).origen.modulo, 'sin-origen', 'fuera del bloque vuelve a no haber contexto');
   });
 
   test('puerta única — sumarFuente/descontarFuente cambian el saldo Y dejan su entrada; el libro cuadra', () => {
     const ctx = app();
-    ctx.sumarFuente('efectivo', 50, { origen: { modulo: 't', ref: 'r1' } });
-    ctx.sumarFuente('custom:cu1', 20);
+    ctx.sumarFuente('cuenta:efectivo', 50, { origen: { modulo: 't', ref: 'r1' } });
+    ctx.sumarFuente('cuenta:cu1', 20);
     ctx.sumarFuente('cajita:c1', 7.5);
-    ctx.descontarFuente('efectivo', 20, { origen: { modulo: 't', ref: 'r2' } });
-    assert.deepEqual([saldo(ctx, 'efectivo'), saldo(ctx, 'cu1'), saldo(ctx, 'c1')], [30, 20, 7.5]);
-    assert.deepEqual(plano(ctx.S.libro.filter(l => l.cuenta === 'efectivo').map(l => [l.monto, l.origen.ref])), [[50, 'r1'], [-20, 'r2']]);
+    ctx.descontarFuente('cuenta:efectivo', 20, { origen: { modulo: 't', ref: 'r2' } });
+    assert.deepEqual([saldo(ctx, 'cuenta:efectivo'), saldo(ctx, 'cuenta:cu1'), saldo(ctx, 'c1')], [30, 20, 7.5]);
+    assert.deepEqual(plano(ctx.S.libro.filter(l => l.cuenta === 'cuenta:efectivo').map(l => [l.monto, l.origen.ref])), [[50, 'r1'], [-20, 'r2']]);
     assert.equal(ctx.Libro.verificar().ok, true);
-    assert.equal(ctx.Libro.saldo('efectivo'), 30);
+    assert.equal(ctx.Libro.saldo('cuenta:efectivo'), 30);
   });
 
   test('el saldo NUNCA se recorta: restar más de lo que hay deja la cuenta negativa y visible', () => {
     const ctx = app();
-    ctx.descontarFuente('nequi', 300);
-    assert.equal(saldo(ctx, 'nequi'), -300);
+    ctx.descontarFuente('cuenta:nequi', 300);
+    assert.equal(saldo(ctx, 'cuenta:nequi'), -300);
     assert.equal(ctx.Libro.verificar().ok, true);
   });
 
@@ -107,7 +107,7 @@ describe('libro', () => {
 
   test('verificar — detecta un saldo que se movió sin pasar por la puerta única, con el nombre de la cuenta', () => {
     const ctx = app();
-    ctx.sumarFuente('nequi', 100);
+    ctx.sumarFuente('cuenta:nequi', 100);
     ctx.S.cuentas.find(c => c.id === 'cu1').saldo = 40;   // alguien escribe c.saldo directamente
     ctx.S.cajitas[0].saldo = -5;
     const v = plano(ctx.Libro.verificar());
@@ -117,15 +117,15 @@ describe('libro', () => {
 
   test('verificar — ignora entradas de cuentas que ya no existen', () => {
     const ctx = app();
-    ctx.sumarFuente('custom:cu1', 10);
-    ctx.S.cuentas = ctx.S.cuentas.filter(c => c.id !== 'cu1');
+    ctx.sumarFuente('cuenta:cu1', 10);
+    ctx.S.cuentas = ctx.S.cuentas.filter(c => c.id !== 'cuenta:cu1');
     assert.equal(ctx.Libro.verificar().ok, true);
   });
 
   test('entradasVisibles — solo lo que ningún registro de módulo representa (intereses, ajustes, CDT)', () => {
     const ctx = app();
     const st = { libro: [] };
-    ['movimiento', 'reversion', 'apertura', 'rendimiento', 'ajuste', 'cdt'].forEach((t, i) => ctx.Libro.registrar('nequi', i + 1, { tipo: t, fecha: '2026-10-0' + (i + 1) }, st));
+    ['movimiento', 'reversion', 'apertura', 'rendimiento', 'ajuste', 'cdt'].forEach((t, i) => ctx.Libro.registrar('cuenta:nequi', i + 1, { tipo: t, fecha: '2026-10-0' + (i + 1) }, st));
     assert.deepEqual(plano(ctx.Libro.entradasVisibles(st).map(l => l.tipo)), ['rendimiento', 'ajuste', 'cdt']);
   });
 
@@ -153,14 +153,14 @@ describe('libro-modulos', () => {
   function cargar() {
     const app = loadApp(ARCHIVOS, { permissive: true });
     Object.assign(app.S, { modulos: { mesada: true }, libro: [], movimientos: [], gastosVar: [], cajitas: [],
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }] });
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
     return app;
   }
   const ultima = app => plano(app.S.libro[app.S.libro.length - 1]);
 
   test('Sumar dinero (cuentas.js) — la entrada del libro apunta al movimiento que crea', () => {
     const app = cargar();
-    app.registrarEntradaConApertura('efectivo', 1000, '2026-10-11', 'Sueldo', false, '');
+    app.registrarEntradaConApertura('cuenta:efectivo', 1000, '2026-10-11', 'Sueldo', false, '');
     const mov = plano(app.S.movimientos[app.S.movimientos.length - 1]), e = ultima(app);
     assert.deepEqual([e.monto, e.origen.modulo, e.origen.ref], [1000, 'cuentas', mov.id]);
     assert.equal(app.Libro.verificar().ok, true);
@@ -168,7 +168,7 @@ describe('libro-modulos', () => {
 
   test('Restar dinero (cuentas.js) — salida registrada completa y apuntando a su movimiento', () => {
     const app = cargar();
-    app.registrarSalida('efectivo', 400, '2026-10-11', 'Ajuste', '');
+    app.registrarSalida('cuenta:efectivo', 400, '2026-10-11', 'Ajuste', '');
     const mov = plano(app.S.movimientos[app.S.movimientos.length - 1]), e = ultima(app);
     assert.deepEqual([e.monto, e.origen.modulo, e.origen.ref], [-400, 'cuentas', mov.id]);
     assert.equal(app.S.cuentas.find(c => c.id === 'efectivo').saldo, -400, 'sin recorte: la cuenta queda negativa y se ve');
@@ -177,10 +177,10 @@ describe('libro-modulos', () => {
 
   test('Mesada — abonar y quitar el abono: la entrada apunta al espejo y la reversión lleva el mismo ref', () => {
     const app = cargar();
-    const id = app._mesadaEntrar('nequi', 500, '2026-10-11', 'Mesada');
+    const id = app._mesadaEntrar('cuenta:nequi', 500, '2026-10-11', 'Mesada');
     assert.ok(id);
     assert.deepEqual([ultima(app).origen.modulo, ultima(app).origen.ref, ultima(app).tipo], ['mesada', id, 'movimiento']);
-    app._mesadaSacar('nequi', 500, id, true);
+    app._mesadaSacar('cuenta:nequi', 500, id, true);
     const r = ultima(app);
     assert.deepEqual([r.tipo, r.monto, r.origen.ref, r.origen.rev], ['reversion', -500, id, true]);
     assert.equal(app.Libro.verificar().ok, true);
@@ -188,7 +188,7 @@ describe('libro-modulos', () => {
 
   test('un saldo cambiado sin pasar por la puerta única lo detecta verificar()', () => {
     const app = cargar();
-    app.sumarFuente('nequi', 100);
+    app.sumarFuente('cuenta:nequi', 100);
     app.S.cuentas.find(c => c.id === 'nequi').saldo += 5;
     assert.equal(plano(app.Libro.verificar()).descuadres[0].dif, 5);
   });
@@ -196,8 +196,8 @@ describe('libro-modulos', () => {
   test('Encargos — eliminar el saldo inicial NO toca el saldo de la cuenta ni el libro (es plata ajena, no está en c.saldo)', async () => {
     const app = cargar();
     app.dialogo = async () => true;
-    app.S.cuentas.find(c => c.id === 'nequi').saldo = 0; app.sumarFuente('nequi', 1000, { origen: { modulo: 't', ref: 'x' } });
-    app.S.encargos = [{ id: 'e1', nombre: 'Ana', saldoInicial: 300, cuentaInicial: 'nequi', movimientos: [] }];
+    app.S.cuentas.find(c => c.id === 'nequi').saldo = 0; app.sumarFuente('cuenta:nequi', 1000, { origen: { modulo: 't', ref: 'x' } });
+    app.S.encargos = [{ id: 'e1', nombre: 'Ana', saldoInicial: 300, cuentaInicial: 'cuenta:nequi', movimientos: [] }];
     const antes = app.S.libro.length;
     await app.deleteMovEncargo('e1', '__saldo_ini__');
     assert.equal(app.S.cuentas.find(c => c.id === 'nequi').saldo, 1000, 'el saldo propio queda intacto');
@@ -310,12 +310,12 @@ describe('plata-comprometida', () => {
   const ARCHIVOS = [CAPTURA, core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('plata_comprometida.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  function entorno(item, { sobranteCuenta = 'nequi', extraCuentas = [] } = {}) {
+  function entorno(item, { sobranteCuenta = 'cuenta:nequi', extraCuentas = [] } = {}) {
     const app = loadApp(ARCHIVOS, { permissive: true });
     Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], tarjetasCredito: [], plataComprometida: [item],
-      cuentas: [{ id: 'nequi', tipo: 'nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', saldo: 0 }, ...extraCuentas] });
-    app.sumarFuente('nequi', 1000, { origen: { modulo: 't', ref: 'base-n' } });
-    app.sumarFuente('efectivo', 50000, { origen: { modulo: 't', ref: 'base-e' } });
+      cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, ...extraCuentas] });
+    app.sumarFuente('cuenta:nequi', 1000, { origen: { modulo: 't', ref: 'base-n' } });
+    app.sumarFuente('cuenta:efectivo', 50000, { origen: { modulo: 't', ref: 'base-e' } });
     const dom = createFakeDom({ 'cp-recibir-fecha': { value: '2026-10-13' }, 'cp-recibir-sobrante-cuenta': { value: sobranteCuenta } });
     app.document = dom.document;
     app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {};
@@ -326,74 +326,74 @@ describe('plata-comprometida', () => {
     return { app, cp, og, saldo, neto };
   }
   const recibir = e => { e.cp.abrirRecibir('cp1'); e.cp.confirmarRecibir(); };
-  const item = destinos => ({ id: 'cp1', desc: 'Arriendo', montoTotal: 100000, cuentaDestino: 'nequi', recibido: false, destinos });
+  const item = destinos => ({ id: 'cp1', desc: 'Arriendo', montoTotal: 100000, cuentaDestino: 'cuenta:nequi', recibido: false, destinos });
 
   test('recibir con reposición y sobrante deja el libro cuadrado y cada patada con su origen', () => {
-    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'efectivo', yaSaque: false }]));
+    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: false }]));
     recibir(e);
-    assert.equal(e.saldo('efectivo'), 80000);
-    assert.equal(e.saldo('nequi'), 71000, '1.000 + 70.000 de sobrante');
+    assert.equal(e.saldo('cuenta:efectivo'), 80000);
+    assert.equal(e.saldo('cuenta:nequi'), 71000, '1.000 + 70.000 de sobrante');
     const orig = e.app.S.libro.filter(l => l.origen.modulo === 'plata-comprometida').map(l => l.origen.ref).sort();
     assert.deepEqual(plano(orig), ['cp1', 'd1']);
     assert.equal(e.app.Libro.verificar().ok, true);
   });
 
   test('eliminar un ingreso ya recibido devuelve TODO, sobrante incluido (como si nunca hubiera pasado)', async () => {
-    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'efectivo', yaSaque: false }]));
+    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: false }]));
     recibir(e);
     await e.cp.eliminar('cp1');
-    assert.equal(e.saldo('efectivo'), 50000);
-    assert.equal(e.saldo('nequi'), 1000, 'antes: el sobrante se quedaba en la cuenta');
+    assert.equal(e.saldo('cuenta:efectivo'), 50000);
+    assert.equal(e.saldo('cuenta:nequi'), 1000, 'antes: el sobrante se quedaba en la cuenta');
     assert.equal(e.app.S.movimientos.length, 0);
     assert.equal(e.app.S.plataComprometida.length, 0);
     assert.equal(e.app.Libro.verificar().ok, true);
-    assert.deepEqual(plano(e.neto()), { nequi: 1000, efectivo: 50000 }, 'lo que sumó el módulo y lo que revirtió se cancelan');
+    assert.deepEqual(plano(e.neto()), { 'cuenta:nequi': 1000, 'cuenta:efectivo': 50000 }, 'lo que sumó el módulo y lo que revirtió se cancelan');
   });
 
   test('eliminar un ingreso recibido que tenía un adelanto devuelve también el adelanto', async () => {
-    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'efectivo', yaSaque: true }]));
+    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: true }]));
     // el adelanto ya se había hecho antes de recibir (como lo deja _cpdConfirmar / _cpGuardarMarcados)
-    e.app.sumarFuente('efectivo', -30000, e.og('d1'));
-    e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
+    e.app.sumarFuente('cuenta:efectivo', -30000, e.og('d1'));
+    e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
     recibir(e);
-    assert.equal(e.saldo('efectivo'), 50000, 'adelanto (−30.000) y reposición (+30.000)');
+    assert.equal(e.saldo('cuenta:efectivo'), 50000, 'adelanto (−30.000) y reposición (+30.000)');
     await e.cp.eliminar('cp1');
-    assert.equal(e.saldo('efectivo'), 50000, 'antes quedaba en 20.000: el adelanto no se devolvía');
-    assert.equal(e.saldo('nequi'), 1000);
+    assert.equal(e.saldo('cuenta:efectivo'), 50000, 'antes quedaba en 20.000: el adelanto no se devolvía');
+    assert.equal(e.saldo('cuenta:nequi'), 1000);
     assert.equal(e.app.S.movimientos.length, 0, 'ni la fila del adelanto ni la de la reposición');
     assert.equal(e.app.Libro.verificar().ok, true);
   });
 
   test('eliminar un ingreso recibido con un gasto de cajita ya pagado devuelve también el pago', async () => {
-    const e = entorno(item([{ id: 'd2', tipo: 'gasto', desc: 'Luz', monto: 20000, gastoOrigen: 'cajita', gastoCajita: 'efectivo', yaPague: true }]));
-    e.app.sumarFuente('efectivo', -20000, e.og('d2'));
-    e.app.S.movimientos.push({ id: 'pago', tipo: 'salida', fuente: 'efectivo', monto: 20000, fecha: '2026-10-02', desc: 'Pago: Luz' });
+    const e = entorno(item([{ id: 'd2', tipo: 'gasto', desc: 'Luz', monto: 20000, gastoOrigen: 'cajita', gastoCajita: 'cuenta:efectivo', yaPague: true }]));
+    e.app.sumarFuente('cuenta:efectivo', -20000, e.og('d2'));
+    e.app.S.movimientos.push({ id: 'pago', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 20000, fecha: '2026-10-02', desc: 'Pago: Luz' });
     recibir(e);
-    assert.equal(e.saldo('efectivo'), 50000);
+    assert.equal(e.saldo('cuenta:efectivo'), 50000);
     await e.cp.eliminar('cp1');
-    assert.equal(e.saldo('efectivo'), 50000);
-    assert.equal(e.saldo('nequi'), 1000);
+    assert.equal(e.saldo('cuenta:efectivo'), 50000);
+    assert.equal(e.saldo('cuenta:nequi'), 1000);
     assert.equal(e.app.S.movimientos.length, 0);
     assert.equal(e.app.Libro.verificar().ok, true);
   });
 
   test('eliminar un ingreso NO recibido con adelanto devuelve el adelanto (con el mismo ref)', async () => {
-    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'efectivo', yaSaque: true }]));
-    e.app.sumarFuente('efectivo', -30000, e.og('d1'));
-    e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
+    const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: true }]));
+    e.app.sumarFuente('cuenta:efectivo', -30000, e.og('d1'));
+    e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
     await e.cp.eliminar('cp1');
-    assert.equal(e.saldo('efectivo'), 50000);
+    assert.equal(e.saldo('cuenta:efectivo'), 50000);
     const rev = e.app.S.libro.find(l => l.origen.rev && l.origen.modulo === 'plata-comprometida');
     assert.deepEqual([rev.tipo, rev.origen.ref, rev.monto], ['reversion', 'd1', 30000]);
     assert.equal(e.app.Libro.verificar().ok, true);
   });
 
   test('el sobrante que entra a una cuenta personalizada no escribe la lista vieja cuenta.movimientos', () => {
-    const e = entorno({ ...item([]), cuentaDestino: 'custom:z' }, { sobranteCuenta: 'custom:z', extraCuentas: [{ id: 'z', tipo: 'custom', nombre: 'Z', saldo: 0 }] });
+    const e = entorno({ ...item([]), cuentaDestino: 'cuenta:z' }, { sobranteCuenta: 'cuenta:z', extraCuentas: [{ id: 'z', tipo: 'banco', nombre: 'Z', saldo: 0 }] });
     recibir(e);
-    assert.equal(e.saldo('custom:z'), 100000);
+    assert.equal(e.saldo('cuenta:z'), 100000);
     assert.equal(e.app.S.cuentas.find(c => c.id === 'z').movimientos, undefined);
-    assert.equal(e.app.S.movimientos.filter(m => m.fuente === 'custom:z' && m.clase === 'ingreso').length, 1, 'el ingreso vive en S.movimientos');
+    assert.equal(e.app.S.movimientos.filter(m => m.fuente === 'cuenta:z' && m.clase === 'ingreso').length, 1, 'el ingreso vive en S.movimientos');
     assert.equal(e.app.Libro.verificar().ok, true);
   });
 });

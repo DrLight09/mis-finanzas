@@ -1,4 +1,6 @@
-# Módulo Nu
+# Módulo Nu — cuentas de ahorro
+
+> **Modelo actual:** Nu ya no es una cuenta especial. Es una cuenta `tipo:'ahorro'` más: cada cuenta de ahorro tiene su propia tasa EA (`cuenta.tasaEA`, `historialTasas`), sus cajitas (`cajita.cuentaId`) y sus CDTs, y puede haber varias (o ninguna). Los nombres `nuTotal`, `nuValorEsperadoCajita`, `S.nuRate`, `S.chequeosNu` pasaron a `ahorroTotal(cuentaId)`, `ahorroValorEsperadoCajita`, `getTasaCuenta(cuentaId)`, `S.chequeosAhorro`. Donde este documento diga «Nu», léase «la cuenta de ahorro abierta».
 
 Documentación de la parte **Nu** de `mis-finanzas`: la cuenta con cajitas de ahorro, tasa EA, CDTs, metas y chequeo rápido (`index.html` → `js/modules/nu.js`, más el cálculo en `js/core/nu-calc.js`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué se diseñó así.
 

@@ -4,6 +4,18 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Cuentas sin cuentas fijas: modelo único y cuentas de ahorro (2026-11-07, SW v113)
+
+Ver `cuentas.md` y `nu.md`.
+
+- **Causa raíz:** Nequi, Efectivo y Nu estaban cableadas en el código (`CUENTAS_FIJAS`, `S.nuRate`, claves `nequi`/`nu`), así que quien usa otro banco (p. ej. Caja Social) cargaba cuentas que no usa y no podía cambiar de banco.
+- **Ahora:** `S.cuentas` empieza vacío; fuente `cuenta:ID`; tipos `banco|billetera|efectivo|ahorro`; catálogo de bancos como presets; archivar en vez de borrar (se elimina solo lo que no tiene uso); onboarding de primera cuenta; tiles de Inicio dinámicos.
+- **Nu → cuenta de ahorro genérica:** tasa EA e historial por cuenta, cajitas con `cuentaId`, chequeo rápido por cuenta, varias cuentas de ahorro posibles.
+- **Bugs de paso:** `CuentaPantallas` no estaba declarada fuera del harness permisivo; `Salud.puntaje` asumía `cuentasAhorro`.
+- `SCHEMA_BASE` 10 (sin datos previos que migrar). Tests migrados + 17 nuevos (`cuentas-modelo-unico`).
+
+---
+
 ## Salud financiera sin historial y tarjeta rediseñada (2026-11-06, SW v112)
 
 Ver `salud-financiera.md` («Rediseño de la tarjeta…») y `analisis-financiero.md`.

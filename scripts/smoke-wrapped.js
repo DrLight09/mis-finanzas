@@ -36,7 +36,7 @@ const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { fallos
   const overlay = () => d.getElementById('wrapped-overlay');
   const quitar = () => { const o = overlay(); if (o) o.remove(); };
   const slidesTxt = () => Array.from(d.querySelectorAll('#wrapped-overlay .wrapped-slide')).map(s => s.textContent.replace(/\s+/g, ' ').trim());
-  const gasto = (i, f) => ({ id: 'g' + String(i).padStart(5, '0'), desc: 'x', monto: 1000, fecha: f, cat: 'Otro', fuente: 'nequi', clase: 'gasto' });
+  const gasto = (i, f) => ({ id: 'g' + String(i).padStart(5, '0'), desc: 'x', monto: 1000, fecha: f, cat: 'Otro', fuente: 'cuenta:nequi', clase: 'gasto' });
   const datos2026 = n => { for (let i = 0; i < n; i++) w.S.gastosVar.push(gasto(i + 1, '2026-' + String(10 + (i % 3)) + '-' + String(1 + Math.floor(i / 3)).padStart(2, '0'))); };
   const botonGuardar = () => d.querySelector('#wrapped-overlay [data-wrapped-action="guardar"]');
 

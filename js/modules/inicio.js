@@ -487,10 +487,10 @@ function renderPlanDeudas(){
   else if(plan.baja) resumen = `A tu ritmo (te sobran ${fmt(balance)} al mes), quedarías libre de deuda en ~${plan.mesesLibre} ${plan.mesesLibre === 1 ? 'mes' : 'meses'}.`;
   else resumen = `Con tu ritmo actual la deuda no baja. Necesitarías liberar ~${fmt(plan.necesitasLiberar)} al mes para quedar libre en ${plan.meta} meses.`;
   const costo = plan.costoMensualTotal > 0 ? `<div class="inicio-plan-costo">Tu deuda con tasa te cuesta ≈ ${fmt(plan.costoMensualTotal)} al mes en intereses.</div>` : '';
-  // ¿Conviene pagar con lo ahorrado? Se compara la deuda más cara con lo que rinde la cajita de Nu (si ambas tasas existen).
+  // ¿Conviene pagar con lo ahorrado? Se compara la deuda más cara con lo que rinde tu cuenta de ahorro (si ambas tasas existen).
   let conviene = '';
   const masCara = plan.orden.filter(x => x.tasaEA > 0).sort((a, b) => b.tasaEA - a.tasaEA)[0];
-  const rendNu = typeof nuTasaConfigurada === 'function' && nuTasaConfigurada() ? Number(S.nuRate) : null;
+  const rendNu = typeof mejorTasaAhorro === 'function' ? mejorTasaAhorro() : null; // la mejor tasa EA entre tus cuentas de ahorro
   const pc = masCara && rendNu != null ? PlanDeudas.pagarConviene(masCara.tasaEA, rendNu) : null;
   if(pc) conviene = `<div class="inicio-plan-costo">${pc.conviene
     ? `Tu cajita rinde ${escHtml(String(rendNu).replace('.', ','))} % y «${escHtml(masCara.nombre)}» cuesta ${escHtml(String(masCara.tasaEA).replace('.', ','))} %: pagarla con lo ahorrado te sale a favor.`
@@ -836,8 +836,7 @@ function _checkGastoAlto() {
     else if (gastoMes >= ingresoRef * UMBRALES.gastoAlto.fraccionDelIngreso) { nivel = 'amber'; texto = 'Gastos altos'; }
   } else if (gastoMes > 0) {
     // Sin ingresos registrados no hay contra qué comparar: solo se avisa si ya no queda plata disponible.
-    const custom = cuentasCustom().reduce((a, c) => a + (c.saldo || 0), 0);
-    const disp = nuTotal() + getSaldoFuente('nequi') + getSaldoFuente('efectivo') + custom;
+    const disp = ahorroTotalGeneral() + saldoCuentas();
     if (disp <= 0) { nivel = 'red'; texto = 'Sin plata disponible'; }
   }
   indicator.textContent = texto;
@@ -908,7 +907,7 @@ function _renderDispNetoTC() {
 }
 
 // Hook _checkGastoAlto/_renderDispNetoTC en refresh. refresh() se define en core-state.js, que
-// carga antes que este módulo; calcC/nuTotal (nu-calc.js) también son núcleo de entrada, así que
+// carga antes que este módulo; calcC/ahorroTotal (nu-calc.js) también son núcleo de entrada, así que
 // no hace falta ningún reintento ni guard por carga lazy.
 // Se registran con Refresh (core-state.js) y corren después de _refreshNucleo(), que es quien deja listo window._dispActualHoy.
 Refresh.registrar('inicio-gasto-alto', _checkGastoAlto);
@@ -944,12 +943,13 @@ _renderDispNetoTC();
 })();
 
 // Destino de un consejo o pilar: «pantalla» o «pantalla/detalle». El detalle lleva al sitio exacto donde se hace lo recomendado:
-//   cuentas/<fuente>        abre esa cuenta (cuentas/nu → Nu, donde se crea un CDT)
+//   cuentas/<fuente>        abre esa cuenta ('cuentas/cuenta:ID': si es de ahorro, ahí se crea un CDT)
 //   prestamos/me-deben|yo-debo   abre esa pestaña de Préstamos
 //   analisis/ingresos       deja a la vista los ingresos fijos (donde se registra un cobro)
 // Una pantalla lazy puede no haber cargado: se espera a que cargue antes de abrir el detalle. Sin detalle (o sin su función) queda en la pantalla.
 function _irADestino(destino){
-  const [pantalla, detalle] = String(destino || '').split('/');
+  const i = String(destino || '').indexOf('/'); // el detalle puede traer ':' pero no '/'
+  const [pantalla, detalle] = i < 0 ? [String(destino || ''), ''] : [String(destino).slice(0, i), String(destino).slice(i + 1)];
   if (typeof showScreen !== 'function' || !document.getElementById('screen-' + pantalla)) return;
   const abrirDetalle = () => {
     if (!detalle) return;

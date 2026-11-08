@@ -116,8 +116,8 @@ function abrirDetalleMov(el){
   } else {
   // Reconstruir la lista de movimientos de esta fuente para hallar el saldo histórico
   let lista, idx, signedFn;
-  if(cuentaKey==='custom' && fuente.startsWith('custom:')){
-    // Usar getMovimientosCuenta (mismo que cuentas estándar) para incluir todas las fuentes
+  if(esFuenteCuenta(fuente)){
+    // Cuenta normal: getMovimientosCuenta incluye todas las fuentes que la afectan
     lista = getMovimientosCuenta(fuente);
     idx = lista.findIndex(m => m._movId === movId);
     if(idx===-1) return;
@@ -125,8 +125,9 @@ function abrirDetalleMov(el){
     const m = lista[idx];
     monto = m.monto; fecha = m.fecha; desc = m.desc;
   } else {
-    // Cuentas estándar: nequi / efectivo / nu (cajitas) — m.monto ya viene con signo correcto
-    const tipoCuenta = fuente.startsWith('cajita:') ? 'nu' : fuente;
+    // Cajita: su historial se lista bajo la cuenta de ahorro a la que pertenece — m.monto ya viene con signo correcto
+    const cajita = (S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]);
+    const tipoCuenta = cajita && cajita.cuentaId ? fuenteDeCuenta(cajita.cuentaId) : fuente;
     lista = getMovimientosCuenta(tipoCuenta).filter(m=>m.fuente===fuente);
     idx = lista.findIndex(m=> movId ? m._movId===movId : (m.fecha===el.dataset.movFecha && Math.abs(m.monto)===montoAbs));
     if(idx===-1) return;
@@ -714,7 +715,7 @@ async function _eliminarMovimientoImpl(btn) {
 // delegación en eliminarMovDeudor() (préstamo/abono).
 function _rerenderCuentaActiva() {
   // cuentaActual vive en cuentas.js (grupo lazy): guard typeof, igual que refresh() en
-  // core-state.js. Vale para cualquier cuenta abierta; las personalizadas son 'custom:ID'.
+  // core-state.js. Vale para cualquier cuenta abierta ('cuenta:ID').
   if (typeof renderDetalleCuenta !== 'function') return;
   if (typeof cuentaActual !== 'undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
 }

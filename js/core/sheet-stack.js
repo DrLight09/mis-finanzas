@@ -203,8 +203,7 @@ function showScreen(name){
   // más abajo — son funciones puras de render (confirmado contra
   // cuentas.js), no tienen costo relevante de llamarlas de más.
   if(name==='cuentas') {
-    // Detalle de la cuenta abierta (incluye las personalizadas: 'custom:ID'). Antes la rama de
-    // personalizadas llamaba a renderDetalleCustomCuenta(), que nunca existió: no hacía nada.
+    // Detalle de la cuenta abierta ('cuenta:ID', de cualquier clase).
     if(typeof renderDetalleCuenta==='function' && typeof cuentaActual!=='undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
     if(typeof renderCajitas==='function') renderCajitas();
     if(typeof renderSelectorCuentas==='function') renderSelectorCuentas();

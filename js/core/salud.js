@@ -434,10 +434,10 @@ const Salud = (() => {
     // Un CDT bloquea la plata (no cuenta como liquidez), así que solo se sugiere lo que SOBRA por encima del fondo mínimo: sin deudas (ni de
     // tarjeta ni con personas: pagarlas rinde más que cualquier CDT), sin tener prestado más de lo que tienes disponible, y con gasto típico
     // medido (sin él no se sabe cuánto es «de sobra»). Antes se sugería también sin gasto típico, y poner en CDT parte de la reserva la dejaba
-    // por debajo de 3 meses y disparaba el aviso contrario. Lleva a la cuenta Nu, donde se crea el CDT.
+    // por debajo de 3 meses y disparaba el aviso contrario. Lleva a tu cuenta de ahorro, donde se crea el CDT.
     const excedente = liquidoReal - gastoRef * U.fondoMeses.minimo;
     if(excedente >= gastoRef * U.cdtExcedenteMeses)
-      add(`Te sobran ${fmt(Math.floor(excedente))} por encima de tus ${U.fondoMeses.minimo} meses de reserva: podrías ponerlos en un CDT para que crezcan.`,'sugerencia','cuentas/nu');
+      add(`Te sobran ${fmt(Math.floor(excedente))} por encima de tus ${U.fondoMeses.minimo} meses de reserva: podrías ponerlos en un CDT para que crezcan.`,'sugerencia',(()=>{const ah=typeof cuentasAhorro==='function'?cuentasAhorro({soloActivas:true})[0]:null;return ah?'cuentas/'+fuenteDeCuenta(ah.id):'cuentas';})());
   }
 
   // f) y g) (≥ 2 gastos fijos configurados: +5; una sola categoría en gastos variables: −5) ya NO puntúan: miden cómo usas la app, no

@@ -166,10 +166,8 @@ let _alcSplitMode = false; // true = "Dividir" activo (varios orígenes)
 function _alcNombreFuente(f){
   if(!f) return '';
   if(typeof fuenteLabel === 'function'){ try { const l = fuenteLabel(f); if(l) return l; } catch(e){} }
-  if(f === 'nequi') return 'Nequi';
-  if(f === 'efectivo') return 'Efectivo';
   if(f.startsWith('cajita:')){ const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===f.split(':')[1]); return c?c.nombre:'Cajita'; }
-  if(f.startsWith('custom:')){ const c=getCuentaCustom(f.split(':')[1]); return c?c.nombre:'Cuenta'; }
+  if(esFuenteCuenta(f)){ const c=getCuentaDeFuente(f); return c?c.nombre:'Cuenta'; }
   return f;
 }
 
@@ -928,10 +926,9 @@ window.alcanciaConfirmarDeposito = function(){
       window.S.movimientos.push({
         id: p.movId,
         tipo: 'entrada',
-        // NO cambiar `fuente`: inicio.js (ingresosMes) solo suma entradas de S.movimientos cuya fuente sea
-        // nequi/efectivo/cajita:/custom:, así que con otra fuente este ingreso dejaría de contar en el mes.
-        // No mueve ningún saldo y no aparece en el historial de Efectivo (cuentas.js lo salta).
-        fuente: 'efectivo',
+        // Plata que nunca estuvo en una cuenta: la fuente es la propia alcancía, no una cuenta (el ingreso cuenta en el mes
+        // igual: entradasIngresoReal() no mira la fuente). No mueve ningún saldo y ningún historial de cuenta lo lista.
+        fuente: 'alcancia',
         monto: p.monto,
         fecha,
         desc: unica ? (descVal || info.desc) : (descVal ? descVal + ' (' + info.corto + ')' : info.desc),

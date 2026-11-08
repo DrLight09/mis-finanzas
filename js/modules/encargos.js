@@ -80,9 +80,11 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
   if (!el) return;
   const encargos = S.encargos || [];
 
-  // Para Nu: construir filas por cajita específica (no agrupado)
+  // Cuenta de ahorro: construir filas por cajita específica (no agrupado)
   // Para otras cuentas: comportamiento normal
-  if (tipoCuenta === 'nu') {
+  const cuentaAhorro = getCuentaDeFuente(tipoCuenta);
+  if (esCuentaAhorro(cuentaAhorro)) {
+    const cajitasPropias = new Set(cajitasDeCuenta(cuentaAhorro.id).map(x => x.id));
     // Estructura: [{enc, cajitaId, saldoEncargo}]
     const filas = [];
     encargos.forEach(enc => {
@@ -98,7 +100,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
       });
       // Una fila por cajita específica
       Object.entries(mapRaw).forEach(([k, v]) => {
-        if (v > 0 && k && k.startsWith('cajita:')) {
+        if (v > 0 && k && k.startsWith('cajita:') && cajitasPropias.has(k.split(':')[1])) {
           filas.push({ enc, cajitaId: k.split(':')[1], saldoEncargo: v });
         }
       });
@@ -110,16 +112,16 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     // Proporción del encargo = saldoEncargo / saldo_base_cajita (el saldo guardado, sin intereses futuros)
     // Valor actual de esa porción = calcC(cajita).val * proporción
     // Interés de HOY de esa porción = valor_actual_porción * tasaDiaria
-    // Esto replica exactamente lo que Nu hace: el dinero del encargo genera interés compuesto
+    // Esto replica exactamente lo que hace el banco: el dinero del encargo genera interés compuesto
     // acumulado desde que se depositó (fecha de la cajita), y el de hoy es sobre la base ya crecida.
 
-    let totalEncargosNu = 0;      // saldo nominal (lo que le debes al encargante)
+    let totalEncargosAhorro = 0;      // saldo nominal (lo que le debes al encargante)
     let totalInteresesMios = 0;   // interés de hoy sobre la porción del encargo (es tuyo)
     let totalValorActual = 0;     // valor actual de la porción (nominal + intereses acumulados = ganancia tuya)
     const filasHtml = filas.map(({enc, cajitaId, saldoEncargo}) => {
-      totalEncargosNu += saldoEncargo;
+      totalEncargosAhorro += saldoEncargo;
       const cajita = (S.cajitas||[]).find(x => x.id === cajitaId);
-      const cajitaNombre = cajita ? (cajita.nombre || 'Cajita Nu') : 'Cajita Nu';
+      const cajitaNombre = cajita ? (cajita.nombre || 'Cajita') : 'Cajita';
 
       // Calcular valor actual proporcional de la porción del encargo
       let interesMioHoy = 0;
@@ -134,7 +136,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
         interesMioHoy = valorActualPorcion * k.tasaDiaria;
       } else {
         // Cajita sin fecha o sin saldo: usar tasa global simple
-        const tasa = getNuTasaGlobal();
+        const tasa = getTasaCuenta(cuentaAhorro.id);
         const tasaDiaria = Math.pow(1 + tasa / 100, 1 / 365) - 1;
         interesMioHoy = saldoEncargo * tasaDiaria;
       }
@@ -172,25 +174,25 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
         </div>`;
     });
 
-    const totalAcumulado = totalValorActual - totalEncargosNu; // ganancia acumulada total tuya
+    const totalAcumulado = totalValorActual - totalEncargosAhorro; // ganancia acumulada total tuya
     el.innerHTML = html`
-      <div class="sec-title">Encargos en Nu</div>
+      <div class="sec-title">Encargos en ${cuentaAhorro.nombre}</div>
       <div class="enc-cap-caja">
         <div class="enc-cap-txt">Plata que administras de otras personas, guardada en tus cajitas — los intereses que genera son tuyos</div>
         ${filasHtml}
         <div class="enc-tot-fila">
           <div>
-            <div class="enc-nota">Total encargos en Nu</div>
+            <div class="enc-nota">Total encargos en ${cuentaAhorro.nombre}</div>
             ${totalInteresesMios >= 0.01 ? html`<div class="enc-tot-int-dia">+${fmt(totalInteresesMios)}/día que ganas tú</div>` : ''}
             ${totalAcumulado > 0.5 ? html`<div class="enc-tot-acum">+${fmt(totalAcumulado)} ganados hasta hoy</div>` : ''}
           </div>
-          <span class="enc-tot-val">${fmt(totalEncargosNu)}</span>
+          <span class="enc-tot-val">${fmt(totalEncargosAhorro)}</span>
         </div>
       </div>`;
     return;
   }
 
-  // ── Comportamiento normal para cuentas no-Nu ──
+  // ── Comportamiento normal para las demás cuentas ──
   const filas = [];
   encargos.forEach(enc => {
     const mapRaw = {};
@@ -205,23 +207,16 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
     });
     let saldoEnCuenta = 0;
     Object.entries(mapRaw).forEach(([k, v]) => {
-      const match = tipoCuenta.startsWith('custom:')
-        ? k === tipoCuenta
-        : k === tipoCuenta;
-      if (match) saldoEnCuenta += v;
+      if (k === tipoCuenta) saldoEnCuenta += v;
     });
     if (saldoEnCuenta > 0) {
       filas.push({ enc, saldo: saldoEnCuenta });
     }
   });
   if (!filas.length) { el.innerHTML = ''; return; }
-  // Color de Nequi/Efectivo: de CUENTAS_FIJAS (core-state.js), no repetido acá.
-  let color = (tipoCuenta === 'nequi' || tipoCuenta === 'efectivo') ? getCuentaFija(tipoCuenta).color : 'var(--blue)';
-  if (tipoCuenta.startsWith('custom:')) {
-    const cId = tipoCuenta.split(':')[1];
-    const cc = getCuentaCustom(cId);
-    if (cc && cc.color) color = cc.color;
-  }
+  // Color de la cuenta: el que eligió el usuario (azul si la cuenta ya no existe).
+  const cuentaTipo = getCuentaDeFuente(tipoCuenta);
+  const color = cuentaTipo ? colorCuenta(cuentaTipo) : 'var(--blue)';
   el.innerHTML = html`
     <div class="sec-title">Encargos en esta cuenta</div>
     <div class="enc-cap-caja">
@@ -376,17 +371,20 @@ function abrirEncargoDetalle(id) {
     });
     const hayMultiple = Object.keys(mapRaw).filter(k => (mapRaw[k]||0) > 0).length > 0;
     if (hayMultiple && saldo > 0) {
-      const tasaNU = getNuTasaGlobal();
-      const tasaDiaria = Math.pow(1 + tasaNU / 100, 1 / 365) - 1;
+      // La tasa depende de la cuenta de ahorro a la que pertenece cada cajita.
+      const tasaDiariaDe = k => {
+        const caj = (S.cajitas || []).find(x => x.id === k.split(':')[1]);
+        return Math.pow(1 + getTasaCuenta(caj && caj.cuentaId) / 100, 1 / 365) - 1;
+      };
       const filas = Object.entries(mapRaw)
         .filter(([k,v]) => v > 0)
         .sort((a,b) => b[1]-a[1])
         .map(([k,v]) => {
           const lbl = k === '__sin__' ? 'Sin especificar' : fuenteLabel(k);
           const pct = saldo > 0 ? Math.round(v/saldo*100) : 0;
-          // Si está en una cajita de Nu, calcular interés diario que genera (es mío)
+          // Si está en una cajita de ahorro, calcular interés diario que genera (es mío)
           const esCajita = k && k.startsWith('cajita:');
-          const interesMio = esCajita ? v * tasaDiaria : 0;
+          const interesMio = esCajita ? v * tasaDiariaDe(k) : 0;
           return html`<div class="enc-int-cab">
             <div>
               <span class="enc-int-lbl">${lbl}</span>
@@ -2000,15 +1998,8 @@ async function deleteMovEncargo(encId, movId) {
   if (mov && mov._traspasoEncargo) {
     // Revertir el sumarFuente que se hizo en el paso 2
     if (mov._destino && mov.monto) descontarFuente(mov._destino, mov.monto, _ogEnc(movId, true));
-    // Borrar el movimiento de ingreso vinculado (puede estar en c.movimientos de una
-    // cuenta custom o en S.movimientos para cuentas estándar).
-    if (mov._destino && mov._destino.startsWith('custom:')) {
-      const customId = mov._destino.split(':')[1];
-      const cDest = getCuentaCustom(customId);
-      if (cDest && cDest.movimientos) {
-        cDest.movimientos = cDest.movimientos.filter(m => m._encMovId !== movId);
-      }
-    } else if (S.movimientos) {
+    // Borrar el movimiento de ingreso vinculado (vive en S.movimientos, como el de toda cuenta).
+    if (S.movimientos) {
       S.movimientos = S.movimientos.filter(m => m._encMovId !== movId);
     }
   }
@@ -2257,41 +2248,19 @@ function confirmarTraspasoEncargo() {
   sumarFuente(destino, monto, _ogEnc(encMovId));
 
   // 3. Registrar ingreso visible en el historial de la cuenta destino.
-  //    Cuentas custom: va en c.movimientos (lo que renderMovsCustom lee).
-  //    Cuentas estándar: va en S.movimientos.
-  if (destino.startsWith('custom:')) {
-    const customId = destino.split(':')[1];
-    const cDest = getCuentaCustom(customId);
-    if (cDest) {
-      if (!cDest.movimientos) cDest.movimientos = [];
-      cDest.movimientos.push({
-        id: uid(),
-        tipo: 'ingreso',
-        monto,
-        fecha,
-        nota: desc + ' (de encargo ' + enc.nombre + ')',
-        _secundario: true,
-        _origenSeccion: 'Encargos',
-        _encMovId: encMovId,
-        clase: 'ingreso',
-        _esExtraIngreso: true,   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
-        ts: Date.now()
-      });
-    }
-  } else {
-    if (!S.movimientos) S.movimientos = [];
-    S.movimientos.push({
-      id: uid(),
-      tipo: 'entrada',
-      fuente: destino,
-      monto,
-      fecha,
-      desc: desc + ' (de encargo ' + enc.nombre + ')',
-      _encMovId: encMovId,
-      clase: 'ingreso',
-      _esExtraIngreso: true   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
-    });
-  }
+  //    Va en S.movimientos, como el historial de toda cuenta.
+  if (!S.movimientos) S.movimientos = [];
+  S.movimientos.push({
+    id: uid(),
+    tipo: 'entrada',
+    fuente: destino,
+    monto,
+    fecha,
+    desc: desc + ' (de encargo ' + enc.nombre + ')',
+    _encMovId: encMovId,
+    clase: 'ingreso',
+    _esExtraIngreso: true   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
+  });
 
   save();
   refresh();

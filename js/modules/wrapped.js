@@ -2518,7 +2518,7 @@ function _wrappedCopyCierrePoema(ctx){
    candidatos aplican, el primero de la lista es el rasgo principal. */
 function _wrappedPersonalidad(S, anioK){
   const cajitas = _wrappedListaCajitas(S);
-  const cuentasPersonalizadas = cuentasCustom();
+  const cuentasActivasN = (S.cuentas || []).filter(c => c && !c.archivada && c.tipo !== 'ahorro');
   const deudores = Deudas.lista('favor');
   const prestado = _wrappedCalcularPrestado(S, 'anio', null, anioK);
   const periodo = _wrappedCalcularPeriodo(S, 'anio', null, anioK);
@@ -2549,8 +2549,8 @@ function _wrappedPersonalidad(S, anioK){
       `${racha} veces seguidas mejorando tu ahorro. Eso ya es un patrón.`,
     ], racha) });
   }
-  if((cajitas.length + cuentasPersonalizadas.length) >= 6){
-    candidatos.push({ tipo:'El Multicuenta', evidencia:`${cajitas.length + cuentasPersonalizadas.length} cuentas y cajitas activas`, frase: _wrappedBankPick('personalidad-multicuenta', [
+  if((cajitas.length + cuentasActivasN.length) >= 6){
+    candidatos.push({ tipo:'El Multicuenta', evidencia:`${cajitas.length + cuentasActivasN.length} cuentas y cajitas activas`, frase: _wrappedBankPick('personalidad-multicuenta', [
       'Tu plata vive repartida en muchos lugares distintos.',
       'Tienes más cuentas que la mayoría — y a todas les llevas la cuenta.',
     ]) });

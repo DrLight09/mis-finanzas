@@ -1,55 +1,60 @@
 /* ═══════════════════════════════════════════════════════════════
    js/modules/nu.js
 
-   Módulo Nu de mis-finanzas: todo lo que es exclusivo de la cuenta Nu.
+   Módulo de las CUENTAS DE AHORRO (tipo 'ahorro'): lo que tiene una cuenta con cajitas que rinden intereses. Nu es solo un preset
+   del catálogo que crea una cuenta así; nada de este archivo nombra a un banco. (El archivo conserva su nombre histórico, de cuando
+   era lo único que existía: los ids del HTML y las clases `nu-*` también.) Una app puede tener varias cuentas de ahorro: la pantalla
+   trabaja siempre sobre la que está abierta (cuentaActual) y cada cuenta lleva su propia tasa.
    Cubre:
-     · Tasa EA única de las cajitas (S.nuRate) con su historial por tramos
-       (S.historialTasasNu) y la materialización de intereses
-     · Cajitas: crear, eliminar, lista, detalle, "Agregar/Retirar dinero"
-       (abrirNuMovimiento/confirmarNuMovimiento)
+     · Tasa EA de la cuenta (cuenta.tasaEA) con su historial por tramos (cuenta.historialTasas) y la materialización de intereses
+     · Cajitas: crear, eliminar, lista, detalle, "Agregar/Retirar dinero" (abrirNuMovimiento/confirmarNuMovimiento)
      · CDTs: crear, editar, cobrar, vencimientos
      · Metas de ahorro por cajita
-     · Chequeo rápido de saldo real contra la app de Nu (con encargos
-       incluidos) y la sugerencia de cambio de tasa que sale de ahí
-     · Qué acciones de Nu están disponibles (botones deshabilitados con su
-       motivo): actualizarBotonesNu()
+     · Chequeo rápido de saldo real contra la app del banco (con encargos incluidos) y la sugerencia de cambio de tasa que sale de ahí
+     · Qué acciones están disponibles (botones deshabilitados con su motivo): actualizarBotonesNu()
 
-   El CÁLCULO de intereses no vive acá sino en js/core/nu-calc.js (calcC,
-   calcCDT, nuValorEsperadoCajita, nuTasaConfigurada…): es núcleo porque el
-   patrimonio, Inicio y Encargos lo necesitan en cualquier pantalla. Este
+   El CÁLCULO de intereses no vive acá sino en js/core/nu-calc.js (calcC, calcCDT, ahorroValorEsperadoCajita,
+   ahorroTasaConfigurada…): es núcleo porque el patrimonio, Inicio y Encargos lo necesitan en cualquier pantalla. Este
    archivo es la parte que MUTA datos y pinta pantallas.
 
    Carga: grupo lazy 'cuentas', junto con js/modules/cuentas.js.
-   Regla de dependencia (UN solo sentido): Nu se apoya en cuentas.js, nunca
-   al revés. Nu es una cuenta más y reutiliza lo genérico de esa capa —
-   _descriptorCuenta, _tituloCuentaHtml, _showCuentasPanel, _setBtnEstado,
-   _setBtnTransferir, _MIN_RETIRO, getMovimientosCuenta, renderMovsCuenta,
-   abrirAgregarDinero, abrirRestarDinero, abrirTransferir,
-   actualizarBotonRetirar, actualizarBotonesTransferir,
-   registrarEntradaConApertura, registrarSalida, _aperturaToggleUI —
-   únicamente cuando una función corre. cuentas.js no
-   nombra nada de este archivo: Nu se le presenta registrándose en
-   CuentaPantallas (core-state.js) al cargar. La prueba 'cuentas-nu-archivos'
-   (tests/cuentas.test.js) vigila las dos cosas.
+   Regla de dependencia (UN solo sentido): este módulo se apoya en cuentas.js, nunca al revés. Una cuenta de ahorro es una cuenta
+   más y reutiliza lo genérico de esa capa — _descriptorCuenta, _tituloCuentaHtml, _showCuentasPanel, _setBtnEstado,
+   _setBtnTransferir, _MIN_RETIRO, getMovimientosCuenta, renderMovsCuenta, abrirAgregarDinero, abrirRestarDinero,
+   abrirTransferir, actualizarBotonRetirar, actualizarBotonesTransferir, registrarEntradaConApertura, registrarSalida,
+   _aperturaToggleUI — únicamente cuando una función corre. cuentas.js no nombra nada de este archivo: la clase 'ahorro' se le
+   presenta registrándose en CuentaPantallas (core-state.js) al cargar. La prueba 'cuentas-nu-archivos' (tests/cuentas.test.js)
+   vigila las dos cosas.
 
    Ver docs/nu.md (objetivo, reglas y modelo de datos) y docs/cuentas.md.
    ═══════════════════════════════════════════════════════════════ */
 
+// Cuenta de ahorro abierta ahora ('' si no hay ninguna): todo lo que esta pantalla crea o chequea es de ESA cuenta.
+function _ahorroActualId(){
+  const c=getCuentaDeFuente(typeof cuentaActual==='string'?cuentaActual:'');
+  return esCuentaAhorro(c)?c.id:'';
+}
+function _ahorroActual(){return getCuenta(_ahorroActualId());}
+// Nombre de la cuenta de ahorro para los textos ("la app de Nu"): el que le puso el usuario.
+function _nombreAhorro(cuentaId){return nombreCuenta(getCuenta(cuentaId||_ahorroActualId()));}
+
 /* ───────────────────────────────────────────────────────────────
-   SECCIÓN: Nu — tasa EA (con historial por tramos) y cálculo de CDTs
+   SECCIÓN: Cuenta de ahorro — tasa EA (con historial por tramos) y cálculo de CDTs
    ─────────────────────────────────────────────────────────────── */
-// Registra (o actualiza) un cambio de tasa Nu vigente desde una fecha específica.
-// Permite corregir retroactivamente: si Nu subió la tasa el 6 de julio pero te enteraste
+// Registra (o actualiza) un cambio de tasa de una cuenta de ahorro vigente desde una fecha específica.
+// Permite corregir retroactivamente: si el banco subió la tasa el 6 de julio pero te enteraste
 // el 12, registras {fecha:'2026-07-06', tasa:9.30} y calcC() recalcula automáticamente
 // todos los días desde el 6 con la tasa nueva.
-function registrarTasaNuHistorial(fechaStr, tasa){
-  if(!fechaStr||tasa==null||isNaN(tasa))return;
-  if(!S.historialTasasNu)S.historialTasasNu=[];
-  const idx=S.historialTasasNu.findIndex(h=>h.fecha===fechaStr);
-  if(idx>=0)S.historialTasasNu[idx].tasa=tasa;
-  else S.historialTasasNu.push({fecha:fechaStr,tasa});
-  S.historialTasasNu.sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
-  if(S.historialTasasNu.length>60)S.historialTasasNu=S.historialTasasNu.slice(-60);
+function registrarTasaHistorial(cuentaId, fechaStr, tasa){
+  const cu=getCuenta(cuentaId);
+  if(!cu||!fechaStr||tasa==null||isNaN(tasa))return;
+  if(!cu.historialTasas)cu.historialTasas=[];
+  const h=cu.historialTasas;
+  const idx=h.findIndex(x=>x.fecha===fechaStr);
+  if(idx>=0)h[idx].tasa=tasa;
+  else h.push({fecha:fechaStr,tasa});
+  h.sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
+  if(h.length>60)cu.historialTasas=h.slice(-60);
 }
 
 // Materializa los intereses acumulados en el saldo (llama esto antes de depósitos/retiros)
@@ -64,18 +69,18 @@ function materializarIntereses(c){
     if(!c.rendimientos)c.rendimientos={};
     Object.keys(porMes).forEach(mk=>{c.rendimientos[mk]=Math.round(((c.rendimientos[mk]||0)+porMes[mk])*100)/100;});
     // Los intereses entran al libro como 'rendimiento' (una entrada por cajita y mes).
-    ajustarSaldoCuenta('cajita:'+c.id,k.val,{tipo:'rendimiento',desc:'Intereses de Nu',origen:{modulo:'cuentas'}});
+    ajustarSaldoCuenta('cajita:'+c.id,k.val,{tipo:'rendimiento',desc:'Intereses',origen:{modulo:'cuentas'}});
     c.fecha=hoy();
   }else if(!((c.saldo||0)>0)&&!(_saldoEncargosEnCajita(c.id)>0)){
     // Sin plata adentro (ni propia ni de encargos) no hay intereses que sellar, pero el reloj de la cajita (c.fecha) no
     // puede quedarse en el día en que se creó: calcC() le contaría al primer depósito los días que la cajita estuvo
-    // vacía. El reloj arranca HOY, que es cuando entra la plata (Nu paga el primer interés a las 12 a.m. siguientes).
+    // vacía. El reloj arranca HOY, que es cuando entra la plata (los bancos pagan el primer interés pasada la medianoche).
     c.fecha=hoy();
   }
 }
 
-// Umbrales del chequeo rápido de Nu (ver cuentas.md §5 y §7). Un solo lugar para ajustarlos.
-const _CFG_CHEQUEO_NU={
+// Umbrales del chequeo rápido (ver cuentas.md §5 y §7). Un solo lugar para ajustarlos.
+const _CFG_CHEQUEO={
   // — Detección de cambio de tasa —
   umbralEA:0.05,      // desvío mínimo (puntos de EA) para que un punto cuente como "tasa distinta"
   minDias:5,          // días mínimos entre dos chequeos para poder compararlos (con menos, el ruido de
@@ -89,14 +94,15 @@ const _CFG_CHEQUEO_NU={
 };
 
 // Calcula, para cada fecha en que hiciste un chequeo, la tasa EA que mejor explica el
-// crecimiento real de las cajitas chequeadas ese día (ponderado por saldo). Misma lógica
-// validada en el laboratorio externo de cajitas Nu.
-function calcularSerieTasaImplicitaNu(){
-  const chequeos=S.chequeosNu||[];
+// crecimiento real de las cajitas chequeadas ese día (ponderado por saldo), de UNA cuenta de ahorro. Misma lógica
+// validada en el laboratorio externo de cajitas.
+function calcularSerieTasaImplicita(cuentaId){
+  const propias=new Set(cajitasDeCuenta(cuentaId).map(c=>c.id));
+  const chequeos=(S.chequeosAhorro||[]).filter(ch=>propias.has(ch.cajitaId));
   if(!chequeos.length)return[];
   const fechas=[...new Set(chequeos.map(ch=>ch.fecha))].sort();
   const prevByCajita={};
-  (S.cajitas||[]).forEach(c=>{
+  cajitasDeCuenta(cuentaId).forEach(c=>{
     prevByCajita[c.id]={balance:(c.saldo||0)+_saldoEncargosEnCajita(c.id),fecha:c.fecha||hoy()};
   });
   const serie=[];
@@ -108,17 +114,17 @@ function calcularSerieTasaImplicitaNu(){
       const dias=_diasEntreFechas(prev.fecha,fecha);
       // Chequeo demasiado cerca del anterior: no se compara y el punto de partida NO avanza,
       // así el próximo chequeo se mide contra uno más lejano (donde el ruido pesa menos).
-      if(dias>0&&dias<_CFG_CHEQUEO_NU.minDias)return;
+      if(dias>0&&dias<_CFG_CHEQUEO.minDias)return;
       if(dias>0&&prev.balance>=1000){
         const rDiaria=Math.pow(ch.saldoReal/prev.balance,1/dias)-1;
         const ea=(Math.pow(1+rDiaria,365)-1)*100;
         // Un salto imposible (Infinity/NaN, o a más de maxDesvioEA puntos de la tasa vigente) es un
         // saldo mal anotado o plata sin registrar en esa cajita, no una tasa: se descarta SOLO ese
         // par para que no contamine el promedio ponderado de las demás cajitas del mismo día.
-        if(isFinite(ea)&&Math.abs(ea-_tasaVigenteEnFecha(fecha))<=_CFG_CHEQUEO_NU.maxDesvioEA){
+        if(isFinite(ea)&&Math.abs(ea-_tasaVigenteEnFecha(fecha,cuentaId))<=_CFG_CHEQUEO.maxDesvioEA){
           // Lo que habría dado la tasa vigente en cada tramo, para medir la diferencia en pesos.
           let esperado=prev.balance;
-          _segmentosTasaNu(prev.fecha,fecha).forEach(seg=>{esperado*=Math.pow(1+seg.tasa/100,seg.dias/365);});
+          _segmentosTasa(cuentaId,prev.fecha,fecha).forEach(seg=>{esperado*=Math.pow(1+seg.tasa/100,seg.dias/365);});
           sumaPond+=ea*prev.balance;sumaPesos+=prev.balance;
           difPesos+=ch.saldoReal-esperado;
         }
@@ -136,11 +142,11 @@ function calcularSerieTasaImplicitaNu(){
 // diferencia equivale a más de tolPesos pesos (no es redondeo). Los saltos imposibles ya se
 // descartan al armar la serie (maxDesvioEA). La racha exige 2+ puntos consecutivos del MISMO lado: uno por encima y otro
 // por debajo es ruido que se compensa, no una tasa nueva.
-function verificarTasaNu(){
-  const serie=calcularSerieTasaImplicitaNu();
+function verificarTasaAhorro(cuentaId){
+  const serie=calcularSerieTasaImplicita(cuentaId);
   if(!serie.length)return null;
-  const tasaActual=_tasaVigenteEnFecha(hoy());
-  const C=_CFG_CHEQUEO_NU;
+  const tasaActual=_tasaVigenteEnFecha(hoy(),cuentaId);
+  const C=_CFG_CHEQUEO;
   const desvio=p=>p.ea-tasaActual;
   const esDesvio=p=>Math.abs(desvio(p))>C.umbralEA&&Math.abs(p.difPesos)>C.tolPesos;
   let racha=[];
@@ -160,10 +166,11 @@ function poblarChequeoNu(){
   if(!cont)return;
   // Solo las cajitas que ya generaron intereses un día completo (cada una por su cuenta): comparar el saldo real con un
   // cálculo de 0 días no dice nada de la tasa. Las nuevas aparecen solas cuando cumplen su primer día.
-  const aptas=cajitasChequeables();
-  const faltan=(S.cajitas||[]).length-aptas.length;
+  const cuentaId=_ahorroActualId();
+  const aptas=cajitasChequeables(cuentaId);
+  const faltan=cajitasDeCuenta(cuentaId).length-aptas.length;
   cont.innerHTML=html`${aptas.map(c=>{
-    const e=nuValorEsperadoCajita(c); // el total que debería mostrar Nu: propio + intereses + encargos guardados ahí
+    const e=ahorroValorEsperadoCajita(c); // el total que debería mostrar el banco: propio + intereses + encargos guardados ahí
     return html`<div class="ig nu-chq-campo">
       <label class="il" for="chq-${c.id}">${c.nombre} <span class="nu-chq-debe">(debería verse: ${fmt(e.total)})</span></label>
       <input type="text" inputmode="decimal" class="money-input" id="chq-${c.id}" data-chq-cajita="${c.id}" placeholder="${fmt(e.total)}">
@@ -182,18 +189,18 @@ function abrirChequeoNu(){
 
 // Qué saldo propio quedaría en la cajita si se acepta lo que el usuario anotó, y contra qué
 // valor calculado se está comparando. Cuando la cajita tiene plata de un encargo adentro, el
-// usuario puede haber escrito el TOTAL físico que ve en Nu (propio + encargo, sin distinguir) o
+// usuario puede haber escrito el TOTAL físico que ve en el banco (propio + encargo, sin distinguir) o
 // ya SU parte neta. Para no restar el encargo dos veces en el segundo caso, se compara el valor
 // contra las dos referencias (propio vs. propio+encargo) y se asume la más cercana — la
 // diferencia entre ambas es normalmente el monto completo del encargo, mucho mayor que
 // cualquier corrección real de unos pocos pesos, así que no hay casos realmente ambiguos.
 // Única fuente de esta lógica: la usan tanto el aviso previo como la corrección del saldo.
-// Lo que se anota en el Chequeo rápido es SIEMPRE lo que muestra la app de Nu para la cajita: el total, con el dinero de
-// encargos incluido (nuValorEsperadoCajita). Antes se adivinaba si el usuario había puesto el total o solo lo propio según
+// Lo que se anota en el Chequeo rápido es SIEMPRE lo que muestra la app del banco para la cajita: el total, con el dinero de
+// encargos incluido (ahorroValorEsperadoCajita). Antes se adivinaba si el usuario había puesto el total o solo lo propio según
 // cuál valor quedaba más cerca, y la pantalla mostraba solo lo propio. Ahora no hay nada que adivinar:
 // saldo propio = lectura − encargos, y la referencia contra la que se compara es el total esperado.
 function _interpretarLecturaChequeoNu(c,val){
-  const e=nuValorEsperadoCajita(c);
+  const e=ahorroValorEsperadoCajita(c);
   return{saldoPropio:val-e.encargos,referencia:e.total,encargos:e.encargos};
 }
 
@@ -205,7 +212,8 @@ let _chequeoNuUndo=null;
 async function guardarChequeoNu(){
   const motivo=_motivoNuChequeo();
   if(motivo){toast(motivo,'err',4000);return;}
-  const aptas=new Set(cajitasChequeables().map(c=>c.id));
+  const cuentaId=_ahorroActualId();
+  const aptas=new Set(cajitasChequeables(cuentaId).map(c=>c.id));
   const inputs=document.querySelectorAll('[data-chq-cajita]');
   const hoyStr=hoy();
   // 1) Leer lo anotado SIN tocar nada todavía.
@@ -215,7 +223,7 @@ async function guardarChequeoNu(){
     const val=parseFloat(raw);
     // Un campo vacío o en 0 significa "no anoté nada", no "esta cajita tiene $0". Antes se guardaba como lectura
     // real: ponía la cajita en 0 (solo con aviso si se alejaba más de max($1.000, 2%)) y ensuciaba
-    // S.chequeosNu. Si de verdad quedó vacía, se registra el retiro como movimiento (lo dice el aviso).
+    // S.chequeosAhorro. Si de verdad quedó vacía, se registra el retiro como movimiento (lo dice el aviso).
     if(!raw||isNaN(val)||val<=0)return;
     if(!aptas.has(inp.dataset.chqCajita))return; // aún no cumple su primer día completo de intereses
     lecturas.push({cajitaId:inp.dataset.chqCajita,val,texto:inp.value});
@@ -226,7 +234,7 @@ async function guardarChequeoNu(){
     const enc=_saldoEncargosEnCajita(l.cajitaId);
     if(l.val<enc){
       const c=(S.cajitas||[]).find(cc=>cc.id===l.cajitaId);
-      toast('En "'+escHtml((c&&c.nombre)||'la cajita')+'" anotaste '+fmt(l.val)+', pero ahí hay '+fmt(enc)+' de encargos. Pon el total que ves en Nu (encargos incluidos).','err',5000);
+      toast('En "'+escHtml((c&&c.nombre)||'la cajita')+'" anotaste '+fmt(l.val)+', pero ahí hay '+fmt(enc)+' de encargos. Pon el total que ves en la app de '+escHtml(_nombreAhorro(cuentaId))+' (encargos incluidos).','err',5000);
       return;
     }
   }
@@ -242,7 +250,7 @@ async function guardarChequeoNu(){
     if(!c)return;
     const {referencia}=_interpretarLecturaChequeoNu(c,l.val);
     const dif=l.val-referencia;
-    if(Math.abs(dif)>Math.max(_CFG_CHEQUEO_NU.avisoMinPesos,Math.abs(referencia)*_CFG_CHEQUEO_NU.avisoPct)){
+    if(Math.abs(dif)>Math.max(_CFG_CHEQUEO.avisoMinPesos,Math.abs(referencia)*_CFG_CHEQUEO.avisoPct)){
       anomalias.push('• '+(c.nombre||'Cajita')+': anotaste '+fmt(l.val)+' y la app calculaba '+fmt(referencia)+' ('+(dif>0?'+':'−')+fmt(Math.abs(dif))+')');
     }
   });
@@ -258,33 +266,33 @@ async function guardarChequeoNu(){
   }
 
   // 3) Guardar. Antes, foto del estado actual para poder deshacer desde el aviso de tasa.
-  if(!S.chequeosNu)S.chequeosNu=[];
+  if(!S.chequeosAhorro)S.chequeosAhorro=[];
   _chequeoNuUndo={
-    chequeos:JSON.parse(JSON.stringify(S.chequeosNu)),
+    chequeos:JSON.parse(JSON.stringify(S.chequeosAhorro)),
     cajitas:lecturas.map(l=>{const c=(S.cajitas||[]).find(cc=>cc.id===l.cajitaId);return c?{id:c.id,saldo:c.saldo,fecha:c.fecha}:null;}).filter(Boolean),
     lecturas:lecturas.map(l=>({cajitaId:l.cajitaId,texto:l.texto}))
   };
   lecturas.forEach(l=>{
     const cajitaId=l.cajitaId,val=l.val;
-    const idx=S.chequeosNu.findIndex(ch=>ch.cajitaId===cajitaId&&ch.fecha===hoyStr);
-    if(idx>=0)S.chequeosNu[idx].saldoReal=val;
-    else S.chequeosNu.push({fecha:hoyStr,cajitaId,saldoReal:val});
+    const idx=S.chequeosAhorro.findIndex(ch=>ch.cajitaId===cajitaId&&ch.fecha===hoyStr);
+    if(idx>=0)S.chequeosAhorro[idx].saldoReal=val;
+    else S.chequeosAhorro.push({fecha:hoyStr,cajitaId,saldoReal:val});
     // Corrige el saldo calculado de la cajita al valor real que reportó el usuario.
     // Sin movimiento asociado — mismo criterio silencioso que materializarIntereses():
     // es un ajuste de saldo, no plata que entra o sale de ningún lado.
     const c=(S.cajitas||[]).find(cc=>cc.id===cajitaId);
     if(c){
       // El chequeo pisa el saldo con la lectura real de Nu: la diferencia queda en el libro como 'ajuste' (antes no dejaba rastro).
-      ajustarSaldoCuenta('cajita:'+c.id,_interpretarLecturaChequeoNu(c,val).saldoPropio,{tipo:'ajuste',desc:'Chequeo rápido de Nu: saldo real anotado',origen:{modulo:'cuentas'}});
+      ajustarSaldoCuenta('cajita:'+c.id,_interpretarLecturaChequeoNu(c,val).saldoPropio,{tipo:'ajuste',desc:'Chequeo rápido: saldo real anotado',origen:{modulo:'cuentas'}});
       c.fecha=hoyStr;
     }
   });
-  if(S.chequeosNu.length>500)S.chequeosNu=S.chequeosNu.slice(-500);
+  if(S.chequeosAhorro.length>500)S.chequeosAhorro=S.chequeosAhorro.slice(-500);
   save();refresh();
   closeSheet('chequeo-nu');
-  const r=verificarTasaNu();
+  const r=verificarTasaAhorro(cuentaId);
   if(r){
-    _abrirConfirmarTasaNu(r);
+    _abrirConfirmarTasaNu(r,cuentaId);
   }else{
     _chequeoNuUndo=null;
     if(window.toast)toast('Chequeo guardado — saldo corregido con lo que anotaste.','ok',3000);
@@ -292,16 +300,16 @@ async function guardarChequeoNu(){
 }
 
 // "Me equivoqué al anotar": deshace el chequeo recién guardado (saldos, fechas y puntos de
-// S.chequeosNu vuelven a como estaban) y reabre el chequeo con los mismos valores para editarlos.
+// S.chequeosAhorro vuelven a como estaban) y reabre el chequeo con los mismos valores para editarlos.
 function corregirChequeoNu(){
   const u=_chequeoNuUndo;
   _tasaNuPendiente=null;
   closeSheet('confirmar-tasa-nu');
   if(!u)return;
-  S.chequeosNu=u.chequeos;
+  S.chequeosAhorro=u.chequeos;
   u.cajitas.forEach(s=>{
     const c=(S.cajitas||[]).find(x=>x.id===s.id);
-    if(c){ajustarSaldoCuenta('cajita:'+c.id,s.saldo,{tipo:'ajuste',desc:'Chequeo de Nu deshecho',origen:{modulo:'cuentas'}});c.fecha=s.fecha;}
+    if(c){ajustarSaldoCuenta('cajita:'+c.id,s.saldo,{tipo:'ajuste',desc:'Chequeo deshecho',origen:{modulo:'cuentas'}});c.fecha=s.fecha;}
   });
   _chequeoNuUndo=null;
   save();refresh();
@@ -321,9 +329,9 @@ function corregirChequeoNu(){
 // usuario se equivocó al anotar el saldo y quiere corregir el valor antes de guardar.
 let _tasaNuPendiente=null;
 
-function _abrirConfirmarTasaNu(r){
-  _tasaNuPendiente=r;
-  const tasaActual=_tasaVigenteEnFecha(hoy());
+function _abrirConfirmarTasaNu(r,cuentaId){
+  _tasaNuPendiente=Object.assign({},r,{cuentaId});
+  const tasaActual=_tasaVigenteEnFecha(hoy(),cuentaId);
   const msgEl=document.getElementById('ctn-msg');
   if(msgEl)msgEl.textContent=`Los chequeos ya no cuadran con ${tasaActual}% desde el ${r.desde}. Con lo que anotaste, parece que ahora es ${r.sugerida}%. Revisa o corrige el valor y la fecha antes de aplicar el cambio. Tus saldos ya quedaron guardados; si te equivocaste al anotarlos, usa «Me equivoqué» y se deshace el chequeo.`;
   const tasaInput=document.getElementById('ctn-tasa');
@@ -337,16 +345,18 @@ function confirmarCambioTasaNu(){
   if(!_tasaNuPendiente)return;
   const tasaInput=document.getElementById('ctn-tasa');
   const fechaInput=document.getElementById('ctn-fecha');
-  const tasaEditada=nuTasaDesdeTexto(tasaInput?tasaInput.value:'');
+  const tasaEditada=tasaDesdeTexto(tasaInput?tasaInput.value:'');
   const fechaEditada=(fechaInput&&fechaInput.value)?fechaInput.value:_tasaNuPendiente.desde;
   if(tasaEditada==null){
     if(window.toast)toast('Pon una tasa válida: solo números, con coma o punto decimal (mayor que 0 y hasta 100).','err',3500);
     return;
   }
-  registrarTasaNuHistorial(fechaEditada,tasaEditada);
+  const cuentaPend=getCuenta(_tasaNuPendiente.cuentaId);
+  if(!cuentaPend){_tasaNuPendiente=null;return;}
+  registrarTasaHistorial(cuentaPend.id,fechaEditada,tasaEditada);
   const el=document.getElementById('nuTasaGlobal');
-  if(el)el.value=nuTasaATexto(tasaEditada);
-  S.nuRate=tasaEditada;
+  if(el&&_ahorroActualId()===cuentaPend.id)el.value=tasaATexto(tasaEditada);
+  cuentaPend.tasaEA=tasaEditada;
   save();refresh();
   closeSheet('confirmar-tasa-nu');
   if(window.toast)toast('Tasa actualizada a '+tasaEditada+'% desde '+fechaEditada,'ok',4000);
@@ -400,7 +410,7 @@ function _procesarSiguienteCDTVencido(){
 }
 
 /* ───────────────────────────────────────────────────────────────
-   SECCIÓN: Nu — cajitas, metas de ahorro y CDTs (UI)
+   SECCIÓN: Cuenta de ahorro — cajitas, metas de ahorro y CDTs (UI)
    ─────────────────────────────────────────────────────────────── */
 /* ---- METAS DE AHORRO EN CAJITAS ---- */
 // meta = { objetivo, inicio, fin, aportes:[{desc,monto}], minimo }
@@ -620,16 +630,18 @@ function quitarMetaCajita(){
 // _updatePrestSplitResumen) migrada a js/modules/prestado.js — ver docs/prestado.md.
 
 function addCajita(){
-  if(!nuTasaConfigurada()){
+  const cuentaId=_ahorroActualId();
+  if(!cuentaId)return;
+  if(!ahorroTasaConfigurada(cuentaId)){
     toast(_motivoNuSinTasa(),'err',4000);
     const inp=document.getElementById('nuTasaGlobal');
     if(inp)inp.focus();
     return;
   }
   if(!S.cajitas)S.cajitas=[];
-  if(S.cajitas.length>=MAX)return;
-  const nombre='Cajita '+(S.cajitas.length+1);
-  S.cajitas.push({id:uid(),nombre,saldo:0,cdts:[]});
+  if(cajitasDeCuenta(cuentaId).length>=MAX)return;
+  const nombre='Cajita '+(cajitasDeCuenta(cuentaId).length+1);
+  S.cajitas.push({id:uid(),cuentaId,nombre,saldo:0,cdts:[]});
   save();renderCajitas();
   const _newId=S.cajitas[S.cajitas.length-1].id;
   if(window.logCambio)logCambio('Creaste una cajita',nombre,0,'cajita',_newId);
@@ -699,7 +711,7 @@ function abrirCrearCDT(cajitaId){
   const k=calcC(c);
   document.getElementById('cdtCajitaSaldo').textContent=fmt(k.val);
   document.getElementById('cdt_monto').value='';
-  document.getElementById('cdt_tasa').value=nuTasaConfigurada()?nuTasaATexto(S.nuRate):''; // precarga la tasa global; cada CDT guarda la suya
+  document.getElementById('cdt_tasa').value=ahorroTasaConfigurada(c.cuentaId)?tasaATexto(getTasaCuenta(c.cuentaId)):''; // precarga la tasa de la cuenta; cada CDT guarda la suya
   document.getElementById('cdt_inicio').value=hoy();
   document.getElementById('cdt_vence').value='';
   document.getElementById('cdt_rte').value='4,00';
@@ -764,7 +776,7 @@ function confirmarCrearCDT(){
   if(monto>saldoReal+0.01){toast(`Saldo insuficiente. Solo tienes ${fmt(saldoReal)} en la cajita.`,'err');return;}
   const montoFinal=Math.min(monto,saldoReal);
   // Materializar los intereses acumulados y descontar el monto del CDT
-  ajustarSaldoCuenta('cajita:'+c.id,saldoReal,{tipo:'rendimiento',desc:'Intereses de Nu',origen:{modulo:'cuentas'}});
+  ajustarSaldoCuenta('cajita:'+c.id,saldoReal,{tipo:'rendimiento',desc:'Intereses',origen:{modulo:'cuentas'}});
   c.fecha=hoy();
   ajustarSaldoCuenta('cajita:'+c.id,c.saldo-montoFinal,{tipo:'cdt',desc:'Capital invertido en CDT',origen:{modulo:'cuentas'}});
   // Agregar CDT al array de CDTs de la cajita
@@ -928,9 +940,9 @@ function renderCajitas(){
   const el=document.getElementById('cajitasList');
   const msg=document.getElementById('cajitasMsg');
   const btn=document.getElementById('btnAddCajita');
-  const cajitas=S.cajitas||[];
+  const cajitas=cajitasDeCuenta(_ahorroActualId());
   if(!cajitas.length){
-    el.innerHTML='<div class="nu-vacio">Sin cajitas. Agrega tu primera cajita de Nu — empieza en $0 y crece sola.</div>';
+    el.innerHTML='<div class="nu-vacio">Sin cajitas. Agrega tu primera cajita — empieza en $0 y crece sola.</div>';
     msg.textContent='';btn.style.display='';return;
   }
   el.innerHTML=html`${cajitas.map(c=>{
@@ -938,7 +950,7 @@ function renderCajitas(){
     const cdts=c.cdts||[];
     const hasCDTs=cdts.length>0;
     const totalCDT=cdts.reduce((a,cdt)=>a+calcCDT(cdt).val,0);
-    const tasaDisplay=getNuTasaGlobal();
+    const tasaDisplay=getTasaCuenta(c.cuentaId);
     // El interés diario se calcula sobre la base completa (saldo propio + encargos en la cajita)
     const _baseInteresRender=k.val+(k.saldoEncargos||0);
     const interesHoy=_baseInteresRender>0?(_baseInteresRender*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
@@ -964,39 +976,52 @@ function renderCajitas(){
   else{msg.innerHTML=html`<div class="cajita-limit-msg">${cajitas.length}/${MAX} cajitas</div>`;btn.style.display='';}
 }
 
-/* ══ PANTALLA DE NU (detalle de la cuenta) ══
+/* ══ PANTALLA DE LA CUENTA DE AHORRO (detalle de la cuenta) ══
    Lo que cuentas.js le pide a una cuenta con pantalla propia (ver CuentaPantallas en core-state.js). */
-function renderDetalleNu(){
-  // Color, título y rótulo salen del descriptor de Nu, igual que el detalle simple: el color llega por
+function renderDetalleAhorro(){
+  // Color, título y rótulo salen del descriptor de la cuenta, igual que el detalle simple: el color llega por
   // --cuenta / --cuenta-rgb sobre #cuentas-detalle-nu y los estilos .cuenta-hero / .cuenta-action-btn lo usan.
-  const dNu=_descriptorCuenta('nu');
-  const contNu=document.getElementById('cuentas-detalle-nu');
-  if(dNu&&contNu){
-    contNu.style.setProperty('--cuenta',dNu.color);
-    contNu.style.setProperty('--cuenta-rgb',dNu.rgb);
-    document.getElementById('det-nu-nombre').innerHTML=_tituloCuentaHtml(dNu);
-    document.getElementById('det-nu-label').textContent=dNu.etiquetaDetalle;
+  const cuenta=_ahorroActual();
+  if(!cuenta)return;
+  const dAh=_descriptorDeCuenta(cuenta);
+  const contAh=document.getElementById('cuentas-detalle-nu');
+  if(contAh){
+    contAh.style.setProperty('--cuenta',dAh.color);
+    contAh.style.setProperty('--cuenta-rgb',dAh.rgb);
+    document.getElementById('det-nu-nombre').innerHTML=_tituloCuentaHtml(dAh);
+    document.getElementById('det-nu-label').textContent=dAh.etiquetaDetalle;
   }
+  // Total de la cuenta (cajitas + CDTs) y lo que ya rindió hoy; la tasa EA de la cuenta en su campo (sin pisar lo que se esté escribiendo)
+  const total=ahorroTotal(cuenta.id);
+  const totEl=document.getElementById('nuTotalDisp');if(totEl)totEl.textContent=fmt(total);
+  const interesHoy=cajitasDeCuenta(cuenta.id).reduce((a,c)=>{
+    const k=calcC(c);const base=k.val+(k.saldoEncargos||0);
+    return a+(base>0?base*(Math.pow(1+getTasaCuenta(cuenta.id)/100,1/365)-1):0);
+  },0);
+  const intEl=document.getElementById('nuTotalIntereses');
+  if(intEl)intEl.textContent=interesHoy>0.5?'+'+fmt(interesHoy)+' intereses estimados hoy':'';
+  const tasaEl=document.getElementById('nuTasaGlobal');
+  if(tasaEl&&document.activeElement!==tasaEl)tasaEl.value=ahorroTasaConfigurada(cuenta.id)?tasaATexto(getTasaCuenta(cuenta.id)):'';
   // Cajitas
   renderCajitas();
-  // Encargos en Nu (cualquier cajita)
-  if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nu-encargos','nu');
-  // Movimientos Nu (cajitas)
-  renderMovsCuenta('det-nu-movs',getMovimientosCuenta('nu'),dNu?dNu.color:'var(--nu-light)','nu');
+  // Encargos en esta cuenta (cualquier cajita suya)
+  if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nu-encargos',dAh.fuente);
+  // Movimientos de la cuenta (cajitas)
+  renderMovsCuenta('det-nu-movs',getMovimientosCuenta(dAh.fuente),dAh.color,dAh.fuente,'movs-filtros-nu');
 }
 
-// Pantalla Nu: activo si alguna cajita (no CDT) tiene saldo movible; y el "Mover" de la cajita abierta.
+// Pantalla de ahorro: activo si alguna cajita (no CDT) de la cuenta tiene saldo movible; y el "Mover" de la cajita abierta.
 function _nuActualizarBotonesTransferir(){
-  const hayNu=(S.cajitas||[]).some(c=>!c.esCDT&&FuentesFiltro.puedeMover('cajita:'+c.id));
+  const hayNu=cajitasDeCuenta(_ahorroActualId()).some(c=>!c.esCDT&&FuentesFiltro.puedeMover('cajita:'+c.id));
   _setBtnTransferir(document.getElementById('btn-transferir-nu-det'),hayNu);
   if(_cajitaActualId) _setBtnTransferir(document.getElementById('cajita-det-mover'),FuentesFiltro.puedeMover('cajita:'+_cajitaActualId));
 }
 
-CuentaPantallas.nu={
+CuentaPantallas.ahorro={
   paneles:['cuentas-detalle-nu','cuentas-detalle-cajita','cuentas-sub-meta','cuentas-sub-cdts'],
   panel:'cuentas-detalle-nu',
   reiniciar:()=>{_cajitaActualId=null;},
-  render:renderDetalleNu,
+  render:renderDetalleAhorro,
   actualizarBotones:_nuActualizarBotonesTransferir,
 };
 
@@ -1026,12 +1051,12 @@ function abrirDetalleCajita(cajitaId){
 function _renderDetalleCajita(c){
   if(!c) c=(S.cajitas||[]).find(x=>x.id===_cajitaActualId);
   if(!c) return;
-  // El color de una cajita es el de Nu: llega por --cuenta / --cuenta-rgb (como en los detalles de cuenta) a
+  // El color de una cajita es el de su cuenta: llega por --cuenta / --cuenta-rgb (como en los detalles de cuenta) a
   // .cuenta-hero, al título y al campo de nombre. Todas las rutas al detalle de cajita pasan por acá.
-  const _dNuCaj=_descriptorCuenta('nu'), _pCaj=document.getElementById('cuentas-detalle-cajita');
+  const _dNuCaj=_descriptorDeCuenta(cuentaDeCajita(c)||_ahorroActual()||{}), _pCaj=document.getElementById('cuentas-detalle-cajita');
   if(_dNuCaj&&_pCaj){_pCaj.style.setProperty('--cuenta',_dNuCaj.color);_pCaj.style.setProperty('--cuenta-rgb',_dNuCaj.rgb);}
   const k=calcC(c);
-  const tasaDisplay=getNuTasaGlobal();
+  const tasaDisplay=getTasaCuenta(c.cuentaId);
   // Interés diario sobre la base completa (saldo propio + encargos en la cajita)
   const _baseInteresDet=k.val+(k.saldoEncargos||0);
   const interesHoy=_baseInteresDet>0?(_baseInteresDet*(Math.pow(1+tasaDisplay/100,1/365)-1)):0;
@@ -1253,7 +1278,7 @@ function abrirNuMovimiento(tipo) {
   _nuMovCajitaSel = null;
   const esEntrada = tipo === 'entrada';
 
-  document.getElementById('nuMovTitle').textContent = esEntrada ? 'Agregar a Nu' : 'Retirar de Nu';
+  document.getElementById('nuMovTitle').textContent = esEntrada ? 'Agregar a ' + _nombreAhorro() : 'Retirar de ' + _nombreAhorro();
   document.getElementById('nuMovSubtitle').innerHTML = esEntrada
     ? 'El valor se <b class="nu-c-nu">sumará</b> a la cajita que elijas y contará como ingreso del mes.'
     : 'El valor se <b class="nu-c-red">restará</b> de la cajita que elijas.';
@@ -1293,9 +1318,9 @@ function abrirNuMovimiento(tipo) {
 function _nuMovRenderCajitas() {
   const wrap = document.getElementById('nuMovCajitasWrap');
   if (!wrap) return;
-  const cajitas = S.cajitas || [];
+  const cajitas = _cajitasAhorroActual();
   if (!cajitas.length) {
-    wrap.innerHTML = '<div class="nu-sel-vacio">No tienes cajitas. Crea una primero desde la pantalla de Nu.</div>';
+    wrap.innerHTML = '<div class="nu-sel-vacio">No tienes cajitas. Crea una primero desde la pantalla de la cuenta.</div>';
     return;
   }
   wrap.innerHTML = html`${cajitas.map(c => {
@@ -1411,13 +1436,33 @@ function confirmarNuMovimiento() {
 
 /* ---- Acciones de Nu que dependen de la tasa y de las cajitas ----
    Una sola fuente del "por qué no" (vacío = se puede) para el botón (título y aviso) y para la lógica de cada acción. */
-function _motivoNuSinCajitas() { return (S.cajitas || []).length ? '' : 'Primero crea una cajita de Nu.'; }
-function _motivoNuSinTasa() { return nuTasaConfigurada() ? '' : 'Configura primero la tasa EA de Nu (campo "Tasa EA %").'; }
+function _cajitasAhorroActual() { return cajitasDeCuenta(_ahorroActualId()); }
+function _wireTasaInput() {
+  const inp = document.getElementById('nuTasaGlobal');
+  if (!inp || inp._wired) return;
+  inp._wired = true;
+  inp.addEventListener('input', () => { const v = tasaSanear(inp.value); if (v !== inp.value) inp.value = v; });
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); inp.blur(); } });
+  inp.addEventListener('change', () => {
+    const id = _ahorroActualId(); if (!id) return;
+    const r = ahorroAplicarTasaEscrita(id, inp.value);
+    inp.value = ahorroTasaConfigurada(id) ? tasaATexto(getTasaCuenta(id)) : '';
+    if (r === 'cambio') { save(); refresh(); }
+  });
+  inp.addEventListener('blur', () => {
+    const id = _ahorroActualId(); if (!id) return;
+    inp.value = ahorroTasaConfigurada(id) ? tasaATexto(getTasaCuenta(id)) : '';
+  });
+}
+_wireTasaInput();
+
+function _motivoNuSinCajitas() { return _cajitasAhorroActual().length ? '' : 'Primero crea una cajita en ' + _nombreAhorro() + '.'; }
+function _motivoNuSinTasa() { return ahorroTasaConfigurada(_ahorroActualId()) ? '' : 'Configura primero la tasa EA de ' + _nombreAhorro() + ' (campo "Tasa EA %").'; }
 
 function _motivoNuMovimiento(tipo) {
   const m = _motivoNuSinCajitas() || _motivoNuSinTasa();
   if (m) return m;
-  if (tipo === 'salida' && !(S.cajitas || []).some(c => Math.round(calcC(c).val * 100) >= Math.round(_MIN_RETIRO * 100))) {
+  if (tipo === 'salida' && !_cajitasAhorroActual().some(c => Math.round(calcC(c).val * 100) >= Math.round(_MIN_RETIRO * 100))) {
     return 'Ninguna cajita tiene saldo para sacar.';
   }
   return '';
@@ -1426,7 +1471,7 @@ function _motivoNuMovimiento(tipo) {
 function _motivoNuChequeo() {
   const m = _motivoNuSinCajitas() || _motivoNuSinTasa();
   if (m) return m;
-  if (!cajitasChequeables().length) return 'Se habilita cuando una cajita lleve un día completo generando intereses.';
+  if (!cajitasChequeables(_ahorroActualId()).length) return 'Se habilita cuando una cajita lleve un día completo generando intereses.';
   return '';
 }
 
@@ -1436,13 +1481,13 @@ function actualizarBotonesNu() {
   _setBtnEstado($('btn-nu-entro'), !mEntro, mEntro);
   _setBtnEstado($('btn-nu-salio'), !mSalio, mSalio);
   _setBtnEstado($('btn-nu-chequeo'), !mChq, mChq);
-  const sinTasa = !nuTasaConfigurada();
+  const sinTasa = !ahorroTasaConfigurada(_ahorroActualId());
   const avisoTasa = $('nuTasaAviso');
   if (avisoTasa) avisoTasa.style.display = sinTasa ? '' : 'none';
   _setBtnEstado($('btnAddCajita'), !sinTasa, _motivoNuSinTasa());
   const avisoChq = $('nuChequeoAviso');
   if (avisoChq) { // el motivo a la vista (en celular no hay tooltips); si falta la tasa o las cajitas ya lo dicen otros textos
-    const mostrar = !!mChq && !sinTasa && (S.cajitas || []).length > 0;
+    const mostrar = !!mChq && !sinTasa && _cajitasAhorroActual().length > 0;
     avisoChq.style.display = mostrar ? '' : 'none';
     avisoChq.textContent = mostrar ? mChq : '';
   }
@@ -1519,7 +1564,7 @@ document.addEventListener('input',function(e){
 document.addEventListener('input',function(e){
   const t=e.target;
   if(!t||!t.matches||!t.matches('[data-tasa-ea]'))return;
-  const limpio=nuTasaSanear(t.value);
+  const limpio=tasaSanear(t.value);
   if(limpio!==t.value)t.value=limpio;
 });
 

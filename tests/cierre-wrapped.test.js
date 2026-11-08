@@ -89,7 +89,7 @@ describe('huella', () => {
   test('sondas: lo que miden coincide con las reglas de cada módulo (libro, deudas, tarjetas, encargos, alcancía)', () => {
     const s = huella.sondas;
     assert.equal(s.saldos.libroOk, true);
-    assert.equal(s.saldos.porCuenta.nequi.guardado, s.saldos.porCuenta.nequi.libro);
+    assert.equal(s.saldos.porCuenta['cuenta:nequi'].guardado, s.saldos.porCuenta['cuenta:nequi'].libro);
     assert.equal(s.deudas.entidades['favor:favorCerrada'].saldo, 0);
     assert.equal(s.deudas.entidades['favor:favorAbierta'].saldo, 100000);
     assert.equal(s.deudas.entidades['contra:contraAbierta'].saldo, 80000);
@@ -98,7 +98,7 @@ describe('huella', () => {
     assert.equal(s.tarjetas.entidades.tcAbierta.coherente, true);
     assert.equal(s.encargos.entidades.encCerrado.saldo, 0);
     assert.equal(s.encargos.entidades.encAbierto.saldo, 350000, 'saldo inicial + entradas − salidas');
-    assert.equal(s.encargos.entidades.encAbierto.porCuenta.nequi, 350000);
+    assert.equal(s.encargos.entidades.encAbierto.porCuenta['cuenta:nequi'], 350000);
     assert.equal(s.alcancia.entidades.alcancia.saldo, 70000);
     assert.equal(s.alcancia.ciclos[0].sumaMovimientos, 150000);
     assert.equal(s.patrimonio.total, ctx.calcPatrimonioDesglose().total, 'una sola definición de patrimonio');
@@ -115,13 +115,13 @@ describe('huella', () => {
   describe('comparar', () => {
     test('cualquier diferencia de saldo, mes o longitud se reporta con su ruta; la tolerancia deja pasar centavos', () => {
       const b = plano(huella);
-      b.sondas.saldos.porCuenta.nequi.libro += 5;
+      b.sondas.saldos.porCuenta['cuenta:nequi'].libro += 5;
       delete b.sondas.periodos['2024-03'];
       b.sondas.tarjetas.entidades.tcAbierta.saldo += 0.004;
       const r = ctx.Huella.comparar(huella, b);
       assert.equal(r.ok, false);
       const rutas = r.diferencias.map(d => d.ruta);
-      assert.ok(rutas.includes('saldos.porCuenta.nequi.libro'));
+      assert.ok(rutas.includes('saldos.porCuenta.cuenta:nequi.libro'));
       assert.ok(rutas.some(x => x.startsWith('periodos.2024-03')));
       assert.ok(!rutas.includes('tarjetas.entidades.tcAbierta.saldo'), 'medio centavo está dentro de la tolerancia');
     });
@@ -893,7 +893,7 @@ describe('wrapped — instantáneas guardadas', () => {
 });
 
 describe('wrapped — contrato de CSS del HTML guardado', () => {
-  const fuentes = ['css/styles.css', 'js/modules/wrapped.js', 'index.html'].map(f => fs.readFileSync(path.join(RAIZ, f), 'utf8')).join('\n');
+  const fuentes = ['css/styles.css', 'js/modules/wrapped.js', 'index.html'].map(f => fs.readFileSync(path.join(RAIZ, !fs.existsSync(path.join(RAIZ, f)) && f === 'css/styles.css' ? 'styles.css' : f), 'utf8')).join('\n');
   const definida = cls => cls.startsWith('fa-') || new RegExp('\\.' + cls.replace(/[-]/g, '\\-') + '(?![\\w-])').test(fuentes); // fa-*: FontAwesome (externo)
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'wrapped-clases.json'), 'utf8'));
   const clasesDe = sl => { const s = new Set(); sl.forEach(x => { for (const m of x.html.matchAll(/class="([^"]+)"/g)) m[1].split(/\s+/).forEach(k => s.add(k)); }); return s; };

@@ -15,7 +15,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cierre.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/cobros.js` | de entrada (defer) | 13 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 98 | 12 |
+| `js/core/core-state.js` | de entrada (defer) | 111 | 13 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -33,7 +33,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/money-input.js` | de entrada (defer) | 5 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 8 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
-| `js/core/nu-calc.js` | de entrada (defer) | 26 | 0 |
+| `js/core/nu-calc.js` | de entrada (defer) | 29 | 0 |
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
@@ -52,12 +52,12 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 13 | 0 |
-| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 63 | 4 |
+| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 71 | 2 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 83 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 28 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 57 | 1 |
-| `js/modules/nu.js` | lazy — grupo `cuentas` | 57 | 0 |
+| `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 117 | 1 |
@@ -115,9 +115,9 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_claseValida`, `_closeDialog`, `_cuentasArr`, `_ensureSpotify`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_libroPata`, `_listaFuentes`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_refreshNucleo`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `botonEliminarFila`, `buildFuentesOptsHtml`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `claseEfectivaMovimiento`, `conEstadoAislado`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentasCustom`, `debounceSave`, `descontarFuente`, `diaCreacionMov`, `dialogo`, `Dinero`, `emptyState`, `entradasIngresoReal`, `escHtml`, `filaMovimiento`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaCustom`, `getCuentaDeFuente`, `getCuentaFija`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `ingresosRealesDelMes`, `Libro`, `load`, `medirAnchoTexto`, `medirPatrimonioParaHistorial`, `mesActual`, `mesKey`, `mostrarSi`, `movimientosSinClase`, `nivelAntiguedadMovimiento`, `opcionesCuenta`, `parseMoney`, `parsePct`, `patrimonioFormulaTexto`, `pedirPinAntesDe`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `Refresh`, `refresh`, `registrarSonda`, `Reversibles`, `save`, `setMoneyInput`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
+**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_clasePorCuenta`, `_claseValida`, `_closeDialog`, `_colorSeguro`, `_cuentasArr`, `_ensureSpotify`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_libroPata`, `_listaFuentes`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_refreshNucleo`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `avisarMovimientoBloqueado`, `botonEliminarFila`, `buildFuentesOptsHtml`, `cajitasDeCuenta`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `claseEfectivaMovimiento`, `colorCuenta`, `conEstadoAislado`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `debounceSave`, `descontarFuente`, `diaCreacionMov`, `dialogo`, `Dinero`, `emptyState`, `entradasIngresoReal`, `escHtml`, `esCuentaAhorro`, `esFuenteCuenta`, `filaMovimiento`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `idDeFuenteCuenta`, `ingresosRealesDelMes`, `Libro`, `load`, `medirAnchoTexto`, `medirPatrimonioParaHistorial`, `mesActual`, `mesKey`, `mostrarSi`, `movimientosSinClase`, `nivelAntiguedadMovimiento`, `nombreCuenta`, `opcionesCuenta`, `parseMoney`, `parsePct`, `patrimonioFormulaTexto`, `pedirPinAntesDe`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `Refresh`, `refresh`, `registrarSonda`, `renderCuentasInicio`, `Reversibles`, `saldoCuentas`, `save`, `setMoneyInput`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
 
-**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CuentaPantallas`, `CUENTAS_FIJAS`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`
+**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CuentaPantallas`, `FUENTE_CUENTA_PREFIJO`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`, `TIPOS_CUENTA`
 
 **Asigna a `window`:** `_dialogResolve`, `_locallyModified`
 
@@ -227,7 +227,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasaNu`, `_tasaCDT`, `_tasaVigenteEnFecha`, `cajitaChequeable`, `cajitaGeneraIntereses`, `cajitasChequeables`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `cdtVencido`, `getCajitaNombre`, `getNuTasaGlobal`, `nuAplicarTasaEscrita`, `nuTasaATexto`, `nuTasaConfigurada`, `nuTasaDesdeTexto`, `nuTasaSanear`, `nuTotal`, `nuValorEsperadoCajita`, `rendimientoCajitaPorMes`
+**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_historialTasas`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasa`, `_tasaCDT`, `_tasaVigenteEnFecha`, `ahorroAplicarTasaEscrita`, `ahorroTasaConfigurada`, `ahorroTotal`, `ahorroTotalGeneral`, `ahorroValorEsperadoCajita`, `cajitaChequeable`, `cajitaGeneraIntereses`, `cajitasChequeables`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `cdtVencido`, `getCajitaNombre`, `getTasaCuenta`, `mejorTasaAhorro`, `rendimientoCajitaPorMes`, `tasaATexto`, `tasaDesdeTexto`, `tasaSanear`
 
 ### `js/core/payload-codec.js`
 
@@ -347,9 +347,9 @@ Carga: lazy — grupo `config`
 
 Carga: lazy — grupo `cuentas`
 
-**Funciones:** `_aperturaToggleUI`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorCustom`, `_getMovsFilter`, `_iconoEfectivo`, `_motivoSinRetiro`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_reiniciarPantallasCuenta`, `_renderDetalleSimple`, `_resetSheetNuevaCuenta`, `_setBtnEstado`, `_setBtnTransferir`, `_showCuentasPanel`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `abrirAgregarDinero`, `abrirCuenta`, `abrirEditarApertura`, `abrirNuevaCuenta`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarBotonRetirar`, `actualizarTransfPreview`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarEditarApertura`, `confirmarRestarDinero`, `confirmarTransferir`, `crearCuentaCustom`, `editarCuentaCustom`, `eliminarCuentaCustom`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `hexToRgb`, `openSheet_adMenu`, `registrarEntradaConApertura`, `registrarSalida`, `renderBannerApertura`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `toggleAdApertura`, `validarTransferencia`, `volverSelector`
+**Funciones:** `_aperturaToggleUI`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorDeCuenta`, `_encargosConSaldoEn`, `_fuentesDeCuenta`, `_getMovsFilter`, `_motivoNoArchivar`, `_motivoSinRetiro`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_reiniciarPantallasCuenta`, `_renderDetalleSimple`, `_renderTiposNC`, `_resetSheetNuevaCuenta`, `_setBtnEstado`, `_setBtnTransferir`, `_showCuentasPanel`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `abrirAgregarDinero`, `abrirCuenta`, `abrirEditarApertura`, `abrirNuevaCuenta`, `abrirOnboarding`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarBotonRetirar`, `actualizarTransfPreview`, `archivarCuenta`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarEditarApertura`, `confirmarRestarDinero`, `confirmarTransferir`, `crearCuenta`, `cuentaSePuedeEliminar`, `editarCuenta`, `eliminarCuenta`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `hexToRgb`, `openSheet_adMenu`, `reactivarCuenta`, `registrarEntradaConApertura`, `registrarSalida`, `renderBannerApertura`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `selTipoNC`, `toggleAdApertura`, `validarTransferencia`, `volverSelector`
 
-**Globales:** `CUENTAS_FIJAS_SELECTOR`, `ICONO_EFECTIVO_SELECTOR`, `ICONOS_CUENTA`, `TR_MIN_EFECTIVO`
+**Globales:** `ICONOS_CUENTA`, `TR_MIN_EFECTIVO`
 
 ### `js/modules/encargos.js`
 
@@ -383,7 +383,7 @@ Carga: lazy — grupo `mesada`
 
 Carga: lazy — grupo `cuentas`
 
-**Funciones:** `_abrirConfirmarTasaNu`, `_cajitaDetDelete`, `_calcPrestadoMeta`, `_cancelarCobrarCDT`, `_cdtModoSheet`, `_interpretarLecturaChequeoNu`, `_metaAporteEliminar`, `_motivoNuChequeo`, `_motivoNuMovimiento`, `_motivoNuSinCajitas`, `_motivoNuSinTasa`, `_nuActualizarBotonesTransferir`, `_nuMovActualizarPreview`, `_nuMovRenderCajitas`, `_nuMovToggleApertura`, `_procesarSiguienteCDTVencido`, `_refreshCajitaDet`, `_renderDetalleCajita`, `_renderMetaAportes`, `_updateMetaCuotaPreview`, `abrirChequeoNu`, `abrirCobrarCDT`, `abrirCrearCDT`, `abrirDetalleCajita`, `abrirMetaCajita`, `abrirNuMovimiento`, `abrirSubCDTs`, `abrirSubMeta`, `actualizarBotonesNu`, `addCajita`, `calcMetaProgreso`, `calcularSerieTasaImplicitaNu`, `confirmarCambioTasaNu`, `confirmarCobrarCDT`, `confirmarCrearCDT`, `confirmarNuMovimiento`, `confirmarSheetCDT`, `corregirChequeoNu`, `deleteCajita`, `editarCDT`, `guardarCDT`, `guardarChequeoNu`, `guardarMetaCajita`, `liberarCDTManual`, `materializarIntereses`, `poblarChequeoNu`, `quitarMetaCajita`, `registrarTasaNuHistorial`, `renderCajitas`, `renderDetalleNu`, `renderMetaProgress`, `toggleMetaMinWrap`, `validarCamposCDT`, `verificarTasaNu`, `verificarVencimientosCDT`, `volverADetalleCajita`, `volverANu`
+**Funciones:** `_abrirConfirmarTasaNu`, `_ahorroActual`, `_ahorroActualId`, `_cajitaDetDelete`, `_cajitasAhorroActual`, `_calcPrestadoMeta`, `_cancelarCobrarCDT`, `_cdtModoSheet`, `_interpretarLecturaChequeoNu`, `_metaAporteEliminar`, `_motivoNuChequeo`, `_motivoNuMovimiento`, `_motivoNuSinCajitas`, `_motivoNuSinTasa`, `_nombreAhorro`, `_nuActualizarBotonesTransferir`, `_nuMovActualizarPreview`, `_nuMovRenderCajitas`, `_nuMovToggleApertura`, `_procesarSiguienteCDTVencido`, `_refreshCajitaDet`, `_renderDetalleCajita`, `_renderMetaAportes`, `_updateMetaCuotaPreview`, `_wireTasaInput`, `abrirChequeoNu`, `abrirCobrarCDT`, `abrirCrearCDT`, `abrirDetalleCajita`, `abrirMetaCajita`, `abrirNuMovimiento`, `abrirSubCDTs`, `abrirSubMeta`, `actualizarBotonesNu`, `addCajita`, `calcMetaProgreso`, `calcularSerieTasaImplicita`, `confirmarCambioTasaNu`, `confirmarCobrarCDT`, `confirmarCrearCDT`, `confirmarNuMovimiento`, `confirmarSheetCDT`, `corregirChequeoNu`, `deleteCajita`, `editarCDT`, `guardarCDT`, `guardarChequeoNu`, `guardarMetaCajita`, `liberarCDTManual`, `materializarIntereses`, `poblarChequeoNu`, `quitarMetaCajita`, `registrarTasaHistorial`, `renderCajitas`, `renderDetalleAhorro`, `renderMetaProgress`, `toggleMetaMinWrap`, `validarCamposCDT`, `verificarTasaAhorro`, `verificarVencimientosCDT`, `volverADetalleCajita`, `volverANu`
 
 ### `js/modules/personas.js`
 
@@ -474,6 +474,8 @@ Ninguno.
 | `_actualizarTraspasoHint` | `js/modules/encargos.js` |
 | `_actualizarTraspasoOrigenHint` | `js/modules/encargos.js` |
 | `_actualizarTraspasoPreview` | `js/modules/encargos.js` |
+| `_ahorroActual` | `js/modules/nu.js` |
+| `_ahorroActualId` | `js/modules/nu.js` |
 | `_ajusteAlcanciaPorFecha` | `js/core/core-state.js` |
 | `_ajusteDeudasSinCuentaPorFecha` | `js/core/core-state.js` |
 | `_alcanciaEjecutarEliminarDeposito` | `js/modules/alcancia.js` |
@@ -511,15 +513,18 @@ Ninguno.
 | `_bindInputsAS` | `js/core/sheet-stack.js` |
 | `_borrarSpHistorial` | `js/modules/spotify.js` |
 | `_cajitaDetDelete` | `js/modules/nu.js` |
+| `_cajitasAhorroActual` | `js/modules/nu.js` |
 | `_calcPrestadoMeta` | `js/modules/nu.js` |
 | `_cancelarCobrarCDT` | `js/modules/nu.js` |
 | `_cdtModoSheet` | `js/modules/nu.js` |
 | `_checkGastoAlto` | `js/modules/inicio.js` |
+| `_clasePorCuenta` | `js/core/core-state.js` |
 | `_claseValida` | `js/core/core-state.js` |
 | `_closeDialog` | `js/core/core-state.js` |
 | `_cobroEntrar` | `js/core/cobros.js` |
 | `_cobroSacar` | `js/core/cobros.js` |
 | `_colorDeuda` | `js/modules/prestado.js` |
+| `_colorSeguro` | `js/core/core-state.js` |
 | `_confirmarMoverEncCuentasSplit` | `js/modules/encargos.js` |
 | `_confirmarMovimientoConGuard` | `js/modules/prestado.js` |
 | `_confirmarMovimientoInterno` | `js/modules/prestado.js` |
@@ -570,7 +575,7 @@ Ninguno.
 | `_cuentasSelector` | `js/modules/cuentas.js` |
 | `_deBase64` | `js/core/payload-codec.js` |
 | `_descriptorCuenta` | `js/modules/cuentas.js` |
-| `_descriptorCustom` | `js/modules/cuentas.js` |
+| `_descriptorDeCuenta` | `js/modules/cuentas.js` |
 | `_deudaCuentasDe` | `js/modules/prestado.js` |
 | `_deudaOpsPosteriores` | `js/modules/prestado.js` |
 | `_deudasPropias` | `js/modules/inicio.js` |
@@ -586,6 +591,7 @@ Ninguno.
 | `_editarPersonaDesdePerfilSheet` | `js/modules/personas.js` |
 | `_eliminarMovimientoImpl` | `js/core/movimientos.js` |
 | `_encAbrirSelectorPersonaNueva` | `js/modules/encargos.js` |
+| `_encargosConSaldoEn` | `js/modules/cuentas.js` |
 | `_encGrupoSplit` | `js/modules/encargos.js` |
 | `_encSplitCarrier` | `js/modules/encargos.js` |
 | `_encSplitKey` | `js/modules/encargos.js` |
@@ -605,6 +611,7 @@ Ninguno.
 | `_fmtMeses` | `js/modules/inicio.js` |
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteLabelHtml` | `js/core/movimientos.js` |
+| `_fuentesDeCuenta` | `js/modules/cuentas.js` |
 | `_getA` | `js/modules/alcancia.js` |
 | `_getCuotaAnio` | `js/core/calc-helpers.js` |
 | `_getEncargoSaldoEnCuenta` | `js/modules/encargos.js` |
@@ -619,10 +626,10 @@ Ninguno.
 | `_guardarEditarPersonaGlobal` | `js/modules/personas.js` |
 | `_gvDiaLabel` | `js/modules/gastos.js` |
 | `_hideScreenLoading` | `js/core/sheet-stack.js` |
+| `_historialTasas` | `js/core/nu-calc.js` |
 | `_htmlEscapeValue` | `js/core/html-tag.js` |
 | `_htmlHistorialPorGrupos` | `js/modules/prestado.js` |
 | `_htmlMesDot` | `js/modules/mesada.js` |
-| `_iconoEfectivo` | `js/modules/cuentas.js` |
 | `_initA` | `js/modules/alcancia.js` |
 | `_initEventListeners` | `js/core/sheet-stack.js` |
 | `_initGrupoSelector` | `js/modules/prestado.js` |
@@ -677,6 +684,7 @@ Ninguno.
 | `_montoCursor` | `js/core/money-input.js` |
 | `_montoFormatear` | `js/core/money-input.js` |
 | `_mostrarErrorPlan` | `js/modules/prestado.js` |
+| `_motivoNoArchivar` | `js/modules/cuentas.js` |
 | `_motivoNuChequeo` | `js/modules/nu.js` |
 | `_motivoNuMovimiento` | `js/modules/nu.js` |
 | `_motivoNuSinCajitas` | `js/modules/nu.js` |
@@ -707,6 +715,7 @@ Ninguno.
 | `_msOn` | `js/modules/mesada.js` |
 | `_msVal` | `js/modules/mesada.js` |
 | `_nivelRunway` | `js/modules/inicio.js` |
+| `_nombreAhorro` | `js/modules/nu.js` |
 | `_normTxt` | `js/modules/mesada.js` |
 | `_nuActualizarBotonesTransferir` | `js/modules/nu.js` |
 | `_nuMovActualizarPreview` | `js/modules/nu.js` |
@@ -749,6 +758,7 @@ Ninguno.
 | `_renderListaDeudas` | `js/modules/prestado.js` |
 | `_renderListaPersonas` | `js/modules/personas.js` |
 | `_renderMetaAportes` | `js/modules/nu.js` |
+| `_renderTiposNC` | `js/modules/cuentas.js` |
 | `_rendimientoCDTaDias` | `js/core/nu-calc.js` |
 | `_rerenderCuentaActiva` | `js/core/movimientos.js` |
 | `_resetEncCuentaSplitToggleStyle` | `js/modules/prestado.js` |
@@ -768,7 +778,7 @@ Ninguno.
 | `_saldoEncargosEnCuenta` | `js/core/core-state.js` |
 | `_saldoRegistrado` | `js/modules/alcancia.js` |
 | `_salidaEncMenuIr` | `js/modules/encargos.js` |
-| `_segmentosTasaNu` | `js/core/nu-calc.js` |
+| `_segmentosTasa` | `js/core/nu-calc.js` |
 | `_seleccionarColorPersona` | `js/modules/personas.js` |
 | `_selPersonaCrearDirecto` | `js/modules/personas.js` |
 | `_selPersonaElegir` | `js/modules/personas.js` |
@@ -807,6 +817,7 @@ Ninguno.
 | `_validarMovEncMia` | `js/modules/encargos.js` |
 | `_verificarIntegridadSaldoDeudor` | `js/modules/prestado.js` |
 | `_volverASelPersona` | `js/modules/personas.js` |
+| `_wireTasaInput` | `js/modules/nu.js` |
 | `_wrappedAbrir` | `js/core/wrapped-gate.js` (window._wrappedAbrir = …) |
 | `_wrappedAgruparPorCategoria` | `js/modules/wrapped.js` |
 | `_wrappedAlcanciaDepositosPeriodo` | `js/modules/wrapped.js` |
@@ -972,6 +983,7 @@ Ninguno.
 | `abrirNuevoGastoFijo` | `js/modules/gastos.js` |
 | `abrirNuevoGastoVar` | `js/modules/gastos.js` |
 | `abrirNuMovimiento` | `js/modules/nu.js` |
+| `abrirOnboarding` | `js/modules/cuentas.js` |
 | `abrirPagarGastoFijo` | `js/modules/gastos.js` |
 | `abrirPagarSpotify` | `js/modules/spotify.js` |
 | `abrirPagarTC` | `js/modules/tarjetas_credito.js` |
@@ -1014,6 +1026,11 @@ Ninguno.
 | `addGastoVar` | `js/modules/gastos.js` |
 | `addSpotify` | `js/modules/spotify.js` |
 | `agregarCat` | `js/modules/configuracion.js` |
+| `ahorroAplicarTasaEscrita` | `js/core/nu-calc.js` |
+| `ahorroTasaConfigurada` | `js/core/nu-calc.js` |
+| `ahorroTotal` | `js/core/nu-calc.js` |
+| `ahorroTotalGeneral` | `js/core/nu-calc.js` |
+| `ahorroValorEsperadoCajita` | `js/core/nu-calc.js` |
 | `ajustarSaldoCuenta` | `js/core/core-state.js` |
 | `alcanciaAgregarOrigen` | `js/modules/alcancia.js` (window.alcanciaAgregarOrigen = …) |
 | `alcanciaConfirmarDeposito` | `js/modules/alcancia.js` (window.alcanciaConfirmarDeposito = …) |
@@ -1024,6 +1041,7 @@ Ninguno.
 | `alcanciaToggleMontoDeposito` | `js/modules/alcancia.js` (window.alcanciaToggleMontoDeposito = …) |
 | `aplicarMigraciones` | `js/core/core-state.js` |
 | `applyModulos` | `js/core/sheet-stack.js` |
+| `archivarCuenta` | `js/modules/cuentas.js` |
 | `avisarMovimientoBloqueado` | `js/core/core-state.js` |
 | `borrarMovEspejo` | `js/core/cuenta-efectos.js` |
 | `borrarTodo` | `js/modules/configuracion.js` |
@@ -1032,6 +1050,7 @@ Ninguno.
 | `cajitaChequeable` | `js/core/nu-calc.js` |
 | `cajitaGeneraIntereses` | `js/core/nu-calc.js` |
 | `cajitasChequeables` | `js/core/nu-calc.js` |
+| `cajitasDeCuenta` | `js/core/core-state.js` |
 | `calcBienes` | `js/core/core-state.js` |
 | `calcC` | `js/core/nu-calc.js` |
 | `calcCalendarioCaja` | `js/modules/inicio.js` |
@@ -1053,7 +1072,7 @@ Ninguno.
 | `calcRendimientoCDTsMes` | `js/core/nu-calc.js` |
 | `calcSaldoInicialPendiente` | `js/core/core-state.js` |
 | `calcSinBase` | `js/modules/inicio.js` |
-| `calcularSerieTasaImplicitaNu` | `js/modules/nu.js` |
+| `calcularSerieTasaImplicita` | `js/modules/nu.js` |
 | `calcValorBien` | `js/core/core-state.js` |
 | `cambiarAnio` | `js/modules/mesada.js` |
 | `cambiarTabPrestamos` | `js/modules/prestado.js` |
@@ -1076,6 +1095,7 @@ Ninguno.
 | `cobroRevertir` | `js/core/cobros.js` |
 | `cobroRevertirTodos` | `js/core/cobros.js` |
 | `cobrosDeIngresoFijo` | `js/core/cobros.js` |
+| `colorCuenta` | `js/core/core-state.js` |
 | `conEstadoAislado` | `js/core/core-state.js` |
 | `confirmarAgregarDinero` | `js/modules/cuentas.js` |
 | `confirmarAgregarDineroMenu` | `js/modules/cuentas.js` |
@@ -1107,14 +1127,17 @@ Ninguno.
 | `confirmarTransferir` | `js/modules/cuentas.js` |
 | `confirmarTraspasoEncargo` | `js/modules/encargos.js` |
 | `corregirChequeoNu` | `js/modules/nu.js` |
-| `crearCuentaCustom` | `js/modules/cuentas.js` |
+| `crearCuenta` | `js/modules/cuentas.js` |
 | `crearEncargo` | `js/modules/encargos.js` |
 | `crearMovimientoApertura` | `js/core/core-state.js` |
 | `crearSplitWidget` | `js/core/split.js` |
+| `cuentaDeCajita` | `js/core/core-state.js` |
 | `CuentaPantallas` | `js/core/core-state.js` |
-| `CUENTAS_FIJAS` | `js/core/core-state.js` |
-| `CUENTAS_FIJAS_SELECTOR` | `js/modules/cuentas.js` |
-| `cuentasCustom` | `js/core/core-state.js` |
+| `cuentasActivas` | `js/core/core-state.js` |
+| `cuentasAhorro` | `js/core/core-state.js` |
+| `cuentasConSaldo` | `js/core/core-state.js` |
+| `cuentaSePuedeEliminar` | `js/modules/cuentas.js` |
+| `cuentasTodas` | `js/core/core-state.js` |
 | `debounceSave` | `js/core/core-state.js` |
 | `deleteCajita` | `js/modules/nu.js` |
 | `deleteGastoFijo` | `js/modules/gastos.js` |
@@ -1150,7 +1173,7 @@ Ninguno.
 | `diffValidarMiCuenta` | `js/core/diferencial.js` |
 | `Dinero` | `js/core/core-state.js` |
 | `editarCDT` | `js/modules/nu.js` |
-| `editarCuentaCustom` | `js/modules/cuentas.js` |
+| `editarCuenta` | `js/modules/cuentas.js` |
 | `editarDeudorActual` | `js/modules/prestado.js` |
 | `editarEncargoActual` | `js/modules/encargos.js` |
 | `editarIngresoFijo` | `js/modules/analisis.js` |
@@ -1161,7 +1184,7 @@ Ninguno.
 | `eliminarCat` | `js/modules/configuracion.js` |
 | `eliminarCobroIngresoFijo` | `js/modules/analisis.js` |
 | `eliminarCompraTC` | `js/modules/tarjetas_credito.js` |
-| `eliminarCuentaCustom` | `js/modules/cuentas.js` |
+| `eliminarCuenta` | `js/modules/cuentas.js` |
 | `eliminarDeudorActual` | `js/modules/prestado.js` |
 | `eliminarEncargoActual` | `js/modules/encargos.js` |
 | `eliminarIngresoFijo` | `js/modules/analisis.js` |
@@ -1181,6 +1204,8 @@ Ninguno.
 | `entradasIngresoReal` | `js/core/core-state.js` |
 | `escHtml` | `js/core/core-state.js` |
 | `escHtml2` | `js/modules/wrapped.js` |
+| `esCuentaAhorro` | `js/core/core-state.js` |
+| `esFuenteCuenta` | `js/core/core-state.js` |
 | `Events` | `js/core/events.js` |
 | `exportarCSV` | `js/modules/configuracion.js` |
 | `exportarJSON` | `js/modules/configuracion.js` |
@@ -1198,7 +1223,9 @@ Ninguno.
 | `fmtInput` | `js/core/core-state.js` |
 | `fmtNoCents` | `js/core/core-state.js` |
 | `fmtSaldoSelector` | `js/core/core-state.js` |
+| `FUENTE_CUENTA_PREFIJO` | `js/core/core-state.js` |
 | `fuenteBadgeClass` | `js/core/core-state.js` |
+| `fuenteDeCuenta` | `js/core/core-state.js` |
 | `fuenteLabel` | `js/core/core-state.js` |
 | `fuenteLabel2` | `js/modules/prestado.js` |
 | `FuentesFiltro` | `js/core/fuentes-filtro.js` |
@@ -1208,9 +1235,7 @@ Ninguno.
 | `getCatsFijo` | `js/core/core-state.js` |
 | `getCatsVar` | `js/core/core-state.js` |
 | `getCuenta` | `js/core/core-state.js` |
-| `getCuentaCustom` | `js/core/core-state.js` |
 | `getCuentaDeFuente` | `js/core/core-state.js` |
-| `getCuentaFija` | `js/core/core-state.js` |
 | `getDeudorSaldo` | `js/core/calc-helpers.js` |
 | `getEncargo` | `js/modules/encargos.js` |
 | `getFuentes` | `js/core/core-state.js` |
@@ -1222,7 +1247,6 @@ Ninguno.
 | `getMesadaData` | `js/core/calc-helpers.js` |
 | `getMiDeudaSaldo` | `js/core/calc-helpers.js` |
 | `getMovimientosCuenta` | `js/modules/cuentas.js` |
-| `getNuTasaGlobal` | `js/core/nu-calc.js` |
 | `getPersona` | `js/modules/personas.js` |
 | `getPersonaColor` | `js/modules/personas.js` |
 | `getPersonaDatos` | `js/modules/personas.js` |
@@ -1230,6 +1254,7 @@ Ninguno.
 | `getSaldoFuente` | `js/core/core-state.js` |
 | `getSpCajita` | `js/modules/spotify.js` |
 | `getSpCajitaSaldo` | `js/modules/spotify.js` |
+| `getTasaCuenta` | `js/core/nu-calc.js` |
 | `getTCById` | `js/core/calc-helpers.js` |
 | `guardarBien` | `js/modules/gastos.js` |
 | `guardarCDT` | `js/modules/nu.js` |
@@ -1246,8 +1271,8 @@ Ninguno.
 | `hoy` | `js/core/core-state.js` |
 | `html` | `js/core/html-tag.js` |
 | `Huella` | `js/core/huella.js` |
-| `ICONO_EFECTIVO_SELECTOR` | `js/modules/cuentas.js` |
 | `ICONOS_CUENTA` | `js/modules/cuentas.js` |
+| `idDeFuenteCuenta` | `js/core/core-state.js` |
 | `importarJSON` | `js/modules/configuracion.js` |
 | `ingresoFijoEsperadoEn` | `js/core/cobros.js` |
 | `ingresoFijoEstadoMes` | `js/core/cobros.js` |
@@ -1270,6 +1295,7 @@ Ninguno.
 | `ME_DEBEN_ABRE` | `js/core/core-state.js` |
 | `medirAnchoTexto` | `js/core/core-state.js` |
 | `medirPatrimonioParaHistorial` | `js/core/core-state.js` |
+| `mejorTasaAhorro` | `js/core/nu-calc.js` |
 | `mesActual` | `js/core/core-state.js` |
 | `MESADA_PADRES` | `js/modules/mesada.js` |
 | `mesadaAbonarPendiente` | `js/modules/mesada.js` |
@@ -1300,13 +1326,7 @@ Ninguno.
 | `movimientosSinClase` | `js/core/core-state.js` |
 | `nextMonthFixed` | `js/modules/spotify.js` |
 | `nivelAntiguedadMovimiento` | `js/core/core-state.js` |
-| `nuAplicarTasaEscrita` | `js/core/nu-calc.js` |
-| `nuTasaATexto` | `js/core/nu-calc.js` |
-| `nuTasaConfigurada` | `js/core/nu-calc.js` |
-| `nuTasaDesdeTexto` | `js/core/nu-calc.js` |
-| `nuTasaSanear` | `js/core/nu-calc.js` |
-| `nuTotal` | `js/core/nu-calc.js` |
-| `nuValorEsperadoCajita` | `js/core/nu-calc.js` |
+| `nombreCuenta` | `js/core/core-state.js` |
 | `onChangeMov_enc_cuenta` | `js/modules/prestado.js` |
 | `onChangeMov_enc_sel` | `js/modules/prestado.js` |
 | `opcionesCuenta` | `js/core/core-state.js` |
@@ -1335,6 +1355,7 @@ Ninguno.
 | `quitarDeHistorial` | `js/core/core-state.js` |
 | `quitarMetaCajita` | `js/modules/nu.js` |
 | `raw` | `js/core/html-tag.js` |
+| `reactivarCuenta` | `js/modules/cuentas.js` |
 | `recalcularMontoBaseHistorial` | `js/core/core-state.js` |
 | `Refresh` | `js/core/core-state.js` |
 | `refresh` | `js/core/core-state.js` |
@@ -1342,7 +1363,7 @@ Ninguno.
 | `registrarMovEspejo` | `js/core/cuenta-efectos.js` |
 | `registrarSalida` | `js/modules/cuentas.js` |
 | `registrarSonda` | `js/core/core-state.js` |
-| `registrarTasaNuHistorial` | `js/modules/nu.js` |
+| `registrarTasaHistorial` | `js/modules/nu.js` |
 | `Reglas` | `js/core/reglas.js` |
 | `renderAlcancia` | `js/modules/alcancia.js` (window.renderAlcancia = …) |
 | `renderAnalisis` | `js/modules/analisis.js` |
@@ -1352,8 +1373,9 @@ Ninguno.
 | `renderCajitas` | `js/modules/nu.js` |
 | `renderCatsConfig` | `js/modules/configuracion.js` |
 | `renderConciliacion` | `js/modules/analisis.js` |
+| `renderCuentasInicio` | `js/core/core-state.js` |
+| `renderDetalleAhorro` | `js/modules/nu.js` |
 | `renderDetalleCuenta` | `js/modules/cuentas.js` |
-| `renderDetalleNu` | `js/modules/nu.js` |
 | `renderDeudoresList` | `js/modules/prestado.js` |
 | `renderEncargoParts` | `js/modules/encargos.js` |
 | `renderEncargosEnCuenta` | `js/modules/encargos.js` |
@@ -1388,6 +1410,7 @@ Ninguno.
 | `resolverPendienteSpHistorial` | `js/modules/spotify.js` |
 | `Reversibles` | `js/core/core-state.js` |
 | `S` | `js/core/core-state.js` |
+| `saldoCuentas` | `js/core/core-state.js` |
 | `Salud` | `js/core/salud.js` |
 | `SALUD_MAX_CONSEJOS` | `js/modules/inicio.js` |
 | `save` | `js/core/core-state.js` |
@@ -1397,6 +1420,7 @@ Ninguno.
 | `selColorNC` | `js/modules/cuentas.js` |
 | `selIconoNC` | `js/modules/cuentas.js` |
 | `selSpMeses` | `js/modules/spotify.js` |
+| `selTipoNC` | `js/modules/cuentas.js` |
 | `setMesFiltro` | `js/modules/gastos.js` |
 | `setMoneyInput` | `js/core/core-state.js` |
 | `showScreen` | `js/core/sheet-stack.js` |
@@ -1425,6 +1449,9 @@ Ninguno.
 | `spTramosDeCobro` | `js/modules/spotify.js` |
 | `sumarFuente` | `js/core/core-state.js` |
 | `switchGastoTab` | `js/modules/gastos.js` |
+| `tasaATexto` | `js/core/nu-calc.js` |
+| `tasaDesdeTexto` | `js/core/nu-calc.js` |
+| `tasaSanear` | `js/core/nu-calc.js` |
 | `TC_ESTADOS` | `js/modules/tarjetas_credito.js` |
 | `TC_MOTIVOS_CARGO` | `js/modules/tarjetas_credito.js` |
 | `tcBuscarCompraPorIdOMatch` | `js/modules/tarjetas_credito.js` |
@@ -1440,6 +1467,7 @@ Ninguno.
 | `tcNormalizarTarjetas` | `js/modules/tarjetas_credito.js` |
 | `tcRecalcular` | `js/modules/tarjetas_credito.js` |
 | `tcSelColor` | `js/modules/tarjetas_credito.js` |
+| `TIPOS_CUENTA` | `js/core/core-state.js` |
 | `toast` | `js/core/core-state.js` |
 | `toggleAdApertura` | `js/modules/cuentas.js` |
 | `toggleCompraGrande` | `js/modules/gastos.js` |
@@ -1460,7 +1488,7 @@ Ninguno.
 | `validarCamposCDT` | `js/modules/nu.js` |
 | `validarSalidaFuente` | `js/core/core-state.js` |
 | `validarTransferencia` | `js/modules/cuentas.js` |
-| `verificarTasaNu` | `js/modules/nu.js` |
+| `verificarTasaAhorro` | `js/modules/nu.js` |
 | `verificarVencimientosCDT` | `js/modules/nu.js` |
 | `volverADetalleCajita` | `js/modules/nu.js` |
 | `volverANu` | `js/modules/nu.js` |

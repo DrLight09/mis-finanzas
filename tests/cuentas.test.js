@@ -2282,7 +2282,7 @@ describe('cuentas-modelo-unico', () => {
 
   describe('archivar, reactivar y eliminar', () => {
     test('una cuenta con saldo no se archiva: avisa por qué y no cambia nada', async () => {
-      const e = entorno({ cuentas: [banco('a', { saldo: 5000 })] });
+      const e = entorno({ cuentas: [banco('a', { saldo: 5000 })], movimientos: [{ id: 'm1', tipo: 'entrada', fuente: 'cuenta:a', monto: 5000, fecha: '2026-10-01' }] });
       await e.app.archivarCuenta('a');
       assert.equal(e.app.getCuenta('a').archivada, undefined);
       assert.match(e.dialogos.at(-1).msg, /en cero/);
@@ -2457,11 +2457,13 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
     await app.archivarCuenta('efectivo');
     assert.equal(!!app.getCuenta('efectivo').archivada, false);
     assert.equal(app.cuentaSePuedeEliminar('cs'), true);
+    assert.match(app._motivoNoArchivar(app.getCuenta('cs')), /no tiene movimientos/, 'sin movimientos no se archiva: se elimina');
+    app.S.movimientos.push({ id: 'm1', tipo: 'entrada', fuente: 'cuenta:cs', monto: 5, fecha: '2026-10-01' });
     assert.equal(app._motivoNoArchivar(app.getCuenta('cs')), '');
   });
 
   test('una cuenta de ahorro también se puede archivar y el detalle de ahorro tiene sus botones', async () => {
-    const app = entorno({ cuentas: [{ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9 }] });
+    const app = entorno({ cuentas: [{ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9 }], cajitas: [{ id: 'c1', cuentaId: 'nu', nombre: 'Viajes', saldo: 0, cdts: [] }] });
     assert.equal(app._motivoNoArchivar(app.getCuenta('nu')), '');
     await app.archivarCuenta('nu');
     assert.equal(app.getCuenta('nu').archivada, true);
@@ -2534,5 +2536,18 @@ describe('cuentas-colores-legibles', () => {
     const c = { id: 'b', color: '#000000' };
     assert.notEqual(app.colorCuenta(c), '#000000');
     assert.equal(c.color, '#000000');
+  });
+  test('las archivadas salen en el selector como tarjetas abribles (con su fuente), y una cuenta sin movimientos no ofrece archivar', () => {
+    const app = loadApp([core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), (f => path.join(__dirname, '..', 'js', 'modules', f))('nu.js'), (f => path.join(__dirname, '..', 'js', 'modules', f))('cuentas.js')], { permissive: true });
+    Object.assign(app.S, { libro: [], movimientos: [{ id: 'm', tipo: 'entrada', fuente: 'cuenta:b', monto: 5, fecha: '2026-10-01' }], encargos: [], cajitas: [],
+      cuentas: [{ id: 'a', tipo: 'banco', nombre: 'A', saldo: 0 }, { id: 'b', tipo: 'banco', nombre: 'B', saldo: 0, archivada: true }] });
+    const el = { innerHTML: '' };
+    app.document.getElementById = id => (id === 'selector-cuentas-lista' ? el : { style: {}, setAttribute() {}, querySelector: () => null });
+    app.renderSelectorCuentas();
+    const out = String(el.innerHTML);
+    assert.ok(out.includes('Archivadas'));
+    assert.ok(/cuenta-card cuenta-card-archivada" data-fuente="cuenta:b"/.test(out), 'la archivada es una tarjeta con data-fuente');
+    assert.ok(out.includes('data-fuente="cuenta:a"'));
+    assert.equal(app.cuentaSePuedeEliminar('a'), true);
   });
 });

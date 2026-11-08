@@ -2375,3 +2375,4 @@ button.inicio-pilar-accion{cursor:pointer;}
 /* Inicio: los recuadros de cuentas son hermanos directos de Disponible/Prestado/CDTs en #inicio-cuentas (.grid3) */
 .stat-span2{grid-column:span 2;}
 .stat-span3{grid-column:1 / -1;}
+.cuenta-card-archivada{opacity:.65;}

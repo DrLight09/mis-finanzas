@@ -91,7 +91,8 @@ function _pintarAdministrarCuenta(d, ids) {
   if (cont) cont.style.display = 'flex';
   const btnArch = document.getElementById(ids.archivar);
   if (btnArch) {
-    btnArch.style.display = d.fija ? 'none' : '';
+    // Archivar solo tiene sentido con historial (o ya archivada, para reactivar): sin movimientos se elimina.
+    btnArch.style.display = (d.fija || (!d.archivada && cuentaSePuedeEliminar(d.id))) ? 'none' : '';
     const t = d.archivada ? 'Reactivar cuenta' : 'Archivar cuenta';
     btnArch.title = t; btnArch.setAttribute('aria-label', t);
   }
@@ -334,7 +335,7 @@ function _cuentaSelectorHtml(d){
   const vars='--cuenta:'+d.color+';--cuenta-rgb:'+d.rgb;
   const flecha=(cls,pts)=>html`<svg aria-hidden="true" class="${cls}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="${pts}"/></svg>`;
   if(d.estilo==='tarjeta'){
-    return html`<div class="cuenta-card" data-fuente="${d.fuente}" style="${vars}">
+    return html`<div class="cuenta-card${d.archivada?' cuenta-card-archivada':''}" data-fuente="${d.fuente}" style="${vars}">
       <div class="cuenta-card-head">
         ${d.iconoHtml(34)}
         <span class="cuenta-card-nombre">${d.nombre}</span>
@@ -356,7 +357,7 @@ function renderSelectorCuentas(){
     return;
   }
   const tarjetas=cuentas;
-  el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<div class="sec-title ix-mt12">Archivadas</div><div class="cuentas-selector-pills cuentas-archivadas">${archivadas.map(d=>_cuentaSelectorHtml({...d,estilo:'pastilla'}))}</div>`:''}`;
+  el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<div class="sec-title ix-mt12">Archivadas</div><div class="cuentas-selector-grid cuentas-archivadas">${archivadas.map(d=>_cuentaSelectorHtml({...d,archivada:true}))}</div>`:''}`;
 }
 function hexToRgb(hex){
   if(!hex||hex.length<7)return'96,176,240';
@@ -414,6 +415,7 @@ function cuentaSePuedeEliminar(id){
 // Por qué no se puede archivar (texto para el usuario), o '' si se puede.
 function _motivoNoArchivar(c){
   if(esCuentaFija(c))return 'Efectivo es una cuenta permanente: no se archiva ni se elimina (sí puedes renombrarla).';
+  if(cuentaSePuedeEliminar(c.id))return 'La cuenta "'+c.nombre+'" no tiene movimientos: no hace falta archivarla, puedes eliminarla.';
   const total=esCuentaAhorro(c)?ahorroTotal(c.id):(c.saldo||0);
   if(Math.abs(total)>=0.01)return 'Primero deja "'+c.nombre+'" en cero: mueve el saldo a otra cuenta (botón «Mover a otra cuenta»). Disponible: '+fmt(total)+'.';
   const enc=_encargosConSaldoEn(_fuentesDeCuenta(c));

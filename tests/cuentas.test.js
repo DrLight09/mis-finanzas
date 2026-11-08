@@ -2346,7 +2346,7 @@ describe('cuentas-modelo-unico', () => {
       app.document.getElementById = el;
       app.document.querySelectorAll = () => [];
       app.selIconoNC('cajasocial');
-      assert.equal(campos.nc_nombre.value, app.getIconoData('cajasocial').label);
+      assert.equal(campos.nc_nombre.value, 'Banco Caja Social');
     });
     test('el id de la cuenta creada sale del nombre y los repetidos no chocan', async () => {
       const e = entorno();
@@ -2471,10 +2471,10 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
     for (const id of ['btn-archivar-cuenta-ah', 'btn-editar-cuenta-ah', 'btn-eliminar-cuenta-ah', 'banner-archivada-ah']) assert.ok(bloque.includes('id="' + id + '"'), id);
   });
 
-  test('al crear no se ofrece "Efectivo" como tipo ni como preset; Caja Social usa el rojo y el azul de la marca', () => {
+  test('al crear no se ofrece "Efectivo" como preset (y el tipo es un solo interruptor de ahorro); Caja Social usa el rojo y el azul de la marca', () => {
     const app = entorno();
     const src = fs.readFileSync(path.join(RAIZ, 'js/modules/cuentas.js'), 'utf8');
-    assert.ok(/filter\(t=>!TIPOS_CUENTA\[t\]\.fija\)/.test(src));
+    assert.ok(/filter\(ic=>_ncModoEdicion\|\|ic\.tipo!=='efectivo'\)/.test(src) && !/>Efectivo<\/button>/.test(src));
     const cs = app.getIconoData('cajasocial');
     assert.equal(cs.color, '#E2222E');
     assert.ok(cs.svg.includes('#008FD1') && cs.svg.includes('#E2222E'));
@@ -2493,12 +2493,23 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
       const cuentas = Array.from({ length: n }, (_, i) => ({ id: 'b' + i, tipo: 'banco', nombre: 'B' + i, saldo: 0, color: '#112233' }));
       if (ahorro) { cuentas.pop(); cuentas.push({ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9 }); }
       app.S.cuentas = cuentas;
-      const el = { innerHTML: '', querySelectorAll: () => [] };
+      const el = { innerHTML: '', querySelectorAll: () => [], insertAdjacentHTML(_pos, h) { this.innerHTML += h; } };
       app.document.getElementById = () => el;
       app.renderCuentasInicio();
-      const clases = [...String(el.innerHTML).matchAll(/class="stat( stat-span\d)?"/g)].map(m => (m[1] || '').trim());
+      const clases = [...String(el.innerHTML).matchAll(/class="stat stat-cuenta( stat-span\d)?"/g)].map(m => (m[1] || '').trim());
       assert.equal(clases.length, n, 'un recuadro por cuenta');
       assert.equal(clases[clases.length - 1], esperada, n + ' cuentas, ahorro=' + ahorro);
     }
+  });
+  test('el interruptor de ahorro solo aparece con «Otra» o un banco genérico; Nu, Nequi y edición lo ocultan', () => {
+    const app = entorno();
+    const bloque = { style: { display: '' } };
+    app.document.getElementById = id => (id === 'nc-tipos' ? { closest: () => bloque, style: {} } : { value: '', style: {}, dataset: {}, closest: () => null, textContent: '' });
+    app.document.querySelectorAll = () => [];
+    const visible = id => { app.selIconoNC(id); return bloque.style.display === ''; };
+    assert.equal(visible('otro'), true);
+    assert.equal(visible('cajasocial'), true);
+    assert.equal(visible('nu'), false);
+    assert.equal(visible('nequi'), false);
   });
 });

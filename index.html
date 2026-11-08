@@ -682,16 +682,15 @@
               <div class="ix-hero-change-indicator" id="hero-change-indicator"></div>
             </div>
           </div>
-          <div class="grid3">
+          <!-- Una sola cuadrícula: Disponible / Prestado / CDTs son fijos y renderCuentasInicio() (core-state.js) agrega después un
+               recuadro por cada cuenta activa desde S.cuentas, así todos se reparten en filas sin huecos. -->
+          <div class="grid3" id="inicio-cuentas">
             <div class="stat"><div class="stat-label">Disponible</div><div
                 class="stat-value c-green" id="s-disp">$0</div></div>
             <div class="stat"><div class="stat-label">Prestado</div><div
                 class="stat-value c-amber" id="s-prest">$0</div></div>
             <div class="stat" id="s-cdt-tile"><div class="stat-label">CDTs</div><div
                 class="stat-value c-purple" id="s-cdt">$0</div></div>
-            <!-- Un recuadro por cada cuenta activa: lo pinta renderCuentasInicio() (core-state.js) desde S.cuentas. Va DENTRO de la
-                 misma cuadrícula (display:contents), así todos los recuadros se reparten en filas sin huecos. -->
-            <div id="inicio-cuentas" class="stat-contents"></div>
           </div>
           <div class="ix-s-disp-neto-tc" id="s-disp-neto-tc">
           </div>
@@ -2392,7 +2391,7 @@
         <div class="sheet-handle"></div>
         <div class="sheet-title">Nueva cuenta</div>
         <div class="ig">
-          <div class="il">Tipo de cuenta</div>
+          <div class="il">Tipo</div>
           <div class="cuenta-tipos" id="nc-tipos"></div>
           <div class="ix-fs11-ctext2" id="nc_tipo_nota"></div>
         </div>

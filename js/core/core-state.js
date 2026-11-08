@@ -325,7 +325,26 @@ function cuentaDeCajita(c){return c&&c.cuentaId?getCuenta(c.cuentaId):undefined;
 // Nombre de una cuenta para mostrar; las fuentes que ya no existen se muestran como «Cuenta eliminada».
 function nombreCuenta(c){return c?(c.nombre||'Cuenta'):'Cuenta eliminada';}
 // Color de una cuenta (hex); gris neutro si no tiene.
-function colorCuenta(c){return (c&&c.color)||'#888880';}
+// El tema de la app es oscuro (fondo ~#181818): un color de marca muy oscuro (Bancolombia negro, BBVA azul marino) desaparece contra
+// el fondo y contra su propio recuadro translúcido. colorLegible() lo aclara (mezclándolo con blanco, conservando el tono) hasta
+// alcanzar un contraste mínimo; el color guardado de la cuenta no se toca, solo cómo se pinta. Los colores ya claros no cambian.
+function _luminancia(hex){
+  const n=parseInt(String(hex).slice(1,7),16);
+  const ch=[(n>>16)&255,(n>>8)&255,n&255].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});
+  return 0.2126*ch[0]+0.7152*ch[1]+0.0722*ch[2];
+}
+function colorLegible(hex,minContraste){
+  if(!/^#[0-9a-fA-F]{6}$/.test(String(hex||'')))return '#888880';
+  const lumFondo=_luminancia('#181818'), min=minContraste||3.5;
+  const n=parseInt(hex.slice(1),16), rgb=[(n>>16)&255,(n>>8)&255,n&255];
+  for(let t=0;t<=1.0001;t+=0.05){
+    const m=rgb.map(v=>Math.round(v+(255-v)*t));
+    const c='#'+m.map(v=>v.toString(16).padStart(2,'0')).join('');
+    if((_luminancia(c)+0.05)/(lumFondo+0.05)>=min)return t===0?hex:c;
+  }
+  return '#ffffff';
+}
+function colorCuenta(c){return colorLegible((c&&c.color)||'#888880');}
 // "Cuenta Mínima" en pesos para mostrar un saldo cuando hay varias cuentas.
 function saldoCuentas(opts){return cuentasConSaldo(opts).reduce((a,c)=>a+(c.saldo||0),0);}
 
@@ -1769,7 +1788,7 @@ function renderCuentasInicio(){
     marcado=html`${activas.map((c,i)=>{
       const ult=i===activas.length-1;
       const extra=ult&&resto===1?' stat-span3':ult&&resto===2?' stat-span2':'';
-      return tile(esCuentaAhorro(c)?c.nombre+' libre':c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),c.color,extra);
+      return tile(c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),colorCuenta(c),extra);
     })}${soloEfectivo?html`<div class="card ix-cuentas-vacio stat-span3"><div class="ix-cuentas-vacio-txt">Agrega tu banco, Nequi o cuenta de ahorro para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar cuenta</button></div>`:''}`;
   }
   if(el.insertAdjacentHTML)el.insertAdjacentHTML('beforeend',String(marcado));

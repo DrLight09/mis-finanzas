@@ -1986,6 +1986,8 @@ button.inicio-pilar-accion{cursor:pointer;}
 .ix-btn-editar-cuenta-custom:empty{min-height:0 !important;}
 .ix-btn-eliminar-cuenta-custom, .detail-header-action.ix-btn-eliminar-cuenta-custom{color:var(--red);min-width:34px;min-height:34px;}
 .ix-btn-eliminar-cuenta-custom:empty{min-height:0 !important;}
+.ix-btn-archivar-cuenta, .detail-header-action.ix-btn-archivar-cuenta{color:var(--amber);min-width:34px;min-height:34px;}
+.ix-btn-archivar-cuenta:empty{min-height:0 !important;}
 .ix-mb6, .cuenta-hero-saldo.ix-mb6, .row.ix-mb6{margin-bottom:6px;}
 .ix-div-070{margin-top:14px;padding-top:14px;border-top:1px solid rgba(var(--cuenta-rgb),.2);display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .ix-div-071{font-size:10px;color:var(--cuenta);text-transform:uppercase;letter-spacing:.8px;font-family:'DM Mono',monospace;}

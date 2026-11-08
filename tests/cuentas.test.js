@@ -2513,3 +2513,26 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
     assert.equal(visible('nequi'), false);
   });
 });
+
+describe('cuentas-colores-legibles', () => {
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const core = f => path.join(__dirname, '..', 'js', 'core', f);
+  const app = loadApp([core('html-tag.js'), core('core-state.js')], { permissive: true });
+  const contraste = hex => (app._luminancia(hex) + 0.05) / (app._luminancia('#181818') + 0.05);
+
+  test('colores de marca muy oscuros se aclaran para verse sobre el fondo oscuro de la app', () => {
+    for (const oscuro of ['#000000', '#004580', '#1f2a44', '#0a0a0a']) assert.ok(contraste(app.colorLegible(oscuro)) >= 3.4, oscuro);
+  });
+  test('los colores ya claros no cambian, y un color inválido cae a gris', () => {
+    for (const claro of ['#FDDA24', '#c060f0', '#ff4da6', '#E2222E', '#f0b840', '#60f0b0']) assert.equal(app.colorLegible(claro), claro);
+    assert.equal(app.colorLegible('rojo'), '#888880');
+  });
+  test('el color pintado de la cuenta sale de colorCuenta (el guardado no se toca)', () => {
+    const c = { id: 'b', color: '#000000' };
+    assert.notEqual(app.colorCuenta(c), '#000000');
+    assert.equal(c.color, '#000000');
+  });
+});

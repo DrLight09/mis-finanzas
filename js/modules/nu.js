@@ -19,7 +19,7 @@
 
    Carga: grupo lazy 'cuentas', junto con js/modules/cuentas.js.
    Regla de dependencia (UN solo sentido): este módulo se apoya en cuentas.js, nunca al revés. Una cuenta de ahorro es una cuenta
-   más y reutiliza lo genérico de esa capa — _descriptorCuenta, _tituloCuentaHtml, _showCuentasPanel, _setBtnEstado,
+   más y reutiliza lo genérico de esa capa — _descriptorCuenta, _pintarAdministrarCuenta, _tituloCuentaHtml, _showCuentasPanel, _setBtnEstado,
    _setBtnTransferir, _MIN_RETIRO, getMovimientosCuenta, renderMovsCuenta, abrirAgregarDinero, abrirRestarDinero,
    abrirTransferir, actualizarBotonRetirar, actualizarBotonesTransferir, registrarEntradaConApertura, registrarSalida,
    _aperturaToggleUI — únicamente cuando una función corre. cuentas.js no nombra nada de este archivo: la clase 'ahorro' se le
@@ -992,6 +992,7 @@ function renderDetalleAhorro(){
     document.getElementById('det-nu-label').textContent=dAh.etiquetaDetalle;
   }
   // Total de la cuenta (cajitas + CDTs) y lo que ya rindió hoy; la tasa EA de la cuenta en su campo (sin pisar lo que se esté escribiendo)
+  if(typeof _pintarAdministrarCuenta==='function')_pintarAdministrarCuenta(dAh,{contenedor:'det-ah-acciones',archivar:'btn-archivar-cuenta-ah',eliminar:'btn-eliminar-cuenta-ah',banner:'banner-archivada-ah'});
   const total=ahorroTotal(cuenta.id);
   const totEl=document.getElementById('nuTotalDisp');if(totEl)totEl.textContent=fmt(total);
   const interesHoy=cajitasDeCuenta(cuenta.id).reduce((a,c)=>{

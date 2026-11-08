@@ -82,7 +82,7 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
    a una segunda línea en vez de salirse (la tarjeta tiene overflow:hidden y lo ocultaba) y
    padding-right evita que pise la flecha. Mismo criterio que .stat-value. */
 .cuentas-selector-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.cuentas-selector-pills{display:flex;flex-direction:column;gap:8px;}
+.cuentas-selector-grid > .cuenta-card:last-child:nth-child(odd){grid-column:1 / -1;} /* cantidad impar: la última ocupa todo el ancho, sin hueco */
 .cuenta-card,.cuenta-pill{cursor:pointer;}
 .cuenta-card{min-width:0;position:relative;overflow:hidden;transition:all .15s;padding:18px 15px;border-radius:var(--radius);background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.18) 0%,rgba(var(--cuenta-rgb),.06) 100%);border:1px solid rgba(var(--cuenta-rgb),.35);}
 .cuenta-card-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}

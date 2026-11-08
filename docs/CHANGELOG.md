@@ -4,6 +4,15 @@ Historial de bugs corregidos, código eliminado por diseño y decisiones de limp
 
 ---
 
+## Efectivo permanente, administrar cuentas de ahorro y selector uniforme (2026-11-07, SW v113)
+
+- **Selector:** todas las cuentas van en una sola grilla de tarjetas (antes «Efectivo» salía como pastilla aparte y dejaba un hueco); si la cantidad es impar, la última ocupa el ancho completo.
+- **Efectivo permanente:** `asegurarEfectivo()` (en `refresh()`) crea la cuenta Efectivo si falta; `esCuentaFija()`; no se archiva ni se elimina, sí se renombra. Ya no se ofrece como tipo ni preset al crear.
+- **Administrar cuentas de ahorro:** el detalle de ahorro no tenía editar/archivar/eliminar; ahora usa el mismo bloque (`_pintarAdministrarCuenta`) que el detalle simple.
+- **Caja Social:** logo oficial (SVG multicolor) con rojo `#E2222E` y azul `#008FD1`.
+
+---
+
 ## Cuentas sin cuentas fijas: modelo único y cuentas de ahorro (2026-11-07, SW v113)
 
 Ver `cuentas.md` y `nu.md`.

@@ -83,6 +83,35 @@ function _tituloCuentaHtml(d) {
   return html`<div class="cuenta-flex-8">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
 }
 
+
+// Administración de la cuenta abierta (editar / archivar o reactivar / eliminar): la MISMA para todo tipo de cuenta. `ids` son los
+// ids de los botones de cada detalle (el simple y el de ahorro tienen los suyos).
+function _pintarAdministrarCuenta(d, ids) {
+  const cont = document.getElementById(ids.contenedor);
+  if (cont) cont.style.display = 'flex';
+  const btnArch = document.getElementById(ids.archivar);
+  if (btnArch) {
+    btnArch.style.display = d.fija ? 'none' : '';
+    const t = d.archivada ? 'Reactivar cuenta' : 'Archivar cuenta';
+    btnArch.title = t; btnArch.setAttribute('aria-label', t);
+  }
+  const btnDel = document.getElementById(ids.eliminar);
+  if (btnDel) btnDel.style.display = cuentaSePuedeEliminar(d.id) ? '' : 'none';
+  const banner = document.getElementById(ids.banner);
+  if (banner) banner.innerHTML = d.archivada
+    ? html`<div class="cuenta-archivada-banner"><span>Cuenta archivada: no aparece al elegir cuentas, pero su historial se conserva.</span><button type="button" class="btn btn-ghost" ${raw(Events.attr('cuentas:reactivarCuenta', d.id))}>Reactivar</button></div>`
+    : '';
+}
+function _accionAdministrarCuenta(btnId) {
+  const d = cuentaActual ? _descriptorCuenta(cuentaActual) : null;
+  if (!d) return false;
+  if (/^btn-editar-cuenta/.test(btnId)) editarCuenta(d.id);
+  else if (/^btn-archivar-cuenta/.test(btnId)) { if (d.archivada) reactivarCuenta(d.id); else archivarCuenta(d.id); }
+  else if (/^btn-eliminar-cuenta/.test(btnId)) eliminarCuenta(d.id);
+  else return false;
+  return true;
+}
+
 // Detalle de Nequi, Efectivo y cuentas personalizadas: misma pantalla, el descriptor de la
 // cuenta aporta nombre, color, etiqueta y saldo.
 function _renderDetalleSimple(fuente) {
@@ -96,18 +125,10 @@ function _renderDetalleSimple(fuente) {
   document.getElementById('det-cuenta-saldo').textContent = fmt(d.saldo());
   actualizarBotonRetirar(document.getElementById('btn-restar-cuenta-det'), fuente);
   // Editar y archivar valen para toda cuenta; eliminar solo si nunca se usó (si ya tiene historia se archiva, no se borra).
-  document.getElementById('det-cuenta-acciones-custom').style.display = 'flex';
-  const btnArch = document.getElementById('btn-archivar-cuenta');
-  if (btnArch) { const t = d.archivada ? 'Reactivar cuenta' : 'Archivar cuenta'; btnArch.title = t; btnArch.setAttribute('aria-label', t); }
-  const btnDel = document.getElementById('btn-eliminar-cuenta-custom');
-  if (btnDel) btnDel.style.display = cuentaSePuedeEliminar(d.id) ? '' : 'none';
+  _pintarAdministrarCuenta(d, { contenedor: 'det-cuenta-acciones-custom', archivar: 'btn-archivar-cuenta', eliminar: 'btn-eliminar-cuenta-custom', banner: 'banner-archivada' });
   // Cuenta archivada: no se le mete ni se le saca plata; solo se consulta su historial o se reactiva.
   const acciones = cont.querySelector('.cuenta-actions');
   if (acciones) acciones.style.display = d.archivada ? 'none' : '';
-  const banner = document.getElementById('banner-archivada');
-  if (banner) banner.innerHTML = d.archivada
-    ? html`<div class="cuenta-archivada-banner"><span>Cuenta archivada: no aparece al elegir cuentas, pero su historial se conserva.</span><button type="button" class="btn btn-ghost" ${raw(Events.attr('cuentas:reactivarCuenta', d.id))}>Reactivar</button></div>`
-    : '';
   // Banner saldo inicial. El div es único (banner-apertura-cuenta), por eso el elId va explícito:
   // el default de renderBannerApertura armaría un id con el ':' de 'cuenta:ID'.
   renderBannerApertura(fuente, { elId: 'banner-apertura-cuenta' });
@@ -132,7 +153,7 @@ const ICONOS_CUENTA = [
   { id:'daviplata', label:'Daviplata',   color:'#dd141d', tipo:'billetera', svg:`<svg aria-hidden="true" viewBox="0 0 50 41" width="22" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M12.35,17.46c.02-.09.04-.18.06-.28.02-.08.03-.17.05-.25.04-.33.05-.64.03-.94,0-.02,0-.03,0-.05,0-.08-.02-.16-.03-.24-.09-.51-.24-.98-.46-1.4,0,0-.01-.02-.01-.03-.06-.11-.12-.21-.18-.31-.04-.07-.08-.13-.13-.2-.03-.04-.06-.08-.09-.13-.06-.09-.12-.16-.18-.24-.07-.08-.14-.16-.21-.24-.02-.02-.03-.03-.05-.05-2.75-2.82-8.74-2.53-10.45-1.78-1.16.51-.76,1.99.51,1.41,2.06-.54,4.05-.53,6.09,0,1.66.43,3.4,1.94,3.4,3.56-.12,4.04-5.26,4.2-7.35,3.67v-5.02c0-1.2-1.49-1.21-1.49,0v5.05c0,1.01.5,1.38,1.17,1.54,1.57.37,8.16.77,9.33-4.09ZM40.13,20.79v-8.85c0-1.4-1.69-1.39-1.69-.02v8.83c0,1.32,1.69,1.37,1.69.05ZM35.89,11.43c-.74,2.18-3.28,8.29-4.81,8.3-1.54.02-4.16-6.03-4.94-8.2-.47-1.3-1.9-.36-1.43.95.84,2.33,3.99,9.37,6.41,9.29,2.41.04,5.43-7.07,6.23-9.42.44-1.31-1-2.23-1.45-.92ZM19.48,10.85c-2.61-.08-5.99,6.97-6.88,9.31-.5,1.3,1.05,2.24,1.55.94.83-2.17,3.67-8.23,5.33-8.22,1.66.01,4.4,6.1,5.21,8.28.49,1.31,2.05.39,1.56-.92-.87-2.35-4.17-9.44-6.78-9.39ZM47.19,11.48c-1.22-1.06-3.19-2.6-4.05-3.27.09-.96.26-1.98.47-2.83.26-1.06.48-2.27-.18-3.16-.45-.6-1.15-.89-2.16-.89h-3.47c-.97,0-1.68.31-2.13.92-.18.25-.31.53-.37.85C31.7,1.13,28.66,0,26.87,0c-3.03.02-10.23,3.64-16.39,8.25-.24.18-.29.52-.12.77.17.25.5.3.74.12C17.71,4.19,24.44,1.11,26.87,1.1c1.71,0,4.95,1.28,8.67,3.39l.92.53-.15-1.08c-.06-.41.01-.76.19-1.01.24-.33.67-.49,1.29-.49h3.47c.66,0,1.09.15,1.32.46.37.5.2,1.37,0,2.22-.24,1-.43,2.21-.52,3.32l-.02.31.24.18c.66.51,2.91,2.25,4.24,3.41,1.99,1.74,2.78,3.33,2.3,4.6-.52,1.37-2.61,2.2-5.2,2.06-.33-.02-.67-.03-.99-.05l-.6-.03.04.62c.11,1.58.66,4.05,2.63,6.79l.02.02c2.1,2.61,2.42,5.76.85,8.42-1.86,3.16-6.5,5.72-12.67,4.31l-.14-.03-.14.05c-1.79.6-4.47.82-5.74.82s-3.95-.22-5.74-.82l-.14-.05-.14.03c-6.17,1.41-10.81-1.15-12.67-4.31-1.57-2.66-1.25-5.81.85-8.42.19-.23.16-.58-.07-.77-.22-.19-.56-.16-.75.07-2.4,2.99-2.75,6.61-.94,9.7,1.1,1.87,2.95,3.41,5.21,4.31,2.53,1.01,5.45,1.2,8.46.54,1.9.6,4.63.83,5.93.83s4.03-.23,5.93-.83c1.22.27,2.38.39,3.48.39,4.87,0,8.51-2.4,10.18-5.24,1.81-3.08,1.46-6.7-.93-9.68-1.57-2.19-2.15-4.16-2.35-5.58.12,0,.25.01.37.02.21.01.41.02.61.02,2.8,0,4.97-1.06,5.62-2.77.46-1.22.39-3.22-2.6-5.84Z" fill="currentColor"/></svg>` },
   { id:'bbva',     label:'BBVA',        color:'#004580', tipo:'banco', svg:`<svg aria-hidden="true" viewBox="-.004 0 1998.364 600.414" width="26" height="8" xmlns="http://www.w3.org/2000/svg"><path d="m1713.3 0h6.543c7.79 4.95 10.746 14.25 15.035 21.953 59.086 110.74 118.26 221.43 177.42 332.14 28.59 53.934 57.766 107.58 86.062 161.66v1.055c-1.684 3.047-3.027 7.836-7.375 7.41-28.738.09-57.52.148-86.242-.027-6.894.277-8.754-7.25-11.359-12.098-5.227-9.93-10.863-19.61-15.578-29.801-8.066-13.691-14.418-28.277-22.484-41.953-6.195-13.531-14.203-26.082-20.438-39.586-3.852-8.172-8.918-15.7-12.738-23.883-5.664-12.156-13-23.418-18.504-35.66-8.3-14.38-15.168-29.508-23.465-43.891-5.828-12.887-13.586-24.762-19.473-37.621-4.113-8.844-9.617-16.973-13.703-25.844-5.328-11.512-12.414-22.102-17.492-33.727-2.535-4.497-4.277-10.75-9.605-12.551-3.426-.278-8.227-1.141-10.16 2.535-8.957 14.395-15.516 30.105-24.152 44.69-6.18 13.52-14.246 26.067-20.453 39.57-3.688 7.848-8.536 15.083-12.254 22.903-2.825 5.875-5.696 11.73-9.032 17.34-5.902 9.957-10.117 20.809-16.09 30.723-5.21 8.699-8.914 18.203-14.113 26.902-5.46 8.976-9.265 18.816-14.637 27.824-6.148 10.25-10.484 21.453-16.648 31.69-5.195 8.7-8.882 18.189-14.098 26.888-5.46 8.976-9.265 18.816-14.637 27.824-5.785 9.648-10.03 20.105-15.477 29.918-1.86 2.914-3.644 6.574-7.304 7.422-5.621.996-11.375.41-17.055.484-21.973-.016-43.95-.086-65.922.074-3.98-.074-8.754-.015-11.477-3.441-.848-3.735-.543-7.777 1.492-11.07 89.637-168.04 179.46-335.97 269.18-503.98 1.379-2.574 3.851-4.274 6.238-5.871zm-1713.3 80.703c6.148-6.484 15.473-4.363 23.422-4.582 80.035.043 160.05 0 240.09.016 23.539-.793 47.371 2.765 69.465 11.012 37.184 13.34 69.184 43.3 81.219 81.406 5.328 14.453 6.484 30.008 7.555 45.238-.98 16.312-2.957 32.89-9.121 48.164-7.395 17.879-18.066 35.102-33.977 46.598-3.836 3.703-9.782 5.273-12.578 9.93 21.172 7.644 39.383 22.124 53.113 39.8 22.574 29.523 28.855 68.594 25.02 104.84-2.02 23.898-8.887 47.621-21.36 68.2-8.327 12.796-18.604 24.526-31.077 33.43-27.23 20.21-60.93 29.522-94.207 33.358-6.82.926-13.82.426-20.512 2.301h-270.95c-2.254-1.816-4.348-3.836-6.106-6.152v-513.56m89.828 75.082c-2.562 3.133-1.86 7.41-2.004 11.16.23 38.91-.351 77.832.29 116.73 2.386 2.976 6.046 5.012 9.925 4.805 51.738.042 103.49-.06 155.22.058 7.203.309 14.29-1.2 21.391-2.195 16.102-2.344 32.191-8.715 43.422-20.867 7.684-7.645 11.184-18.25 13.773-28.5.629-8.301 3.281-16.637.969-24.926-1.113-14.027-6.809-27.66-16.31-38.074-13.308-12.066-31.124-17.836-48.69-19.961-5.621-.555-11.332.281-16.91-.832-6.938-1.496-14.04-.778-21.066-.863-42.47-.047-84.938.042-127.39-.06-4.422 0-8.844 1.216-12.621 3.528m2.883 210.79c-1.727.543-3.38 1.567-3.907 3.426-3.12 6.035-2.476 12.977-2.445 19.535.059 40.039-.043 80.078.043 120.11.086 5.727 3.277 13.84 10.176 13.137 54.664.027 109.34-.031 164 .016 5.492.187 10.98 0 16.398-.996 19.234-1.641 39.145-5.493 55.352-16.578 13.027-9.227 20.188-24.484 22.97-39.848 3.687-17.734 2.312-36.29-2.84-53.598-4.614-13.355-13.72-25.523-26.485-31.996-16.863-9.286-36.215-12.066-55.117-13.68-57.605.015-115.21.015-172.82 0a24.191 24.191 0 0 0-5.328.468zm440.744-290.03c6.09-.996 12.312-.293 18.461-.41 84.91-.016 169.83.043 254.76-.031 38.383 1.964 77.383 15.39 105.11 42.777 21.082 20.84 33.789 49.438 36.832 78.77-.059 11.613.484 23.258-.32 34.855-3.645 24.895-13.426 49.965-32.164 67.39-5.297 5.551-11.051 10.708-17.785 14.454-1.39 1.171-4.336 1.757-3.47 4.132 21.548 8.786 41.005 23.473 54.399 42.613 5.754 7.895 9.894 16.797 13.879 25.688 7.918 17.88 9.398 37.664 10.555 56.938-.98 14.906-1.875 29.945-5.43 44.531-5.183 25.422-18.402 48.984-36.863 67.113-7.539 6.227-15.152 12.465-23.613 17.414-23.863 14.613-51.633 21.367-79.129 24.996-7.668 1.305-15.574.602-23.145 2.637h-270.77c-4.215-2.46-8.297-6.34-7.758-11.688.032-166.96.032-333.93 0-500.89-.175-4.613 2.578-8.95 6.457-11.289m90.707 76.266c-2.812.66-5.87 1.684-7.379 4.363-2.62 3.707-1.875 8.45-1.976 12.711.133 35.645.043 71.29.027 106.92-.246 4.645 2.844 8.657 6.383 11.305 10.527.926 21.141.106 31.711.368 44.914-.028 89.812.058 134.73-.028 15.066-1.699 30.656-3.664 43.875-11.688 13.617-6.12 22.223-19.375 26.848-33.098 3.484-11.098 2.285-22.828 2.344-34.266-.996-8.113-3.586-16.094-7.277-23.387-10.555-18.117-30.887-28.102-51.062-31.047-7.934-1.992-16.176-.351-24.141-1.992-6.09-1.184-12.297-.598-18.43-.656-43.45-.047-86.898.043-130.34-.059-1.801.012-3.57.188-5.313.555m-2.945 213.79c-4.36.95-6.57 5.55-6.336 9.707-.031 42 .027 83.984-.031 125.97.058 5.348-.528 10.926 1.55 16.008 1.043 3.59 5.434 4.406 8.684 4.48 55.629.075 111.27-.058 166.92.075 7.352.367 14.539-1.524 21.859-1.86 18.75-2.344 38.004-7.746 52.465-20.488 11.406-11.496 16.984-27.59 18.215-43.492 1.46-7.879 1.8-15.949.176-23.828-1.422-17.836-7.656-36.875-22.445-48.016-17.887-13.812-41.078-17.004-62.918-19.055-55.633.016-111.28.016-166.91 0-3.746.09-7.555-.308-11.23.5zm355.702-279.354c-2.648-5.36 2.594-11.805 8.29-11.145 27.343-.016 54.706.133 82.065-.059 3.18-.16 6.691.293 8.39 3.399 6.485 9.957 11.728 20.69 16.939 31.367 3.293 6.824 7.507 13.152 10.805 19.977 6.074 13.164 13.938 25.39 19.953 38.586 8.05 13.69 14.418 28.277 22.473 41.957 6.906 14.789 15.59 28.645 22.41 43.477 5.93 10.37 11.316 21.016 16.69 31.69 6.821 11.056 11.595 23.185 18.329 34.298 4.699 8.172 8.183 16.973 13.043 25.055 6.164 10.238 10.48 21.457 16.645 31.676 6.105 10.254 10.25 21.559 16.82 31.53 2.945 5.536 12.578 5.552 15.535 0 6.543-9.987 10.699-21.276 16.805-31.53 5.445-8.961 9.28-18.79 14.64-27.81 6.15-10.25 10.48-21.452 16.646-31.702 6.09-10.648 10.832-22.027 17.258-32.496 7.496-15.715 16.543-30.605 23.938-46.363 6.062-10.297 11.168-21.09 16.703-31.66 6.472-10.441 10.949-21.938 17.289-32.438 5.476-9.402 9.488-19.551 15.035-28.91 5.62-9.285 9.547-19.461 15.18-28.746 7.527-12.668 12.387-26.93 21.289-38.777 2.02-3.121 5.984-2.418 9.176-2.594 26.863.25 53.742.047 80.605.074 3.648-.41 6.722 2.024 8.449 5.055 1.71 5.05-1.961 9.648-4.278 13.809-85.418 159.65-170.59 319.43-255.98 479.1-4.89 9.121-9.02 19.035-16.586 26.344h-6.441c-9.707-6.078-12.973-17.926-18.52-27.324-86.562-161.92-172.94-323.98-259.59-485.84z" fill="currentColor"/></svg>` },
   { id:'davivienda', label:'Davivienda', color:'#DB343D', tipo:'banco', svg:`<svg aria-hidden="true" viewBox="0 0 21 17" width="22" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M3.247 7.494C3.288 7.852 3.258 9.347 1.85 11.4.391 13.666 2.697 17.446 7.347 16.487c1.016.362 2.121.413 2.833.407.714.006 1.83-.039 2.848-.396 4.648.96 6.943-2.83 5.484-5.096-1.407-2.054-1.438-3.549-1.399-3.907H3.247Z" fill="#DB343D"/><path d="M10.18 16.871c-4.543-.112-5.368-2.168-4.112-2.597.728-.25 1.689-.671 1.689-.671-.484-2.318.317-5.277 2.436-5.271 2.121-.004 2.893 3.051 2.413 5.324l.969.276c1.182.455.431 2.485-4.112 2.597Z" fill="#2075A9"/><path d="M8.469 15.234c-1.196-3.262-.145-6.402 1.712-6.396 1.773.01 2.974 3.022 1.724 6.412 0 0-.59-.134-1.784-.134-.888 0-1.652.118-1.652.118Z" fill="#F9D93A"/><path d="M10.18 16.905c1.832 0 3.27-.384 3.27-.921 0-.537-1.438-.923-3.27-.923-1.831 0-3.27.386-3.27.923 0 .537 1.439.921 3.27.921Z" fill="#E89133"/><rect x="3.504" y="9.131" width="3.456" height="2.694" rx="0.629" fill="#2075A9"/><rect x="13.401" y="9.131" width="3.456" height="2.694" rx="0.629" fill="#2075A9"/><path d="M3.91 9.947c0-.258.211-.466.475-.466h1.74c.263 0 .476.208.476.466v1.063c0 .257-.213.465-.475.465H4.386c-.264 0-.475-.208-.475-.465V9.947Z" fill="#0F1013"/><path d="M6.602 10.742c-.786-.078-1.059-.98-1.127-1.263h.651c.263 0 .476.21.476.466v.797ZM5.046 9.479c-.05.258-.298 1.226-1.134 1.269V9.947c0-.258.211-.466.475-.466h.66Z" fill="#F9D93A"/><path d="M13.808 9.947c0-.258.211-.466.475-.466h1.74c.263 0 .476.208.476.466v1.063c0 .257-.213.465-.475.465h-1.74c-.264 0-.475-.208-.475-.465V9.947Z" fill="#0F1013"/><path d="M16.499 10.742c-.786-.078-1.059-.98-1.127-1.263h.651c.263 0 .476.21.476.466v.797ZM14.943 9.479c-.05.258-.298 1.226-1.134 1.269V9.947c0-.258.211-.466.475-.466h.66Z" fill="#F9D93A"/><path d="M10.181 7.423c-2.368.002-5.627.201-7.718.36-1.605.121-2.847-1.081-1.78-2.218C2.958 3.146 8.515.09 10.198.09c1.788 0 7.237 3.056 9.512 5.476 1.067 1.137.09 2.217-1.521 2.217-1.798 0-5.542-.358-7.907-.36Z" fill="#E89133"/><path d="M14.73 1.889c-.236-.775-.276-1.163.444-1.165h1.596c.96-.017.565.722.47 1.446-.123.953-.123 1.242-.123 1.242C17.117 3.412 14.731 1.9 14.73 1.889Z" fill="#D22431"/></svg>` },
-  { id:'cajasocial', label:'Caja Social', color:'#1f5fa8', tipo:'banco', svg:`<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10l9-6 9 6"/><path d="M5 10v8M9 10v8M15 10v8M19 10v8"/><path d="M3 20h18"/></svg>` },
+  { id:'cajasocial', label:'Caja Social', color:'#E2222E', tipo:'banco', svg:`<svg aria-hidden="true" width="24" height="24" viewBox="0 0 193.18 192.92" xmlns="http://www.w3.org/2000/svg"><path d="m107.81 171.16c.02 4.39-.84 8.57-3.1 12.37-4.38 7.4-11.97 7.51-16.14-.02-4.56-8.23-4.54-16.8 .08-25.01 4.13-7.34 11.58-7.23 15.96-.04 2.37 3.9 3.23 8.19 3.2 12.7zm65.07-63.5c-6.43-.04-11-1.01-15.03-3.8-6.05-4.2-6.04-10.58-.02-14.81 7.53-5.29 20.75-5.05 27.74 .51 5.07 4.03 5.08 9.72 .02 13.77a16.42 16.42 0 0 1-3.47 2.11c-3.45 1.57-7.07 2.26-9.24 2.22zm-65.07-85.82c.05 3.77-.65 7.39-2.23 10.82-.62 1.34-1.39 2.6-2.36 3.72-4.03 4.65-9.47 4.66-13.32-.15-3.99-4.99-4.89-10.87-4.4-17.04 .28-3.44 1.15-6.74 2.98-9.72 .52-.85 1.09-1.69 1.76-2.43 3.95-4.36 9.22-4.27 12.97 .27 3.49 4.21 4.55 9.22 4.6 14.53zm-85.92 85.81c-4.83 0-9.39-.97-13.44-3.73-6.14-4.19-6.13-10.69-.02-14.92 7.2-4.98 19.49-5.04 26.73-.13 6.3 4.27 6.32 10.88 .01 15.13-4 2.71-8.52 3.64-13.28 3.65zm127.57-73.9c6.92 .02 11.31 5.89 9.66 12.89-1.52 6.46-7.24 11.52-13.82 12.23-6.91 .74-11.9-4.77-10.9-12.04 .96-7 7.98-13.1 15.06-13.08zm-115.67 9.95c.02-6.39 4.84-10.52 11.52-9.89 7.15 .67 13.73 7.94 13.69 15.11-.04 6.34-5.28 10.83-11.56 9.89-7.63-1.16-13.68-7.85-13.65-15.11zm100.47 100.46c-.04-6.21 4.62-10.55 10.84-10.07 7.53 .58 13.93 7.1 14.35 14.63 .33 5.95-4.12 10.55-10.15 10.48-7.79-.1-14.98-7.28-15.04-15.04zm-100.47 4.96c.02-7.81 7.36-15.12 15.16-15.08 6.54 .03 10.97 5.35 9.87 11.83-1.21 7.15-7.13 12.71-14.14 13.28-6.2 .5-10.9-3.82-10.89-10.03z" fill="#E2222E"/><path d="m44.979 125.08c-.83-.08-1.67-.06-2.47-.24-5.08-1.14-7.01-5.82-4.25-10.23 2.69-4.3 8.74-6.75 13.62-5.51 4.9 1.24 6.8 6.02 3.95 10.24-2.56 3.82-6.3 5.57-10.85 5.74zm22.99 22.79c.32-4.67 2.04-8.6 6.29-11.01 4.01-2.28 8.26-.52 9.58 3.88 1.52 5.08-1.16 11.64-5.82 14.24-4.69 2.61-9.43-.07-10.04-5.69-.05-.47-.01-.95-.01-1.42zm-22.87-80c5.52 0 10.83 3.78 11.86 8.4 .61 2.74-.48 5.22-2.9 6.63-5.76 3.34-15.09-.52-16.84-6.96-1.09-4.01 1.8-7.63 6.46-8.06 .47-.05 .94-.01 1.42-.01zm22.77-22.88c.07-.73 .08-1.39 .2-2.02 1.14-5.77 6.14-7.76 10.95-4.36 3.92 2.77 6.07 8.57 4.89 13.2-1.2 4.72-5.57 6.67-9.78 4.19-4.16-2.47-5.94-6.39-6.26-11.01zm57.44 .05c-.14 3.64-1.43 6.84-4.07 9.35-2.3 2.18-4.97 3.49-8.22 2.14-2.56-1.06-4.27-4.29-4.08-7.69 .2-3.61 1.49-6.77 4.15-9.31 2.56-2.45 5.67-3.23 8.25-2.06 2.47 1.11 4.1 4.23 3.97 7.57zm22.92 22.8c4.35-.01 7.35 2.11 7.92 5.58 .27 1.66-.2 3.17-1.01 4.57-2.59 4.54-8.91 7.13-13.96 5.77-4.53-1.22-6.35-5.43-4.15-9.58 1.97-3.72 6.57-6.33 11.2-6.34zm-32.7 68.07c1.12-.08 2.29 .31 3.41 .89 4.77 2.48 7.55 9.42 5.85 14.51-1.4 4.18-5.27 5.79-9.22 3.83-4.97-2.46-7.86-9.45-6.07-14.68 .99-2.89 3.12-4.54 6.03-4.55zm32.74-10.86c-3.66-.02-6.81-1.31-9.4-3.89-2.6-2.58-3.5-5.79-2.27-8.34 1.56-3.2 4.5-4.08 7.7-4.02 3.42 .06 6.5 1.32 8.95 3.74 2.3 2.27 3.76 4.92 2.54 8.27-.98 2.72-3.76 4.22-7.52 4.24z" fill="#008FD1"/><path d="m184.71 52.588c4.83-.01 7.54 1.85 8.09 4.99 .4 2.29-.55 4.22-2.06 5.8-3.01 3.15-6.71 4.57-11.08 3.73-4.44-.85-6.39-5.03-4.09-8.91 2.23-3.77 5.78-5.39 9.14-5.61zm-116.42 129.35c-.2 3.43-1.39 6.46-3.98 8.79-1.98 1.78-4.29 2.82-6.99 1.77-2.73-1.06-3.71-3.45-3.85-6.08-.22-4.22 1.41-7.76 4.81-10.32 1.94-1.45 4.16-2.08 6.49-.87 2.7 1.4 3.38 3.92 3.52 6.71zm117.55-42.47c-3.29-.01-6.14-1.19-8.43-3.52-1.89-1.93-3.15-4.22-2.18-7.04 .95-2.77 3.24-3.73 5.91-4.09 4.02-.55 9.15 2.02 11.14 5.59 2.31 4.15 .02 8.45-4.84 9.06-.52 .06-1.06 0-1.6 0zm-175.18-71.3c-3.05-.18-6.12-1.35-8.5-4.01-1.75-1.95-2.75-4.18-1.78-6.81 .98-2.66 3.24-3.75 5.83-3.93 4.58-.32 8.34 1.42 10.94 5.26 1.29 1.92 1.6 4.07 .46 6.21-1.08 2.04-3.6 3.26-6.95 3.28zm129.1-61.11c-.05 3.5-1.24 6.32-3.52 8.66s-5.22 3.12-7.55 2.1c-2.36-1.03-3.93-3.92-3.73-7.09 .19-3.1 1.28-5.87 3.51-8.1 2.09-2.09 4.56-3.36 7.51-2.17 2.98 1.2 3.72 3.87 3.78 6.6zm-87.11 .5c-.01-4.6 2.69-7.5 6.63-7.14 .85 .08 1.61 .39 2.34 .76 4.41 2.26 6.94 8.54 5.34 13.23-1.29 3.78-4.83 5.21-8.39 3.38-3.45-1.76-5.91-6.02-5.92-10.23zm-41.2 118.04c1.09-.02 2.14 .12 3.15 .49 3.51 1.28 4.91 4.6 3.38 8.02-2.1 4.7-8.88 7.5-13.71 5.67-3.74-1.42-5.06-5.19-2.92-8.69 2.29-3.74 5.82-5.35 10.1-5.49zm129.06 58.74c-.02 4.97-1.83 7.54-4.9 8.14-1.42 .27-2.71-.09-3.93-.7-4.42-2.22-7.02-8.53-5.46-13.21 1.25-3.77 4.85-5.34 8.36-3.47 4.07 2.18 5.77 5.85 5.93 9.24z" fill="#008FD1"/><path d="m62.709 101.79c-.37-.06-1.02-.13-1.64-.3-2.61-.7-4.33-2.81-4.26-5.19s2.03-4.47 4.72-5.01c.99-.2 2.01-.19 3 .01 2.89 .58 4.98 3.08 4.7 5.57-.31 2.77-3.05 4.93-6.52 4.92zm63.47 19.38c-.03 2.71-2.16 4.82-4.88 4.82-3.48 .01-6.72-3.21-6.75-6.7a4.86 4.86 0 0 1 4.98-4.91c3.52 .07 6.69 3.31 6.65 6.79zm-47.57-47.44c-.03 2.77-2.07 4.78-4.85 4.77-3.55 0-6.69-3.14-6.7-6.68-.01-2.82 2.17-4.96 4.95-4.88 3.59 .1 6.65 3.24 6.6 6.79zm18.03-17.03c1.66 .02 2.93 .8 3.93 2.07 .82 1.05 1.22 2.29 1.36 3.59 .36 3.34-2.09 6.59-5.08 6.77-2.88 .18-5.42-2.56-5.52-5.95-.1-3.61 2.27-6.51 5.31-6.48zm22.81 21.8c-2.74 0-4.85-2.06-4.89-4.78-.05-3.46 3.14-6.72 6.65-6.79 2.79-.05 4.99 2.11 4.97 4.89-.02 3.53-3.19 6.68-6.73 6.68zm-40.84 40.77c0 3.54-3.16 6.7-6.69 6.71-2.72 .01-4.83-2.08-4.86-4.81-.04-3.58 3.25-6.87 6.79-6.81 2.74 .06 4.77 2.15 4.76 4.91zm51.33-17.48c-.27-.05-.8-.11-1.32-.23-2.83-.63-4.66-2.73-4.59-5.26 .06-2.38 2.03-4.48 4.72-5 .99-.19 2.01-.19 3 .01 2.89 .58 4.98 3.08 4.7 5.57-.31 2.75-3.08 4.93-6.51 4.91zm-38.61 28.19c.01-3.44 2.33-6.16 5.27-6.16 2.91 0 5.32 2.76 5.36 6.13 .03 3.39-2.52 6.36-5.42 6.3-2.9-.05-5.22-2.85-5.21-6.27z" fill="#E2222E"/></svg>` },
   { id:'efectivo', label:'Efectivo', color:'#f0b840', tipo:'efectivo', svg:`<svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>` },
   { id:'ahorro', label:'Ahorro', color:'#60f0b0', tipo:'ahorro', svg:`<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l5-5 4 4 8-9"/><path d="M15 7h5v5"/></svg>` },
   { id:'otro',     label:'Otra',        color:'#888880', tipo:'banco', svg:`<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/><path d="M12 15h5"/></svg>` },
@@ -202,12 +223,12 @@ function selTipoNC(tipo){
 function _renderTiposNC(){
   const wrap=document.getElementById('nc-tipos');
   if(!wrap)return;
-  wrap.innerHTML=html`${Object.keys(TIPOS_CUENTA).map(t=>html`<button type="button" class="nc-tipo-opt cuenta-tipo-opt" data-tipo="${t}" aria-pressed="false" ${raw(Events.attr('cuentas:selTipoNC', t))}>${TIPOS_CUENTA[t].nombre}</button>`)}`;
+  wrap.innerHTML=html`${Object.keys(TIPOS_CUENTA).filter(t=>!TIPOS_CUENTA[t].fija).map(t=>html`<button type="button" class="nc-tipo-opt cuenta-tipo-opt" data-tipo="${t}" aria-pressed="false" ${raw(Events.attr('cuentas:selTipoNC', t))}>${TIPOS_CUENTA[t].nombre}</button>`)}`;
 }
 function renderIconGrid(){
   const grid=document.getElementById('nc-icon-grid');
   if(!grid)return;
-  grid.innerHTML=html`${ICONOS_CUENTA.map(ic=>{
+  grid.innerHTML=html`${ICONOS_CUENTA.filter(ic=>_ncModoEdicion||ic.tipo!=='efectivo').map(ic=>{
     const sel=ic.id===_ncIconoSel;
     const hexRgb=hexToRgb(ic.color);
     return html`<div class="nc-icon-opt cuenta-ico-op${sel?' cuenta-ico-op-sel':''}" data-icono="${ic.id}" ${raw(Events.attr('cuentas:selIconoNC', ic.id))}
@@ -221,7 +242,7 @@ function abrirNuevaCuenta(){
   // El sheet también sirve para editar una cuenta (editarCuenta). Cerrarlo tocando el fondo no pasa por "Cancelar" (único que lo
   // reiniciaba), así que se reinicia acá: si no, "Nueva cuenta" podía quedar en modo edición y guardar renombrando la cuenta anterior.
   _resetSheetNuevaCuenta();
-  const primera=!cuentasTodas().length;
+  const primera=!cuentasTodas().some(c=>!esCuentaFija(c));
   const titulo=document.querySelector('#sheet-nueva-cuenta .sheet-title');
   if(titulo)titulo.textContent=primera?'Agrega tu primera cuenta':'Nueva cuenta';
   _ncIconoSel='otro';
@@ -253,7 +274,7 @@ async function crearCuenta(){
   // El saldo inicial es un movimiento de apertura en S.movimientos con `fuente` y su entrada en el libro.
   const movApertura=saldo>0?crearMovimientoApertura(saldo,hoy(),'Saldo inicial'):null;
   if(movApertura){movApertura.fuente=fuente;if(!S.movimientos)S.movimientos=[];S.movimientos.push(movApertura);}
-  const eraLaPrimera=!cuentasTodas().length;
+  const eraLaPrimera=!cuentasTodas().some(c=>!esCuentaFija(c));
   _cuentasArr().push(nueva);
   if(movApertura)_libroPata(fuente,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:movApertura.id}});
   save();refresh();
@@ -268,18 +289,18 @@ async function crearCuenta(){
 }
 /* ---- CUENTAS DIRIGIDAS POR DATOS (selector + detalle) ----
    Una sola lista de descriptores alimenta la pantalla "Selecciona una cuenta" y el detalle de cuenta: sale de S.cuentas, sin cuentas
-   fijas. Descriptor: { fuente ('cuenta:ID'), id, tipo, nombre, color (hex), rgb (bordes/fondos "r,g,b"), estilo ('tarjeta'|'pastilla'),
+   fijas. Descriptor: { fuente ('cuenta:ID'), id, tipo, nombre, color (hex), rgb (bordes/fondos "r,g,b"), estilo ('tarjeta'),
    etiqueta (solo tarjeta), etiquetaDetalle (rótulo del saldo en el detalle), cuentaKey (clave de filtros de movimientos: la fuente),
    esAhorro / pantallaPropia (su detalle lo pinta CuentaPantallas.ahorro, registrado por nu.js), archivada, iconoHtml(size), saldo() }.
    Agregar una clase de cuenta nueva es agregarla a TIPOS_CUENTA (core-state.js) y, si necesita pantalla propia, registrarla en
    CuentaPantallas. El formato del saldo del selector vive en fmtSaldoSelector() (core-state.js) y el estilo en .cuenta-card /
-   .cuenta-pill / .cuenta-hero (styles.css). */
+   .cuenta-hero (styles.css). */
 function _descriptorDeCuenta(c){
   const hex=colorCuenta(c);
   const info=TIPOS_CUENTA[c.tipo]||TIPOS_CUENTA.banco;
   const ahorro=esCuentaAhorro(c);
   return { fuente:fuenteDeCuenta(c.id), id:c.id, tipo:c.tipo, nombre:nombreCuenta(c), color:hex, rgb:hexToRgb(hex),
-    estilo:c.tipo==='efectivo'?'pastilla':'tarjeta', etiqueta:ahorro?'Total':'Saldo', etiquetaDetalle:info.etiqueta,
+    estilo:'tarjeta', fija:esCuentaFija(c), etiqueta:ahorro?'Total':'Saldo', etiquetaDetalle:info.etiqueta,
     cuentaKey:fuenteDeCuenta(c.id), esAhorro:ahorro, pantallaPropia:ahorro, archivada:!!c.archivada,
     iconoHtml:size=>renderIconoCustom(c,size), saldo:()=>ahorro?ahorroTotal(c.id):(c.saldo||0) };
 }
@@ -310,16 +331,6 @@ function _cuentaSelectorHtml(d){
       ${flecha('cuenta-card-flecha','9 18 15 12 9 6')}
     </div>`;
   }
-  return html`<div class="cuenta-pill" data-fuente="${d.fuente}" style="${vars}">
-    <div class="cuenta-pill-info">
-      ${d.iconoHtml(30)}
-      <div>
-        <div class="cuenta-pill-nombre">${d.nombre}</div>
-        <div class="cuenta-pill-saldo">${fmtSaldoSelector(d.saldo())}</div>
-      </div>
-    </div>
-    ${flecha('cuenta-pill-flecha','9 18 15 12 9 6')}
-  </div>`;
 }
 
 function renderSelectorCuentas(){
@@ -331,9 +342,8 @@ function renderSelectorCuentas(){
     el.innerHTML=html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-tit">Aún no tienes cuentas</div><div class="ix-cuentas-vacio-txt">Agrega dónde guardas tu plata: un banco, Nequi, efectivo, una cuenta de ahorro…</div></div>`;
     return;
   }
-  const tarjetas=cuentas.filter(d=>d.estilo==='tarjeta');
-  const pastillas=cuentas.filter(d=>d.estilo==='pastilla');
-  el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${pastillas.length?html`<div class="cuentas-selector-pills">${pastillas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<div class="sec-title ix-mt12">Archivadas</div><div class="cuentas-selector-pills cuentas-archivadas">${archivadas.map(d=>_cuentaSelectorHtml({...d,estilo:'pastilla'}))}</div>`:''}`;
+  const tarjetas=cuentas;
+  el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<div class="sec-title ix-mt12">Archivadas</div><div class="cuentas-selector-pills cuentas-archivadas">${archivadas.map(d=>_cuentaSelectorHtml({...d,estilo:'pastilla'}))}</div>`:''}`;
 }
 function hexToRgb(hex){
   if(!hex||hex.length<7)return'96,176,240';
@@ -379,7 +389,7 @@ function _fuentesDeCuenta(c){
 // cajitas. Cualquier otra se archiva: así el historial de gastos, préstamos y encargos que la mencionan nunca queda apuntando a nada.
 function cuentaSePuedeEliminar(id){
   const c=getCuenta(id);
-  if(!c)return false;
+  if(!c||esCuentaFija(c))return false;
   const fuentes=new Set(_fuentesDeCuenta(c));
   if(esCuentaAhorro(c)&&cajitasDeCuenta(id).length)return false;
   if((S.libro||[]).some(l=>l&&fuentes.has(l.cuenta)))return false;
@@ -390,6 +400,7 @@ function cuentaSePuedeEliminar(id){
 
 // Por qué no se puede archivar (texto para el usuario), o '' si se puede.
 function _motivoNoArchivar(c){
+  if(esCuentaFija(c))return 'Efectivo es una cuenta permanente: no se archiva ni se elimina (sí puedes renombrarla).';
   const total=esCuentaAhorro(c)?ahorroTotal(c.id):(c.saldo||0);
   if(Math.abs(total)>=0.01)return 'Primero deja "'+c.nombre+'" en cero: mueve el saldo a otra cuenta (botón «Mover a otra cuenta»). Disponible: '+fmt(total)+'.';
   const enc=_encargosConSaldoEn(_fuentesDeCuenta(c));
@@ -1539,6 +1550,11 @@ document.querySelectorAll('.btn-volver-selector').forEach(btn => {
 // --- Cuenta simple (Nequi / Efectivo / personalizada): un listener delegado para todos los
 // botones del detalle; la cuenta es la que esté abierta (cuentaActual) ---
 const _detalleSimple = document.getElementById('cuentas-detalle-simple');
+const _detalleAhorro = document.getElementById('cuentas-detalle-nu');
+if (_detalleAhorro) _detalleAhorro.addEventListener('click', e => {
+  const btn = e.target.closest('button[id]');
+  if (btn) _accionAdministrarCuenta(btn.id);
+});
 if (_detalleSimple) _detalleSimple.addEventListener('click', e => {
   const btn = e.target.closest('button[id]');
   const fuente = cuentaActual;
@@ -1547,9 +1563,7 @@ if (_detalleSimple) _detalleSimple.addEventListener('click', e => {
   if (btn.id === 'btn-agregar-cuenta-det') abrirAgregarDinero(fuente, d.nombre);
   else if (btn.id === 'btn-restar-cuenta-det') abrirRestarDinero(fuente, d.nombre);
   else if (btn.id === 'btn-transferir-cuenta-det') abrirTransferir(fuente);
-  else if (btn.id === 'btn-editar-cuenta-custom') editarCuenta(d.id);
-  else if (btn.id === 'btn-archivar-cuenta') { if (d.archivada) reactivarCuenta(d.id); else archivarCuenta(d.id); }
-  else if (btn.id === 'btn-eliminar-cuenta-custom') eliminarCuenta(d.id);
+  else _accionAdministrarCuenta(btn.id);
 });
 
 // --- Agregar dinero (menú combinado, selector de cuenta destino) ---

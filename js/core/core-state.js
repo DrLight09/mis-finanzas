@@ -287,9 +287,19 @@ const CuentaPantallas={};
 const TIPOS_CUENTA={
   banco:    {nombre:'Cuenta bancaria',   etiqueta:'Saldo disponible'},
   billetera:{nombre:'Billetera digital', etiqueta:'Saldo disponible'},
-  efectivo: {nombre:'Efectivo',          etiqueta:'Disponible en efectivo'},
+  efectivo: {nombre:'Efectivo',          etiqueta:'Disponible en efectivo', fija:true},
   ahorro:   {nombre:'Cuenta de ahorro',  etiqueta:'Total en ahorro'}
 };
+// Efectivo es PERMANENTE: casi todo el mundo maneja plata en efectivo, así que existe siempre (se crea sola) y no se archiva ni se
+// elimina; sí se puede renombrar o cambiar de color. El resto de cuentas se administran sin restricción.
+function esCuentaFija(c){return !!c&&!!(TIPOS_CUENTA[c.tipo]||{}).fija;}
+function asegurarEfectivo(){
+  const arr=_cuentasArr();
+  const ef=arr.find(c=>c&&c.tipo==='efectivo');
+  if(!ef){arr.push({id:'efectivo',tipo:'efectivo',nombre:'Efectivo',icono:'efectivo',color:'#f0b840',saldo:0});return true;}
+  if(ef.archivada){ef.archivada=false;return true;}
+  return false;
+}
 function esFuenteCuenta(f){return typeof f==='string'&&f.startsWith(FUENTE_CUENTA_PREFIJO);}
 function fuenteDeCuenta(id){return FUENTE_CUENTA_PREFIJO+id;}
 function idDeFuenteCuenta(f){return esFuenteCuenta(f)?f.slice(FUENTE_CUENTA_PREFIJO.length):'';}
@@ -1732,6 +1742,7 @@ const Refresh = (() => {
 if (typeof window !== 'undefined') window.Refresh = Refresh;
 
 function refresh(){
+  asegurarEfectivo(); // Efectivo siempre existe; se guarda con el próximo save()
   _refreshNucleo();
   Refresh.ejecutar();
 }
@@ -1743,12 +1754,13 @@ function renderCuentasInicio(){
   const el=document.getElementById('inicio-cuentas');
   if(!el)return;
   const activas=cuentasActivas();
+  const soloEfectivo=activas.length>0&&activas.every(esCuentaFija);
   if(!activas.length){
     el.innerHTML=html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-tit">Aún no tienes cuentas</div><div class="ix-cuentas-vacio-txt">Agrega dónde guardas tu plata (un banco, Nequi, efectivo…) para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar mi primera cuenta</button></div>`;
     return;
   }
   const tile=(nombre,monto,color)=>html`<div class="stat"><div class="stat-label">${nombre}</div><div class="stat-value" data-color="${_colorSeguro(color)}">${fmtNoCents(monto)}</div></div>`;
-  el.innerHTML=html`<div class="grid3">${activas.map(c=>tile(esCuentaAhorro(c)?c.nombre+' libre':c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),c.color))}</div>`;
+  el.innerHTML=html`<div class="grid3">${activas.map(c=>tile(esCuentaAhorro(c)?c.nombre+' libre':c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),c.color))}</div>${soloEfectivo?html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-txt">Agrega tu banco, Nequi o cuenta de ahorro para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar cuenta</button></div>`:''}`;
   el.querySelectorAll('[data-color]').forEach(n=>{n.style.color=n.dataset.color;}); // color calculado: se asigna por DOM
 }
 

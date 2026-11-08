@@ -2080,7 +2080,7 @@ describe('cuentas-nu-archivos', () => {
 
   test('lo que Nu toma de cuentas.js es esta lista (si cambia, se decide a propósito y se actualiza la cabecera de nu.js)', () => {
     const usadas = usadasDe(sinComentarios(leer('js/modules/nu.js')), declaradas(leer('js/modules/cuentas.js')));
-    assert.deepEqual(usadas, ['_MIN_RETIRO', '_aperturaToggleUI', '_descriptorDeCuenta', '_setBtnEstado', '_setBtnTransferir', '_showCuentasPanel',
+    assert.deepEqual(usadas, ['_MIN_RETIRO', '_aperturaToggleUI', '_descriptorDeCuenta', '_pintarAdministrarCuenta', '_setBtnEstado', '_setBtnTransferir', '_showCuentasPanel',
       '_tituloCuentaHtml', 'abrirAgregarDinero', 'abrirRestarDinero', 'abrirTransferir', 'actualizarBotonRetirar', 'actualizarBotonesTransferir',
       'cuentaActual', 'getMovimientosCuenta', 'registrarEntradaConApertura', 'registrarSalida', 'renderMovsCuenta']);
   });
@@ -2418,5 +2418,72 @@ describe('cuentas-modelo-unico', () => {
       assert.equal(app.calcC(app.S.cajitas[1]).tasa, 12);
       assert.deepEqual(plano(app.cuentasAhorro({ soloActivas: true })).map(c => c.id), ['nu']);
     });
+  });
+});
+
+describe('cuentas-efectivo-permanente-y-administracion', () => {
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'),
+    core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
+  const entorno = (S = {}) => {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { libro: [], movimientos: [], encargos: [], cuentas: [], cajitas: [] }, S);
+    app.toast = () => {}; app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {};
+    app.volverSelector = () => {}; app.renderSelectorCuentas = () => {}; app.renderDetalleCuenta = () => {};
+    return app;
+  };
+
+  test('Efectivo se crea solo, una única vez, y reaparece si faltara o estuviera archivado', () => {
+    const app = entorno();
+    assert.equal(app.asegurarEfectivo(), true);
+    assert.equal(app.S.cuentas.filter(c => c.tipo === 'efectivo').length, 1);
+    assert.equal(app.asegurarEfectivo(), false);
+    app.S.cuentas[0].archivada = true;
+    assert.equal(app.asegurarEfectivo(), true);
+    assert.equal(app.S.cuentas[0].archivada, false);
+  });
+
+  test('Efectivo no se archiva ni se elimina; las demás cuentas sí', async () => {
+    const app = entorno({ cuentas: [{ id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, { id: 'cs', tipo: 'banco', nombre: 'Caja Social', saldo: 0 }] });
+    assert.equal(app.cuentaSePuedeEliminar('efectivo'), false);
+    assert.notEqual(app._motivoNoArchivar(app.getCuenta('efectivo')), '');
+    await app.archivarCuenta('efectivo');
+    assert.equal(!!app.getCuenta('efectivo').archivada, false);
+    assert.equal(app.cuentaSePuedeEliminar('cs'), true);
+    assert.equal(app._motivoNoArchivar(app.getCuenta('cs')), '');
+  });
+
+  test('una cuenta de ahorro también se puede archivar y el detalle de ahorro tiene sus botones', async () => {
+    const app = entorno({ cuentas: [{ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9 }] });
+    assert.equal(app._motivoNoArchivar(app.getCuenta('nu')), '');
+    await app.archivarCuenta('nu');
+    assert.equal(app.getCuenta('nu').archivada, true);
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const i = html.indexOf('id="cuentas-detalle-nu"');
+    const bloque = html.slice(i, i + 4000);
+    for (const id of ['btn-archivar-cuenta-ah', 'btn-editar-cuenta-ah', 'btn-eliminar-cuenta-ah', 'banner-archivada-ah']) assert.ok(bloque.includes('id="' + id + '"'), id);
+  });
+
+  test('al crear no se ofrece "Efectivo" como tipo ni como preset; Caja Social usa el rojo y el azul de la marca', () => {
+    const app = entorno();
+    const src = fs.readFileSync(path.join(RAIZ, 'js/modules/cuentas.js'), 'utf8');
+    assert.ok(/filter\(t=>!TIPOS_CUENTA\[t\]\.fija\)/.test(src));
+    const cs = app.getIconoData('cajasocial');
+    assert.equal(cs.color, '#E2222E');
+    assert.ok(cs.svg.includes('#008FD1') && cs.svg.includes('#E2222E'));
+  });
+
+  test('el selector pinta todas las cuentas en una sola grilla (sin pastillas aparte)', () => {
+    const src = fs.readFileSync(path.join(RAIZ, 'js/modules/cuentas.js'), 'utf8');
+    assert.ok(!src.includes('cuenta-pill'));
+    const app = entorno({ cuentas: [{ id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
+    assert.equal(app._descriptorCuenta('cuenta:efectivo').estilo, 'tarjeta');
   });
 });

@@ -81,7 +81,7 @@ function renderArchivadas() {
   const arch = _cuentasSelector({ archivadas: true });
   el.innerHTML = arch.length
     ? html`<div class="cuentas-selector-grid">${arch.map(d => _cuentaSelectorHtml({ ...d, archivada: true }))}</div>`
-    : html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-txt">No tienes cuentas archivadas.</div></div>`;
+    : emptyState(ICONO_VACIO_CUENTAS,'Sin cuentas archivadas','Las cuentas que dejes de usar y archives aparecerán aquí.');
 }
 function abrirArchivadas() {
   _volverA = 'selector';
@@ -253,6 +253,7 @@ function _mostrarTipoNC(){
   const ic=getIconoData(_ncIconoSel);
   bloque.style.display=(_ncModoEdicion||!(_ncIconoSel==='otro'||(ic&&ic.tipo==='banco')))?'none':'';
 }
+function ocultarInvitacionCuentas(){S.invitacionCuentasOculta=true;save();refresh();}
 function alternarAhorroNC(){selTipoNC(_ncTipoSel==='ahorro'?'banco':'ahorro');}
 function _renderTiposNC(){
   const wrap=document.getElementById('nc-tipos');
@@ -375,10 +376,6 @@ function renderSelectorCuentas(){
   if(!el)return;
   const cuentas=_cuentasSelector();
   const archivadas=_cuentasSelector({archivadas:true});
-  if(!cuentas.length&&!archivadas.length){
-    el.innerHTML=html`<div class="card ix-cuentas-vacio"><div class="ix-cuentas-vacio-tit">Aún no tienes cuentas</div><div class="ix-cuentas-vacio-txt">Agrega dónde guardas tu plata: un banco, Nequi, efectivo, una cuenta de ahorro…</div></div>`;
-    return;
-  }
   const tarjetas=cuentas;
   el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<button type="button" class="btn-cuentas-archivadas" ${raw(Events.attr('cuentas:abrirArchivadas'))}>Cuentas archivadas (${archivadas.length})<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>`:''}`;
 }
@@ -1534,6 +1531,7 @@ Events.registerAll('cuentas', {
   selIconoNC,
   selTipoNC,
   alternarAhorroNC,
+  ocultarInvitacionCuentas,
   abrirArchivadas,
   selColorNC,
   abrirOnboarding,

@@ -2092,12 +2092,12 @@ describe('patrimonio — fuente única (hero, historial, Proyección y Salud lee
 
   test('el texto de la fórmula del hero solo nombra los pasivos que existen', () => {
     const sin = freshApp({ cuentas: cuentas({ nequi: 1000 }) });
-    assert.equal(sin.patrimonioFormulaTexto(), 'Cuentas + CDTs + Prestado');
+    assert.equal(sin.patrimonioFormulaTexto(), 'Cuentas');
     const con = freshApp({ cuentas: cuentas({ nequi: 1000 }), misDeudas: yoDebo(500), tarjetasCredito: [{ id: 't1', deuda: 100 }] });
-    assert.equal(con.patrimonioFormulaTexto(), 'Cuentas + CDTs + Prestado − Deuda TC − Yo debo');
+    assert.equal(con.patrimonioFormulaTexto(), 'Cuentas − Deuda TC − Yo debo');
     const els = conDomQueRecuerda(con);
     con.refresh();
-    assert.equal(els['hero-formula'].textContent, 'Cuentas + CDTs + Prestado − Deuda TC − Yo debo');
+    assert.equal(els['hero-formula'].textContent, 'Cuentas − Deuda TC − Yo debo');
   });
 
   test('liquidez: suma lo disponible; resta tarjeta propia, «Yo debo» y plata ajena; NO suma «Me deben» ni CDTs ni alcancía', () => {

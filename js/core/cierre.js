@@ -128,7 +128,7 @@ const Cierre = (() => {
     // toca; si falta el de un año con datos suficientes, analizar() lo avisa (no lo bloquea).
     wrappedAnios: 'congelada',
     cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', bienes: 'estado-actual', plataComprometida: 'estado-actual',
-    catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion', planDeudasEstrategia: 'configuracion',
+    catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', invitacionCuentasOculta: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion', planDeudasEstrategia: 'configuracion',
     schemaVersion: 'meta', _esquemaAnterior: 'meta', _ultimoMesVisto: 'meta', _ajustesBaseLog: 'meta', cdts: 'meta', nequiSaldo: 'meta', efectivoSaldo: 'meta', cuentasPersonalizadas: 'meta',
   };
 

@@ -2552,4 +2552,19 @@ describe('cuentas-colores-legibles', () => {
     assert.ok(/cuenta-card cuenta-card-archivada" data-fuente="cuenta:b"/.test(String(lista.innerHTML)), 'la archivada es una tarjeta con data-fuente');
     assert.equal(app.cuentaSePuedeEliminar('a'), true);
   });
+  test('la fórmula del hero solo nombra lo que existe, y el aviso de primera cuenta se puede cerrar para siempre', () => {
+    const app = loadApp([core('html-tag.js'), core('core-state.js')], { permissive: true });
+    assert.equal(app.patrimonioFormulaTexto({ cdts: 0, meDeben: 0 }), 'Cuentas');
+    assert.equal(app.patrimonioFormulaTexto({ cdts: 5, meDeben: 0 }), 'Cuentas + CDTs');
+    assert.equal(app.patrimonioFormulaTexto({ cdts: 5, meDeben: 9, yoDebo: 1 }), 'Cuentas + CDTs + Prestado − Yo debo');
+    app.S.cuentas = [{ id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }];
+    const el = { innerHTML: '', querySelectorAll: () => [], insertAdjacentHTML(_p, h) { this.innerHTML += h; } };
+    app.document.getElementById = () => el;
+    app.renderCuentasInicio();
+    assert.ok(String(el.innerHTML).includes('Agrega tu banco, Nequi o cuenta de ahorro') && String(el.innerHTML).includes('ix-cuentas-vacio-x'));
+    app.S.invitacionCuentasOculta = true; el.innerHTML = '';
+    app.renderCuentasInicio();
+    assert.ok(!String(el.innerHTML).includes('Agrega tu banco'), 'cerrado: no vuelve a salir');
+    assert.ok(String(el.innerHTML).includes('Efectivo'), 'el recuadro de Efectivo sigue');
+  });
 });

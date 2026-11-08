@@ -15,7 +15,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cierre.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/cobros.js` | de entrada (defer) | 13 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 115 | 13 |
+| `js/core/core-state.js` | de entrada (defer) | 115 | 14 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -52,7 +52,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 13 | 0 |
-| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 77 | 2 |
+| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 78 | 2 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 83 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 28 | 1 |
@@ -117,7 +117,7 @@ Carga: de entrada (defer)
 
 **Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_clasePorCuenta`, `_claseValida`, `_closeDialog`, `_colorSeguro`, `_cuentasArr`, `_ensureSpotify`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_libroPata`, `_listaFuentes`, `_luminancia`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_refreshNucleo`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `asegurarEfectivo`, `avisarMovimientoBloqueado`, `botonEliminarFila`, `buildFuentesOptsHtml`, `cajitasDeCuenta`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `claseEfectivaMovimiento`, `colorCuenta`, `colorLegible`, `conEstadoAislado`, `confirmarBorrarMovimientoViejo`, `crearMovimientoApertura`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `debounceSave`, `descontarFuente`, `diaCreacionMov`, `dialogo`, `Dinero`, `emptyState`, `entradasIngresoReal`, `escHtml`, `esCuentaAhorro`, `esCuentaFija`, `esFuenteCuenta`, `filaMovimiento`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteLabel`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `idDeFuenteCuenta`, `ingresosRealesDelMes`, `Libro`, `load`, `medirAnchoTexto`, `medirPatrimonioParaHistorial`, `mesActual`, `mesKey`, `mostrarSi`, `movimientosSinClase`, `nivelAntiguedadMovimiento`, `nombreCuenta`, `opcionesCuenta`, `parseMoney`, `parsePct`, `patrimonioFormulaTexto`, `pedirPinAntesDe`, `pintarAvatarPersona`, `poblarCatSelect`, `poblarFuente`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `Refresh`, `refresh`, `registrarSonda`, `renderCuentasInicio`, `Reversibles`, `saldoCuentas`, `save`, `setMoneyInput`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`, `validarSalidaFuente`
 
-**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CuentaPantallas`, `FUENTE_CUENTA_PREFIJO`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`, `TIPOS_CUENTA`
+**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CuentaPantallas`, `FUENTE_CUENTA_PREFIJO`, `ICONO_VACIO_CUENTAS`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`, `TIPOS_CUENTA`
 
 **Asigna a `window`:** `_dialogResolve`, `_locallyModified`
 
@@ -347,7 +347,7 @@ Carga: lazy — grupo `config`
 
 Carga: lazy — grupo `cuentas`
 
-**Funciones:** `_accionAdministrarCuenta`, `_aperturaToggleUI`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorDeCuenta`, `_encargosConSaldoEn`, `_fuentesDeCuenta`, `_getMovsFilter`, `_mostrarTipoNC`, `_motivoNoArchivar`, `_motivoSinRetiro`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_pintarAdministrarCuenta`, `_reiniciarPantallasCuenta`, `_renderDetalleSimple`, `_renderTiposNC`, `_resetSheetNuevaCuenta`, `_setBtnEstado`, `_setBtnTransferir`, `_showCuentasPanel`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `abrirAgregarDinero`, `abrirArchivadas`, `abrirCuenta`, `abrirEditarApertura`, `abrirNuevaCuenta`, `abrirOnboarding`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarBotonRetirar`, `actualizarTransfPreview`, `alternarAhorroNC`, `archivarCuenta`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarEditarApertura`, `confirmarRestarDinero`, `confirmarTransferir`, `crearCuenta`, `cuentaSePuedeEliminar`, `editarCuenta`, `eliminarCuenta`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `hexToRgb`, `openSheet_adMenu`, `reactivarCuenta`, `registrarEntradaConApertura`, `registrarSalida`, `renderArchivadas`, `renderBannerApertura`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `selTipoNC`, `toggleAdApertura`, `validarTransferencia`, `volverSelector`
+**Funciones:** `_accionAdministrarCuenta`, `_aperturaToggleUI`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorDeCuenta`, `_encargosConSaldoEn`, `_fuentesDeCuenta`, `_getMovsFilter`, `_mostrarTipoNC`, `_motivoNoArchivar`, `_motivoSinRetiro`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_pintarAdministrarCuenta`, `_reiniciarPantallasCuenta`, `_renderDetalleSimple`, `_renderTiposNC`, `_resetSheetNuevaCuenta`, `_setBtnEstado`, `_setBtnTransferir`, `_showCuentasPanel`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `abrirAgregarDinero`, `abrirArchivadas`, `abrirCuenta`, `abrirEditarApertura`, `abrirNuevaCuenta`, `abrirOnboarding`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarBotonRetirar`, `actualizarTransfPreview`, `alternarAhorroNC`, `archivarCuenta`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarEditarApertura`, `confirmarRestarDinero`, `confirmarTransferir`, `crearCuenta`, `cuentaSePuedeEliminar`, `editarCuenta`, `eliminarCuenta`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `hexToRgb`, `ocultarInvitacionCuentas`, `openSheet_adMenu`, `reactivarCuenta`, `registrarEntradaConApertura`, `registrarSalida`, `renderArchivadas`, `renderBannerApertura`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `selTipoNC`, `toggleAdApertura`, `validarTransferencia`, `volverSelector`
 
 **Globales:** `ICONOS_CUENTA`, `TR_MIN_EFECTIVO`
 
@@ -1280,6 +1280,7 @@ Ninguno.
 | `hoy` | `js/core/core-state.js` |
 | `html` | `js/core/html-tag.js` |
 | `Huella` | `js/core/huella.js` |
+| `ICONO_VACIO_CUENTAS` | `js/core/core-state.js` |
 | `ICONOS_CUENTA` | `js/modules/cuentas.js` |
 | `idDeFuenteCuenta` | `js/core/core-state.js` |
 | `importarJSON` | `js/modules/configuracion.js` |
@@ -1336,6 +1337,7 @@ Ninguno.
 | `nextMonthFixed` | `js/modules/spotify.js` |
 | `nivelAntiguedadMovimiento` | `js/core/core-state.js` |
 | `nombreCuenta` | `js/core/core-state.js` |
+| `ocultarInvitacionCuentas` | `js/modules/cuentas.js` |
 | `onChangeMov_enc_cuenta` | `js/modules/prestado.js` |
 | `onChangeMov_enc_sel` | `js/modules/prestado.js` |
 | `opcionesCuenta` | `js/core/core-state.js` |

@@ -112,6 +112,7 @@ function poblarCatSelect(selectId, cats, valorActual){
 }
 
 let S={
+  invitacionCuentasOculta:false, // la persona cerró (×) el aviso de Inicio «Agrega tu primera cuenta»; no vuelve a salir
   cajitas:[], // cajitas de las cuentas de ahorro: {id, cuentaId, nombre, saldo, fecha, cdts}; la tasa EA es de la CUENTA (cuenta.tasaEA)
   personas:[],
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
@@ -1039,11 +1040,15 @@ function calcPatrimonioConBienes(hoyStr){ return calcPatrimonioVisible()+calcBie
 // Texto del hero con lo que de verdad entra en la cuenta: solo menciona los pasivos que existen hoy.
 function patrimonioFormulaTexto(d){
   d=d||calcPatrimonioDesglose();
+  // Solo lo que la persona tiene hoy: siempre «Cuentas»; los CDTs y lo prestado, únicamente si existen.
+  const suma=['Cuentas'];
+  if(d.cdts>0)suma.push('CDTs');
+  if(d.meDeben>0)suma.push('Prestado');
   const resta=[];
   if(d.deudaTC>0)resta.push('Deuda TC');
   if(d.yoDebo>0)resta.push('Yo debo');
   if(d.ajeno>0)resta.push('Plata ajena');
-  return 'Cuentas + CDTs + Prestado'+resta.map(t=>' − '+t).join('');
+  return suma.join(' + ')+resta.map(t=>' − '+t).join('');
 }
 
 // Liquidez: lo que se puede usar ya (ver el bloque de arriba). La deuda de tarjeta es solo la PROPIA: la parte de la
@@ -1656,6 +1661,7 @@ window.addEventListener('beforeunload', function() {
 // nadie lo actualizara. Se saca la rama entera (no solo el comentario) para
 // que ningún módulo futuro pueda reintroducir un onclick inline acá por
 // costumbre. Ver auditoria-tecnica.md #1 y CHANGELOG.md#infraestructura--seguridad.
+const ICONO_VACIO_CUENTAS = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16" cy="14" r="1.2"/></svg>';
 function emptyState(icon, title, sub, btnLabel, btnFn){
   let btnHtml = '';
   if (btnLabel && btnFn && btnFn.action) {
@@ -1777,20 +1783,16 @@ function renderCuentasInicio(){
   if(el.querySelectorAll)el.querySelectorAll('.stat-cuenta,.ix-cuentas-vacio').forEach(n=>n.remove());
   const activas=cuentasActivas();
   const soloEfectivo=activas.length>0&&activas.every(esCuentaFija);
-  let marcado;
-  if(!activas.length){
-    marcado=html`<div class="card ix-cuentas-vacio stat-span3"><div class="ix-cuentas-vacio-tit">Aún no tienes cuentas</div><div class="ix-cuentas-vacio-txt">Agrega dónde guardas tu plata (un banco, Nequi, efectivo…) para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar cuenta</button></div>`;
-  }else{
-    // Si la última fila queda incompleta, el último recuadro se estira para ocuparla (nunca quedan huecos).
-    const fijos=2+(cuentasAhorro({soloActivas:true}).length?1:0);
-    const resto=(fijos+activas.length)%3;
-    const tile=(nombre,monto,color,extra)=>html`<div class="stat stat-cuenta${extra}"><div class="stat-label">${nombre}</div><div class="stat-value" data-color="${_colorSeguro(color)}">${fmtNoCents(monto)}</div></div>`;
-    marcado=html`${activas.map((c,i)=>{
-      const ult=i===activas.length-1;
-      const extra=ult&&resto===1?' stat-span3':ult&&resto===2?' stat-span2':'';
-      return tile(c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),colorCuenta(c),extra);
-    })}${soloEfectivo?html`<div class="card ix-cuentas-vacio stat-span3"><div class="ix-cuentas-vacio-txt">Agrega tu banco, Nequi o cuenta de ahorro para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar cuenta</button></div>`:''}`;
-  }
+  // Efectivo siempre existe (asegurarEfectivo): nunca hay «cero cuentas», así que no hay estado vacío que pintar.
+  // Si la última fila queda incompleta, el último recuadro se estira para ocuparla (nunca quedan huecos).
+  const fijos=2+(cuentasAhorro({soloActivas:true}).length?1:0);
+  const resto=(fijos+activas.length)%3;
+  const tile=(nombre,monto,color,extra)=>html`<div class="stat stat-cuenta${extra}"><div class="stat-label">${nombre}</div><div class="stat-value" data-color="${_colorSeguro(color)}">${fmtNoCents(monto)}</div></div>`;
+  const marcado=html`${activas.map((c,i)=>{
+    const ult=i===activas.length-1;
+    const extra=ult&&resto===1?' stat-span3':ult&&resto===2?' stat-span2':'';
+    return tile(c.nombre,esCuentaAhorro(c)?cajitasDeCuenta(c.id).reduce((a,x)=>a+calcC(x).val,0):(c.saldo||0),colorCuenta(c),extra);
+  })}${soloEfectivo&&!S.invitacionCuentasOculta?html`<div class="card ix-cuentas-vacio stat-span3"><button type="button" class="ix-cuentas-vacio-x btn-icon" aria-label="No mostrar más" title="No mostrar más" ${raw(Events.attr('cuentas:ocultarInvitacionCuentas'))}>×</button><div class="ix-cuentas-vacio-txt">Agrega tu banco, Nequi o cuenta de ahorro para empezar a registrar.</div><button type="button" class="btn btn-primary" ${raw(Events.attr('cuentas:abrirOnboarding'))}>Agregar cuenta</button></div>`:''}`;
   if(el.insertAdjacentHTML)el.insertAdjacentHTML('beforeend',String(marcado));
   else el.innerHTML+=String(marcado);
   el.querySelectorAll('[data-color]').forEach(n=>{n.style.color=n.dataset.color;}); // color calculado: se asigna por DOM

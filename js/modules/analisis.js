@@ -247,12 +247,14 @@ function renderAnalisis(){
   // ── Mesada ─────────────────────────────────────────────────────────────
   const mesadaSection=document.getElementById('an-mesada-section');
   const mesadaTotal=document.getElementById('an-mesada-total');
-  if(S.modulos&&S.modulos.mesada&&mesadaSection&&mesadaTotal&&typeof getMesadaData==='function'){
-    mesadaSection.style.display='';
+  // Con el módulo apagado el desglose solo se muestra si ese año tiene mesada registrada (esa plata ya está en el total de ingresos).
+  if(mesadaSection&&mesadaTotal){
     let totalMesada=0;
     for(let m=1;m<=12;m++) totalMesada+=Periodo.mesadaDelMes(anio+'-'+String(m).padStart(2,'0'));
+    const moduloActivo=!!(S.modulos&&S.modulos.mesada);
+    mostrarSi(mesadaSection,moduloActivo||totalMesada>0);
     mesadaTotal.textContent=fmt(totalMesada);
-  } else if(mesadaSection) mesadaSection.style.display='none';
+  }
 
   // ── Tasa de ahorro ────────────────────────────────────────────────────
   const elTasaAhorro=document.getElementById('an-tasa-ahorro');

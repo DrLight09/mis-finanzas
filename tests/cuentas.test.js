@@ -1284,7 +1284,7 @@ describe('spotify-cajita', () => {
     const ga = fs.readFileSync(path.join(MODULES_DIR, 'gastos.js'), 'utf8');
     assert.ok(!/nombre&&x\.nombre\.toLowerCase\(\)\.includes\('spotify'\)/.test(sp));
     assert.ok(!/gv\.desc[^;]*includes\('spotify'\)/.test(ga));
-    assert.match(ga, /_origenSeccion === 'Spotify'/);
+    assert.ok(!/__spotify__|_virtual/.test(ga), 'Gastos fijos ya no inventa una fila virtual de Spotify');
   });
 });
 

@@ -602,14 +602,8 @@ async function deleteGastoVar(id) {
 function renderGastosFijos() {
   const el = document.getElementById('gastosFijosList');
   const g = S.gastosFijos || [];
-  // Incluir Spotify como gasto fijo virtual si está configurado y no fue pagado este mes
-  const spCosto = S.spotify.costo || 0;
-  const spotifyModuloActivo = !!(S.modulos && S.modulos.spotify);
-  const yaExisteSpotify = g.some(x => x.nombre && x.nombre.toLowerCase().includes('spotify'));
-  const spYaPagadoMes = (S.gastosVar || []).some(gv => mesKey(gv.fecha) === mesActual() && gv._origenSeccion === 'Spotify'); // el gasto que registra el módulo lleva esta marca
-  // Si el módulo Spotify está activo ya gestiona el costo; no mostrarlo como gasto fijo virtual para evitar doble conteo
-  const extras = spCosto > 0 && !yaExisteSpotify && !spYaPagadoMes && !spotifyModuloActivo ? [{ id: '__spotify__', nombre: 'Spotify Premium', monto: spCosto, cat: 'Suscripciones', _virtual: true }] : [];
-  const todos = [...extras, ...g];
+  // Solo lo que el usuario creó. El pago de Spotify NO es un gasto fijo: lo registra el módulo como gasto variable (con su marca) al pagar.
+  const todos = g;
   // totalGF: solo contar gastos fijos reales que ya fueron PAGADOS este mes (no los virtuales ni los pendientes)
   const mesClaveTot = mesActual();
   const totalGFPagado = Periodo.gastosFijosDelMes(mesClaveTot).reduce((a, p) => a + p.monto, 0);
@@ -632,7 +626,7 @@ function renderGastosFijos() {
   const venc = new Map(Periodo.gastosFijosProgramados(mesClave, hoy()).map(g => [g.id, g]));
   el.innerHTML = html`${todos.map((x, i) => {
     const pagos = S.pagosGastosFijos || {};
-    const infoPago = (!x._virtual && x.id) ? pagos[x.id + '_' + mesClave] : null;
+    const infoPago = x.id ? pagos[x.id + '_' + mesClave] : null;
     const pagado = !!infoPago;
     let accionHtml;
     if (pagado) {
@@ -640,10 +634,8 @@ function renderGastosFijos() {
         <span class="badge badge-xs gasto-badge-pagado">Pagado</span>
         <div class="gasto-fecha-pago">${infoPago.fecha || ''}</div>
       </div>`;
-    } else if (!x._virtual) {
-      accionHtml = html`<button type="button" ${raw(Events.attr('gastos:abrirPagarGastoFijo', x.id))} class="gasto-btn-pagar">Pagar</button>`;
     } else {
-      accionHtml = html`<span class="gasto-nota">Spotify</span>`;
+      accionHtml = html`<button type="button" ${raw(Events.attr('gastos:abrirPagarGastoFijo', x.id))} class="gasto-btn-pagar">Pagar</button>`;
     }
     const g = venc.get(x.id);
     let vencHtml = '';
@@ -656,7 +648,7 @@ function renderGastosFijos() {
       nombre: x.nombre,
       monto: fmt(x.monto),
       montoClase: 'c-red',
-      acciones: !x._virtual ? html`<button type="button" class="gasto-btn-editar" data-stop-propagation="true" ${raw(Events.attr('gastos:abrirEditarGastoFijo', x.id))}>Editar</button>${botonEliminarFila('gastos:deleteGastoFijo', [x.id])}` : '',
+      acciones: html`<button type="button" class="gasto-btn-editar" data-stop-propagation="true" ${raw(Events.attr('gastos:abrirEditarGastoFijo', x.id))}>Editar</button>${botonEliminarFila('gastos:deleteGastoFijo', [x.id])}`,
       metaClase: 'gasto-meta-fijo',
       meta: html`<span class="badge badge-xs bg-blue">${x.cat}</span>${vencHtml}${accionHtml}`
     });

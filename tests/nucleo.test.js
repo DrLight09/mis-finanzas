@@ -500,10 +500,10 @@ describe('periodo', () => {
     assert.equal(P(ctx).mesadaDelMes('2026-10'), 0);
   });
 
-  test('mesadaDelMes — con el módulo apagado o sin datos da 0; suma papá y mamá', () => {
+  test('mesadaDelMes — sin datos da 0; suma papá y mamá; apagar el módulo NO borra la plata que ya entró', () => {
     const datos = { papa: { cuotas: { 2026: 10 }, pagos: { '2026-0': { monto: 10 } } }, mama: { cuotas: { 2026: 5 }, pagos: { '2026-0': { monto: 5 } } } };
     assert.equal(P(app({ mesadas: datos })).mesadaDelMes('2026-01'), 15);
-    assert.equal(P(app({ mesadas: datos, modulos: {} })).mesadaDelMes('2026-01'), 0);
+    assert.equal(P(app({ mesadas: datos, modulos: {} })).mesadaDelMes('2026-01'), 15, 'módulo apagado: sigue contando como ingreso');
     assert.equal(P(app()).mesadaDelMes('2026-01'), 0);
   });
 

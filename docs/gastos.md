@@ -22,7 +22,7 @@ Registrar en qué se va la plata mes a mes, separando lo que es puntual (gasto v
 4. **Una compra en TC nunca descuenta saldo de una cuenta.** La plata "sale" de la tarjeta (aumenta su deuda), no de Nu/Nequi/Efectivo/cuenta personalizada.
 5. **Eliminar un gasto siempre revierte su efecto, nunca lo borra a secas.** Según el tipo: se devuelve el saldo a la cuenta de origen, o se revierte la compra/pago en la tarjeta correspondiente, o se desmarca el pago del gasto fijo del mes — para que se pueda volver a pagar. Un gasto nunca desaparece dejando saldos o estados a medias.
 6. **Un gasto secundario (generado desde otra sección) no se elimina desde Gastos.** Se muestra pero se bloquea su borrado acá, con un mensaje que manda al usuario a la sección de origen — de lo contrario la sección de origen queda con un registro huérfano.
-7. **El gasto fijo virtual de Spotify nunca se guarda como dato.** Se calcula al vuelo cada vez que se renderiza la lista, y solo aparece si no hay ya un gasto fijo real de Spotify, no se pagó ya este mes, y el módulo Spotify no está manejando el costo por su cuenta (para no duplicarlo).
+7. **Gastos fijos = solo lo que el usuario creó.** Ya no existe la fila «virtual» de Spotify Premium: el pago del plan lo registra el módulo Spotify como gasto variable (con la marca `_origenSeccion:'Spotify'`) y ese gasto cuenta completo en el balance del mes, esté el módulo activo o no. Si quieres verlo también como plantilla recurrente, créalo tú como gasto fijo.
 
 ## 4. Modelo de datos
 
@@ -161,7 +161,7 @@ Elegir "Pagar" en la plantilla → elegir cuenta de pago → validar que no est�
 - **Sigue oculto en el historial** (igual que antes del cambio): los movimientos de alcancía y los extras de préstamo (`_esGastoVarNoReal` sin ninguna de las otras banderas). Se ven en el feed general de movimientos, no acá.
 - **Filtro de mes en "todos":** el total mostrado es sobre todo el historial, no solo el mes actual; el botón de estado vacío cambia de texto según haya o no un mes específico elegido.
 - **Gasto fijo sin pagar vs. pagado este mes:** la plantilla siempre aparece en la lista de Fijos; lo que cambia es si se ve el botón "Pagar" o la etiqueta "Pagado" con su fecha — nunca desaparece de la lista por estar pagada.
-- **Spotify como fijo virtual:** solo se muestra si (a) hay un costo de Spotify configurado, (b) no existe ya un gasto fijo real con "spotify" en el nombre, (c) no se pagó ya este mes vía un gasto variable con "spotify" en la descripción, y (d) el módulo Spotify no está activo gestionando su propio costo. Si se cumplen las cuatro, se inyecta en la lista sin persistirse en `S.gastosFijos`.
+- **Sin fila virtual de Spotify:** se eliminó (ver regla 7). Era informativa, sin botón, y dependía de heurísticas por nombre.
 - **Datos viejos sin los flags nuevos** (`_esCompraTC`, `_esPagoTC`, etc.): al no tener el flag, `_esGastoVarNoReal()` los trata como gasto real normal — no rompe nada, simplemente no aplica la exclusión que no les corresponde.
 
 ## 7. Decisiones de diseño
@@ -170,7 +170,7 @@ Elegir "Pagar" en la plantilla → elegir cuenta de pago → validar que no est�
 - **¿Por qué una sola lista en vez de secciones (variables / TC / pagos de TC / fijos)?** Porque el usuario piensa el historial como un timeline por día y por orden de registro: con secciones, un gasto de hoy pagado con TC quedaba lejos del resto de lo de hoy, y un fijo pagado con TC salía repetido (en "Compras en TC" y en "Pagos de fijos"). Las etiquetas por fila y el subtotal por día conservan la distinción real/TC sin partir la lista.
 - **¿Por qué las compras y pagos de TC aparecen en el historial de Gastos si no son "gasto real" del mes?** Porque el usuario quiere ver todo lo que gastó en un solo timeline, sin importar con qué plata lo pagó. Separar totales (real vs. TC) permite mostrar ambos sin que se mezclen ni se dupliquen.
 - **¿Por qué eliminar un gasto revierte en vez de simplemente borrar el registro?** Para que el saldo de cuentas y tarjetas nunca quede desincronizado del historial visible — la alternativa (borrar y dejar que el usuario ajuste el saldo a mano) es la fuente más común de descuadres en una app de finanzas personales.
-- **¿Por qué el gasto fijo virtual de Spotify no se guarda como un gasto fijo real?** Porque su costo y su estado ya se gestionan enteramente en el módulo Spotify cuando está activo; mostrarlo también acá es solo una ayuda visual para quien no activó ese módulo, no una segunda fuente de verdad.
+- **¿Por qué ya no hay un gasto fijo «virtual» de Spotify?** Porque aparecía solo con el módulo apagado (justo cuando el usuario no quiere ver Spotify), no tenía acción, no sumaba a ningún total y para evitar duplicados adivinaba por el texto del nombre.
 - **¿Por qué el módulo quedó en un solo archivo (`gastos.js`) en vez de dividirse como Spotify o Encargos?** Porque ninguna de sus funciones depende de código definido más abajo en `index.html` al momento de cargar el script — a diferencia de Spotify/Encargos, que necesitan que Personas ya exista.
 - **¿Por qué "saldo insuficiente" no está escrito en `gastos.js`?** Porque esa comprobación es la misma para toda la app. `addGastoVar()` llama a `Plata.validarSalida` / `Plata.validarSalidas` (`core-state.js`), que devuelve `{ok, motivo}` con el mensaje ya escapado: cuenta o cajita falla si el saldo es menor que el monto; una TC falla solo si tiene cupo configurado y no alcanza. Antes cada módulo lo escribía a mano con redacción distinta y Spotify sin escapar el nombre de la cuenta. Los mensajes en línea de `confirmarPagarGastoFijo()` ("Necesario: …") se dejaron propios a propósito: son otro formato.
 - **¿Por qué el selector de "Pagar gasto fijo" no arma las `<option>` a mano?** `abrirPagarGastoFijo()` usa `FuentesFiltro.optsHtml()` (`js/core/fuentes-filtro.js`): filtra por saldo/cupo con `PRESET.SALIDA` y construye las opciones con `buildFuentesOptsHtml`, que escapa nombre y valor en un solo sitio. Es la misma pieza que usa el split de gasto variable.
@@ -191,7 +191,7 @@ Archivo: `js/modules/gastos.js`.
 | `addGastoVar()` | Valida y crea un gasto variable; si la fuente es TC, delega en `tcCrearCompra()`. |
 | `deleteGastoVar(id)` | Elimina un gasto revirtiendo su efecto según el tipo (ver §5). |
 | `abrirNuevoGastoVar()` | Pobla categorías y abre el sheet de gasto variable — usada por el estado vacío. |
-| `renderGastosFijos()` | Pinta la lista de plantillas de gasto fijo, incluyendo el virtual de Spotify si aplica. |
+| `renderGastosFijos()` | Pinta la lista de plantillas de gasto fijo. |
 | `addGastoFijo()` | Crea una nueva plantilla de gasto fijo. |
 | `deleteGastoFijo(id)` | Elimina una plantilla y limpia su historial de pagos. |
 | `abrirNuevoGastoFijo()` | Pobla categorías y abre el sheet de gasto fijo — usada por el estado vacío. |

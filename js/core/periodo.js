@@ -38,6 +38,8 @@
        de SU fecha, y el pago del plan cuenta como gasto completo (gastosVar). Así el balance del mes refleja la caja real
        aunque cobres semanas antes de pagar. El extra con cuenta destino ya cuenta como entrada real; el extra con «Sin
        especificar» lo cuenta spotifyEntradas. No depende de si el módulo está activo: el gasto del plan tampoco depende.
+     · REGLA GENERAL: encender o apagar un módulo (Mesada, Spotify…) solo muestra u oculta pantallas y avisos. Nunca cambia lo que
+       cuenta como ingreso, gasto o saldo: eso lo decide el dato registrado, no una preferencia de pantalla.
        Las estadísticas por ciclo de la pantalla Spotify son otra lectura y no cambian.
      · Es la misma regla del historial de patrimonio y de las entradas reales.
 
@@ -99,7 +101,9 @@ const Periodo = (() => {
   // → [{ parent, key, mesCubre:'YYYY-MM', monto, fecha, mes:'YYYY-MM' }]  (`mes` = mes en que entró la plata)
   function mesadaEntradas(estado) {
     const st = _st(estado);
-    if (!(st.modulos && st.modulos.mesada) || !st.mesadas || typeof st.mesadas !== 'object') return [];
+    // NO depende de si el módulo Mesada está activo: apagarlo solo oculta la pantalla; la plata que ya entró a tus cuentas sigue siendo ingreso
+    // (igual que Spotify). Sin pagos registrados, esto da [] por sí solo.
+    if (!st.mesadas || typeof st.mesadas !== 'object') return [];
     const out = [];
     ['papa', 'mama'].forEach(parent => {
       const d = st.mesadas[parent];

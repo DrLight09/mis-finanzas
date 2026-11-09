@@ -861,13 +861,8 @@ window.alcanciaConfirmarDeposito = function(){
   const unica = partes.length === 1;
 
   /* ── 2. Validar ── */
-  for(const p of partes){
-    if(p.origen !== 'cuenta') continue;
-    const saldoDisp = typeof getSaldoFuente==='function' ? getSaldoFuente(p.fuente) : 0;
-    if(p.monto > saldoDisp + 0.5){
-      err(unica ? 'Saldo insuficiente en la cuenta seleccionada' : 'Saldo insuficiente en ' + _alcNombreFuente(p.fuente)); return;
-    }
-  }
+  const vSal = Plata.validarSalidas(partes.filter(p => p.origen === 'cuenta')); // suma por cuenta (núcleo)
+  if(!vSal.ok){ err(vSal.motivo); return; }
 
   // Cobro de deuda: persona + (si aplica) préstamo, y que el monto no supere lo que todavía debe.
   let cobroDeudorId = '', cobroGrupoId = '', cobroDeudorNombre = '';

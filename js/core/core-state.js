@@ -522,6 +522,8 @@ function _fuenteHuerfana(fuente){
 // Antes cada módulo comparaba el saldo a su manera (centavos exactos, +0.01, +0.5…) y con su propio mensaje, y cada transferencia
 // aplicaba "descontar" y luego "sumar" por separado: si el segundo fallaba, quedaba a medias. Aquí vive la regla única:
 //   · Plata.validarSalida(fuente, monto)        → { ok, disponible, motivo }  (compara en centavos; `motivo` ya viene escapado para toast)
+//   · Plata.validarSalidas([{fuente, monto}])   → { ok, motivo }  suma por fuente antes de comparar (plata dividida entre cuentas)
+//   · Plata.resumenSalida(fuente, monto)        → { texto, ok }  el aviso vivo «Saldo disponible» de los formularios
 //   · Plata.disponibilidad(fuente, opts)        → { ok, motivo }  ¿esa fuente puede entregar/recibir plata hoy?
 //   · Plata.transferir(origen, destino, monto, { og, sinSaldo, permitirArchivada }) → { ok, motivo }  atómica: valida ANTES de tocar.
 // Siguen siendo sumarFuente/descontarFuente (y el libro) quienes cambian saldos; Plata solo decide si se puede y los aplica juntos.
@@ -559,14 +561,41 @@ const Plata=(()=>{
     if(cuenta.archivada&&!o.permitirArchivada)return{ok:false,motivo:'"'+escHtml(nombreCuenta(cuenta))+'" está archivada: reactívala o elige otra cuenta'};
     return{ok:true};
   }
+  // ÚNICA regla de "¿alcanza?" de toda la app. `{ok, disponible, motivo}`; `motivo` ya viene escapado para toast/HTML.
+  //  · Cuenta/cajita: compara en CENTAVOS contra el saldo disponible. Nunca se permite dejar una cuenta en negativo.
+  //  · TC: solo falla si la tarjeta tiene cupo configurado y el cupo disponible no alcanza (sin cupo no hay límite que validar).
+  //  · 'ganancia' (plata virtual) y fuente vacía («sin especificar», no mueve plata): siempre ok.
   function validarSalida(fuente,monto){
+    if(!fuente||fuente==='ganancia')return{ok:true,disponible:Infinity};
     if(!(Number(monto)>0))return{ok:false,disponible:0,motivo:'Ingresa un monto válido'};
     const t=tipoDe(fuente);
     if(!t)return{ok:false,disponible:0,motivo:'Elige una cuenta válida'};
-    if(fuente==='ganancia')return{ok:true,disponible:Infinity};
     const disponible=getSaldoFuente(fuente);
+    if(t==='tc'){
+      const tc=(S.tarjetasCredito||[]).find(x=>x.id===fuente.slice(3));
+      if(tc&&tc.cupo&&cent(monto)>cent(disponible))return{ok:false,disponible,motivo:'Cupo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disponible)};
+      return{ok:true,disponible};
+    }
     if(disponible===Infinity||cent(monto)<=cent(disponible))return{ok:true,disponible};
-    return{ok:false,disponible,motivo:'Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+' ('+fmt(disponible)+')'};
+    return{ok:false,disponible,motivo:'Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disponible)};
+  }
+  // Varias salidas a la vez (plata dividida entre cuentas, pagos de varios orígenes…): se SUMA por fuente antes de comparar. Si dos filas
+  // sacan de la misma cuenta, cada una por separado puede alcanzar y el total no. [{fuente, monto}] → {ok, motivo, fuente}.
+  function validarSalidas(filas){
+    const por=new Map();
+    (filas||[]).forEach(r=>{if(r&&r.fuente&&Number(r.monto)>0)por.set(r.fuente,(por.get(r.fuente)||0)+Number(r.monto));});
+    for(const [fuente,total] of por){
+      const v=validarSalida(fuente,total);
+      if(!v.ok)return{ok:false,motivo:v.motivo,fuente};
+    }
+    return{ok:true};
+  }
+  // Texto vivo para los avisos «Saldo disponible» de los formularios (misma regla que al confirmar). {texto, ok}.
+  function resumenSalida(fuente,monto){
+    if(!fuente)return{texto:'',ok:true};
+    const v=validarSalida(fuente,monto>0?monto:0.01);
+    const disp=getSaldoFuente(fuente);
+    return{texto:(fuente.startsWith('tc:')?'Cupo disponible: ':'Saldo disponible: ')+fmt(disp),ok:monto>0?v.ok:true};
   }
   function transferir(origen,destino,monto,opts){
     const o=opts||{};
@@ -584,7 +613,7 @@ const Plata=(()=>{
     sumarFuente(destino,monto,o.og);
     return{ok:true};
   }
-  return{tipoDe,disponibilidad,validarSalida,transferir,centavos:cent};
+  return{tipoDe,disponibilidad,validarSalida,validarSalidas,resumenSalida,transferir,centavos:cent};
 })();
 if(typeof window!=='undefined')window.Plata=Plata;
 
@@ -690,17 +719,6 @@ function getSaldoFuente(fuente){
 //    hay límite que validar; una TC inexistente tampoco bloquea: eso lo decide quien la busca).
 //  · Fuente vacía: ok (el gasto "sin especificar" no mueve plata).
 // Comparación estricta (disponible < monto), igual que los módulos que la usaban.
-function validarSalidaFuente(fuente,monto){
-  if(!fuente)return{ok:true};
-  const disp=getSaldoFuente(fuente);
-  if(fuente.startsWith('tc:')){
-    const tc=(S.tarjetasCredito||[]).find(x=>x.id===fuente.slice(3));
-    if(tc&&tc.cupo&&disp<monto)return{ok:false,mensaje:'Cupo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disp)};
-    return{ok:true};
-  }
-  if(disp<monto)return{ok:false,mensaje:'Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disp)};
-  return{ok:true};
-}
 
 /* ---- LOAD / SAVE ---- */
 function fmtInput(n){

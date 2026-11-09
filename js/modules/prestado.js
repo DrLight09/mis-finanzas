@@ -1194,8 +1194,12 @@ function _planPrestamo(base) {
     if (sinCuenta) return sinCuenta;
     const totalSplit = fuentes.reduce((a, r) => a + (r.monto || 0), 0);
     if (Math.abs(totalSplit - montoSalio) > Deudas.TOL) return _errSumaCuentas(totalSplit, montoSalio, hayMargen ? 'el valor real' : 'el monto');
+    const vs = Plata.validarSalidas(fuentes); // prestar es sacar plata: la cuenta debe alcanzar (suma por fuente)
+    if (!vs.ok) return _planErr(vs.motivo, 4000);
   } else {
     fuente = document.getElementById('mov_fuente').value;
+    const v = Plata.validarSalida(fuente, montoSalio);
+    if (!v.ok) return _planErr(v.motivo, 4000);
   }
   const regaloChk = document.getElementById('mov_regalo');
   return { ...base, montoSalio, hayMargen, fuentes, fuente, regalo: !!(regaloChk && regaloChk.checked) };

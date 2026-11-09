@@ -1454,7 +1454,7 @@ function validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOri
   }
   if (typeof saldoOrigen === 'number' && Number.isFinite(saldoOrigen)
       && centavos > Math.round(saldoOrigen * 100)) {
-    return fallo('saldo', 'Saldo insuficiente en ' + (etiquetaOrigen || 'el origen') + ' (' + fmt(saldoOrigen) + ')');
+    return fallo('saldo', 'Saldo insuficiente en ' + (etiquetaOrigen || 'el origen') + '. Disponible: ' + fmt(saldoOrigen)); // mismo formato que Plata.validarSalida
   }
   return { ok: true };
 }

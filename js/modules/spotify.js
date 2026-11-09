@@ -1327,10 +1327,8 @@ async function confirmarPagarSpotify(){
       prev.style.color='var(--red)';
       return;
     }
-    for(const s of splits){
-      const v=validarSalidaFuente(s.fuente,s.monto); // core-state.js: saldo/cupo, mensaje ya escapado
-      if(!v.ok){toast(v.mensaje,'err',3500);return;}
-    }
+    const vs=Plata.validarSalidas(splits); // suma por fuente (núcleo)
+    if(!vs.ok){toast(vs.motivo,'err',3500);return;}
     splits.forEach(s=>descontarFuente(s.fuente,s.monto,_ogSp(_pagoRef)));
     notaGasto+=' · dividido entre '+splits.map(s=>fuenteLabel(s.fuente)).join(', ');
   } else {
@@ -1343,15 +1341,15 @@ async function confirmarPagarSpotify(){
       // tipo 'cargo_*'), en vez de descontarFuente().
       const tc=getTCById(fuente.slice(3));
       if(!tc){toast('Tarjeta no encontrada','err');return;}
-      const v=validarSalidaFuente(fuente,monto);
-      if(!v.ok){toast(v.mensaje,'err',3500);return;}
+      const v=Plata.validarSalida(fuente,monto);
+      if(!v.ok){toast(v.motivo,'err',3500);return;}
       if(!S.tcMovimientos)S.tcMovimientos=[];
       tcMovId=uid();
       S.tcMovimientos.push({id:tcMovId,tcId:tc.id,tipo:'cargo_spotify',monto,fecha:fechaPago0,nota:nota||'Pago Spotify',eliminado:false});
       tcRecalcular(tc);
     } else if(fuente){
-      const v=validarSalidaFuente(fuente,monto);
-      if(!v.ok){toast(v.mensaje,'err',3500);return;}
+      const v=Plata.validarSalida(fuente,monto);
+      if(!v.ok){toast(v.motivo,'err',3500);return;}
       descontarFuente(fuente,monto,_ogSp(_pagoRef));
     }
   }

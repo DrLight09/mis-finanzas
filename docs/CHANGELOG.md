@@ -1,3 +1,7 @@
+## Validación de saldo única (`Plata.validarSalida/validarSalidas/resumenSalida`)
+**Antes:** cada pantalla tenía su propia regla (estricta, tolerancia $0,50, solo comparar contra una fila…) y su propio mensaje; Préstamos y Plata comprometida no validaban nada y podían dejar una cuenta en negativo; en plata dividida cada fila se validaba sola.
+**Ahora:** una sola función en `core-state.js` (centavos, mensaje único, escapado) y `validarSalidas` que suma por fuente. Se eliminó `validarSalidaFuente`. Migrados: Gastos (variable, dividido, fijo), Spotify, Alcancía, Nu (movimiento y CDT), Cuentas (transferir), Préstamos (simple y dividido, antes de mover nada) y Plata comprometida (crear destino y «Marcar pagos», todo o nada). **Cambio visible:** los avisos pasan a «Saldo insuficiente en X. Disponible: $N»; Alcancía/Encargos/Prestado conservan sus avisos específicos de «solo hay $X de este encargo» (otro concepto).
+
 # CHANGELOG — mis-finanzas
 
 Historial de bugs corregidos, código eliminado por diseño y decisiones de limpieza, por módulo. La documentación de cada módulo (`mesada.md`, `spotify.md`, etc.) se enfoca en cómo funciona *hoy*; el detalle de qué estaba mal antes y cómo se arregló vive acá, para no inflar los documentos principales.

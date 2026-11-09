@@ -976,6 +976,14 @@ function _cpdConfirmar(){
   let _tcCompraIdInicial = '';
   const destId = uid(); // id del destino: también es el `ref` de sus entradas del libro
 
+  // Saldo suficiente ANTES de mover nada: si ya sacó/pagó plata de una cuenta o cajita, esa fuente tiene que alcanzar (misma regla
+  // que el resto de la app: Plata.validarSalidas). Antes el saldo podía quedar negativo y el error se tragaba en silencio.
+  const _filasSalida = [];
+  if(yaSaque && cuentaId) _filasSalida.push({ fuente:cuentaId, monto });
+  if(tipo === 'gasto' && yaPague && gastoOrigen === 'cajita' && gastoCajita) _filasSalida.push({ fuente:gastoCajita, monto });
+  const _vSalida = Plata.validarSalidas(_filasSalida.filter(f => Plata.tipoDe(f.fuente)));
+  if(!_vSalida.ok){ toast(_vSalida.motivo, 'err', 3500); return; }
+
   // Si ya adelantó plata de una cajita (reposicion)
   if(yaSaque && cuentaId && typeof sumarFuente === 'function'){
     try {
@@ -1544,6 +1552,21 @@ function _cpGuardarMarcados(){
   const id = _cpMarcarId;
   const item = _cpData().find(i=>i.id===id);
   if(!item){ if(typeof closeSheet==='function') closeSheet('cp-marcar'); return; }
+
+  // Saldo suficiente ANTES de tocar nada (todo o nada): suma por fuente lo que sale en las transiciones false→true.
+  const _filasSalida = [];
+  (_cpMarcarTmp||[]).forEach((dNuevo,i)=>{
+    const dViejo = item.destinos[i];
+    if(dNuevo.tipo==='reposicion' && !dViejo.yaSaque && dNuevo.yaSaque){
+      const f = dNuevo.cuentaId || item.cuentaDestino;
+      if(f) _filasSalida.push({ fuente:f, monto:dNuevo.monto });
+    }
+    if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='cajita' && dNuevo.gastoCajita && !dViejo.yaPague && dNuevo.yaPague){
+      _filasSalida.push({ fuente:dNuevo.gastoCajita, monto:dNuevo.monto });
+    }
+  });
+  const _vSalida = Plata.validarSalidas(_filasSalida.filter(f => Plata.tipoDe(f.fuente)));
+  if(!_vSalida.ok){ toast(_vSalida.motivo, 'err', 3500); return; }
 
   // Detectar si alguna reposicion pasó de false→true (acaba de marcarla como "ya saqué")
   (_cpMarcarTmp||[]).forEach((dNuevo,i)=>{

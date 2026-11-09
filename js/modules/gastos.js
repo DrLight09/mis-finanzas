@@ -481,15 +481,13 @@ function addGastoVar() {
       }
       return;
     }
-    for (const s of splits) {
-      const v = validarSalidaFuente(s.fuente, s.monto); // core-state.js: saldo/cupo, mensaje ya escapado
-      if (!v.ok) { toast(v.mensaje, 'err'); return; }
-    }
+    const vs = Plata.validarSalidas(splits); // suma por fuente: dos filas de la misma cuenta cuentan juntas
+    if (!vs.ok) { toast(vs.motivo, 'err'); return; }
   } else {
     fuente = document.getElementById('gv_fuente').value;
     if (!fuente) { toast('Selecciona de dónde salió la plata', 'err'); return; }
-    const v = validarSalidaFuente(fuente, monto);
-    if (!v.ok) { toast(v.mensaje, 'err'); return; }
+    const v = Plata.validarSalida(fuente, monto);
+    if (!v.ok) { toast(v.motivo, 'err'); return; }
   }
 
   const compraId = uid();
@@ -747,10 +745,9 @@ function pgfActualizarSaldo() {
     }
     return;
   }
-  const saldo = getSaldoFuente(fuente);
-  const suficiente = saldo >= monto;
-  info.textContent = 'Saldo disponible: ' + fmt(saldo);
-  info.style.color = suficiente ? 'var(--accent)' : 'var(--red)';
+  const rs = Plata.resumenSalida(fuente, monto); // misma regla que al confirmar
+  info.textContent = rs.texto;
+  info.style.color = rs.ok ? 'var(--accent)' : 'var(--red)';
 }
 
 function confirmarPagarGastoFijo() {
@@ -776,23 +773,16 @@ function confirmarPagarGastoFijo() {
     const tcId = fuente.split(':')[1];
     const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
     if (!tc) { errEl.textContent = 'Tarjeta no encontrada.'; errEl.style.display = 'block'; return; }
-    if (tc.cupo && tcCupoDisponible(tc) < gf.monto) {
-      errEl.textContent = 'Cupo insuficiente. Disponible: ' + fmt(tcCupoDisponible(tc)) + ' — Necesario: ' + fmt(gf.monto);
-      errEl.style.display = 'block';
-      return;
-    }
+    const vTc = Plata.validarSalida('tc:' + tcId, gf.monto);
+    if (!vTc.ok) { errEl.innerHTML = vTc.motivo; errEl.style.display = 'block'; return; }
     const compra = tcCrearCompra(tc, { desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, nota: nota || 'Pago de gasto fijo' });
     gastoObj._esCompraTC = true;
     gastoObj._tcId = tcId;
     gastoObj._tcCompraId = compra.id;
     S.gastosVar.push(gastoObj);
   } else {
-    const saldo = getSaldoFuente(fuente);
-    if (saldo < gf.monto) {
-      errEl.textContent = 'Saldo insuficiente. Disponible: ' + fmt(saldo) + ' — Necesario: ' + fmt(gf.monto);
-      errEl.style.display = 'block';
-      return;
-    }
+    const vSal = Plata.validarSalida(fuente, gf.monto);
+    if (!vSal.ok) { errEl.innerHTML = vSal.motivo; errEl.style.display = 'block'; return; }
     descontarFuente(fuente, gf.monto, _ogGv(gastoObj.id));
     S.gastosVar.push(gastoObj);
   }

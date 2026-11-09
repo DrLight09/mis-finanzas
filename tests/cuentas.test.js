@@ -832,7 +832,7 @@ describe('nu-cdt', () => {
       assert.equal(e.app.S.movimientos.length, 0);
       assert.equal(e.guardados(), 0);
       assert.equal(e.cerrados.length, 0);
-      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Cajita &lt;A&gt; \(Nu\) \(\$5\.000\)/);
+      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Cajita &lt;A&gt; \(Nu\). Disponible: \$5\.000/);
       assert.equal(e.toasts.at(-1).ms, 3500);
     });
     test('una ENTRADA no se limita por el saldo', () => {
@@ -978,7 +978,7 @@ describe('restar-dinero', () => {
       assert.equal(e.app.S.movimientos.length, 0, 'no se registra ningún movimiento');
       assert.equal(e.guardados(), 0);
       assert.equal(e.cerrados.length, 0, 'el sheet sigue abierto para corregir el monto');
-      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Nequi \(\$5\.000\)/);
+      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Nequi. Disponible: \$5\.000/);
       assert.equal(e.toasts.at(-1).tipo, 'err');
     });
     test('un centavo de más ya es "insuficiente" (compara en centavos)', () => {
@@ -1114,7 +1114,7 @@ describe('transferir', () => {
     test('monto mayor al saldo → saldo, con la etiqueta recibida y fmt real', () => {
       const r = validar({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 500, saldoOrigen: 499, etiquetaOrigen: 'Nequi' });
       assert.equal(r.codigo, 'saldo');
-      assert.match(r.mensaje, /Saldo insuficiente en Nequi \(\$499\)/);
+      assert.match(r.mensaje, /Saldo insuficiente en Nequi. Disponible: \$499/);
     });
     test('monto igual al saldo pasa (mover todo)', () => {
       assert.equal(validar({ origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto: 500, saldoOrigen: 500 }).ok, true);
@@ -1207,7 +1207,7 @@ describe('transferir', () => {
       // 'cuenta:x' no tiene saldo en el simulador → 0, monto 1.000 → insuficiente
       const e = entorno({ origen: 'cuenta:x', destino: 'cuenta:nequi', monto: '1.000,00' });
       e.app.confirmarTransferir(); intacto(e, { n: 0, e: 0, t: [] });
-      assert.match(e.toasts[0].msg, /Saldo insuficiente en Ahorro &lt;x&gt; \(\$0\)/);
+      assert.match(e.toasts[0].msg, /Saldo insuficiente en Ahorro &lt;x&gt;. Disponible: \$0/);
       assert.ok(!e.toasts[0].msg.includes('<x>'));
     });
     test('mover exactamente todo el saldo funciona', () => {
@@ -2599,11 +2599,44 @@ describe('plata-reglas-unicas', () => {
     assert.equal(app.Plata.validarSalida('cuenta:a', 10000).ok, true);
     const r = app.Plata.validarSalida('cuenta:a', 10000.01);
     assert.equal(r.ok, false);
-    assert.match(r.motivo, /^Saldo insuficiente en A \(\$10\.000\)$/);
+    assert.match(r.motivo, /^Saldo insuficiente en A. Disponible: \$10\.000$/);
     assert.equal(app.Plata.validarSalida('cuenta:a', 0).ok, false);
     assert.equal(app.Plata.validarSalida('ganancia', 5).ok, true, 'la ganancia futura es virtual');
     app.S.cuentas[0].nombre = '<b>x</b>';
     assert.ok(!app.Plata.validarSalida('cuenta:a', 99999).motivo.includes('<b>'));
+  });
+
+  test('validarSalidas SUMA por fuente: dos filas que alcanzan solas pero no juntas se rechazan', () => {
+    const app = nuevo();
+    assert.equal(app.Plata.validarSalidas([{ fuente: 'cuenta:a', monto: 6000 }, { fuente: 'cuenta:a', monto: 4000 }]).ok, true);
+    const r = app.Plata.validarSalidas([{ fuente: 'cuenta:a', monto: 6000 }, { fuente: 'cuenta:a', monto: 4000.01 }]);
+    assert.equal(r.ok, false);
+    assert.equal(r.fuente, 'cuenta:a');
+    assert.match(r.motivo, /^Saldo insuficiente en A\. Disponible: \$10\.000$/);
+    assert.equal(app.Plata.validarSalidas([{ fuente: 'cuenta:a', monto: 6000 }, { fuente: 'cuenta:b', monto: 1 }]).ok, false, 'B está en 0');
+    assert.equal(app.Plata.validarSalidas([]).ok, true);
+    assert.equal(app.Plata.validarSalidas([{ fuente: '', monto: 5 }, { fuente: 'ganancia', monto: 5 }]).ok, true);
+  });
+
+  test('resumenSalida da el texto vivo con la misma regla que al confirmar', () => {
+    const app = nuevo();
+    const ok = app.Plata.resumenSalida('cuenta:a', 500);
+    assert.deepEqual({ ...ok }, { texto: 'Saldo disponible: $10.000', ok: true });
+    assert.equal(app.Plata.resumenSalida('cuenta:a', 10001).ok, false);
+    assert.equal(app.Plata.resumenSalida('', 5).texto, '');
+  });
+
+  test('no queda ningún validador de saldo paralelo (validarSalidaFuente) en la app', () => {
+    const fs = require('node:fs');
+    const dir = path.join(__dirname, '..', 'js');
+    const hallados = [];
+    const rec = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) return rec(f);
+      if (e.name.endsWith('.js') && fs.readFileSync(f, 'utf8').includes('validarSalidaFuente')) hallados.push(f);
+    });
+    rec(dir);
+    assert.deepEqual(hallados, []);
   });
 
   test('transferir mueve los dos lados juntos y el libro sigue sumando lo mismo', () => {

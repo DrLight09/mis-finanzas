@@ -773,7 +773,8 @@ function confirmarCrearCDT(){
   // "Invertir todo"), mientras que el saldo interno puede tener precisión de
   // sub-centavo. Sin esta tolerancia, "invertir todo" podía fallar por diferencias
   // de fracción de centavo que no son un déficit real.
-  if(monto>saldoReal+0.01){toast(`Saldo insuficiente. Solo tienes ${fmt(saldoReal)} en la cajita.`,'err');return;}
+  const vCdt=Plata.validarSalida('cajita:'+c.id,monto>saldoReal+0.01?monto:Math.min(monto,saldoReal)); // tolerancia de 1 centavo (arriba)
+  if(!vCdt.ok){toast(vCdt.motivo,'err');return;}
   const montoFinal=Math.min(monto,saldoReal);
   // Materializar los intereses acumulados y descontar el monto del CDT
   ajustarSaldoCuenta('cajita:'+c.id,saldoReal,{tipo:'rendimiento',desc:'Intereses',origen:{modulo:'cuentas'}});

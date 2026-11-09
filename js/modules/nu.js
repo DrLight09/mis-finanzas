@@ -1409,11 +1409,8 @@ function confirmarNuMovimiento() {
   // historial desfasado y borrar el movimiento devolvía de más. Se comprueba ANTES de materializar los
   // intereses para no dejar la cajita modificada a medias si se rechaza.
   if (_nuMovTipo !== 'entrada') {
-    const disponible = calcC(caj).val;
-    if (Math.round(v * 100) > Math.round(disponible * 100)) {
-      toast('Saldo insuficiente en ' + escHtml(caj.nombre || 'cajita') + ' (' + fmt(disponible) + ')', 'err', 3500);
-      return;
-    }
+    const val = Plata.validarSalida(_nuMovCajitaSel, v);
+    if (!val.ok) { toast(val.motivo, 'err', 3500); return; }
   }
 
   // Materializar intereses antes de tocar el saldo

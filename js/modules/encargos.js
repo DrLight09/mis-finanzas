@@ -893,10 +893,8 @@ function _validarMovEncMia() {
     return 'Elige de qué cuenta tuya salió la plata';
   }
   for (const r of sale) {
-    const saldo = getSaldoFuente(r.fuente);
-    if (r.monto > saldo + 0.5) {
-      return `No tienes ${fmt(r.monto)} en ${escHtml(fuenteLabel(r.fuente))}. Disponible: ${fmt(saldo)}.`;
-    }
+    const val = Plata.validarSalida(r.fuente, r.monto);
+    if (!val.ok) return val.motivo;
   }
 
   // Recupero: sin filas = "sin especificar" (igual que el modo simple con la opción vacía)
@@ -1810,11 +1808,8 @@ function _movEncConfirmarPrestarFaltante() {
   // los 20mil, dejando la cuenta en negativo en silencio. Mismo criterio que
   // ya usa "Yo puse la plata" (_validarMovEncMia, más arriba en este mismo
   // archivo): getSaldoFuente() antes de escribir cualquier dato.
-  const saldoFuente = getSaldoFuente(fuentePrestamo);
-  if (faltante > saldoFuente + 0.5) {
-    toast(`No tienes ${fmt(faltante)} en ${escHtml(fuenteLabel(fuentePrestamo))} para prestar. Disponible: ${fmt(saldoFuente)}.`, 'err', 4500);
-    return;
-  }
+  const valPrestamo = Plata.validarSalida(fuentePrestamo, faltante);
+  if (!valPrestamo.ok) { toast(valPrestamo.motivo, 'err', 4500); return; }
 
   const cuenta = document.getElementById('movenc_cuenta').value;
   if (cuenta) {

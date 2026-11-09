@@ -832,7 +832,7 @@ describe('nu-cdt', () => {
       assert.equal(e.app.S.movimientos.length, 0);
       assert.equal(e.guardados(), 0);
       assert.equal(e.cerrados.length, 0);
-      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Cajita &lt;A&gt; \(\$5\.000\)/);
+      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Cajita &lt;A&gt; \(Nu\) \(\$5\.000\)/);
       assert.equal(e.toasts.at(-1).ms, 3500);
     });
     test('una ENTRADA no se limita por el saldo', () => {
@@ -2574,5 +2574,80 @@ describe('cuentas-colores-legibles', () => {
     assert.equal(app.cuentaSePuedeEliminar('cs'), true);
     app.S.plataComprometida = [{ id: 'p1', cuentaDestino: 'cuenta:cs', monto: 5 }];
     assert.equal(app.cuentaSePuedeEliminar('cs'), false);
+  });
+});
+
+describe('plata-reglas-unicas', () => {
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const core = f => path.join(__dirname, '..', 'js', 'core', f);
+  const nuevo = () => {
+    const app = loadApp([core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js')], { permissive: true });
+    Object.assign(app.S, { libro: [], movimientos: [], transferencias: [], encargos: [], tarjetasCredito: [],
+      cuentas: [{ id: 'a', tipo: 'banco', nombre: 'A', saldo: 0 }, { id: 'b', tipo: 'banco', nombre: 'B', saldo: 0 },
+        { id: 'old', tipo: 'banco', nombre: 'Vieja', saldo: 0, archivada: true }, { id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9 }],
+      cajitas: [{ id: 'c1', cuentaId: 'nu', nombre: 'Viaje', saldo: 0, cdts: [] }] });
+    app.sumarFuente('cuenta:a', 10000);
+    return app;
+  };
+  const sumaLibro = app => app.S.libro.reduce((t, l) => t + l.monto, 0);
+
+  test('validarSalida compara en centavos con un solo mensaje (y escapa el nombre)', () => {
+    const app = nuevo();
+    assert.equal(app.Plata.validarSalida('cuenta:a', 10000).ok, true);
+    const r = app.Plata.validarSalida('cuenta:a', 10000.01);
+    assert.equal(r.ok, false);
+    assert.match(r.motivo, /^Saldo insuficiente en A \(\$10\.000\)$/);
+    assert.equal(app.Plata.validarSalida('cuenta:a', 0).ok, false);
+    assert.equal(app.Plata.validarSalida('ganancia', 5).ok, true, 'la ganancia futura es virtual');
+    app.S.cuentas[0].nombre = '<b>x</b>';
+    assert.ok(!app.Plata.validarSalida('cuenta:a', 99999).motivo.includes('<b>'));
+  });
+
+  test('transferir mueve los dos lados juntos y el libro sigue sumando lo mismo', () => {
+    const app = nuevo();
+    const antes = sumaLibro(app);
+    assert.deepEqual({ ...app.Plata.transferir('cuenta:a', 'cuenta:b', 4000) }, { ok: true });
+    assert.equal(app.getSaldoFuente('cuenta:a'), 6000);
+    assert.equal(app.getSaldoFuente('cuenta:b'), 4000);
+    assert.equal(sumaLibro(app), antes);
+    assert.equal(app.Libro.verificar().ok, true);
+  });
+
+  test('transferir NO toca nada si un lado no puede operar (antes quedaba a medias)', () => {
+    const app = nuevo();
+    const snap = () => JSON.stringify([app.S.cuentas, app.S.libro]);
+    const antes = snap();
+    for (const [o, d] of [['cuenta:a', 'cuenta:fantasma'], ['cuenta:a', 'cuenta:old'], ['cuenta:a', 'cuenta:nu'], ['cuenta:a', 'cuenta:a']]) {
+      const r = app.Plata.transferir(o, d, 100);
+      assert.equal(r.ok, false, o + ' → ' + d);
+      assert.equal(snap(), antes, 'sin cambios: ' + d);
+    }
+    assert.equal(app.Plata.transferir('cuenta:a', 'cuenta:b', 999999).ok, false, 'sin saldo');
+    assert.equal(snap(), antes);
+  });
+
+  test('revertir sí puede pasar por una cuenta archivada y sin exigir saldo', () => {
+    const app = nuevo();
+    const r = app.Plata.transferir('cuenta:b', 'cuenta:old', 50, { sinSaldo: true, permitirArchivada: true });
+    assert.equal(r.ok, true);
+    assert.equal(app.getSaldoFuente('cuenta:old'), 50);
+  });
+
+  test('las cajitas de una cuenta de ahorro también se pueden mover entre sí y con cuentas', () => {
+    const app = nuevo();
+    assert.equal(app.Plata.transferir('cuenta:a', 'cajita:c1', 3000).ok, true);
+    assert.equal(app.getSaldoFuente('cajita:c1'), 3000);
+    assert.equal(app.Plata.transferir('cajita:c1', 'cuenta:b', 1000).ok, true);
+    assert.equal(app.Libro.verificar().ok, true);
+  });
+
+  test('descontar/sumar avisan con false cuando la fuente no existe en vez de callar', () => {
+    const app = nuevo();
+    assert.equal(app.sumarFuente('cuenta:fantasma', 10), false);
+    assert.equal(app.descontarFuente('cajita:zzz', 10), false);
+    assert.equal(app.sumarFuente('cuenta:a', 10), true);
   });
 });

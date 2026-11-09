@@ -1293,11 +1293,8 @@ function confirmarRestarDinero(){
   // guarda el movimiento con el monto COMPLETO: restar más de lo que hay dejaba el saldo en 0 y el
   // historial diciendo que salió más plata de la que había, y al borrar ese movimiento
   // (sumarFuente(monto)) la cuenta recibía de más. Misma regla que Transferir: se compara en centavos.
-  const saldoDisponible=getSaldoFuente(rdFuente);
-  if(Math.round(v*100)>Math.round(saldoDisponible*100)){
-    toast('Saldo insuficiente en '+escHtml(fuenteLabel(rdFuente))+' ('+fmt(saldoDisponible)+')','err',3500);
-    return;
-  }
+  const _val=Plata.validarSalida(rdFuente,v);
+  if(!_val.ok){toast(_val.motivo,'err',3500);return;}
   registrarSalida(rdFuente,v,fecha,desc,nota);
   save();refresh();
   closeSheet('restar-dinero');
@@ -1509,8 +1506,9 @@ function confirmarTransferir() {
 
   // Perform transfer
   const _trId = uid();
-  descontarFuente(origen, monto, _ogCta(_trId));
-  sumarFuente(destino, monto, _ogCta(_trId));
+  // Plata.transferir valida ambos lados ANTES de tocar saldos (cuenta que ya no existe, archivada, de ahorro…): o se mueve todo o nada.
+  const _mov = Plata.transferir(origen, destino, monto, { og: _ogCta(_trId) });
+  if (!_mov.ok) { toast(_mov.motivo, 'err', 3500); return; }
 
   // Save transfer record
   if (!S.transferencias) S.transferencias = [];

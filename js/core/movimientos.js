@@ -610,8 +610,10 @@ async function _eliminarMovimientoImpl(btn) {
     // Para revertir: origen recupera, destino pierde.
     const tr = (S.transferencias || []).find(t => t.id === movId);
     if (tr) {
-      sumarFuente(tr.origen, tr.monto, _ogMov(movId, true));   // devolver al origen
-      descontarFuente(tr.destino, tr.monto, _ogMov(movId, true)); // quitar del destino
+      // Se revierte con la misma regla única (los dos lados o ninguno). sinSaldo: revertir nunca se bloquea por saldo, y
+      // permitirArchivada: una cuenta archivada igual debe poder deshacer su historial.
+      const rev = Plata.transferir(tr.destino, tr.origen, tr.monto, { og: _ogMov(movId, true), sinSaldo: true, permitirArchivada: true });
+      if (!rev.ok) { toast('No se pudo revertir la transferencia: ' + rev.motivo, 'err', 4500); _rerenderCuentaActiva(); return; }
       S.transferencias = S.transferencias.filter(t => t.id !== movId);
     }
   } else if (movTipoEl === 'salida_manual') {

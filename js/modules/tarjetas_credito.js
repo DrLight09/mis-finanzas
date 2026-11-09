@@ -789,8 +789,8 @@ function confirmarPagarTC(){
   if(!monto){toast('Ingresa el monto a pagar','err');return;}
   if(!fuente){toast('Selecciona la cuenta de pago','err');return;}
 
-  const saldo=getSaldoFuente(fuente);
-  if(Math.round(saldo*100)<Math.round(monto*100)){toast('Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+' — disponible: '+fmt(saldo),'err');return;}
+  const _val=Plata.validarSalida(fuente,monto);
+  if(!_val.ok){toast(_val.motivo,'err');return;}
 
   const pago=tcCrearPago(tc,{monto,fecha,fuente,nota});
   descontarFuente(fuente,monto,_ogTc(pago.id)); // después de crear el pago, para que el libro apunte a su id

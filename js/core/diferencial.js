@@ -341,10 +341,10 @@ function diffValidarIntercambios(instId) {
   const intercambios = inst.partes.filter(b => b.pagadoPorMi && b.monto > 0);
   for (const b of intercambios) {
     if (!b.miCuentaSalida) continue;
-    const saldo = getSaldoFuente(b.miCuentaSalida);
-    if (b.monto > saldo + 0.5) {
+    const val = Plata.validarSalida(b.miCuentaSalida, b.monto);
+    if (!val.ok) {
       const nombre = b.nombre ? `"${escHtml(b.nombre)}"` : 'una persona';
-      return `No tienes ${fmt(b.monto)} en ${escHtml(fuenteLabel(b.miCuentaSalida))} para pagarle a ${nombre}. Disponible: ${fmt(saldo)}.`;
+      return `${val.motivo} para pagarle a ${nombre}.`;
     }
   }
   return null;

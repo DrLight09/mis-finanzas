@@ -448,14 +448,14 @@ function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
 // refleja exactamente lo restado, aunque quede negativo — los selectores ya solo ofrecen cuentas con saldo
 // suficiente, así que un negativo indica un movimiento mal registrado y se ve en vez de esconderse.
 function descontarFuente(fuente,monto,opts){
-  if(!fuente||!monto)return;
+  if(!fuente||!monto)return false;
   if(fuente==='ganancia'){
     // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
-    return;
+    return true;
   }
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)-monto;_libroPata(fuente,-monto,opts);}
+    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)-monto;_libroPata(fuente,-monto,opts);return true;}
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -473,19 +473,21 @@ function descontarFuente(fuente,monto,opts){
       c.saldo=(c.saldo||0)-monto;
       _libroPata(fuente,-monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
+      return true;
     }
   } else if(fuente.startsWith('tc:')){
     // Para TC: descontar = hacer una compra = aumentar la deuda
     const id=fuente.split(':')[1];
     const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
-    if(tc)tc.deuda=(tc.deuda||0)+monto;
+    if(tc){tc.deuda=(tc.deuda||0)+monto;return true;}
   }
+  return _fuenteHuerfana(fuente);
 }
 function sumarFuente(fuente,monto,opts){
-  if(!fuente||!monto)return;
+  if(!fuente||!monto)return false;
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)+monto;_libroPata(fuente,monto,opts);}
+    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)+monto;_libroPata(fuente,monto,opts);return true;}
   } else if(fuente.startsWith('cajita:')){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -495,14 +497,96 @@ function sumarFuente(fuente,monto,opts){
       c.saldo=(c.saldo||0)+monto;
       _libroPata(fuente,monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
+      return true;
     }
   } else if(fuente.startsWith('tc:')){
     // Para TC: sumar = revertir compra = disminuir la deuda
     const id=fuente.split(':')[1];
     const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
-    if(tc)tc.deuda=Math.max(0,(tc.deuda||0)-monto);
+    if(tc){tc.deuda=Math.max(0,(tc.deuda||0)-monto);return true;}
   }
+  return _fuenteHuerfana(fuente);
 }
+
+// Una fuente que no se pudo aplicar (la cuenta/cajita/TC ya no existe, o es una cuenta de ahorro, que no tiene saldo propio) NO mueve
+// plata. Antes callaba: si el otro lado del movimiento sí se aplicaba, la plata se creaba o se perdía sin que nadie se enterara.
+// Ahora devuelve false (los callers nuevos lo respetan) y deja el aviso en consola para detectarlo.
+const _huerfanasAvisadas=new Set();
+function _fuenteHuerfana(fuente){
+  if(fuente==='alcancia')return true; // la Alcancía se maneja en su propio módulo: aquí no hay saldo que mover
+  if(!_huerfanasAvisadas.has(fuente)){_huerfanasAvisadas.add(fuente);try{console.warn('[Plata] fuente sin efecto (no existe o no guarda saldo):',fuente);}catch(_){}}
+  return false;
+}
+
+/* ---- PLATA: reglas únicas para validar y mover ---- */
+// Antes cada módulo comparaba el saldo a su manera (centavos exactos, +0.01, +0.5…) y con su propio mensaje, y cada transferencia
+// aplicaba "descontar" y luego "sumar" por separado: si el segundo fallaba, quedaba a medias. Aquí vive la regla única:
+//   · Plata.validarSalida(fuente, monto)        → { ok, disponible, motivo }  (compara en centavos; `motivo` ya viene escapado para toast)
+//   · Plata.disponibilidad(fuente, opts)        → { ok, motivo }  ¿esa fuente puede entregar/recibir plata hoy?
+//   · Plata.transferir(origen, destino, monto, { og, sinSaldo, permitirArchivada }) → { ok, motivo }  atómica: valida ANTES de tocar.
+// Siguen siendo sumarFuente/descontarFuente (y el libro) quienes cambian saldos; Plata solo decide si se puede y los aplica juntos.
+const Plata=(()=>{
+  const cent=n=>Math.round((Number(n)||0)*100);
+  const tipoDe=f=>{
+    if(!f)return null;
+    if(f==='ganancia'||f==='alcancia')return'virtual';
+    if(esFuenteCuenta(f))return'cuenta';
+    if(f.startsWith('cajita:'))return'cajita';
+    if(f.startsWith('tc:'))return'tc';
+    return null;
+  };
+  function disponibilidad(fuente,opts){
+    const o=opts||{};
+    const t=tipoDe(fuente);
+    if(!t)return{ok:false,motivo:'Elige una cuenta válida'};
+    if(t==='virtual')return{ok:true};
+    if(t==='tc'){
+      const tc=(S.tarjetasCredito||[]).find(x=>x.id===fuente.split(':')[1]);
+      return tc?{ok:true}:{ok:false,motivo:'La tarjeta ya no existe'};
+    }
+    let cuenta;
+    if(t==='cuenta'){
+      cuenta=getCuentaDeFuente(fuente);
+      if(!cuenta)return{ok:false,motivo:'La cuenta ya no existe'};
+      if(esCuentaAhorro(cuenta))return{ok:false,motivo:escHtml(nombreCuenta(cuenta))+' guarda su plata en cajitas: elige una cajita'};
+    }else{
+      const caj=(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]);
+      if(!caj)return{ok:false,motivo:'La cajita ya no existe'};
+      if(caj.esCDT)return{ok:false,motivo:'Un CDT no se puede mover como cajita'};
+      cuenta=getCuenta(caj.cuentaId);
+      if(!cuenta)return{ok:false,motivo:'La cuenta de esa cajita ya no existe'};
+    }
+    if(cuenta.archivada&&!o.permitirArchivada)return{ok:false,motivo:'"'+escHtml(nombreCuenta(cuenta))+'" está archivada: reactívala o elige otra cuenta'};
+    return{ok:true};
+  }
+  function validarSalida(fuente,monto){
+    if(!(Number(monto)>0))return{ok:false,disponible:0,motivo:'Ingresa un monto válido'};
+    const t=tipoDe(fuente);
+    if(!t)return{ok:false,disponible:0,motivo:'Elige una cuenta válida'};
+    if(fuente==='ganancia')return{ok:true,disponible:Infinity};
+    const disponible=getSaldoFuente(fuente);
+    if(disponible===Infinity||cent(monto)<=cent(disponible))return{ok:true,disponible};
+    return{ok:false,disponible,motivo:'Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+' ('+fmt(disponible)+')'};
+  }
+  function transferir(origen,destino,monto,opts){
+    const o=opts||{};
+    if(!(Number(monto)>0))return{ok:false,motivo:'Ingresa un monto válido'};
+    if(origen===destino)return{ok:false,motivo:'El origen y el destino no pueden ser la misma cuenta'};
+    for(const f of [origen,destino]){
+      const t=tipoDe(f);
+      if(t!=='cuenta'&&t!=='cajita')return{ok:false,motivo:'Elige una cuenta o cajita válida'};
+      const d=disponibilidad(f,o);
+      if(!d.ok)return d;
+    }
+    if(!o.sinSaldo){const v=validarSalida(origen,monto);if(!v.ok)return{ok:false,motivo:v.motivo};}
+    // Ambos lados existen y pueden operar: recién ahora se toca el saldo (los dos o ninguno).
+    descontarFuente(origen,monto,o.og);
+    sumarFuente(destino,monto,o.og);
+    return{ok:true};
+  }
+  return{tipoDe,disponibilidad,validarSalida,transferir,centavos:cent};
+})();
+if(typeof window!=='undefined')window.Plata=Plata;
 
 // Lista de cuentas que se pueden elegir como origen/destino: las cajitas de cada cuenta de ahorro activa, las demás cuentas
 // activas (en el orden en que se crearon) y, si incluirTC, las tarjetas activas. Las archivadas no se ofrecen. getFuentes() y

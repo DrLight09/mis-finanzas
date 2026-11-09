@@ -220,3 +220,15 @@ Los sheets de Nu (`nu-movimiento`, `crear-cdt`, `cobrar-cdt`, `meta-cajita`, `ch
 - **Color.** `colorCuenta(c)` aplica `colorLegible()` (contraste mínimo 3,5 contra el fondo oscuro) sin tocar el color guardado.
 - **Inicio.** `#inicio-cuentas` es la propia cuadrícula de 3 columnas: Disponible/Prestado/CDTs + un recuadro por cuenta; el último se estira para no dejar huecos. El aviso «Agrega tu banco…» (solo si únicamente existe Efectivo) se cierra con × y no vuelve (`S.invitacionCuentasOculta`). La fórmula del hero solo nombra lo que existe.
 - **Selectores de fuente** (incluidos los de plata comprometida) salen siempre de `getFuentes()/getFuentesSinTC()`: sin cuentas archivadas ni la cuenta de ahorro en sí.
+
+## `Plata`: reglas únicas para validar y mover (2026-11-08)
+
+`sumarFuente` / `descontarFuente` / `ajustarSaldoCuenta` siguen siendo la única puerta que cambia saldos (y deja el libro). Encima, `Plata` (en `core-state.js`) concentra lo que antes cada módulo hacía a su manera:
+
+| Función | Qué resuelve |
+|---|---|
+| `Plata.validarSalida(fuente, monto)` → `{ok, disponible, motivo}` | «¿alcanza?» comparando en **centavos** (antes: centavos exactos, `+0.01`, `+0.5`…) con un solo mensaje, `Saldo insuficiente en X ($Y)`, ya escapado para `toast`. Usado por Retirar dinero, movimiento de cajita, pago de TC, préstamo/«yo puse la plata» de Encargos y los pagos de Diferencial. |
+| `Plata.disponibilidad(fuente, {permitirArchivada})` → `{ok, motivo}` | ¿esa fuente puede entregar/recibir plata hoy? (existe, no es una cuenta de ahorro —que guarda en cajitas—, no es un CDT, no está archivada). |
+| `Plata.transferir(origen, destino, monto, {og, sinSaldo, permitirArchivada})` | Valida **ambos** lados antes de tocar nada y aplica los dos o ninguno. Usado por «Mover a otra cuenta» y por la **reversión** de transferencias (`sinSaldo` + `permitirArchivada`: revertir nunca se bloquea por saldo ni por cuenta archivada). |
+
+Además `sumarFuente`/`descontarFuente` ahora **devuelven `true/false`**: antes, si la fuente ya no existía, no hacían nada en silencio y la plata se creaba o se perdía según el otro lado. Ahora avisan por consola (`[Plata] fuente sin efecto`) y los callers nuevos pueden comprobarlo. Quedan fuera de `Plata` a propósito los movimientos de un solo lado ligados a un registro de módulo (gasto, préstamo, mesada…), que ya dejan su origen en el libro.

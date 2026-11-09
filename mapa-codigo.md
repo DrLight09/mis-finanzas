@@ -61,7 +61,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 34 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 117 | 1 |
-| `js/modules/spotify.js` | lazy — grupo `spotify` | 44 | 2 |
+| `js/modules/spotify.js` | lazy — grupo `spotify` | 46 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 117 | 3 |
 
@@ -413,7 +413,7 @@ Carga: lazy — grupo `prestamos`
 
 Carga: lazy — grupo `spotify`
 
-**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spProporcionarSplits`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpCajita`, `getSpCajitaSaldo`, `guardarEditarSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
+**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spProporcionarSplits`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirElegirCajitaSpotify`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpCajita`, `getSpCajitaSaldo`, `guardarCajitaSpotify`, `guardarEditarSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
 
 **Globales:** `SP_EMPATE_PERIODOS`, `SP_PERIODO_DIAS`
 
@@ -976,6 +976,7 @@ Ninguno.
 | `abrirEditarGastoFijo` | `js/modules/gastos.js` |
 | `abrirEditarPersonaGlobal` | `js/modules/personas.js` |
 | `abrirEditarTC` | `js/modules/tarjetas_credito.js` |
+| `abrirElegirCajitaSpotify` | `js/modules/spotify.js` |
 | `abrirEncargoDesdeCuenta` | `js/modules/encargos.js` |
 | `abrirEncargoDetalle` | `js/modules/encargos.js` |
 | `abrirMetaCajita` | `js/modules/nu.js` |
@@ -1271,6 +1272,7 @@ Ninguno.
 | `getTasaCuenta` | `js/core/nu-calc.js` |
 | `getTCById` | `js/core/calc-helpers.js` |
 | `guardarBien` | `js/modules/gastos.js` |
+| `guardarCajitaSpotify` | `js/modules/spotify.js` |
 | `guardarCDT` | `js/modules/nu.js` |
 | `guardarChequeoNu` | `js/modules/nu.js` |
 | `guardarEditarEncargo` | `js/modules/encargos.js` |

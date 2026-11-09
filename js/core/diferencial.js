@@ -330,8 +330,7 @@ function _diffActualizarMiCuenta(instId, mostrar) {
   wrap.style.display = mostrar ? '' : 'none';
   if (mostrar) {
     const prevVal = sel.value;
-    sel.innerHTML = '<option value="">Sin especificar (queda como nota)</option>' +
-      getFuentesSinTC().map(f => `<option value="${f.val}"${f.val === prevVal ? ' selected' : ''}>${f.label}</option>`).join('');
+    sel.innerHTML = buildFuentesOptsHtml({ selectedVal: prevVal, incluirTC: false, placeholder: 'Sin especificar (queda como nota)' });
   }
 }
 

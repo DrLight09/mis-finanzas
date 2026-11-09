@@ -838,20 +838,14 @@ function _cpdTipoChange(){
   }
 };
 
-// Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde getFuentesSinTC() (cajitas de cuentas de ahorro activas +
+// Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde buildFuentesOptsHtml() (core-state.js: cajitas de cuentas de ahorro activas +
 // cuentas activas con saldo), así no aparecen cuentas archivadas ni la cuenta de ahorro en sí (no tiene saldo propio) y la lista se
 // refresca si cambian las cuentas. Conserva la opción elegida si sigue existiendo.
 function _cpdRepoblarFuentes(sel){
   if(!sel) return;
   const previo = sel.value;
-  while(sel.options.length > 1) sel.remove(sel.options.length - 1);
-  getFuentesSinTC().forEach(f=>{
-    const o = document.createElement('option');
-    o.value = f.val;
-    o.textContent = f.label;
-    sel.appendChild(o);
-  });
-  if(previo && [...sel.options].some(o=>o.value===previo)) sel.value = previo;
+  const placeholder = sel.options.length ? sel.options[0].textContent : 'Sin especificar';
+  sel.innerHTML = buildFuentesOptsHtml({ selectedVal: previo, incluirTC: false, placeholder });
 }
 
 function _cpdPoblarGastoSelectores(){

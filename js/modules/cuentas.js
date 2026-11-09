@@ -429,7 +429,15 @@ function cuentaSePuedeEliminar(id){
   if((S.libro||[]).some(l=>l&&fuentes.has(l.cuenta)))return false;
   if((S.movimientos||[]).some(m=>m&&fuentes.has(m.fuente)))return false;
   if(_encargosConSaldoEn([...fuentes]).length)return false;
-  return true;
+  // Red de seguridad: cualquier otro registro que mencione la cuenta (plata comprometida, préstamos, mesadas, encargos, ingresos
+  // fijos…) la hace «usada», aunque nunca haya movido plata. Se busca la fuente exacta en todo el estado salvo la lista de cuentas.
+  let usada=false;
+  try{
+    const claves=[...fuentes].map(f=>JSON.stringify(f));
+    const texto=JSON.stringify(S,(k,v)=>(v===S.cuentas?undefined:v));
+    usada=claves.some(q=>texto.indexOf(q)!==-1);
+  }catch(e){usada=true;}
+  return !usada;
 }
 
 // Por qué no se puede archivar (texto para el usuario), o '' si se puede.

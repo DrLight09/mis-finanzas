@@ -838,22 +838,24 @@ function _cpdTipoChange(){
   }
 };
 
+// Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde getFuentesSinTC() (cajitas de cuentas de ahorro activas +
+// cuentas activas con saldo), así no aparecen cuentas archivadas ni la cuenta de ahorro en sí (no tiene saldo propio) y la lista se
+// refresca si cambian las cuentas. Conserva la opción elegida si sigue existiendo.
+function _cpdRepoblarFuentes(sel){
+  if(!sel) return;
+  const previo = sel.value;
+  while(sel.options.length > 1) sel.remove(sel.options.length - 1);
+  getFuentesSinTC().forEach(f=>{
+    const o = document.createElement('option');
+    o.value = f.val;
+    o.textContent = f.label;
+    sel.appendChild(o);
+  });
+  if(previo && [...sel.options].some(o=>o.value===previo)) sel.value = previo;
+}
+
 function _cpdPoblarGastoSelectores(){
-  const selCaj = document.getElementById('cpd-gasto-cajita');
-  if(selCaj && selCaj.options.length <= 1){
-    (S.cajitas||[]).forEach(c=>{
-      const o = document.createElement('option');
-      o.value = 'cajita:'+c.id;
-      o.textContent = c.nombre||c.id;
-      selCaj.appendChild(o);
-    });
-    (S.cuentas||[]).forEach(c=>{
-      const o = document.createElement('option');
-      o.value = 'cuenta:'+c.id;
-      o.textContent = c.nombre||c.id;
-      selCaj.appendChild(o);
-    });
-  }
+  _cpdRepoblarFuentes(document.getElementById('cpd-gasto-cajita'));
   const selTc = document.getElementById('cpd-gasto-tc');
   if(selTc && selTc.options.length <= 1){
     (S.tarjetasCredito||[]).filter(t=>(t.estado||'activa')==='activa').forEach(t=>{
@@ -864,22 +866,7 @@ function _cpdPoblarGastoSelectores(){
     });
   }
   // Selector de cajita destino para gastos con TC (siempre repoblar)
-  const selTcCaj = document.getElementById('cpd-gasto-tc-cajita');
-  if(selTcCaj){
-    selTcCaj.innerHTML = '<option value="">Sin especificar</option>';
-    (S.cajitas||[]).forEach(c=>{
-      const o = document.createElement('option');
-      o.value = 'cajita:'+c.id;
-      o.textContent = c.nombre||c.id;
-      selTcCaj.appendChild(o);
-    });
-    (S.cuentas||[]).forEach(c=>{
-      const o = document.createElement('option');
-      o.value = 'cuenta:'+c.id;
-      o.textContent = c.nombre||c.id;
-      selTcCaj.appendChild(o);
-    });
-  }
+  _cpdRepoblarFuentes(document.getElementById('cpd-gasto-tc-cajita'));
 }
 
 function _cpdSetGastoOrigen(val){

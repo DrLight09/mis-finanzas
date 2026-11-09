@@ -2567,4 +2567,12 @@ describe('cuentas-colores-legibles', () => {
     assert.ok(!String(el.innerHTML).includes('Agrega tu banco'), 'cerrado: no vuelve a salir');
     assert.ok(String(el.innerHTML).includes('Efectivo'), 'el recuadro de Efectivo sigue');
   });
+  test('una cuenta mencionada en cualquier registro (p. ej. plata comprometida) no se puede eliminar aunque nunca haya movido plata', () => {
+    const m = f => path.join(__dirname, '..', 'js', 'modules', f);
+    const app = loadApp([core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'), core('cuenta-efectos.js'), m('nu.js'), m('cuentas.js')], { permissive: true });
+    Object.assign(app.S, { libro: [], movimientos: [], encargos: [], cajitas: [], cuentas: [{ id: 'cs', tipo: 'banco', nombre: 'Caja Social', saldo: 0 }] });
+    assert.equal(app.cuentaSePuedeEliminar('cs'), true);
+    app.S.plataComprometida = [{ id: 'p1', cuentaDestino: 'cuenta:cs', monto: 5 }];
+    assert.equal(app.cuentaSePuedeEliminar('cs'), false);
+  });
 });

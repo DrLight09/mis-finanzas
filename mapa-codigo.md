@@ -59,7 +59,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 57 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
-| `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
+| `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 34 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 117 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 44 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
@@ -397,7 +397,7 @@ Carga: de entrada (defer)
 
 Carga: lazy — grupo `comprometida`
 
-**Funciones:** `_cpAbrirEditar`, `_cpAbrirNuevo`, `_cpAbrirRecibir`, `_cpAgregarDestino`, `_cpCancelSheet`, `_cpConfirmarRecibir`, `_cpData`, `_cpdConfirmar`, `_cpDiasHastaStr`, `_cpdPoblarGastoSelectores`, `_cpdSetGastoOrigen`, `_cpdSetTipo`, `_cpdSetYaPague`, `_cpdSetYaSaque`, `_cpdTipoChange`, `_cpEliminar`, `_cpFuenteLabel`, `_cpGuardar`, `_cpGuardarMarcados`, `_cpInit`, `_cpInitSwipe`, `_cpMarcarPagos`, `_cpPoblarCuentas`, `_cpPoblarPersonas`, `_cpPoblarTC`, `_cpQuitarDestino`, `_cpRenderDestinosTmp`, `_cpRenderLista`, `_cpRenderMarcarList`, `_cpToggleMarcar`, `_injectMasItem`, `_injectScreen`, `_injectSheet`
+**Funciones:** `_cpAbrirEditar`, `_cpAbrirNuevo`, `_cpAbrirRecibir`, `_cpAgregarDestino`, `_cpCancelSheet`, `_cpConfirmarRecibir`, `_cpData`, `_cpdConfirmar`, `_cpDiasHastaStr`, `_cpdPoblarGastoSelectores`, `_cpdRepoblarFuentes`, `_cpdSetGastoOrigen`, `_cpdSetTipo`, `_cpdSetYaPague`, `_cpdSetYaSaque`, `_cpdTipoChange`, `_cpEliminar`, `_cpFuenteLabel`, `_cpGuardar`, `_cpGuardarMarcados`, `_cpInit`, `_cpInitSwipe`, `_cpMarcarPagos`, `_cpPoblarCuentas`, `_cpPoblarPersonas`, `_cpPoblarTC`, `_cpQuitarDestino`, `_cpRenderDestinosTmp`, `_cpRenderLista`, `_cpRenderMarcarList`, `_cpToggleMarcar`, `_injectMasItem`, `_injectScreen`, `_injectSheet`
 
 ### `js/modules/prestado.js`
 
@@ -540,6 +540,7 @@ Ninguno.
 | `_cpdConfirmar` | `js/modules/plata_comprometida.js` |
 | `_cpDiasHastaStr` | `js/modules/plata_comprometida.js` |
 | `_cpdPoblarGastoSelectores` | `js/modules/plata_comprometida.js` |
+| `_cpdRepoblarFuentes` | `js/modules/plata_comprometida.js` |
 | `_cpdSetGastoOrigen` | `js/modules/plata_comprometida.js` |
 | `_cpdSetTipo` | `js/modules/plata_comprometida.js` |
 | `_cpdSetYaPague` | `js/modules/plata_comprometida.js` |

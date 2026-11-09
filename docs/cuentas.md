@@ -209,3 +209,14 @@ Los sheets de Nu (`nu-movimiento`, `crear-cdt`, `cobrar-cdt`, `meta-cajita`, `ch
 ## Limitaciones conocidas
 
 - **GMF (4×1000) y comisiones bancarias:** la app no las calcula ni las descuenta de los saldos. Si tu banco las cobra, registra el cargo como un gasto o ajusta el saldo; mientras tanto el saldo de la app puede quedar unos pesos por encima del real.
+
+
+## Reglas vigentes de administración de cuentas (2026-11-08)
+
+- **Efectivo es permanente.** `asegurarEfectivo()` (en `refresh()`) la crea si falta; `esCuentaFija(c)` la protege: no se archiva ni se elimina, sí se renombra/recolorea. No se ofrece al crear.
+- **Archivar vs. eliminar.** Una cuenta sin uso (sin libro, movimientos, cajitas, encargos ni ninguna mención en el estado) solo se **elimina**; con historial solo se **archiva** (y para ello debe estar en cero, sin encargos ni CDTs). Eliminar con historial no existe a propósito: dejaría movimientos huérfanos y rompería el invariante del libro. `cuentaSePuedeEliminar()` busca además la fuente exacta en todo `S` como red de seguridad.
+- **Archivadas** viven en una pantalla aparte (`cuentas-archivadas`, botón «Cuentas archivadas (N)» en el selector); desde ahí se abren, consultan y reactivan.
+- **Tipo.** Solo `ahorro` cambia comportamiento (sin saldo propio; cajitas, CDTs, tasa EA); `efectivo` fija el mínimo de $50 sin centavos en transferencias; `banco`/`billetera` son equivalentes. El interruptor «Es una cuenta de ahorro» solo aparece con «Otra» o un banco genérico del catálogo.
+- **Color.** `colorCuenta(c)` aplica `colorLegible()` (contraste mínimo 3,5 contra el fondo oscuro) sin tocar el color guardado.
+- **Inicio.** `#inicio-cuentas` es la propia cuadrícula de 3 columnas: Disponible/Prestado/CDTs + un recuadro por cuenta; el último se estira para no dejar huecos. El aviso «Agrega tu banco…» (solo si únicamente existe Efectivo) se cierra con × y no vuelve (`S.invitacionCuentasOculta`). La fórmula del hero solo nombra lo que existe.
+- **Selectores de fuente** (incluidos los de plata comprometida) salen siempre de `getFuentes()/getFuentesSinTC()`: sin cuentas archivadas ni la cuenta de ahorro en sí.

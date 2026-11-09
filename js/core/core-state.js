@@ -127,7 +127,7 @@ let S={
   modulos:{mesada:true,spotify:true},
   catsVar:[],
   catsFijo:[],
-  cuentas:[], // cuentas del usuario (ver "CUENTAS: MODELO ÚNICO"); nace vacío: la primera se crea al empezar
+  cuentas:[], // cuentas del usuario (ver "CUENTAS: MODELO ÚNICO"); Efectivo se crea sola (asegurarEfectivo) y el resto las crea cada persona
   patrimonioHistorial:[],
   patrimonioCierres:{},
   tarjetasCredito:[],
@@ -162,7 +162,7 @@ let S={
 window.S = S;
 // patrimonioHistorial: [{fecha:'YYYY-MM-DD', valor:number}]
 // cuentas: modelo único de cuentas (ver "CUENTAS: MODELO ÚNICO" más abajo):
-//   {id, tipo:'banco'|'billetera'|'efectivo'|'ahorro', nombre, icono, color, saldo, archivada?, movimientos:[{id,tipo,monto,fecha,nota}]}
+//   {id, tipo:'banco'|'billetera'|'efectivo'|'ahorro', nombre, icono, color, saldo, archivada?}  (los movimientos viven en S.movimientos / el libro, no dentro de la cuenta)
 //   y, solo en las de ahorro: tasaEA (% EA, null = sin configurar) e historialTasas:[{fecha,tasa}] (sin `saldo` propio).
 // Cajita structure: {id, nombre, saldo (saldo actual total con intereses ya "materializados"),
 //   fecha (reloj de sus intereses: último sellado de intereses o primer depósito; NO la fecha de creación),
@@ -265,14 +265,14 @@ function pintarAvatarPersona(av, persona, opts){
 }
 
 /* ---- CUENTAS: MODELO ÚNICO ----
-   Ninguna cuenta viene de fábrica: S.cuentas nace vacío y cada usuario crea las suyas (Nequi, Caja Social, efectivo, una
+   Ninguna cuenta viene de fábrica salvo Efectivo (permanente, se crea sola); cada usuario crea las suyas (Nequi, Caja Social, efectivo, una
    cuenta de ahorro…). Todas son del MISMO tipo de objeto y se identifican igual en toda la app:
      cuenta  : {id, tipo, nombre, icono, color, saldo, archivada?, movimientos:[…]}
      fuente  : 'cuenta:ID'  (los movimientos, el libro, los gastos, los encargos y los préstamos guardan este texto)
    `tipo` solo describe qué clase de cuenta es y qué sabe hacer (ver TIPOS_CUENTA): 'banco', 'billetera', 'efectivo' y
    'ahorro'. Una cuenta de AHORRO no guarda un saldo propio: su plata vive en cajitas (S.cajitas, fuente 'cajita:ID', cada
    una con su `cuentaId`) que rinden intereses con la tasa EA de LA CUENTA (cuenta.tasaEA + cuenta.historialTasas) y pueden
-   tener CDTs. Nu es solo un preset del catálogo (catalogo-cuentas.js) que crea una cuenta de ahorro.
+   tener CDTs. Nu es solo un preset del catálogo (ICONOS_CUENTA, cuentas.js) que crea una cuenta de ahorro.
    Cambiar de banco = crear la cuenta nueva, mover el saldo y ARCHIVAR la vieja: archivar no borra, la cuenta sigue en
    S.cuentas (su historial se conserva y los movimientos viejos se siguen mostrando con su nombre), solo deja de ofrecerse
    como origen/destino y de aparecer en el selector y en Inicio. Para archivar el saldo debe ser $0.

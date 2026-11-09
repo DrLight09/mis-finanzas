@@ -90,16 +90,36 @@ const _sp_spp = crearSplitWidget('spp', {
   onPreview:actualizarSpPagarPreview
 });
 
+// La cajita de Spotify es SOLO la que el usuario eligió (S.spotify.cajitaId, ver abrirElegirCajitaSpotify). Antes, si no había
+// referencia, se tomaba la primera cajita cuyo nombre contenía «spotify»: renombrarla la perdía y dos parecidas se confundían.
+// Una referencia que apunta a una cajita que ya no existe cuenta como «sin cajita» (y se limpia en eliminarCajita).
 function getSpCajita(){
-  // Finds or returns null for the Spotify cajita
-  if(S.spotify.cajitaId){
-    const c=(S.cajitas||[]).find(x=>x.id===S.spotify.cajitaId);
-    if(c)return c;
-  }
-  // Try to find one named Spotify
-  const c=(S.cajitas||[]).find(x=>x.nombre&&x.nombre.toLowerCase().includes('spotify'));
-  if(c){S.spotify.cajitaId=c.id;return c;}
-  return null;
+  const id=S.spotify.cajitaId;
+  if(!id)return null;
+  return (S.cajitas||[]).find(x=>x.id===id)||null;
+}
+
+// Elegir (o quitar) la cajita donde se guarda la plata de Spotify. Lista las cajitas de cuentas de ahorro activas.
+function abrirElegirCajitaSpotify(){
+  const sel=document.getElementById('spCajitaSel');
+  if(!sel)return;
+  const actual=S.spotify.cajitaId||'';
+  const filas=(S.cajitas||[]).filter(c=>{const cu=cuentaDeCajita(c);return cu&&!cu.archivada;});
+  sel.innerHTML=html`<option value="">Sin cajita (no mostrar saldo)</option>${filas.map(c=>html`<option value="${c.id}"${c.id===actual?raw(' selected'):''}>${c.nombre} · ${nombreCuenta(cuentaDeCajita(c))}</option>`)}`;
+  const nota=document.getElementById('spCajitaSelNota');
+  if(nota)nota.textContent=filas.length?'Es la cajita donde vas guardando lo que cobras para pagar Spotify.':'Aún no tienes cajitas. Crea una dentro de tu cuenta de ahorro y vuelve aquí a elegirla.';
+  openSheet('sp-cajita');
+}
+function guardarCajitaSpotify(){
+  const sel=document.getElementById('spCajitaSel');
+  if(!sel)return;
+  const id=sel.value||'';
+  if(id&&!(S.cajitas||[]).some(c=>c.id===id)){toast('Esa cajita ya no existe','err');return;}
+  S.spotify.cajitaId=id;
+  save();
+  closeSheet('sp-cajita');
+  refresh();
+  toast(id?'Cajita de Spotify guardada':'Spotify ya no usa ninguna cajita','ok');
 }
 
 function getSpCajitaSaldo(){
@@ -354,12 +374,14 @@ function renderSpotify(){
       statusEl.textContent='Faltan '+fmt(-diferencia)+' para pagar';
       statusEl.style.color='var(--amber)';
     } else {
-      statusEl.textContent='Sin saldo en cajita';
+      statusEl.textContent=getSpCajita()?'Sin saldo en cajita':'Toca «Elegir» para vincular una cajita';
       statusEl.style.color='var(--text3)';
     }
   } else {
-    statusEl.textContent='';
+    statusEl.textContent=getSpCajita()?'':'Toca «Elegir» para vincular una cajita';
   }
+  const btnCaj=document.getElementById('btn-sp-elegir-cajita');
+  if(btnCaj)btnCaj.textContent=getSpCajita()?'Cambiar':'Elegir';
   
   // El estado vacío ya trae «Agregar persona»: el botón de pie solo aparece con personas.
   mostrarSi(document.getElementById('btn-add-spotify-persona'),p.length>0);
@@ -1919,6 +1941,8 @@ renderSpotify = function() {
    ═══════════════════════════════════════════════════════════════ */
 
 Events.registerAll('spotify', {
+  abrirElegirCajita: abrirElegirCajitaSpotify,
+  guardarCajita: guardarCajitaSpotify,
   abrirSelectorPersona: () => abrirSelPersona(_onSelPersonaSpotify, '¿Quién es?'),
   onClickEditPersonaBtn: _onClickSpEditPersonaBtn,
 });

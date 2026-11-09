@@ -1596,6 +1596,7 @@
               <div class="ix-taright">
                 <div class="row-amount c-nu" id="spCajitaSaldo">$0</div>
                 <div class="ix-spcajitastatus" id="spCajitaStatus"></div>
+                <button type="button" class="btn btn-ghost btn-sm sp-cajita-btn" id="btn-sp-elegir-cajita" data-action="spotify:abrirElegirCajita" data-args="[]">Elegir</button>
               </div>
             </div>
           </div>
@@ -4017,6 +4018,22 @@
     </div>
 
     <!-- SPOTIFY - Registrar pago de lo pendiente de un cobro -->
+    <div class="overlay" id="sheet-sp-cajita" data-sheet-id="sp-cajita">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Cajita de Spotify</div>
+        <p class="ix-div-168" id="spCajitaSelNota"></p>
+        <div class="ig">
+          <label class="il" for="spCajitaSel">¿Cuál cajita?</label>
+          <div class="select-wrap"><select id="spCajitaSel"></select></div>
+        </div>
+        <button type="button" class="btn btn-primary"
+          data-action="spotify:guardarCajita" data-args="[]">Guardar</button>
+        <button type="button" class="btn btn-ghost"
+          data-close-sheet="sp-cajita">Cancelar</button>
+      </div>
+    </div>
+
     <div class="overlay" id="sheet-sp-hist-pend" data-sheet-id="sp-hist-pend">
       <div class="sheet">
         <div class="sheet-handle"></div>

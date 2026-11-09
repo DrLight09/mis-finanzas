@@ -1245,13 +1245,46 @@ describe('spotify-cajita', () => {
   });
 
   test('getSpCajitaSaldo — cajita recién creada (sin fecha) vale su saldo', () => {
-    const ctx = freshApp({ cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 12000 }] });
+    const ctx = freshApp({ cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Para la música', saldo: 12000 }], spotify: { personas: [], costo: 0, cajitaId: 's1', historial: [] } });
     assert.equal(ctx.getSpCajitaSaldo(), 12000);
   });
 
   test('getSpCajitaSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
-    const ctx = freshApp({ nuRate: 9.3003, cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }] });
+    const ctx = freshApp({ nuRate: 9.3003, cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }], spotify: { personas: [], costo: 0, cajitaId: 's1', historial: [] } });
     assert.ok(ctx.getSpCajitaSaldo() > 1050000);
+  });
+
+  test('la cajita se elige por referencia explícita: llamarse «Spotify» NO la vincula', () => {
+    const ctx = freshApp({ cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 5000 }] });
+    assert.equal(ctx.getSpCajita(), null);
+    assert.equal(ctx.getSpCajitaSaldo(), 0);
+    assert.equal(ctx.S.spotify.cajitaId, '', 'tampoco se auto-asigna');
+  });
+
+  test('renombrar la cajita vinculada no la pierde; dos cajitas «spotify» no se confunden', () => {
+    const ctx = freshApp({
+      cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'Spotify viejo', saldo: 1000 }, { id: 'b', cuentaId: 'nu', nombre: 'Spotify', saldo: 7000 }],
+      spotify: { personas: [], costo: 0, cajitaId: 'a', historial: [] },
+    });
+    assert.equal(ctx.getSpCajita().id, 'a');
+    ctx.S.cajitas[0].nombre = 'Música';
+    assert.equal(ctx.getSpCajita().id, 'a');
+    assert.equal(ctx.getSpCajitaSaldo(), 1000);
+  });
+
+  test('una referencia a una cajita que ya no existe cuenta como «sin cajita»', () => {
+    const ctx = freshApp({ cajitas: [], spotify: { personas: [], costo: 0, cajitaId: 'fantasma', historial: [] } });
+    assert.equal(ctx.getSpCajita(), null);
+    assert.equal(ctx.getSpCajitaSaldo(), 0);
+  });
+
+  test('el código ya no busca la cajita (ni el gasto de Spotify) por el texto «spotify» en un nombre', () => {
+    const fs = require('node:fs');
+    const sp = fs.readFileSync(path.join(MODULES_DIR, 'spotify.js'), 'utf8');
+    const ga = fs.readFileSync(path.join(MODULES_DIR, 'gastos.js'), 'utf8');
+    assert.ok(!/nombre&&x\.nombre\.toLowerCase\(\)\.includes\('spotify'\)/.test(sp));
+    assert.ok(!/gv\.desc[^;]*includes\('spotify'\)/.test(ga));
+    assert.match(ga, /_origenSeccion === 'Spotify'/);
   });
 });
 

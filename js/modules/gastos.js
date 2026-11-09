@@ -606,7 +606,7 @@ function renderGastosFijos() {
   const spCosto = S.spotify.costo || 0;
   const spotifyModuloActivo = !!(S.modulos && S.modulos.spotify);
   const yaExisteSpotify = g.some(x => x.nombre && x.nombre.toLowerCase().includes('spotify'));
-  const spYaPagadoMes = (S.gastosVar || []).some(gv => mesKey(gv.fecha) === mesActual() && gv.desc && gv.desc.toLowerCase().includes('spotify'));
+  const spYaPagadoMes = (S.gastosVar || []).some(gv => mesKey(gv.fecha) === mesActual() && gv._origenSeccion === 'Spotify'); // el gasto que registra el módulo lleva esta marca
   // Si el módulo Spotify está activo ya gestiona el costo; no mostrarlo como gasto fijo virtual para evitar doble conteo
   const extras = spCosto > 0 && !yaExisteSpotify && !spYaPagadoMes && !spotifyModuloActivo ? [{ id: '__spotify__', nombre: 'Spotify Premium', monto: spCosto, cat: 'Suscripciones', _virtual: true }] : [];
   const todos = [...extras, ...g];

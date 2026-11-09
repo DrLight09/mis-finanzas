@@ -132,7 +132,7 @@ function renderAnalisis(){
   const catsEl=document.getElementById('an-cats-mes');
   if(catsEl){
     if(!catsOrdenadas.length){
-      catsEl.innerHTML='<div class="an-vacio an-vacio-4">Sin gastos registrados este mes.</div>';
+      catsEl.innerHTML=emptyInline('Sin gastos registrados este mes.');
     } else {
       // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
       // 2026-08-25 — este era el último sitio de renderAnalisis() sin migrar).
@@ -219,7 +219,7 @@ function renderAnalisis(){
   const rkEl=document.getElementById('an-ranking-meses');
   if(rkEl){
     if(!ranking.length){
-      rkEl.innerHTML='<div class="an-vacio an-vacio-13">Sin datos suficientes.</div>';
+      rkEl.innerHTML=emptyInline('Sin datos suficientes.');
     } else {
       const maxRk=ranking[0][1]||1;
       rkEl.innerHTML=ranking.map(([k,total],i)=>{
@@ -296,7 +296,7 @@ function renderAnalisis(){
     function diffClase(val,invertir){ return invertir?(val<0?'c-green':'c-red'):(val>0?'c-green':'c-red'); }
 
     if(!hayDatos){
-      compEl.innerHTML='<div class="an-vacio an-vacio-c6">Sin datos del mes anterior para comparar.</div>';
+      compEl.innerHTML=emptyInline('Sin datos del mes anterior para comparar.',{centro:true});
     } else {
       compEl.innerHTML=`
         <div class="an-comp-titulo">vs. ${mesNomPrev}</div>
@@ -345,7 +345,7 @@ function renderAnalisis(){
     let hist=todo.filter(h=>_fechaSafe(h.fecha)>=corte);
     if(hist.length<2) hist=todo.slice(-Math.min(todo.length,Math.max(2,hist.length)));
     if(hist.length<2){
-      patriEl.innerHTML='<div class="an-vacio an-vacio-c20">Aún no hay suficiente historial. Vuelve mañana.</div>';
+      patriEl.innerHTML=emptyInline('Aún no hay suficiente historial. Vuelve mañana.',{centro:true});
     } else {
       // Serie «como si el saldo inicial siempre hubiera estado»: a cada punto se le suman los saldos iniciales (montoBase) registrados DESPUÉS.
       // Así el último punto es el patrimonio real de hoy, y registrar un saldo inicial no se ve como una caída ni deja la línea bajo cero (antes
@@ -568,7 +568,7 @@ function renderIngresosFijos(){
   if(!el)return;
   const lista=S.ingresosFijos||[];
   if(!lista.length){
-    el.innerHTML='<div class="an-vacio an-vacio-13">Sin ingresos fijos. Agrega tu sueldo, freelance u otro ingreso recurrente y registra su cobro cada vez que te paguen.</div>';
+    el.innerHTML=emptyInline('Sin ingresos fijos. Agrega tu sueldo, freelance u otro ingreso recurrente y registra su cobro cada vez que te paguen.');
     return;
   }
   // Migrado a html`` (ver auditoria-tecnica.md, cierre de la discrepancia
@@ -658,7 +658,7 @@ async function eliminarIngresoFijo(id){
   if(!ing)return;
   const cobros=cobrosDeIngresoFijo(ing);
   const aviso=cobros.length?' Se quitarán también sus '+cobros.length+(cobros.length===1?' cobro registrado':' cobros registrados')+(cobros.some(c=>cobroFuentesDe(c).length)?' y la plata que entró a tus cuentas se descontará.':'.'):'';
-  const ok=await dialogo('Eliminar ingreso','¿Eliminar "'+ing.nombre+'"?'+aviso,'Eliminar',true);
+  const ok=await confirmarEliminar({titulo:'Eliminar ingreso',objeto:'"'+ing.nombre+'"',detalle:aviso,irreversible:false});
   if(!ok)return;
   const _histAntes=medirPatrimonioParaHistorial();
   cobros.forEach(c=>{cobroRevertir(c);});
@@ -788,7 +788,7 @@ async function eliminarCobroIngresoFijo(id,cobroId){
       const nombre=fuentes.length>1?fuentes.length+' cuentas':fuenteLabel(fuentes[0]);
       if(!await confirmarBorrarMovimientoViejo(nombre,c.monto||0,'baja'))return;
     }
-  }else if(!await dialogo('Borrar cobro','¿Borrar este cobro de '+fmt(c.monto||0)+'? Dejará de contar como ingreso.','Borrar',true))return;
+  }else if(!await confirmarEliminar({titulo:'Borrar cobro',verbo:'Borrar',etiqueta:'Borrar',objeto:'este cobro de '+fmt(c.monto||0),detalle:'Dejará de contar como ingreso.',irreversible:false}))return;
   const _histAntes=medirPatrimonioParaHistorial();
   cobroBorrar(id,cobroId);
   purgarEfectoEnHistorial(_histAntes,c);
@@ -876,7 +876,7 @@ function renderPresupuestos(){
   };
   const presup = S.presupuestos || {};
   const cats = Object.keys(presup);
-  if(!cats.length){ el.innerHTML='<div class="an-vacio an-vacio-c8">Sin presupuestos configurados. Toca "Editar" para definirlos.</div>'; return; }
+  if(!cats.length){ el.innerHTML=emptyInline('Sin presupuestos configurados. Toca "Editar" para definirlos.',{centro:true}); return; }
   const mes = window.mesActual ? window.mesActual() : '';
 
   // Gasto por categoría este mes (periodo.js: mismo criterio que el resto de la pantalla)

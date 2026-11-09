@@ -46,3 +46,18 @@ El núcleo y Inicio llaman a lo que viva en un módulo lazy **siempre con guard 
 
 - `snapshotPatrimonio()` **no graba** el punto del historial hasta que `calcC`, `calcCDT` y `Deudas` existan (`_patrimonioDependenciasListas`): sin ese guard, un snapshot tomado antes de que carguen grabaría un patrimonio artificialmente bajo de forma permanente.
 - **Regla práctica:** un archivo de entrada que llame a una función de un módulo lazy la llama con guard `typeof`. Si es un cálculo que Inicio necesita en el primer render, la solución es moverlo a `calc-helpers.js`, no forzar la carga del módulo.
+
+## Piezas de pantalla únicas (`core-state.js`)
+
+Lo que se repite en varios módulos vive una sola vez en el núcleo; un módulo nuevo NO arma el suyo (lo vigila `tests/estados-vacios.test.js`).
+
+| Pieza | Para qué | Notas |
+|---|---|---|
+| `confirmarEliminar({titulo, objeto, detalle, irreversible, etiqueta, verbo})` | Todo «¿Eliminar…?» (también «Borrar» y «Deshacer») | Arma «¿Eliminar `objeto`? `detalle` Esta acción no se puede deshacer.» y el botón rojo. `irreversible:false` cuando se puede volver a registrar. Texto **sin** `escHtml`: `dialogo()` pinta con `textContent` y `escHtml` mostraría «&amp;». Tampoco admite markup ni iconos. Los saltos de línea (`\n\n`) sí se respetan. |
+| `avisarNoSePuede(titulo, motivo)` | La acción está bloqueada y se explica por qué | Un solo botón «Entendido». |
+| `dialogo(titulo, msg, btn, peligro)` | Confirmaciones que no son eliminar (cerrar sesión, quitar PIN, importar) | El color del botón sale de las clases `dialog-ok-peligro` / `dialog-ok-normal`, no de estilos en línea. |
+| `emptyState(icono, título, texto, etiquetaBotón, {action,args}, {compacto})` | Lista o pantalla sin registros (con icono, título y botón opcional) | Las partes vacías no se dibujan. `compacto` para dentro de una tarjeta. |
+| `emptyInline(texto, {centro, grande, clase})` | Una línea de aviso dentro de una tarjeta o historial («Sin movimientos aún») | El texto se escapa aquí. Dentro de `html```…` se envuelve con `raw()`. |
+
+Quedan como están a propósito: la tarjeta-invitación de Inicio (`ix-cuentas-vacio`, lleva su botón ×) y los bloques estáticos de `index.html` (alcancía sin iniciar, personas) que se muestran u ocultan.
+

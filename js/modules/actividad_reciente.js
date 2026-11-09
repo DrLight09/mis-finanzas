@@ -446,7 +446,7 @@
     var visibles = todos.slice(0, MAX_ITEMS);
 
     if (!visibles.length) {
-      el.innerHTML = html`<div class="feed-empty">Aún no hay actividad registrada.</div>`;
+      el.innerHTML = emptyInline('Aún no hay actividad registrada.',{grande:true});
       return;
     }
 

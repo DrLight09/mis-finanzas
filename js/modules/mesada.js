@@ -892,7 +892,7 @@ function confirmarPendienteMesada() {
 async function deshacerPendienteMesada(parent, key, idx) {
   const info = getMesadaData(parent)[key];
   if (!info || !info.pendienteHistorial || !info.pendienteHistorial[idx]) return;
-  const ok = await dialogo('Deshacer abono', '¿Deshacer este abono de lo pendiente? La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.', 'Deshacer', true);
+  const ok = await confirmarEliminar({ titulo: 'Deshacer abono', verbo: 'Deshacer', etiqueta: 'Deshacer', objeto: 'este abono de lo pendiente', detalle: 'La plata se restará de la cuenta donde la registraste y volverá a quedar como deuda.', irreversible: false });
   if (!ok) return;
   mesadaDeshacerAbono(parent, key, idx);
   save(); refresh();

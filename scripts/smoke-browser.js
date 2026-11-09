@@ -151,7 +151,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(`S.spotify.personas=[]; S.spotify.historial=[]; renderSpotify(); renderSpHistorial(); renderSpStats()`);
     c4(nBtn(q('#spotifyList')) === 1 && !viz(q('#btn-add-spotify-persona')) && sinSvg(q('#spotifyList')), 'Spotify vacío: un solo «Agregar persona» y sin «svg»');
     c4(!viz(q('#spStatsTitulo')), 'Spotify vacío: el título «Estadísticas» debe estar oculto');
-    c4(!!q('#spHistorial .sp-hist-vacio'), 'Spotify vacío: «Sin pagos registrados aún» debe quedar dentro del historial');
+    c4(!!q('#spHistorial .empty-inline'), 'Spotify vacío: «Sin pagos registrados aún» debe quedar dentro del historial');
     ev(`S.spotify.personas.push({id:'sp9',nombre:'Luz',monto:5000,pagado:false,proximoPago:'2099-01-01',fechaIngreso:'2026-10-01',ultimoDestino:'',mesesAdelantados:0}); renderSpotify(); renderSpHistorial(); renderSpStats()`);
     c4(nBtn(q('#spotifyList')) === 0 && viz(q('#btn-add-spotify-persona')) && viz(q('#spStatsTitulo')), 'Spotify con persona: faltan el botón de pie o el título «Estadísticas»');
 

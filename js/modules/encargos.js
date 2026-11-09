@@ -434,7 +434,7 @@ function abrirEncargoDetalle(id) {
     });
   }
   if (!todosMovs.length) {
-    histEl.innerHTML = `<div class="empty-state enc-vacio-pad"><div class="empty-state-sub">Sin movimientos aún. Registra entradas y salidas.</div></div>`;
+    histEl.innerHTML = emptyInline('Sin movimientos aún. Registra entradas y salidas.', { centro: true });
   } else {
     // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = saldo del encargo)
     // Ya escapa a mano (escHtml) porque arma una lista de atributos, no un solo valor —
@@ -676,7 +676,7 @@ async function usarParte(encId, parteId) {
 async function eliminarParte(encId, parteId) {
   const enc = getEncargo(encId);
   if (!enc) return;
-  const ok = await dialogo('Eliminar parte', '¿Eliminar esta parte del registro?', 'Eliminar', true);
+  const ok = await confirmarEliminar({ titulo: 'Eliminar parte', objeto: 'esta parte del registro', irreversible: false });
   if (!ok) return;
   enc.partes = (enc.partes || []).filter(p => p.id !== parteId);
   save();
@@ -1880,7 +1880,7 @@ async function deleteMovEncargo(encId, movId) {
     if (!(enc.saldoInicial > 0)) return;
     // El saldo inicial es plata AJENA que ya estaba guardada en esa cuenta: nunca formó parte de `c.saldo` (el saldo propio),
     // así que borrarlo solo quita la anotación del encargo y no mueve ninguna cuenta ni el libro.
-    const ok = await dialogo('Eliminar saldo inicial', `¿Eliminar el saldo inicial de ${fmt(enc.saldoInicial)}? Solo se quita del encargo; no cambia el saldo de ninguna cuenta.`, 'Eliminar', true);
+    const ok = await confirmarEliminar({ titulo: 'Eliminar saldo inicial', objeto: `el saldo inicial de ${fmt(enc.saldoInicial)}`, detalle: 'Solo se quita del encargo; no cambia el saldo de ninguna cuenta.', irreversible: false });
     if (!ok) return;
     enc.saldoInicial = 0;
     enc.cuentaInicial = '';
@@ -1930,7 +1930,7 @@ async function deleteMovEncargo(encId, movId) {
   }
   const ok = nivel === 'viejo'
     ? await dialogo('Movimiento antiguo', `Este movimiento de ${fmt(mov.monto)} ya tiene tiempo y puede estar mezclado con operaciones más recientes de este encargo${mov.cuenta ? ' en '+fuenteLabel(mov.cuenta) : ''}. Si lo eliminas, se revertirán sus efectos en tus cuentas ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`, 'Eliminar de todas formas', true)
-    : await dialogo('Eliminar movimiento', '¿Eliminar este movimiento del encargo? Se revertirán todos los efectos en tus cuentas.', 'Eliminar', true);
+    : await confirmarEliminar({ titulo: 'Eliminar movimiento', objeto: 'este movimiento del encargo', detalle: 'Se revertirán todos los efectos en tus cuentas.', irreversible: false });
   if (!ok) return;
 
   // Revertir efectos secundarios de un pago de préstamo vía encargo
@@ -2063,11 +2063,11 @@ async function eliminarEncargoActual() {
     return;
   }
 
-  const ok = await dialogo(
-    'Eliminar encargo',
-    `¿Eliminar el encargo de ${escHtml(enc.nombre)}? Esta acción no se puede deshacer. Los movimientos que ya pasaron (compras con TC, pagos de deudas, traspasos, etc.) quedan tal cual — eliminar el encargo no revierte nada, solo deja de llevarle el registro a esta persona.`,
-    'Eliminar', true
-  );
+  const ok = await confirmarEliminar({
+    titulo: 'Eliminar encargo',
+    objeto: `el encargo de ${enc.nombre}`,
+    detalle: 'Los movimientos que ya pasaron (compras con TC, pagos de deudas, traspasos, etc.) quedan tal cual — eliminar el encargo no revierte nada, solo deja de llevarle el registro a esta persona.'
+  });
   if (!ok) return;
 
   // A propósito NO se revierte ni se borra ningún movimiento vinculado

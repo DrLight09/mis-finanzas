@@ -264,7 +264,7 @@ function guardarBien() {
 }
 
 async function eliminarBien(id) {
-  const ok = await dialogo('Eliminar bien', '¿Seguro que quieres quitar este bien? El gasto con el que lo compraste no se toca.', 'Eliminar', true);
+  const ok = await confirmarEliminar({ titulo: 'Eliminar bien', objeto: 'este bien', detalle: 'El gasto con el que lo compraste no se toca.', irreversible: false });
   if (!ok) return;
   S.bienes = (S.bienes || []).filter(x => x.id !== id);
   save(); refresh();
@@ -544,7 +544,7 @@ async function deleteGastoVar(id) {
   const g = (S.gastosVar || []).find(x => x.id === id);
   if (g && g._secundario) {
     const seccion = g._origenSeccion || 'la sección de origen';
-    await dialogo('Movimiento vinculado', `Este gasto fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el registro allá — eso revertirá todo correctamente.`, 'Entendido', false);
+    await avisarNoSePuede('Movimiento vinculado', `Este gasto fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el registro allá — eso revertirá todo correctamente.`);
     return;
   }
 
@@ -560,7 +560,7 @@ async function deleteGastoVar(id) {
   if (!prot.ok) return;
   const confirmado = prot.confirmado;
   if (!confirmado) {
-    const ok = await dialogo('Eliminar gasto', '¿Seguro que quieres eliminar este gasto? Esta acción no se puede deshacer.', 'Eliminar', true);
+    const ok = await confirmarEliminar({ titulo: 'Eliminar gasto', objeto: 'este gasto' });
     if (!ok) return;
   }
   const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este gasto
@@ -691,7 +691,7 @@ function addGastoFijo() {
 }
 
 async function deleteGastoFijo(id) {
-  const ok = await dialogo('Eliminar gasto fijo', '¿Seguro que quieres eliminar este gasto fijo? Los pagos ya registrados se conservan en tu historial de gastos.', 'Eliminar', true);
+  const ok = await confirmarEliminar({ titulo: 'Eliminar gasto fijo', objeto: 'este gasto fijo', detalle: 'Los pagos ya registrados se conservan en tu historial de gastos.', irreversible: false });
   if (!ok) return;
   S.gastosFijos = (S.gastosFijos || []).filter(x => x.id !== id);
   // Los pagos ya registrados NO se borran: esa plata salió de una cuenta de verdad y el análisis

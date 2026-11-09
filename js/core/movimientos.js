@@ -530,7 +530,7 @@ async function _eliminarMovimientoImpl(btn) {
     || (() => { for (const h of (S.spotify.historial||[])) { const ab=(h.pendienteHistorial||[]).find(x=>x.id===movId); if(ab) return ab; } return null; })();
   if (movObj && movObj._secundario) {
     const seccion = movObj._origenSeccion || 'la sección de origen';
-    await dialogo('Movimiento vinculado', `Este movimiento fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`, 'Entendido', false);
+    await avisarNoSePuede('Movimiento vinculado', `Este movimiento fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`);
     return;
   }
 
@@ -594,7 +594,7 @@ async function _eliminarMovimientoImpl(btn) {
     return;
   }
   if (!confirmado) {
-    const ok = await dialogo('Eliminar movimiento', '¿Eliminar este movimiento? Se revertirá el efecto en los saldos de todas las cuentas involucradas.', 'Eliminar', true);
+    const ok = await confirmarEliminar({ titulo: 'Eliminar movimiento', objeto: 'este movimiento', detalle: 'Se revertirá el efecto en los saldos de todas las cuentas involucradas.', irreversible: false });
     if (!ok) return;
   }
   if (_movExiste(movTipoEl, movId) === false) { _rerenderCuentaActiva(); return; }

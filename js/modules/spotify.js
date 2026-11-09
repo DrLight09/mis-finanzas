@@ -434,7 +434,7 @@ function renderSpHistorial(){
   const hist=total.map((h,i)=>({...h,_realIdx:i}))
     .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b._realIdx-a._realIdx))
     .slice(0,12);
-  if(!hist.length){el.innerHTML='<div class="card card-sm sp-hist-vacio">Sin pagos registrados aún.</div>';return;}
+  if(!hist.length){el.innerHTML=emptyInline('Sin pagos registrados aún.',{centro:true,clase:'card card-sm'});return;}
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
   // Hallazgo real de paso: fuenteLabel() en `fuentesInfo` (nombre de cajita/cuenta,
   // texto libre) nunca pasaba por escHtml() acá — a diferencia del badge de
@@ -685,10 +685,10 @@ async function deleteSpHistorial(i){
   }
 
   const tienePendienteAlBorrar=h.tipo==='cobro'&&(h.pendiente||0)>0;
-  const msgBorrar=tienePendienteAlBorrar
-    ?'¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto revierte la plata movida por este registro (incluyendo abonos de lo pendiente ya recibidos) y cancela la deuda de '+fmt(h.pendiente)+' que quedaba abierta.'
-    :'¿Eliminar este registro del historial? Esta acción no se puede deshacer. Esto también revierte la plata movida por este registro'+((h.tipo==='cobro'&&(h.extra||0)>0)?', incluido el extra de '+fmt(h.extra):'')+'.';
-  const ok=await dialogo('Eliminar movimiento',msgBorrar,'Eliminar',true);
+  const detalleBorrar=tienePendienteAlBorrar
+    ?'Esto revierte la plata movida por este registro (incluyendo abonos de lo pendiente ya recibidos) y cancela la deuda de '+fmt(h.pendiente)+' que quedaba abierta.'
+    :'Esto también revierte la plata movida por este registro'+((h.tipo==='cobro'&&(h.extra||0)>0)?', incluido el extra de '+fmt(h.extra):'')+'.';
+  const ok=await confirmarEliminar({titulo:'Eliminar movimiento',objeto:'este registro del historial',detalle:detalleBorrar});
   if(!ok)return;
   return _borrarSpHistorial(i,h);
 }
@@ -800,7 +800,7 @@ async function deshacerAbonoPendienteSp(i,abIdx){
   if(!h||!h.pendienteHistorial)return;
   const ab=h.pendienteHistorial[abIdx];
   if(!ab)return;
-  const ok=await dialogo('Deshacer abono',`¿Deshacer este abono de ${fmt(ab.monto)}? Esta acción no se puede deshacer. Esto revierte esa plata de ${ab.destino?fuenteLabel(ab.destino):'la cuenta elegida'} y vuelve a marcar esa parte como pendiente.`,'Deshacer',true);
+  const ok=await confirmarEliminar({titulo:'Deshacer abono',verbo:'Deshacer',etiqueta:'Deshacer',objeto:'este abono de '+fmt(ab.monto),detalle:'Esto revierte esa plata de '+(ab.destino?fuenteLabel(ab.destino):'la cuenta elegida')+' y vuelve a marcar esa parte como pendiente.'});
   if(!ok)return;
   if(ab.destino)descontarFuente(ab.destino,ab.monto||0,_ogSp(h.id,true));
   h.monto=Math.max(0,(h.monto||0)-(ab.monto||0));
@@ -1473,7 +1473,7 @@ async function deleteSpotify(i){
   const p=(S.spotify.personas||[])[i];
   if(!p)return;
   const nombreActual=spNombreDe(p);
-  const ok=await dialogo('Eliminar integrante',`¿Eliminar a ${nombreActual} de Spotify? Esta acción no se puede deshacer. Su historial de cobros anteriores se conserva en las estadísticas, pero dejará de aparecer en la lista.`,'Eliminar',true);
+  const ok=await confirmarEliminar({titulo:'Eliminar integrante',objeto:`a ${nombreActual} de Spotify`,detalle:'Su historial de cobros anteriores se conserva en las estadísticas, pero dejará de aparecer en la lista.'});
   if(!ok)return;
   S.spotify.personas.splice(i,1);
   save();refresh();

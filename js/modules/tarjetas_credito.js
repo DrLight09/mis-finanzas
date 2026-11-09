@@ -409,9 +409,8 @@ async function eliminarTC(id){
   const tc=getTCById(id);
   if(!tc)return;
   const tieneVinculos=(S.tcMovimientos||[]).some(m=>m.tcId===id);
-  const msg='¿Eliminar "'+tc.nombre+'" y todo su historial? Esta acción no se puede deshacer.'
-    +(tieneVinculos?' Hay encargos o préstamos que se pagaron con esta tarjeta y perderán esa referencia.':'');
-  const ok=await dialogo('Eliminar tarjeta',msg,'Eliminar',true);
+  const ok=await confirmarEliminar({titulo:'Eliminar tarjeta',objeto:'"'+tc.nombre+'" y todo su historial',
+    detalle:tieneVinculos?'Hay encargos o préstamos que se pagaron con esta tarjeta y perderán esa referencia.':''});
   if(!ok)return;
   S.tarjetasCredito=(S.tarjetasCredito||[]).filter(x=>x.id!==id);
   // Limpiar movimientos secundarios asociados — sin esto quedaban
@@ -437,12 +436,12 @@ function renderTCScreen(){
   // El estado vacío ya trae «Agregar tarjeta»: el botón de pie solo aparece con tarjetas.
   mostrarSi(document.getElementById('btn-nueva-tarjeta'),tarjetas.length>0);
   if(!tarjetas.length){
-    lista.innerHTML=html`<div class="empty-state">
-      <div class="empty-state-icon"><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h3"/></svg></div>
-      <div class="empty-state-title">Sin tarjetas de crédito</div>
-      <div class="empty-state-sub">Agrega tu primera tarjeta para registrar compras y controlar tu cupo.</div>
-      <button type="button" class="empty-state-btn" ${raw(Events.attr('tarjetas:nueva'))}>Agregar tarjeta</button>
-    </div>`;
+    lista.innerHTML=emptyState(
+      '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h3"/></svg>',
+      'Sin tarjetas de crédito',
+      'Agrega tu primera tarjeta para registrar compras y controlar tu cupo.',
+      'Agregar tarjeta',
+      {action:'tarjetas:nueva'});
     return;
   }
 
@@ -904,7 +903,7 @@ function abrirDetalleTCSheet(tcId){
   contenido+=`<div class="tc-mov-tit">Movimientos <span class="tc-mov-n">(${itemsLinea.length})</span></div>`;
 
   if(!itemsLinea.length){
-    contenido+=`<div class="tc-vacio">Sin movimientos registrados.</div>`;
+    contenido+=emptyInline('Sin movimientos registrados.',{clase:'empty-inline-sep'});
   } else {
     // Arma los data-mov-* de cada fila (los usa el sheet de detalle de
     // movimiento al hacer click) — es HTML de confianza ya escapado acá
@@ -1010,7 +1009,7 @@ async function eliminarCompraTC(tcId,compraId){
   }
   const ok=nivel==='viejo'
     ? await confirmarBorrarMovimientoViejo(tc.nombre,compra.monto||0,'baja','deuda')
-    : await dialogo('Eliminar compra','¿Eliminar esta compra de '+fmt(compra.monto)+'? Se reducirá la deuda de la tarjeta.','Eliminar',true);
+    : await confirmarEliminar({titulo:'Eliminar compra',objeto:'esta compra de '+fmt(compra.monto),detalle:'Se reducirá la deuda de la tarjeta.',irreversible:false});
   if(!ok)return;
   const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar esta compra
   tcEliminarCompraInterna(tc,compraId);
@@ -1036,7 +1035,7 @@ async function eliminarPagoTC(tcId,pagoId){
   }
   const ok=nivel==='viejo'
     ? await confirmarBorrarMovimientoViejo(tc.nombre,pago.monto||0,'sube','deuda')
-    : await dialogo('Eliminar pago','¿Eliminar este pago de '+fmt(pago.monto)+'? Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.','Eliminar',true);
+    : await confirmarEliminar({titulo:'Eliminar pago',objeto:'este pago de '+fmt(pago.monto),detalle:'Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.',irreversible:false});
   if(!ok)return;
   const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
   tcEliminarPagoInterna(tc,pagoId);

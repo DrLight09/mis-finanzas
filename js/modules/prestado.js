@@ -523,7 +523,7 @@ function abrirDeudor(id) {
   });
   const histEl = document.getElementById('ddHistorial');
   if (!movs.length) {
-    histEl.innerHTML = '<div class="pr-vacio">Sin movimientos aún.</div>';
+    histEl.innerHTML = emptyInline('Sin movimientos aún.');
   } else {
     let saldoCorriente = saldo; // saldo de deuda ANTES de descontar la entry actual (al iterar desc, arranca en el saldo actual = saldo "después" del primer item)
     // Los movimientos se siguen recorriendo TODOS juntos y en orden cronológico
@@ -659,7 +659,7 @@ async function eliminarDeudorActual() {
   if (!deudorActualId) return;
   const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
   if (!d) return;
-  const ok = await dialogo('Eliminar persona', `¿Eliminar a ${escHtml(d.nombre)} y todo su historial? Esta acción no se puede deshacer.`, 'Eliminar', true);
+  const ok = await confirmarEliminar({ titulo: 'Eliminar persona', objeto: `a ${d.nombre} y todo su historial` });
   if (!ok) return;
   Deudas.quitar('favor', deudorActualId);
   save(); refresh(); volverDeudores();
@@ -815,11 +815,12 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
   const efectoAviso = esPerdon
     ? 'El gasto que se registró al perdonarla también se borrará.'
     : `El saldo de ${cuentaAviso} se revertirá automáticamente.`;
-  const ok = await dialogo(
-    'Eliminar ' + label,
-    `¿Eliminar este ${label} de ${fmt(m.monto)}? ${efectoAviso} La deuda de ${escHtml(d.nombre)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
-    'Eliminar', true
-  );
+  const ok = await confirmarEliminar({
+    titulo: 'Eliminar ' + label,
+    objeto: `este ${label} de ${fmt(m.monto)}`,
+    detalle: `${efectoAviso} La deuda de ${d.nombre} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
+    irreversible: false // los avisos de efecto ya dicen qué se revierte; el movimiento se puede volver a registrar
+  });
   if (!ok) return;
 
   const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este movimiento
@@ -1929,7 +1930,7 @@ function abrirMiDeuda(id) {
   });
   const histEl = document.getElementById('mdHistorial');
   if (!movs.length) {
-    histEl.innerHTML = '<div class="pr-vacio">Sin movimientos aún.</div>';
+    histEl.innerHTML = emptyInline('Sin movimientos aún.');
   } else {
     const _porGrupo = {}; // grupoId -> [tarjetas html``]
     movs.forEach(m => {
@@ -2282,10 +2283,10 @@ async function eliminarMiDeuda() {
   if (!d) return;
   const saldo = getMiDeudaSaldo(d);
   if (Math.abs(saldo) > Deudas.TOL) {
-    await dialogo('No se puede eliminar', `Aún le debes ${fmt(saldo)} a ${escHtml(d.nombre)}. Registra el pago completo antes de eliminar.`, 'Entendido', false);
+    await avisarNoSePuede('No se puede eliminar', `Aún le debes ${fmt(saldo)} a ${d.nombre}. Registra el pago completo antes de eliminar.`);
     return;
   }
-  const ok = await dialogo('Eliminar deuda', `¿Eliminar el registro de deuda con ${escHtml(d.nombre)}? Esta acción no se puede deshacer.`, 'Eliminar', true);
+  const ok = await confirmarEliminar({ titulo: 'Eliminar deuda', objeto: `el registro de deuda con ${d.nombre}` });
   if (!ok) return;
   Deudas.quitar('contra', miDeudaActualId);
   save(); refresh();

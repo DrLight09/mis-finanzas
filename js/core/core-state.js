@@ -1575,15 +1575,35 @@ function dialogo(titulo, msg, btnOk='Confirmar', peligro=false){
     document.getElementById('dialog-msg').textContent=msg;
     const btn=document.getElementById('dialog-confirm');
     btn.textContent=btnOk;
-    btn.style.background=peligro?'rgba(240,104,104,.2)':'rgba(200,240,96,.15)';
-    btn.style.borderColor=peligro?'rgba(240,104,104,.4)':'rgba(200,240,96,.4)';
-    btn.style.color=peligro?'var(--red)':'var(--accent)';
+    btn.classList.toggle('dialog-ok-peligro',!!peligro);
+    btn.classList.toggle('dialog-ok-normal',!peligro);
     document.getElementById('dialog-overlay').classList.add('open');
   });
 }
 document.getElementById('dialog-overlay').addEventListener('click',function(e){
   if(e.target===this) _closeDialog(false);
 });
+
+/* ---- CONFIRMAR ELIMINACIÓN / AVISO DE «NO SE PUEDE» ----
+   Todos los «¿Eliminar…?» de la app pasan por aquí, para que la redacción, el botón y el color sean los mismos:
+     confirmarEliminar({ titulo, objeto, detalle, irreversible=true, etiqueta='Eliminar' }) → Promise<boolean>
+       titulo      encabezado («Eliminar gasto fijo»).
+       objeto      lo que se elimina, con su artículo y sin comillas de más: «este gasto fijo», «a María», «la cuenta "Nequi"».
+                   Da la pregunta «¿Eliminar <objeto>?».
+       detalle     (opcional) qué pasa con el resto: efectos sobre saldos, historial que se conserva…
+       irreversible agrega «Esta acción no se puede deshacer.» (por defecto sí; se omite si el detalle ya lo dice).
+       etiqueta    texto del botón rojo («Eliminar», «Borrar», «Sí, eliminar y revertir»). verbo: el de la pregunta (por defecto «Eliminar»).
+     avisarNoSePuede(titulo, motivo) → Promise: un solo botón «Entendido» (la acción está bloqueada y se explica por qué).
+   dialogo() pinta con textContent: aquí NUNCA se escapa con escHtml() (saldría «&amp;» en pantalla); se pasa el texto tal cual. */
+function confirmarEliminar({titulo,objeto,detalle='',irreversible=true,etiqueta='Eliminar',verbo='Eliminar'}={}){
+  const partes=['¿'+verbo+' '+objeto+'?'];
+  if(detalle)partes.push(String(detalle).trim());
+  if(irreversible&&!/no se puede deshacer/i.test(detalle))partes.push('Esta acción no se puede deshacer.');
+  return dialogo(titulo||('Eliminar '+objeto),partes.join(' '),etiqueta,true);
+}
+function avisarNoSePuede(titulo,motivo){
+  return dialogo(titulo||'No se puede',motivo,'Entendido',false);
+}
 
 // Convierte un string de fecha 'YYYY-M-D' o 'YYYY-MM-DD' (con o sin ceros a
 // la izquierda en mes/día) en un Date válido a medianoche local, construido
@@ -1673,10 +1693,9 @@ function confirmarBorrarMovimientoViejo(nombreCuenta, montoRevertido, direccion,
 // continuar (coherente con dialogo(), que ya soporta este patrón de un solo
 // botón — ver el uso existente para movimientos secundarios en movimientos.js).
 function avisarMovimientoBloqueado(){
-  return dialogo(
+  return avisarNoSePuede(
     'No se puede eliminar',
-    'Este movimiento es demasiado antiguo o ya está muy mezclado con operaciones posteriores de esa cuenta. Eliminarlo ahora dejaría un descuadre imposible de corregir a mano. Si hay un error real, corrígelo editando el dato (nota o fecha) sin borrar el movimiento.',
-    'Entendido', false
+    'Este movimiento es demasiado antiguo o ya está muy mezclado con operaciones posteriores de esa cuenta. Eliminarlo ahora dejaría un descuadre imposible de corregir a mano. Si hay un error real, corrígelo editando el dato (nota o fecha) sin borrar el movimiento.'
   );
 }
 
@@ -1764,17 +1783,31 @@ window.addEventListener('beforeunload', function() {
 // que ningún módulo futuro pueda reintroducir un onclick inline acá por
 // costumbre. Ver auditoria-tecnica.md #1 y CHANGELOG.md#infraestructura--seguridad.
 const ICONO_VACIO_CUENTAS = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16" cy="14" r="1.2"/></svg>';
-function emptyState(icon, title, sub, btnLabel, btnFn){
+// ÚNICO estado vacío de la app. Dos formas, según el sitio:
+//   emptyState(icon, title, sub, btnLabel, btnFn, opts)  bloque con icono, título, texto y botón opcional (listas y pantallas
+//       completas: «Sin tarjetas», «Nadie te debe por ahora»). `icon`, `title` y `sub` se insertan como HTML (iconos SVG y entidades);
+//       lo que venga del usuario hay que escaparlo antes. Las partes vacías no se dibujan. opts.compacto reduce el relleno (dentro de
+//       una tarjeta o de un historial).
+//   emptyInline(texto, opts)  una línea de aviso dentro de una tarjeta o historial («Sin movimientos aún»). El texto se ESCAPA aquí.
+//       opts: centro (centrado), grande (feeds de pantalla: más aire), clase (extra, p. ej. 'card card-sm').
+// Ningún módulo debe armar su propio <div class="...-vacio">: los tests lo vigilan (tests/estados-vacios.test.js).
+function emptyState(icon, title, sub, btnLabel, btnFn, opts){
+  const o = opts || {};
   let btnHtml = '';
   if (btnLabel && btnFn && btnFn.action) {
     btnHtml = `<button type="button" class="empty-state-btn" ${Events.attr(btnFn.action, ...(btnFn.args || []))}>${btnLabel}</button>`;
   }
-  return `<div class="empty-state">
-    <div class="empty-state-icon">${icon}</div>
-    <div class="empty-state-title">${title}</div>
-    <div class="empty-state-sub">${sub}</div>
+  return `<div class="empty-state${o.compacto ? ' empty-state-compacto' : ''}">
+    ${icon ? `<div class="empty-state-icon">${icon}</div>` : ''}
+    ${title ? `<div class="empty-state-title">${title}</div>` : ''}
+    ${sub ? `<div class="empty-state-sub">${sub}</div>` : ''}
     ${btnHtml}
   </div>`;
+}
+function emptyInline(texto, opts){
+  const o = opts || {};
+  const cls = 'empty-inline' + (o.centro ? ' empty-inline-centro' : '') + (o.grande ? ' empty-inline-grande' : '') + (o.clase ? ' ' + o.clase : '');
+  return `<div class="${cls}">${escHtml(texto)}</div>`;
 }
 
 /* ---- FILA DE MOVIMIENTO COMPARTIDA ----

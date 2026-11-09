@@ -340,12 +340,12 @@ function _selPersonaFiltrar() {
     // Lo que escribió coincide exacto con alguien que ya está en esa lista: no tiene sentido ofrecer crearla de nuevo.
     const yaEsta = q && excluidas.find(p => p.nombre.trim().toLowerCase() === q);
     if (yaEsta) {
-      lista.innerHTML = html`<div class="pe-vacio-12">${yaEsta.nombre} ya está en esta lista.</div>`;
+      lista.innerHTML = emptyInline(yaEsta.nombre+' ya está en esta lista.');
       return;
     }
     // Todas las personas que existen ya están en la lista: solo queda crear una nueva.
     if (!q && excluidas.length) {
-      lista.innerHTML = html`<div class="pe-vacio-12">Todas tus personas ya están en esta lista. Crea una nueva.</div>`;
+      lista.innerHTML = emptyInline('Todas tus personas ya están en esta lista. Crea una nueva.');
       return;
     }
     lista.innerHTML = html`${q
@@ -356,7 +356,7 @@ function _selPersonaFiltrar() {
             Crear a "${q}"
           </button>
         </div>`
-      : html`<div class="pe-vacio-12">No hay personas todavía. Crea una nueva.</div>`}`;
+      : raw(emptyInline('No hay personas todavía. Crea una nueva.'))}`;
     return;
   }
   // items: array de fragmentos html`` por persona — se interpolan directo
@@ -797,7 +797,7 @@ function abrirPerfilPersona(personaId) {
   }
 
   if (!datos.deudor && !datos.encargos.length && !spEntry && !(datos.misDeudas && datos.misDeudas.length)) {
-    contenido.push(html`<div class="pe-vacio-sin-prestamo">Esta persona no tiene préstamos, encargos ni está en Spotify todavía.</div>`);
+    contenido.push(raw(emptyInline('Esta persona no tiene préstamos, encargos ni está en Spotify todavía.')));
   }
 
   body.innerHTML = html`${contenido}`;

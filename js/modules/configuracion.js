@@ -85,9 +85,9 @@ async function eliminarWrapped(anio){
   const info=typeof window._wrappedVentanaInfo==='function'?window._wrappedVentanaInfo():null;
   const regenerable=!!(info&&info.disponible&&String(info.anioObjetivo)===String(anio));
   const aviso=regenerable
-    ?'¿Eliminar el Wrapped de '+anio+'? Esta acción no se puede deshacer, pero mientras sea enero podrás generarlo de nuevo.'
-    :'¿Eliminar el Wrapped de '+anio+'? Esta acción no se puede deshacer y no podrás generarlo otra vez.';
-  const ok=await dialogo('Eliminar Wrapped '+anio,aviso,'Eliminar',true);
+    ?'Esta acción no se puede deshacer, pero mientras sea enero podrás generarlo de nuevo.'
+    :'Esta acción no se puede deshacer y no podrás generarlo otra vez.';
+  const ok=await confirmarEliminar({titulo:'Eliminar Wrapped '+anio,objeto:'el Wrapped de '+anio,detalle:aviso});
   if(!ok)return;
   if(!await pedirPinAntesDe('Para eliminar tu Wrapped de '+anio))return;
   if(S.wrappedAnios)delete S.wrappedAnios[anio];
@@ -350,7 +350,7 @@ function toggleModulo(nombre){
 // a subir el S viejo y pisaría el borrado. Mismo criterio en _fbSignOut/_fbDeleteAccount
 // (firebase-sync.js).
 async function borrarTodo(){
-  const ok=await dialogo('Borrar todos los datos','¿Seguro que quieres borrar TODO? Esta acción no se puede deshacer y perderás toda tu información financiera.','Borrar todo',true);
+  const ok=await confirmarEliminar({titulo:'Borrar todos los datos',verbo:'Borrar',etiqueta:'Borrar todo',objeto:'TODOS tus datos',detalle:'Perderás toda tu información financiera.'});
   if(!ok)return;
   if(!await pedirPinAntesDe('Para borrar todos los datos'))return;
   const _overlay = document.getElementById('fb-loading-screen');

@@ -457,7 +457,7 @@ async function archivarCuenta(id){
   const c=getCuenta(id);
   if(!c||c.archivada)return;
   const motivo=_motivoNoArchivar(c);
-  if(motivo){await dialogo('No se puede archivar',motivo,'Entendido',false);return;}
+  if(motivo){await avisarNoSePuede('No se puede archivar',motivo);return;}
   const ok=await dialogo('Archivar cuenta','¿Archivar "'+c.nombre+'"? Deja de aparecer al elegir cuentas y en Inicio, pero su historial se conserva y puedes reactivarla cuando quieras.','Archivar',false);
   if(!ok)return;
   c.archivada=true;
@@ -481,10 +481,10 @@ async function eliminarCuenta(id){
   const c=getCuenta(id);
   if(!c)return;
   if(!cuentaSePuedeEliminar(id)){
-    await dialogo('No se puede eliminar','"'+c.nombre+'" ya tiene movimientos: para no perder su historial, archívala en vez de eliminarla.','Entendido',false);
+    await avisarNoSePuede('No se puede eliminar','"'+c.nombre+'" ya tiene movimientos: para no perder su historial, archívala en vez de eliminarla.');
     return;
   }
-  const ok=await dialogo('Eliminar cuenta','¿Eliminar "'+c.nombre+'"? Nunca se usó, así que no se pierde ningún movimiento. Esta acción no se puede deshacer.','Eliminar',true);
+  const ok=await confirmarEliminar({titulo:'Eliminar cuenta',objeto:'"'+c.nombre+'"',detalle:'Nunca se usó, así que no se pierde ningún movimiento.'});
   if(!ok)return;
   S.cuentas=_cuentasArr().filter(x=>x.id!==id);
   save();refresh();
@@ -890,7 +890,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
   const filtrados = cuentaKey ? _movsAplicarFiltro(movs, cuentaKey) : movs;
 
   if (!movs.length) {
-    el.innerHTML = '<div class="cuenta-movs-vacio">No hay movimientos registrados en esta cuenta.</div>';
+    el.innerHTML = emptyInline('No hay movimientos registrados en esta cuenta.');
     return;
   }
   if (!filtrados.length) {

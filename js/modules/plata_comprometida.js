@@ -1161,7 +1161,7 @@ function _cpAbrirRecibir(id){
   const planEl = document.getElementById('cp-recibir-plan');
   if(planEl){
     if(!(item.destinos||[]).length){
-      planEl.innerHTML = `<div class="cp-vacio-sin">Sin compromisos — todo el monto queda libre.</div>`;
+      planEl.innerHTML = emptyInline('Sin compromisos — todo el monto queda libre.');
     } else {
       planEl.innerHTML = (item.destinos||[]).map(d=>{
         const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
@@ -1667,21 +1667,20 @@ async function _cpEliminar(id){
   const yaRecibido   = !!item.recibido;
 
   // Construir mensaje de advertencia con el detalle de lo que se revertirá
-  let advertencia = '¿Eliminar «' + item.desc + '»?';
+  const detalles = []; // cada aviso va en su párrafo; el diálogo respeta los saltos de línea
   if(yaRecibido){
-    advertencia += '\n\n<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.';
+    detalles.push('Este ingreso ya fue marcado como recibido. Al eliminarlo se revertirán todos los movimientos generados (reposiciones en cuentas, entradas en cajitas) y las compras de TC asociadas.');
   } else {
     if(hayAdelantos){
-      advertencia += '\n\n<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.';
+      detalles.push('Hay plata adelantada de tus cuentas. Al eliminar se revertirán esos descuentos y quedarán como si nunca se hubieron hecho.');
     }
     if(hayTcMarcada){
-      advertencia += '\n\n<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.';
+      detalles.push('Hay gastos marcados como cargados a TC. Al eliminar se revertirá la deuda sumada a la tarjeta.');
     }
     if(!hayAdelantos && !hayTcMarcada){
-      advertencia += '\n\nEste ingreso no ha generado movimientos — se puede eliminar sin efectos secundarios.';
+      detalles.push('Este ingreso no ha generado movimientos — se puede eliminar sin efectos secundarios.');
     }
   }
-  advertencia += '\n\nEsta acción no se puede deshacer.';
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
   // Solo aplica si hay algo real que revertir (yaRecibido / hayAdelantos /
@@ -1737,14 +1736,12 @@ async function _cpEliminar(id){
         return;
       }
       if(nivel==='viejo'){
-        advertencia += '\n\n<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><path d="M12 8v4"/><path d="M12 16h.01"/><circle cx="12" cy="12" r="10"/></svg> Esto ya tiene tiempo y puede estar mezclado con operaciones más recientes de las cuentas involucradas — revertirlo hoy ajusta esos saldos actuales, no recalcula el historial completo.';
+        detalles.push('Esto ya tiene tiempo y puede estar mezclado con operaciones más recientes de las cuentas involucradas — revertirlo hoy ajusta esos saldos actuales, no recalcula el historial completo.');
       }
     }
   }
 
-  const ok = typeof dialogo === 'function'
-    ? await dialogo('Eliminar ingreso comprometido', advertencia, 'Sí, eliminar y revertir', true)
-    : confirm(advertencia);
+  const ok = await confirmarEliminar({ titulo: 'Eliminar ingreso comprometido', objeto: '«' + item.desc + '»', detalle: detalles.join('\n\n'), etiqueta: 'Sí, eliminar y revertir' });
   if(!ok) return;
 
   // ── Revertir efectos secundarios ─────────────────────────────────

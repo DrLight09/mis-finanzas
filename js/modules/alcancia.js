@@ -693,7 +693,7 @@ window.renderAlcancia = function(){
       movsEl.style.display = '';
       const movs = (a.movimientos || []);
       if(!movs.length){
-        movsEl.innerHTML = '<div class="feed-empty">Aún no hay movimientos en esta alcancía.</div>';
+        movsEl.innerHTML = emptyInline('Aún no hay movimientos en esta alcancía.',{grande:true});
       } else {
         const tipoIcon = { yo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro-deuda': '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
         const tipoColor = { yo: 'alc-c-accent', regalo: 'alc-c-amber', mandado: 'alc-c-amber', split: 'alc-c-amber', 'cobro-deuda': 'alc-c-accent' };
@@ -1308,10 +1308,10 @@ window.alcanciaEliminarDeposito = async function(movId){
     }
   }
 
-  const dialogoTexto = entry.tipo === 'cobro-deuda'
-    ? `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? Se le volverá a sumar esa plata a la deuda de la persona.`
-    : `¿Eliminar este depósito de ${typeof fmt==='function'?fmt(entry.monto):entry.monto} del ${entry.fecha}? ${entry.fuenteOrigen || (entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')) ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).'}`;
-  const ok = await dialogo('Eliminar depósito', dialogoTexto, 'Eliminar', true);
+  const dialogoDetalle = entry.tipo === 'cobro-deuda'
+    ? 'Se le volverá a sumar esa plata a la deuda de la persona.'
+    : (entry.fuenteOrigen || (entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')) ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).');
+  const ok = await confirmarEliminar({ titulo: 'Eliminar depósito', objeto: `este depósito de ${fmt(entry.monto)} del ${entry.fecha}`, detalle: dialogoDetalle });
   if(!ok) return;
 
   return _alcanciaEjecutarEliminarDeposito(a, idx, entry);

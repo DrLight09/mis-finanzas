@@ -365,7 +365,7 @@ function renderHealthScore(){
   // (con o sin datos) el alto lo debe definir el contenido, no el skeleton —
   // si no, queda espacio vacío de sobra cuando el contenido es corto.
   el.style.minHeight = '';
-  if(!res || res.sinDatos){ el.innerHTML = '<div class="inicio-salud-vacio">Registra más datos para calcular tu salud financiera.</div>'; return; }
+  if(!res || res.sinDatos){ el.innerHTML = emptyInline('Registra más datos para calcular tu salud financiera.'); return; }
   const { score, consejos } = res;
   const sinBase = sit.sinBase;
   // Un solo punto asigna color e ícono según el TIPO del consejo (no según su texto). Íconos de Font Awesome de la app.
@@ -593,13 +593,11 @@ function renderProyeccion(){
   const _dp = (typeof calcPatrimonioDesglose==='function') ? calcPatrimonioDesglose() : null;
   const sinNada = _dp ? ((_dp.activos - _dp.alcancia) === 0 && _dp.pasivos === 0) : !patrimonio;
   if(sinNada){
-    el.innerHTML = `<div class="inicio-proy-vacio">
-      <div class="inicio-proy-vacio-ico">
-        <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-      </div>
-      <div class="inicio-proy-vacio-titulo">Sin datos suficientes</div>
-      <div class="inicio-proy-vacio-texto">Registra movimientos para ver tu proyección a 3, 6 y 12 meses.</div>
-    </div>`;
+    el.innerHTML = emptyState(
+      '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+      'Sin datos suficientes',
+      'Registra movimientos para ver tu proyección a 3, 6 y 12 meses.',
+      null, null, { compacto: true });
     return;
   }
 

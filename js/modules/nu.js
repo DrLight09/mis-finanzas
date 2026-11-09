@@ -651,18 +651,17 @@ async function deleteCajita(id){
   const c=(S.cajitas||[]).find(x=>x.id===id);
   if(!c)return;
   if(c.cdts&&c.cdts.length){
-    await dialogo('No se puede eliminar','Esta cajita tiene CDTs activos. Espera a que venzan para eliminarla.','Entendido',false);
+    await avisarNoSePuede('No se puede eliminar','Esta cajita tiene CDTs activos. Espera a que venzan para eliminarla.');
     return;
   }
   const saldoActual=calcC(c).val;
   if(saldoActual>0){
-    await dialogo('No se puede eliminar','Para eliminar esta cajita primero debes retirar todo el dinero. Saldo actual: '+fmt(saldoActual)+'.','Entendido',false);
+    await avisarNoSePuede('No se puede eliminar','Para eliminar esta cajita primero debes retirar todo el dinero. Saldo actual: '+fmt(saldoActual)+'.');
     return;
   }
   const tcVinculadas=(S.tarjetasCredito||[]).filter(x=>x.cajitaId===id);
-  const msgCajita='¿Seguro que quieres eliminar "'+c.nombre+'"? Esta acción no se puede deshacer.'
-    +(tcVinculadas.length?' '+(tcVinculadas.length===1?'La tarjeta "'+tcVinculadas[0].nombre+'" está':'Las tarjetas '+tcVinculadas.map(x=>'"'+x.nombre+'"').join(', ')+' están')+' vinculada'+(tcVinculadas.length===1?'':'s')+' a esta cajita para su pago y quedará'+(tcVinculadas.length===1?'':'n')+' sin cajita asignada.':'');
-  const ok=await dialogo('Eliminar cajita',msgCajita,'Eliminar',true);
+  const detalleCajita=(tcVinculadas.length?(tcVinculadas.length===1?'La tarjeta "'+tcVinculadas[0].nombre+'" está':'Las tarjetas '+tcVinculadas.map(x=>'"'+x.nombre+'"').join(', ')+' están')+' vinculada'+(tcVinculadas.length===1?'':'s')+' a esta cajita para su pago y quedará'+(tcVinculadas.length===1?'':'n')+' sin cajita asignada.':'');
+  const ok=await confirmarEliminar({titulo:'Eliminar cajita',objeto:'"'+c.nombre+'"',detalle:detalleCajita});
   if(!ok)return;
   const nombreEl=c.nombre;
   S.cajitas=(S.cajitas||[]).filter(x=>x.id!==id);
@@ -943,7 +942,7 @@ function renderCajitas(){
   const btn=document.getElementById('btnAddCajita');
   const cajitas=cajitasDeCuenta(_ahorroActualId());
   if(!cajitas.length){
-    el.innerHTML='<div class="nu-vacio">Sin cajitas. Agrega tu primera cajita — empieza en $0 y crece sola.</div>';
+    el.innerHTML=emptyInline('Sin cajitas. Agrega tu primera cajita — empieza en $0 y crece sola.');
     msg.textContent='';btn.style.display='';return;
   }
   el.innerHTML=html`${cajitas.map(c=>{
@@ -1142,12 +1141,12 @@ function abrirSubMeta(){
   const p=calcMetaProgreso(c);
   if(!p){
     // Sin meta — mostrar formulario rápido
-    el.innerHTML=html`<div class="card nu-meta-vacia">
-      <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      <div class="nu-meta-vacia-titulo">Sin meta configurada</div>
-      <div class="nu-meta-vacia-txt">Define un objetivo de ahorro para esta cajita y lleva el seguimiento mes a mes.</div>
-      <button type="button" class="btn btn-primary" ${raw(Events.attr('nu:abrirMetaCajita', c.id))}>Configurar meta</button>
-    </div>`;
+    el.innerHTML=html`<div class="card nu-meta-vacia">${raw(emptyState(
+      '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
+      'Sin meta configurada',
+      'Define un objetivo de ahorro para esta cajita y lleva el seguimiento mes a mes.',
+      'Configurar meta',
+      {action:'nu:abrirMetaCajita',args:[c.id]},{compacto:true}))}</div>`;
   } else {
     const estadoLabels={ok:'Al día',warn:'Un poco atrás',late:'Atrasado/a'};
     const estado=p.diferencia>=0?'ok':(p.diferencia>-(p.cuotaMensual*0.5)?'warn':'late');
@@ -1198,11 +1197,11 @@ function abrirSubCDTs(){
   const saldoDisp=calcC(c).val;
   let contenido='';
   if(!cdts.length){
-    contenido=html`<div class="card nu-cdt-vacio">
-      <svg aria-hidden="true" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="1.5" stroke-linecap="round" class="nu-mb12"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-      <div class="nu-meta-vacia-titulo">Sin CDTs activos</div>
-      <div class="nu-meta-vacia-txt">Bloquea parte del saldo de esta cajita como CDT y gana intereses mientras esperas el vencimiento.</div>
-    </div>`;
+    contenido=html`<div class="card nu-cdt-vacio">${raw(emptyState(
+      '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>',
+      'Sin CDTs activos',
+      'Bloquea parte del saldo de esta cajita como CDT y gana intereses mientras esperas el vencimiento.',
+      null,null,{compacto:true}))}</div>`;
   } else {
     contenido=html`${cdts.map(cdt=>{
       const cdtK=calcCDT(cdt);
@@ -1322,7 +1321,7 @@ function _nuMovRenderCajitas() {
   if (!wrap) return;
   const cajitas = _cajitasAhorroActual();
   if (!cajitas.length) {
-    wrap.innerHTML = '<div class="nu-sel-vacio">No tienes cajitas. Crea una primero desde la pantalla de la cuenta.</div>';
+    wrap.innerHTML = emptyInline('No tienes cajitas. Crea una primero desde la pantalla de la cuenta.');
     return;
   }
   wrap.innerHTML = html`${cajitas.map(c => {

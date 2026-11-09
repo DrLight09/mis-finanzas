@@ -1283,7 +1283,7 @@ describe('borrar-todo-pin', () => {
     app.document = dom.document;
     const ls = app.localStorage;
     ls.setItem('mf_pin', '1234'); ls.setItem('mf_bio_enabled', 'true'); ls.setItem('mf_bio_cred', 'credencial'); ls.setItem('mf_auth_hint', '1');
-    app.dialogo = async () => true; app.toast = () => {}; app.setTimeout = f => f();
+    app.dialogo = async () => true; app.confirmarEliminar = async () => true; app.toast = () => {}; app.setTimeout = f => f();
     app.pedirPinAntesDe = async () => true; // el PIN de confirmación se escribió bien (pedirPinAntesDe vive en core-state.js, ver pin-confirmar-acciones-destructivas)
     app._fbUser = { uid: 'u1' };
     app._fb = { db: {}, doc: () => ({}), setDoc: async () => { if (!nubeOk) throw new Error('sin conexión'); } };
@@ -1330,7 +1330,7 @@ describe('borrar-todo-pin', () => {
 
   test('si el usuario cancela la confirmación no se borra nada', async () => {
     const { app, ls } = entorno();
-    app.dialogo = async () => false;
+    app.dialogo = async () => false; app.confirmarEliminar = async () => false;
     await app.borrarTodo();
     assert.equal(ls.getItem('mf_pin'), '1234');
     assert.notEqual(app.__recargado, true);

@@ -1589,14 +1589,13 @@
             <div class="divider ix-m8-0"></div>
             <div class="row">
               <div>
-                <div class="ix-fs11-ctext2">Cajita Spotify</div>
+                <div class="ix-fs11-ctext2">Cuenta Spotify<button type="button" class="btn btn-ghost btn-sm sp-cajita-btn" id="btn-sp-elegir-cajita" data-action="spotify:abrirElegirFuente" data-args="[]">Elegir</button></div>
                 <div class="ix-div-122">Plata
                   guardada para pagar</div>
               </div>
               <div class="ix-taright">
                 <div class="row-amount c-nu" id="spCajitaSaldo">$0</div>
                 <div class="ix-spcajitastatus" id="spCajitaStatus"></div>
-                <button type="button" class="btn btn-ghost btn-sm sp-cajita-btn" id="btn-sp-elegir-cajita" data-action="spotify:abrirElegirCajita" data-args="[]">Elegir</button>
               </div>
             </div>
           </div>
@@ -4018,19 +4017,19 @@
     </div>
 
     <!-- SPOTIFY - Registrar pago de lo pendiente de un cobro -->
-    <div class="overlay" id="sheet-sp-cajita" data-sheet-id="sp-cajita">
+    <div class="overlay" id="sheet-sp-fuente" data-sheet-id="sp-fuente">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title">Cajita de Spotify</div>
-        <p class="ix-div-168" id="spCajitaSelNota"></p>
+        <div class="sheet-title">Cuenta de Spotify</div>
+        <p class="ix-div-168" id="spFuenteSelNota"></p>
         <div class="ig">
-          <label class="il" for="spCajitaSel">¿Cuál cajita?</label>
-          <div class="select-wrap"><select id="spCajitaSel"></select></div>
+          <label class="il" for="spFuenteSel">¿Cuál cuenta o cajita?</label>
+          <div class="select-wrap"><select id="spFuenteSel"></select></div>
         </div>
         <button type="button" class="btn btn-primary"
-          data-action="spotify:guardarCajita" data-args="[]">Guardar</button>
+          data-action="spotify:guardarFuente" data-args="[]">Guardar</button>
         <button type="button" class="btn btn-ghost"
-          data-close-sheet="sp-cajita">Cancelar</button>
+          data-close-sheet="sp-fuente">Cancelar</button>
       </div>
     </div>
 

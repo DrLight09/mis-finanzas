@@ -186,7 +186,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 **`sheet-sp-destino`** — Registrar cobro: ¿Cuántos períodos pagó? → ¿Cuánto te dio? → ¿A dónde metiste esa plata? → Fecha en que te pagó → Nota (opcional)
 
-**`sheet-sp-cajita`** — Cajita de Spotify: ¿Cuál cajita? (lista las cajitas de cuentas de ahorro activas; «Sin cajita» la desvincula)
+**`sheet-sp-fuente`** — Cuenta de Spotify: ¿Cuál cuenta o cajita? (cualquier cuenta no-ahorro activa o cajita; «Ninguna» la desvincula; sugiere una cajita llamada «spotify» si es la única, sin guardarla sola)
 
 **`sheet-sp-hist-pend`** — Pago de lo pendiente (Spotify): Monto recibido → ¿A dónde metiste esa plata? → Fecha en que te pagó → Nota (opcional)
 

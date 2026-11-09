@@ -659,9 +659,9 @@ describe('migraciones', () => {
   describe('estado de Spotify (S.spotify, esquema 9)', () => {
     test('el estado por defecto y load() dejan S.spotify completo (sin guardas en el resto de la app)', () => {
       const ctx = app();
-      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 0, cajitaId: '', historial: [] });
+      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 0, fuenteId: '', historial: [] });
       ctx.S.spotify = { costo: '12000' }; ctx._ensureSpotify();
-      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 12000, cajitaId: '', historial: [] });
+      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 12000, fuenteId: '', historial: [] });
     });
     test('guardia: ningún archivo de la app NI de scripts/ usa las cuatro llaves sueltas de antes (S.spotifyPersonas/Costo/CajitaId/Historial)', () => {
       // scripts/notificaciones/checks.js quedaba fuera del recorrido y por eso siguió leyendo S.spotifyPersonas tras la migración (v36).
@@ -742,7 +742,7 @@ describe('backup-import', () => {
   });
   test('un backup exportado por esta versión se valida y no cambia al pasar por aplicarMigraciones', () => {
     const ctx = app();
-    const actual = { schemaVersion: 10, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, cajitaId: '', historial: [] } };
+    const actual = { schemaVersion: 10, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
     assert.deepEqual(plano(ctx._validarEstructuraJSON(actual)), []);
     assert.deepEqual(plano(ctx.aplicarMigraciones(plano(actual))), actual);
   });

@@ -661,15 +661,15 @@ async function deleteCajita(id){
   }
   const tcVinculadas=(S.tarjetasCredito||[]).filter(x=>x.cajitaId===id);
   const detalleCajita=(tcVinculadas.length?(tcVinculadas.length===1?'La tarjeta "'+tcVinculadas[0].nombre+'" está':'Las tarjetas '+tcVinculadas.map(x=>'"'+x.nombre+'"').join(', ')+' están')+' vinculada'+(tcVinculadas.length===1?'':'s')+' a esta cajita para su pago y quedará'+(tcVinculadas.length===1?'':'n')+' sin cajita asignada.':'');
-  const esDeSpotify=!!(S.spotify&&S.spotify.cajitaId===id);
-  const ok=await confirmarEliminar({titulo:'Eliminar cajita',objeto:'"'+c.nombre+'"',detalle:[detalleCajita,esDeSpotify?'Es la cajita de Spotify: tendrás que elegir otra desde Spotify.':''].filter(Boolean).join(' ')});
+  const esDeSpotify=!!(S.spotify&&S.spotify.fuenteId==='cajita:'+id);
+  const ok=await confirmarEliminar({titulo:'Eliminar cajita',objeto:'"'+c.nombre+'"',detalle:[detalleCajita,esDeSpotify?'Es donde Spotify guarda su plata: tendrás que elegir otra desde Spotify.':''].filter(Boolean).join(' ')});
   if(!ok)return;
   const nombreEl=c.nombre;
   S.cajitas=(S.cajitas||[]).filter(x=>x.id!==id);
   // Desvincular tarjetas que pagaban desde esta cajita — sin esto quedaban
   // apuntando a una cajita fantasma (mismo espíritu que eliminarTC con tcMovimientos).
   if(tcVinculadas.length) tcVinculadas.forEach(x=>{x.cajitaId=null;});
-  if(S.spotify&&S.spotify.cajitaId===id)S.spotify.cajitaId=''; // Spotify deja de apuntar a una cajita que ya no existe
+  if(S.spotify&&S.spotify.fuenteId==='cajita:'+id)S.spotify.fuenteId=''; // Spotify deja de apuntar a una cajita que ya no existe
   save();refresh();
   toast('Cajita eliminada','ok');
   if(window.logCambio)logCambio('Eliminaste cajita "'+nombreEl+'"','',0,'eliminar');

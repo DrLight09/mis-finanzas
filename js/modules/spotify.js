@@ -90,42 +90,46 @@ const _sp_spp = crearSplitWidget('spp', {
   onPreview:actualizarSpPagarPreview
 });
 
-// La cajita de Spotify es SOLO la que el usuario eligió (S.spotify.cajitaId, ver abrirElegirCajitaSpotify). Antes, si no había
-// referencia, se tomaba la primera cajita cuyo nombre contenía «spotify»: renombrarla la perdía y dos parecidas se confundían.
-// Una referencia que apunta a una cajita que ya no existe cuenta como «sin cajita» (y se limpia en eliminarCajita).
-function getSpCajita(){
-  const id=S.spotify.cajitaId;
-  if(!id)return null;
-  return (S.cajitas||[]).find(x=>x.id===id)||null;
+// DÓNDE guardas la plata de Spotify: una cuenta o una cajita CUALQUIERA, la que el usuario elija (S.spotify.fuenteId, p. ej.
+// 'cajita:abc' o 'cuenta:nequi'). Nunca se adivina por el nombre. Una referencia que ya no es válida (cajita eliminada, cuenta
+// archivada o de ahorro) cuenta como «sin elegir»; eliminarCajita la limpia.
+function getSpFuente(){
+  const f=S.spotify.fuenteId;
+  if(!f)return null;
+  return getFuentesSinTC().some(x=>x.val===f)?f:null;
+}
+function getSpFuenteSaldo(){
+  const f=getSpFuente();
+  // getSaldoFuente() ya incluye el interés real de una cajita (calcC, js/core/nu-calc.js).
+  return f?getSaldoFuente(f):0;
 }
 
-// Elegir (o quitar) la cajita donde se guarda la plata de Spotify. Lista las cajitas de cuentas de ahorro activas.
-function abrirElegirCajitaSpotify(){
-  const sel=document.getElementById('spCajitaSel');
+// Elegir (o quitar) esa cuenta/cajita. Siempre hay dónde elegir: Efectivo no se puede eliminar. Si todavía no hay una elegida y existe
+// UNA sola cajita con «spotify» en el nombre, se deja preseleccionada como sugerencia (el usuario aún tiene que Guardar).
+function abrirElegirFuenteSpotify(){
+  const sel=document.getElementById('spFuenteSel');
   if(!sel)return;
-  const actual=S.spotify.cajitaId||'';
-  const filas=(S.cajitas||[]).filter(c=>{const cu=cuentaDeCajita(c);return cu&&!cu.archivada;});
-  sel.innerHTML=html`<option value="">Sin cajita (no mostrar saldo)</option>${filas.map(c=>html`<option value="${c.id}"${c.id===actual?raw(' selected'):''}>${c.nombre} · ${nombreCuenta(cuentaDeCajita(c))}</option>`)}`;
-  const nota=document.getElementById('spCajitaSelNota');
-  if(nota)nota.textContent=filas.length?'Es la cajita donde vas guardando lo que cobras para pagar Spotify.':'Aún no tienes cajitas. Crea una dentro de tu cuenta de ahorro y vuelve aquí a elegirla.';
-  openSheet('sp-cajita');
+  const actual=getSpFuente();
+  let sugerida='';
+  if(!actual){
+    const cand=getFuentesSinTC().filter(x=>x.val.startsWith('cajita:')&&/spotify/i.test(x.label));
+    if(cand.length===1)sugerida=cand[0].val;
+  }
+  sel.innerHTML=buildFuentesOptsHtml({selectedVal:actual||sugerida,incluirTC:false,placeholder:'Ninguna (no mostrar saldo)'});
+  const nota=document.getElementById('spFuenteSelNota');
+  if(nota)nota.textContent=sugerida?'Te sugerimos esta cajita por su nombre. Confírmala con Guardar.':'La cuenta o cajita donde vas guardando lo que cobras para pagar Spotify.';
+  openSheet('sp-fuente');
 }
-function guardarCajitaSpotify(){
-  const sel=document.getElementById('spCajitaSel');
+function guardarFuenteSpotify(){
+  const sel=document.getElementById('spFuenteSel');
   if(!sel)return;
-  const id=sel.value||'';
-  if(id&&!(S.cajitas||[]).some(c=>c.id===id)){toast('Esa cajita ya no existe','err');return;}
-  S.spotify.cajitaId=id;
+  const f=sel.value||'';
+  if(f&&!getFuentesSinTC().some(x=>x.val===f)){toast('Esa cuenta ya no está disponible','err');return;}
+  S.spotify.fuenteId=f;
   save();
-  closeSheet('sp-cajita');
+  closeSheet('sp-fuente');
   refresh();
-  toast(id?'Cajita de Spotify guardada':'Spotify ya no usa ninguna cajita','ok');
-}
-
-function getSpCajitaSaldo(){
-  const c=getSpCajita();
-  // calcC() (interés real de la cajita) vive en js/core/nu-calc.js, núcleo de carga de entrada.
-  return c?calcC(c).val:0;
+  toast(f?'Guardado: '+fuenteLabel(f):'Spotify ya no muestra saldo de ninguna cuenta','ok');
 }
 
 // spNombreDe() y spPersonaPagadaVigente() se movieron a js/core/calc-helpers.js
@@ -335,7 +339,7 @@ function renderSpotify(){
     if(spPersonaPagadaVigente(x))return a;
     return a+spPeriodosVencidos(x,hoy())*(x.monto||0);
   },0)+cicloCobros.reduce((a,h)=>a+(h.pendiente>0?h.pendiente:0),0);
-  const cajitaSaldo=getSpCajitaSaldo();
+  const cajitaSaldo=getSpFuenteSaldo();
   
   document.getElementById('spCob').textContent=fmt(cob);
   document.getElementById('spPend').textContent=fmt(cobPend);
@@ -374,14 +378,14 @@ function renderSpotify(){
       statusEl.textContent='Faltan '+fmt(-diferencia)+' para pagar';
       statusEl.style.color='var(--amber)';
     } else {
-      statusEl.textContent=getSpCajita()?'Sin saldo en cajita':'Toca «Elegir» para vincular una cajita';
+      statusEl.textContent=getSpFuente()?'Sin saldo disponible':'Toca «Elegir» para vincular una cuenta';
       statusEl.style.color='var(--text3)';
     }
   } else {
-    statusEl.textContent=getSpCajita()?'':'Toca «Elegir» para vincular una cajita';
+    statusEl.textContent=getSpFuente()?'':'Toca «Elegir» para vincular una cuenta';
   }
   const btnCaj=document.getElementById('btn-sp-elegir-cajita');
-  if(btnCaj)btnCaj.textContent=getSpCajita()?'Cambiar':'Elegir';
+  if(btnCaj)btnCaj.textContent=getSpFuente()?'Cambiar':'Elegir';
   
   // El estado vacío ya trae «Agregar persona»: el botón de pie solo aparece con personas.
   mostrarSi(document.getElementById('btn-add-spotify-persona'),p.length>0);
@@ -1250,11 +1254,11 @@ function openSheet_pagarSpotify(){
   // Pre-llenar con el costo
   document.getElementById('spPagarMonto').value=costo?fmtInput(costo):'';
   // Poblar fuentes
-  const cajita=getSpCajita();
+  const fuenteSp=getSpFuente();
   const sel=document.getElementById('spPagarFuente');
   // Solo cuentas con saldo >= $50 y TC con cupo disponible (FuentesFiltro.PRESET.SPOTIFY,
   // js/core/fuentes-filtro.js). Si la cajita de Spotify no llega al mínimo, no se preselecciona.
-  sel.innerHTML=FuentesFiltro.optsHtml(getFuentes(),{...FuentesFiltro.PRESET.SPOTIFY,selectedVal:cajita?'cajita:'+cajita.id:''});
+  sel.innerHTML=FuentesFiltro.optsHtml(getFuentes(),{...FuentesFiltro.PRESET.SPOTIFY,selectedVal:fuenteSp||''});
   actualizarSpPagarPreview();
   const notaEl=document.getElementById('spPagarNota');
   if(notaEl)notaEl.value='';
@@ -1611,6 +1615,8 @@ if (_spPagarBtnAddRow) _spPagarBtnAddRow.addEventListener('click', _sp_spp.addRo
    ═══════════════════════════════════════════════════════════════ */
 
 Events.registerAll('spotify', {
+  abrirElegirFuente: abrirElegirFuenteSpotify,
+  guardarFuente: guardarFuenteSpotify,
   marcarPago: marcarPagoSpotify,
   // OJO: NO pasar editarSpotify directo acá. El bloque INTEGRACIÓN SPOTIFY ↔
   // PERSONAS (más abajo) lo reemplaza (monkeypatch) para precargar la persona vinculada al abrir
@@ -1941,8 +1947,6 @@ renderSpotify = function() {
    ═══════════════════════════════════════════════════════════════ */
 
 Events.registerAll('spotify', {
-  abrirElegirCajita: abrirElegirCajitaSpotify,
-  guardarCajita: guardarCajitaSpotify,
   abrirSelectorPersona: () => abrirSelPersona(_onSelPersonaSpotify, '¿Quién es?'),
   onClickEditPersonaBtn: _onClickSpEditPersonaBtn,
 });

@@ -413,7 +413,7 @@ Carga: lazy — grupo `prestamos`
 
 Carga: lazy — grupo `spotify`
 
-**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spProporcionarSplits`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirElegirCajitaSpotify`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpCajita`, `getSpCajitaSaldo`, `guardarCajitaSpotify`, `guardarEditarSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
+**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEnsureTC`, `_spExtraOpts`, `_spProporcionarSplits`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirElegirFuenteSpotify`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpFuente`, `getSpFuenteSaldo`, `guardarEditarSpotify`, `guardarFuenteSpotify`, `marcarPagoSpotify`, `nextMonthFixed`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
 
 **Globales:** `SP_EMPATE_PERIODOS`, `SP_PERIODO_DIAS`
 
@@ -976,7 +976,7 @@ Ninguno.
 | `abrirEditarGastoFijo` | `js/modules/gastos.js` |
 | `abrirEditarPersonaGlobal` | `js/modules/personas.js` |
 | `abrirEditarTC` | `js/modules/tarjetas_credito.js` |
-| `abrirElegirCajitaSpotify` | `js/modules/spotify.js` |
+| `abrirElegirFuenteSpotify` | `js/modules/spotify.js` |
 | `abrirEncargoDesdeCuenta` | `js/modules/encargos.js` |
 | `abrirEncargoDetalle` | `js/modules/encargos.js` |
 | `abrirMetaCajita` | `js/modules/nu.js` |
@@ -1267,17 +1267,17 @@ Ninguno.
 | `getPersonaDatos` | `js/modules/personas.js` |
 | `getPersonaNombre` | `js/modules/personas.js` |
 | `getSaldoFuente` | `js/core/core-state.js` |
-| `getSpCajita` | `js/modules/spotify.js` |
-| `getSpCajitaSaldo` | `js/modules/spotify.js` |
+| `getSpFuente` | `js/modules/spotify.js` |
+| `getSpFuenteSaldo` | `js/modules/spotify.js` |
 | `getTasaCuenta` | `js/core/nu-calc.js` |
 | `getTCById` | `js/core/calc-helpers.js` |
 | `guardarBien` | `js/modules/gastos.js` |
-| `guardarCajitaSpotify` | `js/modules/spotify.js` |
 | `guardarCDT` | `js/modules/nu.js` |
 | `guardarChequeoNu` | `js/modules/nu.js` |
 | `guardarEditarEncargo` | `js/modules/encargos.js` |
 | `guardarEditarMiDeuda` | `js/modules/prestado.js` |
 | `guardarEditarSpotify` | `js/modules/spotify.js` |
+| `guardarFuenteSpotify` | `js/modules/spotify.js` |
 | `guardarIngresoFijo` | `js/modules/analisis.js` |
 | `guardarMetaCajita` | `js/modules/nu.js` |
 | `guardarParte` | `js/modules/encargos.js` |

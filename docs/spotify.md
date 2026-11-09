@@ -69,7 +69,7 @@ El módulo maneja dos escalas de tiempo que no deben confundirse:
 S.spotify = {
   personas: [],   // integrantes (abajo)
   costo: 0,       // costo total del plan
-  cajitaId: '',   // cajita asociada (opcional), solo para mostrar liquidez, no ganancia (ver §7). La elige el usuario («Elegir/Cambiar» en la pantalla de Spotify); NUNCA se busca por nombre
+  fuenteId: '',   // cuenta o cajita donde guardas la plata de Spotify ('cajita:ID' | 'cuenta:ID'), solo para mostrar liquidez, no ganancia (ver §7). La elige el usuario («Elegir/Cambiar» en la pantalla de Spotify); NUNCA se busca por nombre
   historial: []   // registro de cobros y pagos (abajo)
 }
 
@@ -89,7 +89,7 @@ S.spotify.personas = [
 ]
 
 S.spotify.costo       // costo total del plan
-S.spotify.cajitaId    // cajita asociada (opcional), solo para mostrar liquidez, no ganancia (ver §7)
+S.spotify.fuenteId    // cuenta o cajita elegida (opcional), solo para mostrar liquidez, no ganancia (ver §7)
 
 S.spotify.historial = [
   // Un cobro de un integrante — SIEMPRE un solo registro por cobro, aunque cubra

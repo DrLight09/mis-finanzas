@@ -116,7 +116,7 @@ let S={
   cajitas:[], // cajitas de las cuentas de ahorro: {id, cuentaId, nombre, saldo, fecha, cdts}; la tasa EA es de la CUENTA (cuenta.tasaEA)
   personas:[],
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
-  spotify:{personas:[],costo:0,cajitaId:'',historial:[]}, // todo el estado de Spotify en una llave (migración v9); ver _ensureSpotify()
+  spotify:{personas:[],costo:0,fuenteId:'',historial:[]}, // todo el estado de Spotify en una llave (migración v9); ver _ensureSpotify()
   gastosFijos:[],
   bienes:[], // activos NO líquidos (una moto, un computador): {id,nombre,valor,fecha,depreciacionAnual?,origenGastoId?}; ver calcBienes()
   pagosGastosFijos:{},
@@ -800,7 +800,9 @@ function _ensureSpotify(){
   if(!Array.isArray(S.spotify.personas))S.spotify.personas=[];
   if(!Array.isArray(S.spotify.historial))S.spotify.historial=[];
   if(typeof S.spotify.costo!=='number')S.spotify.costo=Number(S.spotify.costo)||0;
-  if(typeof S.spotify.cajitaId!=='string')S.spotify.cajitaId='';
+  // `fuenteId`: cuenta o cajita donde guarda la plata de Spotify ('cajita:ID' | 'cuenta:ID'); '' = ninguna. Antes `cajitaId` (solo cajitas).
+  if(typeof S.spotify.fuenteId!=='string')S.spotify.fuenteId=(typeof S.spotify.cajitaId==='string'&&S.spotify.cajitaId)?'cajita:'+S.spotify.cajitaId:'';
+  delete S.spotify.cajitaId;
 }
 
 /* ---- REGISTRO DE SONDAS (huella de invariantes) ----

@@ -1240,42 +1240,69 @@ describe('spotify-cajita', () => {
   }
   const hace = n => { const d = new Date(Date.now() - n * 86400000); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 
-  test('getSpCajitaSaldo — sin cajita de Spotify da 0', () => {
-    assert.equal(freshApp({ cajitas: [] }).getSpCajitaSaldo(), 0);
+  const NU = { id: 'nu', tipo: 'ahorro', nombre: 'Nu', saldo: 0 };
+  const NEQUI = { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 };
+  const sp = fuenteId => ({ personas: [], costo: 0, fuenteId, historial: [] });
+
+  test('getSpFuenteSaldo — sin cuenta elegida da 0', () => {
+    assert.equal(freshApp({ cajitas: [] }).getSpFuenteSaldo(), 0);
   });
 
-  test('getSpCajitaSaldo — cajita recién creada (sin fecha) vale su saldo', () => {
-    const ctx = freshApp({ cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Para la música', saldo: 12000 }], spotify: { personas: [], costo: 0, cajitaId: 's1', historial: [] } });
-    assert.equal(ctx.getSpCajitaSaldo(), 12000);
+  test('getSpFuenteSaldo — cajita recién creada (sin fecha) vale su saldo', () => {
+    const ctx = freshApp({ cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Para la música', saldo: 12000 }], spotify: sp('cajita:s1') });
+    assert.equal(ctx.getSpFuenteSaldo(), 12000);
   });
 
-  test('getSpCajitaSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
-    const ctx = freshApp({ nuRate: 9.3003, cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }], spotify: { personas: [], costo: 0, cajitaId: 's1', historial: [] } });
-    assert.ok(ctx.getSpCajitaSaldo() > 1050000);
+  test('getSpFuenteSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
+    const ctx = freshApp({ nuRate: 9.3003, cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }], spotify: sp('cajita:s1') });
+    assert.ok(ctx.getSpFuenteSaldo() > 1050000);
   });
 
-  test('la cajita se elige por referencia explícita: llamarse «Spotify» NO la vincula', () => {
-    const ctx = freshApp({ cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 5000 }] });
-    assert.equal(ctx.getSpCajita(), null);
-    assert.equal(ctx.getSpCajitaSaldo(), 0);
-    assert.equal(ctx.S.spotify.cajitaId, '', 'tampoco se auto-asigna');
+  test('sirve CUALQUIER cuenta (no solo cajitas): Nequi como cuenta de Spotify', () => {
+    const ctx = freshApp({ cuentas: [NEQUI], spotify: sp('cuenta:nequi') });
+    ctx.getSaldoFuente = () => 33000;
+    assert.equal(ctx.getSpFuente(), 'cuenta:nequi');
+  });
+
+  test('llamarse «Spotify» NO vincula la cajita; tampoco se auto-asigna', () => {
+    const ctx = freshApp({ cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 5000 }] });
+    assert.equal(ctx.getSpFuente(), null);
+    assert.equal(ctx.getSpFuenteSaldo(), 0);
+    assert.equal(ctx.S.spotify.fuenteId, '');
   });
 
   test('renombrar la cajita vinculada no la pierde; dos cajitas «spotify» no se confunden', () => {
     const ctx = freshApp({
+      cuentas: [NU],
       cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'Spotify viejo', saldo: 1000 }, { id: 'b', cuentaId: 'nu', nombre: 'Spotify', saldo: 7000 }],
-      spotify: { personas: [], costo: 0, cajitaId: 'a', historial: [] },
+      spotify: sp('cajita:a'),
     });
-    assert.equal(ctx.getSpCajita().id, 'a');
+    assert.equal(ctx.getSpFuente(), 'cajita:a');
     ctx.S.cajitas[0].nombre = 'Música';
-    assert.equal(ctx.getSpCajita().id, 'a');
-    assert.equal(ctx.getSpCajitaSaldo(), 1000);
+    assert.equal(ctx.getSpFuente(), 'cajita:a');
+    assert.equal(ctx.getSpFuenteSaldo(), 1000);
   });
 
-  test('una referencia a una cajita que ya no existe cuenta como «sin cajita»', () => {
-    const ctx = freshApp({ cajitas: [], spotify: { personas: [], costo: 0, cajitaId: 'fantasma', historial: [] } });
-    assert.equal(ctx.getSpCajita(), null);
-    assert.equal(ctx.getSpCajitaSaldo(), 0);
+  test('una referencia rota (cajita inexistente, cuenta archivada) cuenta como «sin elegir»', () => {
+    assert.equal(freshApp({ cajitas: [], spotify: sp('cajita:fantasma') }).getSpFuente(), null);
+    assert.equal(freshApp({ cuentas: [{ ...NEQUI, archivada: true }], spotify: sp('cuenta:nequi') }).getSpFuente(), null);
+  });
+
+  test('el estado viejo { cajitaId } se convierte a { fuenteId } al normalizar', () => {
+    const ctx = freshApp({ spotify: { personas: [], costo: 0, cajitaId: 'xyz', historial: [] } });
+    ctx._ensureSpotify();
+    assert.equal(ctx.S.spotify.fuenteId, 'cajita:xyz');
+    assert.ok(!('cajitaId' in ctx.S.spotify));
+  });
+
+  test('las acciones del botón «Elegir» están registradas (en el primer bloque del módulo)', () => {
+    const fs = require('node:fs');
+    const t = fs.readFileSync(path.join(MODULES_DIR, 'spotify.js'), 'utf8');
+    const primer = t.slice(t.indexOf("Events.registerAll('spotify', {"));
+    const hasta = primer.indexOf('\n});');
+    assert.ok(primer.slice(0, hasta).includes('abrirElegirFuente') && primer.slice(0, hasta).includes('guardarFuente'));
+    const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+    for (const a of ['spotify:abrirElegirFuente', 'spotify:guardarFuente']) assert.ok(html.includes('data-action="' + a + '"'), a);
   });
 
   test('el código ya no busca la cajita (ni el gasto de Spotify) por el texto «spotify» en un nombre', () => {

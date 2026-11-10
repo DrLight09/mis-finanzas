@@ -74,6 +74,9 @@ S.catsFijo = ['Arriendo', /* ... predeterminadas + propias */]
 |---|---|
 | Firestore `usuarios/{uid}/data/finanzas` | `{ payload: <JSON de S>, updatedAt }`. `borrarTodo()` escribe `payload: "{}"`. |
 | `localStorage` `mf_lastSavedAt` | Marca de último guardado; se actualiza al importar y al borrar. |
+| Firestore `usuarios/{uid}/data/respaldo-*` y `respaldos-indice` | Respaldos automáticos (nube). Los crea `firebase-sync.js`; Configuración solo los lista y restaura. `borrarTodo()` los borra después de vaciar el documento principal. Ver `respaldos-automaticos.md`. |
+| IndexedDB `mf-respaldos` | Respaldos automáticos (dispositivo). |
+| `localStorage` `mf_respaldoDia`, `mf_respaldoEquipoDia`, `mf_respaldoUltimo`, `mf_respaldoError` | Estado de los respaldos automáticos (día ya respaldado, último creado, motivo de error). |
 | `window._lastSavedAt`, `window._importing` | Banderas de sincronización que import/borrado manipulan a mano. |
 
 **Formato del backup:** `mis-finanzas-backup-AAAA-MM-DD.json` = `JSON.stringify(S, null, 2)`.
@@ -161,6 +164,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
 - **El overlay de `borrarTodo()` reutiliza `#fb-loading-screen`** (ya cubre toda la pantalla) en vez de crear otro, con el mismo criterio que `_fbSignOut()` y `_fbDeleteAccount()`.
 - **`applyModulos()`, sesión, PIN/biometría y categorías por defecto se quedan en el núcleo.** `applyModulos()` toca el nav, Mesada, los banners de Cuentas e Inicio; sesión y PIN son de toda la app; las categorías las comparte Gastos. Moverlos acá crearía dependencias en sentido contrario (núcleo → módulo lazy).
 - **Interruptores y botones de backup usan `addEventListener` directo, no `data-action`.** `Events` solo despacha clicks; los checkbox son `change` y los botones de backup tienen id fijo y ningún argumento variable. Lo que sí es click con argumentos (agregar/eliminar categoría, `irA`, sesión) va por `Events`.
+- **Respaldos automáticos: se listan y restauran acá, se crean en el guardado.** Un respaldo es «lo que había antes de pisar», y solo `firebase-sync.js` sabe cuándo se pisa. Restaurar comparte `_reemplazarDatos` con Importar a propósito: misma validación, mismo PIN, mismo guardado verificado antes de recargar. `borrarTodo()` escribe el `{}` con `sinRespaldo` (no tiene sentido guardar «lo que se está borrando») y borra los respaldos solo después de confirmar el vaciado. Detalle completo en `respaldos-automaticos.md`.
 - **Eliminar es más estricto que agregar** a propósito: no se puede dejar un gasto apuntando a una categoría que ya no existe.
 - **Módulos desactivados conservan datos.** Es lo que permite apagar Spotify o Mesada sin miedo; por eso `toggleModulo` solo cambia visibilidad.
 - **Herramientas como atajos.** Personas, Notificaciones y Actividad reciente no tienen entrada propia en el nav; se llega desde esta pantalla (Actividad reciente y Personas pintan además su propio subtítulo en la fila). Wrapped se muestra arriba de todo, como tarjeta destacada, solo durante enero.
@@ -180,7 +184,10 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
 | `exportarJSON()` | `save()` + descarga de `S` completo. |
 | `importarJSON()` | Abre el selector de archivo (`#importFileInput`). |
 | `_validarEstructuraJSON(data)` | Devuelve la lista de errores de estructura (vacía = válido). |
-| `leerArchivoImport(e)` | Lee, valida, confirma, reemplaza `S`, guarda en la nube y recarga. |
+| `leerArchivoImport(e)` | Lee y valida el archivo, confirma y delega en `_reemplazarDatos`. |
+| `_reemplazarDatos(data, motivoPin, msgOk)` | Pide el PIN, lleva `data` al modelo actual, reemplaza `S`, guarda en la nube con escritura forzada (que deja un respaldo «previo» de lo que se pisa) y recarga solo si el guardado se confirmó. La comparten Importar y Restaurar. |
+| `renderRespaldos()` / `verRespaldos()` | Estado de los respaldos automáticos y lista (nube + dispositivo) con fecha, tamaño y dónde está cada uno. |
+| `restaurarRespaldo(id)` | Lee el respaldo, lo valida con `_validarEstructuraJSON`, confirma y reemplaza vía `_reemplazarDatos`. |
 | `exportarCSV()` | Descarga los gastos en CSV. |
 | `toggleModulo(nombre)` | Escribe `S.modulos[nombre]`, `save()` y `applyModulos()`. |
 | `borrarTodo()` | Borra los datos de la nube con overlay de bloqueo, quita el PIN y la huella si el borrado se confirmó, y recarga. |
@@ -193,6 +200,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
 | `config:signOut` | `window._fbSignOut()` (firebase-sync.js) |
 | `config:abrirEliminarCuenta` | `window._abrirEliminarCuenta()` (firebase-sync.js) |
 | `config:irA` | `showScreen(pantalla)`; lo usan Personas, Actividad reciente y la tarjeta de Wrapped |
+| `config:verRespaldos` / `config:restaurarRespaldo` | `verRespaldos` / `restaurarRespaldo(id)` |
 
 **Cableado directo (`addEventListener`):** `[data-modulo]` (change), `#btn-exportar-json`, `#btn-importar-json`, `#btn-exportar-csv`, `#btn-borrar-todo`, `#importFileInput` (change), y Enter en `#nueva-cat-var` / `#nueva-cat-fijo`.
 

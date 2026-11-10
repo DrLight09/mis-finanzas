@@ -1946,8 +1946,13 @@ describe('pin-confirmar-acciones-destructivas', () => {
     const cfg = leer('js', 'modules', 'configuracion.js');
     const borrar = cfg.slice(cfg.indexOf('async function borrarTodo'));
     assert.ok(/pedirPinAntesDe\(/.test(borrar.slice(0, borrar.indexOf("document.getElementById('fb-loading-screen')"))), 'borrar todo: el PIN va antes de tocar nada');
-    const imp = cfg.slice(cfg.indexOf('function leerArchivoImport'));
-    assert.ok(imp.indexOf('pedirPinAntesDe(') > 0 && imp.indexOf('pedirPinAntesDe(') < imp.indexOf('aplicarMigraciones(data)'), 'importar: el PIN va antes de reemplazar');
+    // Importar un JSON y restaurar un respaldo automático comparten _reemplazarDatos: el PIN va dentro, antes de reemplazar nada.
+    const rep = cfg.slice(cfg.indexOf('async function _reemplazarDatos'));
+    assert.ok(rep.indexOf('pedirPinAntesDe(') > 0 && rep.indexOf('pedirPinAntesDe(') < rep.indexOf('aplicarMigraciones(data)'), 'importar/restaurar: el PIN va antes de reemplazar');
+    const imp = cfg.slice(cfg.indexOf('function leerArchivoImport'), cfg.indexOf('/* ---- RESPALDOS AUTOMÁTICOS'));
+    assert.ok(imp.includes('_reemplazarDatos(') && !imp.includes('aplicarMigraciones('), 'importar: reemplaza solo por _reemplazarDatos (la ruta con PIN)');
+    const rest = cfg.slice(cfg.indexOf('async function restaurarRespaldo'));
+    assert.ok(rest.includes('_reemplazarDatos(') && !rest.slice(0, rest.indexOf('_reemplazarDatos(')).includes('Object.assign(S'), 'restaurar: reemplaza solo por _reemplazarDatos (la ruta con PIN)');
     const fb = leer('js', 'core', 'firebase-sync.js');
     const del = fb.slice(fb.indexOf('window._fbDeleteAccount = async function'));
     assert.ok(del.indexOf('pedirPinAntesDe(') > 0 && del.indexOf('pedirPinAntesDe(') < del.indexOf('_fbDeleteAccountEnCurso = true'), 'eliminar cuenta: el PIN va antes de borrar');

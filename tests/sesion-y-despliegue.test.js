@@ -199,8 +199,10 @@ describe('firebase-sync', () => {
 
   // Un módulo ES se carga como script clásico: sin `export` ni `import`.
   const codecSrc = leer('payload-codec.js').replace(/^export\s+/gm, '');
+  const respaldosSrc = leer('respaldos.js').replace(/^export\s+/gm, ''); // firebase-sync.js importa sus funciones (respaldos automáticos)
   const syncSrc = leer('firebase-sync.js').replace(/^import .*$/gm, '');
   const CODEC = escribir('codec.js', codecSrc);
+  const RESPALDOS = escribir('respaldos.js', respaldosSrc);
   const SYNC = escribir('sync.js', 'const waitFor = () => {};\n' + syncSrc);
   const plano = x => JSON.parse(JSON.stringify(x));
   const guardar = app => { const p = app._fbSaveToCloud(); app._fbFlushSave(); return p; }; // encola y fuerza el guardado sin esperar el debounce
@@ -212,7 +214,7 @@ describe('firebase-sync', () => {
   const gz = txt => 'gz1:' + zlib.gzipSync(txt).toString('base64');
 
   function entorno(estado) {
-    const app = loadApp([CODEC, SYNC], { permissive: true });
+    const app = loadApp([CODEC, RESPALDOS, SYNC], { permissive: true });
     const dom = createFakeDom();
     app.document = dom.document;
     Object.assign(app.globalThis.document || {}, {});
@@ -373,14 +375,24 @@ describe('firebase-sync', () => {
     const store = {};
     e.app.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
     e.app._fb.setDoc = async (ref, datos) => { almacen.doc = datos; e.escritos.push(datos); };
+    // El «Firestore» distingue los documentos por ruta: `finanzas` es el principal; los demás (respaldos automáticos, su índice) van aparte.
+    almacen.otros = new Map();
+    const esPrincipal = ref => /\/data\/finanzas$/.test(ref.ruta);
     e.app._fb.runTransaction = async (db, fn) => {
-      let pend = null;
+      const pend = [];
       const tx = {
-        get: async () => ({ exists: () => almacen.doc != null, data: () => almacen.doc }),
-        set: (ref, datos) => { pend = datos; },
+        get: async (ref) => {
+          const d = esPrincipal(ref) ? almacen.doc : (almacen.otros.get(ref.ruta) || null);
+          return { exists: () => d != null, data: () => d };
+        },
+        set: (ref, datos) => { pend.push(['set', ref, datos]); },
+        delete: (ref) => { pend.push(['delete', ref]); },
       };
       const r = await fn(tx);
-      if (pend) { almacen.doc = pend; e.escritos.push(pend); }
+      pend.forEach(([op, ref, datos]) => {
+        if (esPrincipal(ref)) { if (op === 'set') { almacen.doc = datos; e.escritos.push(datos); } return; }
+        if (op === 'set') almacen.otros.set(ref.ruta, datos); else almacen.otros.delete(ref.ruta);
+      });
       return r;
     };
     e.app.toast = () => {}; e.app.load = () => {}; e.app.refresh = () => {}; e.app.applyModulos = () => {};

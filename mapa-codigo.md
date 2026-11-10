@@ -41,6 +41,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/plan-deudas.js` | de entrada (defer) | 1 | 0 |
 | `js/core/reglas.js` | de entrada (defer) | 1 | 0 |
 | `js/core/reordenable.js` | de entrada (defer) | 1 | 0 |
+| `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 1 | 0 |
 | `js/core/salud.js` | de entrada (defer) | 1 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
 | `js/core/sheet-stack.js` | de entrada (defer) | 13 | 0 |
@@ -52,7 +53,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
-| `js/modules/configuracion.js` | lazy — grupo `config` | 13 | 0 |
+| `js/modules/configuracion.js` | lazy — grupo `config` | 19 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 85 | 2 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 83 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
@@ -272,6 +273,12 @@ Carga: de entrada (defer)
 
 **Funciones:** `Reordenable`
 
+### `js/core/respaldos.js`
+
+Carga: módulo ES — importado por `js/core/firebase-sync.js`
+
+**Funciones:** `dos`
+
 ### `js/core/salud.js`
 
 Carga: de entrada (defer)
@@ -348,7 +355,7 @@ Carga: lazy — grupo `analisis`
 
 Carga: lazy — grupo `config`
 
-**Funciones:** `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderMisWrapped`, `renderTamanoDatos`, `toggleModulo`
+**Funciones:** `_reemplazarDatos`, `_respDescripcion`, `_respFechaLarga`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verRespaldos`
 
 ### `js/modules/cuentas.js`
 
@@ -764,6 +771,7 @@ Ninguno.
 | `_procesarMovEncMia` | `js/modules/encargos.js` |
 | `_procesarSiguienteCDTVencido` | `js/modules/nu.js` |
 | `_rachaDeficitRelevante` | `js/modules/inicio.js` |
+| `_reemplazarDatos` | `js/modules/configuracion.js` |
 | `_refreshCajitaDet` | `js/modules/nu.js` |
 | `_refreshNucleo` | `js/core/core-state.js` |
 | `_reiniciarPantallasCuenta` | `js/modules/cuentas.js` |
@@ -781,6 +789,8 @@ Ninguno.
 | `_resetSheetNuevaCuenta` | `js/modules/cuentas.js` |
 | `_resolverGrupoIdMov` | `js/modules/prestado.js` |
 | `_resolverGrupoIdSel` | `js/modules/prestado.js` |
+| `_respDescripcion` | `js/modules/configuracion.js` |
+| `_respFechaLarga` | `js/modules/configuracion.js` |
 | `_revertirDestinoAbono` | `js/modules/prestado.js` |
 | `_revertirDestinosAbono` | `js/modules/prestado.js` |
 | `_revertirMovDeudor` | `js/modules/prestado.js` |
@@ -1196,6 +1206,7 @@ Ninguno.
 | `diffValidarIntercambios` | `js/core/diferencial.js` |
 | `diffValidarMiCuenta` | `js/core/diferencial.js` |
 | `Dinero` | `js/core/core-state.js` |
+| `dos` | `js/core/respaldos.js` |
 | `editarCDT` | `js/modules/nu.js` |
 | `editarCuenta` | `js/modules/cuentas.js` |
 | `editarDeudorActual` | `js/modules/prestado.js` |
@@ -1431,6 +1442,7 @@ Ninguno.
 | `renderPlanDeudas` | `js/modules/inicio.js` |
 | `renderPresupuestos` | `js/modules/analisis.js` |
 | `renderProyeccion` | `js/modules/inicio.js` |
+| `renderRespaldos` | `js/modules/configuracion.js` |
 | `renderSelectorCuentas` | `js/modules/cuentas.js` |
 | `renderSimulador` | `js/modules/analisis.js` |
 | `renderSpHistorial` | `js/modules/spotify.js` |
@@ -1443,6 +1455,7 @@ Ninguno.
 | `rendimientoCajitaPorMes` | `js/core/nu-calc.js` |
 | `Reordenable` | `js/core/reordenable.js` |
 | `resolverPendienteSpHistorial` | `js/modules/spotify.js` |
+| `restaurarRespaldo` | `js/modules/configuracion.js` |
 | `Reversibles` | `js/core/core-state.js` |
 | `S` | `js/core/core-state.js` |
 | `saldoCuentas` | `js/core/core-state.js` |
@@ -1524,6 +1537,7 @@ Ninguno.
 | `validarTransferencia` | `js/modules/cuentas.js` |
 | `verificarTasaAhorro` | `js/modules/nu.js` |
 | `verificarVencimientosCDT` | `js/modules/nu.js` |
+| `verRespaldos` | `js/modules/configuracion.js` |
 | `volverADetalleCajita` | `js/modules/nu.js` |
 | `volverANu` | `js/modules/nu.js` |
 | `volverDeudores` | `js/modules/prestado.js` |

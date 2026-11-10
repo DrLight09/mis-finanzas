@@ -13,6 +13,7 @@
 // CHANGELOG.md#infraestructura--seguridad.
 import { waitFor } from './wait-for-module.js';
 import { codificarPayload, decodificarPayload } from './payload-codec.js';
+import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusionar, leerRespaldo, borrarRespaldosNube, almacenIndexedDB, fechaLocal } from './respaldos.js';
 
   // ── Helpers de estado de sync ──────────────────────────────────────────────
   function setSyncStatus(state, text) {
@@ -71,10 +72,92 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
   function _errorSinRed(e) {
     return !!e && (e.code === 'unavailable' || /offline|sin conexi/i.test(String(e.message || '')));
   }
-  // Escribe el payload ya codificado. Devuelve {ok:true, rev} | {ok:false, reason:'conflict', snap}; lanza si falla de verdad.
+  // ── Respaldos automáticos (js/core/respaldos.js, docs/respaldos-automaticos.md) ─────────────────────────────────────
+  // Antes de sobrescribir la nube se conserva una copia de lo que había: 'diario' = la primera escritura de cada día (el estado con que
+  // terminó el día anterior) y 'previo' = justo antes de una escritura intencional que pisa todo (importar, restaurar). Dos copias
+  // independientes: en la nube (documentos hermanos en `data`) y en el equipo (IndexedDB, sirve sin conexión).
+  // REGLA DE ORO: un respaldo que falla NUNCA impide guardar. Todo va en try/catch y en transacciones propias, separadas del guardado.
+  let _almacenLocal = null, _respaldoNubeBloqueado = false, _avisoRespaldoMostrado = false;
+  function _almacen() {
+    if(window._almacenRespaldosPrueba) return window._almacenRespaldosPrueba; // los tests inyectan uno en memoria
+    if(_almacenLocal === null) { try { _almacenLocal = typeof indexedDB !== 'undefined' ? almacenIndexedDB() : false; } catch(_) { _almacenLocal = false; } }
+    return _almacenLocal || null;
+  }
+  const _lsGet = k => { try { return localStorage.getItem(k); } catch(_) { return null; } };
+  const _lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch(_) {} };
+  const _uidActual = () => (window._fbUser && window._fbUser.uid) || null;
+  const _lsDel = k => { try { localStorage.removeItem(k); } catch(_) {} };
+  function _errorRespaldo(e) {
+    const permisos = !!e && (e.code === 'permission-denied' || /permission|insufficient/i.test(String(e.message || '')));
+    console.warn('[Respaldos] No se pudo crear el respaldo en la nube:', e);
+    if(permisos) {
+      // Las reglas de seguridad de Firestore (se editan en la consola de Firebase) no dejan escribir esas rutas: no se insiste en esta sesión.
+      _respaldoNubeBloqueado = true;
+      _lsSet('mf_respaldoError', 'permisos');
+      if(!_avisoRespaldoMostrado && typeof toast === 'function') {
+        _avisoRespaldoMostrado = true;
+        toast('No se pudo crear el respaldo automático en la nube: las reglas de Firestore todavía no lo permiten. Tus datos se siguen guardando normal; mira docs/respaldos-automaticos.md.', 'warn', 12000);
+      }
+    } else if(!_errorSinRed(e)) {
+      _lsSet('mf_respaldoError', String((e && (e.code || e.message)) || 'desconocido').slice(0, 80));
+    }
+  }
+  // `tipo`: 'diario' o 'previo'. Nunca lanza.
+  async function _respaldarAntesDeEscribir(tipo) {
+    const ahora = Date.now(), hoy = fechaLocal(new Date(ahora)), marcaDia = hoy + '|' + (_uidActual() || '');
+    // En la nube (el «día» ya respaldado por este dispositivo se recuerda para no leer nada de más en cada guardado).
+    if(!_respaldoNubeBloqueado && window._fb && window._fbUser && typeof window._fb.runTransaction === 'function'
+       && (tipo === 'previo' || _lsGet('mf_respaldoDia') !== marcaDia)) {
+      try {
+        const r = await respaldarEnNube({ fb: window._fb, uid: window._fbUser.uid, tipo, ahora, decodificar: decodificarPayload });
+        // 'sin-datos' no marca el día: el próximo guardado vuelve a intentarlo cuando ya haya algo que proteger.
+        if(r.estado === 'creado' || r.estado === 'ya-existia') {
+          if(tipo === 'diario') _lsSet('mf_respaldoDia', marcaDia);
+          if(r.estado === 'creado') _lsSet('mf_respaldoUltimo', JSON.stringify({ id: r.id, tipo, creadoEn: ahora }));
+          _lsDel('mf_respaldoError');
+        }
+      } catch(e) { _errorRespaldo(e); }
+    }
+    // En el equipo: copia del estado que este dispositivo sabe que está en la nube (aún no se ha pisado: _lastSavedPayload se
+    // actualiza DESPUÉS de escribir). Funciona sin conexión.
+    const almacen = _almacen();
+    if(almacen && (tipo === 'previo' || _lsGet('mf_respaldoEquipoDia') !== marcaDia)) {
+      try {
+        const r = await respaldarEnEquipo({ almacen, plano: window._lastSavedPayload, tipo, ahora, codificar: codificarPayload });
+        if(tipo === 'diario' && (r.estado === 'creado' || r.estado === 'ya-existia')) _lsSet('mf_respaldoEquipoDia', marcaDia);
+      } catch(e) { console.warn('[Respaldos] No se pudo crear la copia en este dispositivo:', e); }
+    }
+  }
+  // API para Configuración (js/modules/configuracion.js): listar, leer el contenido, estado y borrado total.
+  window._fbRespaldos = {
+    async listar() {
+      const fb = window._fb, uid = _uidActual(), almacen = _almacen();
+      let nube = [], equipo = [], errorNube = null;
+      if(fb && uid) { try { nube = await listarEnNube({ fb, uid }); } catch(e) { errorNube = e; } }
+      if(almacen) { try { equipo = await listarEnEquipo({ almacen }); } catch(_) {} }
+      return { filas: fusionar(nube, equipo), errorNube: errorNube ? (errorNube.code || String(errorNube.message || errorNube)) : null };
+    },
+    leer(fila) { return leerRespaldo({ fb: window._fb, uid: _uidActual(), almacen: _almacen(), fila, decodificar: decodificarPayload }); },
+    estado() {
+      let ultimo = null; try { ultimo = JSON.parse(_lsGet('mf_respaldoUltimo') || 'null'); } catch(_) {}
+      return { ultimo, error: _lsGet('mf_respaldoError'), bloqueado: _respaldoNubeBloqueado };
+    },
+    async borrarTodos() {
+      const fb = window._fb, uid = _uidActual(), almacen = _almacen();
+      let r = { borrados: 0, errores: 0 };
+      if(fb && uid) r = await borrarRespaldosNube({ fb, uid });
+      if(almacen) { try { await almacen.vaciar(); } catch(_) { r.errores++; } }
+      ['mf_respaldoDia', 'mf_respaldoEquipoDia', 'mf_respaldoUltimo', 'mf_respaldoError'].forEach(_lsDel);
+      return r;
+    },
+  };
+
+  // Escribe el payload ya codificado (antes, conserva el respaldo que toque). Devuelve {ok:true, rev} | {ok:false, reason:'conflict', snap}; lanza si falla de verdad.
   // `forzar` (importar un backup, borrar todo): escritura intencional que pisa la nube y sube la revisión.
-  async function _escribirNube(payloadNube, ts, forzar) {
+  // `opciones.sinRespaldo`: no conservar copia de lo que se pisa (solo «borrar todos los datos», que además borra los respaldos).
+  async function _escribirNube(payloadNube, ts, forzar, opciones) {
     const { db, doc, setDoc, runTransaction } = window._fb;
+    if(!(opciones && opciones.sinRespaldo)) await _respaldarAntesDeEscribir(forzar ? 'previo' : 'diario');
     const ref = doc(db, 'usuarios', window._fbUser.uid, 'data', 'finanzas');
     const base = window._revNube;
     const directa = async (revBase) => {
@@ -902,6 +985,8 @@ import { codificarPayload, decodificarPayload } from './payload-codec.js';
     window._dataLoaded = false;
 
     try {
+      // 0) Borrar los respaldos automáticos (nube y equipo): son datos del usuario y, sin cuenta, quedarían huérfanos (nunca lanza).
+      try { await window._fbRespaldos.borrarTodos(); } catch(_) {}
       // 1) Borrar el documento de datos en Firestore
       await deleteDoc(doc(db, 'usuarios', uid, 'data', 'finanzas'));
       // 2) Borrar el usuario de Firebase Auth

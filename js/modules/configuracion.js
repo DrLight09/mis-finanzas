@@ -22,6 +22,9 @@
      - getCatsVar()/getCatsFijo()/CATS_VAR_DEFAULT/CATS_FIJO_DEFAULT:
        compartidas con el módulo de Gastos (selectores de categoría).
 
+   Respaldos automáticos (renderRespaldos/verRespaldos/restaurarRespaldo): listan y restauran lo que crea js/core/firebase-sync.js
+   con js/core/respaldos.js; restaurar reutiliza _validarEstructuraJSON y _reemplazarDatos (la misma ruta que importar un JSON).
+
    leerArchivoImport() valida la estructura del JSON (_validarEstructuraJSON) y pide
    confirmación antes de reemplazar nada; solo recarga la página cuando el guardado
    en la nube se confirmó.
@@ -55,6 +58,7 @@ function renderCatsConfig(){
   elVar.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsVar(),CATS_VAR_DEFAULT,'var')}</div>`;
   elFijo.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsFijo(),CATS_FIJO_DEFAULT,'fijo')}</div>`;
   renderTamanoDatos();
+  renderRespaldos();
   renderMisWrapped();
 }
 
@@ -246,6 +250,48 @@ function _validarEstructuraJSON(data){
   return errores;
 }
 
+// Reemplaza TODOS los datos por `data` (ya validado) y lo sube a la nube. Lo comparten «Importar JSON» y «Restaurar respaldo».
+// Antes de pisar la nube, el guardado forzado conserva un respaldo 'previo' de lo que había (js/core/firebase-sync.js), así que
+// importar o restaurar por error también se puede deshacer. Devuelve false si la persona canceló en el PIN.
+async function _reemplazarDatos(data,motivoPin,msgOk){
+  if(!await pedirPinAntesDe(motivoPin))return false;
+  // Llevar el backup al modelo de datos actual (si falla, el catch del llamador avisa y NO se reemplaza nada).
+  aplicarMigraciones(data);
+  // Reemplazar CONTENIDO de S sin romper la referencia de window.S
+  Object.keys(S).forEach(k => delete S[k]);
+  Object.assign(S, data);
+  // Repintar YA la pantalla activa con los datos recién importados — sin esto,
+  // S ya tiene los datos nuevos pero la UI sigue mostrando lo que había antes
+  // de importar hasta que el location.reload() de más abajo confirme el guardado.
+  if (typeof refresh === 'function') refresh();
+  // Marcar timestamp ANTES del debounce de guardado
+  const _impTs = Date.now();
+  window._lastSavedAt = _impTs;
+  try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
+  window._importing = true;
+  setTimeout(() => { window._importing = false; }, 5000);
+  // El toast de éxito y el reload dependen del resultado REAL del guardado:
+  // _fbSaveToCloud() devuelve una promesa {ok, reason}. Si no llegó a escribir
+  // (p.ej. window._dataLoaded todavía en false), recargar traería de vuelta el
+  // dato viejo de la nube y el aviso de éxito habría mentido.
+  if(!window._fbSaveToCloud){
+    toast('Los datos se cargaron en la app pero no se pudo confirmar el guardado en la nube (función de guardado no disponible). No recargues la página todavía — avisa antes de seguir.','err',7000);
+    return;
+  }
+  toast('Guardando en la nube…','info',3000);
+  const _saveResult = await window._fbSaveToCloud({ forzar: true }); // pisa la nube a propósito (no se trata como conflicto)
+  if(_saveResult && _saveResult.ok){
+    toast(msgOk,'ok');
+    // Recargar solo una vez confirmado el guardado (ya no hace falta
+    // esperar un tiempo fijo — el await de arriba ya cubrió el debounce
+    // de 1.5s y el setDoc()).
+    setTimeout(() => { location.reload(); }, 800);
+  } else {
+    const _motivo = (_saveResult && _saveResult.reason) || 'desconocido';
+    toast('No se pudo guardar en la nube (motivo: '+_motivo+'). Los datos quedaron cargados localmente, pero NO recargues la página — se perderían. Reintenta en unos segundos.','err',8000);
+  }
+}
+
 function leerArchivoImport(e){
   const file=e.target.files[0];
   if(!file)return;
@@ -263,44 +309,10 @@ function leerArchivoImport(e){
         e.target.value='';
         return;
       }
-      const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Esta acción no se puede deshacer.','Importar',true);
+      const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Antes de reemplazar se guarda una copia de lo que tienes ahora (la encuentras en Respaldos automáticos).','Importar',true);
       if(!ok)return;
-      if(!await pedirPinAntesDe('Para reemplazar todos tus datos con el backup')){e.target.value='';return;}
-      // Llevar el backup al modelo de datos actual (si falla, el catch avisa y NO se reemplaza nada).
-      aplicarMigraciones(data);
-      // Reemplazar CONTENIDO de S sin romper la referencia de window.S
-      Object.keys(S).forEach(k => delete S[k]);
-      Object.assign(S, data);
-      // Repintar YA la pantalla activa con los datos recién importados — sin esto,
-      // S ya tiene los datos nuevos pero la UI sigue mostrando lo que había antes
-      // de importar hasta que el location.reload() de más abajo confirme el guardado.
-      if (typeof refresh === 'function') refresh();
-      // Marcar timestamp ANTES del debounce de guardado
-      const _impTs = Date.now();
-      window._lastSavedAt = _impTs;
-      try { localStorage.setItem('mf_lastSavedAt', String(_impTs)); } catch(_){}
-      window._importing = true;
-      setTimeout(() => { window._importing = false; }, 5000);
-      // El toast de éxito y el reload dependen del resultado REAL del guardado:
-      // _fbSaveToCloud() devuelve una promesa {ok, reason}. Si no llegó a escribir
-      // (p.ej. window._dataLoaded todavía en false), recargar traería de vuelta el
-      // dato viejo de la nube y el aviso de éxito habría mentido.
-      if(!window._fbSaveToCloud){
-        toast('Los datos se cargaron en la app pero no se pudo confirmar el guardado en la nube (función de guardado no disponible). No recargues la página todavía — avisa antes de seguir.','err',7000);
-        return;
-      }
-      toast('Importando y guardando en la nube…','info',3000);
-      const _saveResult = await window._fbSaveToCloud({ forzar: true }); // importar pisa la nube a propósito (no se trata como conflicto)
-      if(_saveResult && _saveResult.ok){
-        toast('Datos importados correctamente — recargando…','ok');
-        // Recargar solo una vez confirmado el guardado (ya no hace falta
-        // esperar un tiempo fijo — el await de arriba ya cubrió el debounce
-        // de 1.5s y el setDoc()).
-        setTimeout(() => { location.reload(); }, 800);
-      } else {
-        const _motivo = (_saveResult && _saveResult.reason) || 'desconocido';
-        toast('No se pudo guardar en la nube (motivo: '+_motivo+'). Los datos quedaron cargados localmente, pero NO recargues la página — se perderían. Reintenta importar en unos segundos.','err',8000);
-      }
+      const _r=await _reemplazarDatos(data,'Para reemplazar todos tus datos con el backup','Datos importados correctamente — recargando…');
+      if(_r===false){e.target.value='';return;}
     }catch(err){
       if(err instanceof SyntaxError){
         toast('El archivo no es un JSON válido','err');
@@ -311,6 +323,77 @@ function leerArchivoImport(e){
     e.target.value='';
   };
   reader.readAsText(file);
+}
+
+/* ---- RESPALDOS AUTOMÁTICOS (js/core/respaldos.js, docs/respaldos-automaticos.md) ---- */
+// La app conserva sola una copia del estado de cada día (30 en la nube, 7 en este dispositivo) y una copia «previa» antes de importar o
+// restaurar. Acá solo se listan y se restauran; crearlos es cosa del guardado (js/core/firebase-sync.js).
+let _respaldosFilas=[];
+const _MESES_RESP=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function _respFechaLarga(fila){
+  const [a,m,d]=String(fila.fecha||'').split('-').map(Number);
+  if(!a||!m||!d)return 'Fecha desconocida';
+  const base=d+' de '+_MESES_RESP[m-1]+' de '+a;
+  if(fila.tipo!=='previo')return base;
+  const h=new Date(fila.creadoEn||0);
+  return base+', '+String(h.getHours()).padStart(2,'0')+':'+String(h.getMinutes()).padStart(2,'0');
+}
+function _respDescripcion(fila){
+  const donde=fila.fuentes.length===2?'nube y este dispositivo':(fila.fuentes[0]==='nube'?'nube':'este dispositivo');
+  const que=fila.tipo==='previo'?'Antes de importar o restaurar':'Así quedó todo al empezar el día';
+  return que+' · '+Math.max(1,Math.round((fila.bytes||0)/1000))+' KB · '+donde;
+}
+function renderRespaldos(){
+  const el=document.getElementById('cfg-respaldos');
+  if(!el)return;
+  const api=window._fbRespaldos;
+  if(!api){el.innerHTML='';return;}
+  const est=api.estado();
+  let linea='Todavía no se ha creado ningún respaldo en este dispositivo.';
+  if(est.error==='permisos')linea='La nube no deja crear respaldos todavía (hay que ajustar las reglas de Firestore, ver docs/respaldos-automaticos.md). La copia en este dispositivo sí funciona.';
+  else if(est.ultimo&&est.ultimo.creadoEn){
+    const d=new Date(est.ultimo.creadoEn);
+    linea='Último respaldo creado: '+d.getDate()+' de '+_MESES_RESP[d.getMonth()]+' de '+d.getFullYear()+'.';
+  }
+  el.innerHTML=html`<div class="cfg-resp-estado${est.error==='permisos'?' cfg-resp-aviso':''}">${linea}</div>
+    <div id="cfg-respaldos-lista"></div>
+    <button type="button" class="btn cfg-resp-ver" ${raw(Events.attr('config:verRespaldos'))}>Ver respaldos</button>`;
+}
+async function verRespaldos(){
+  const api=window._fbRespaldos, cont=document.getElementById('cfg-respaldos-lista');
+  if(!api||!cont)return;
+  cont.innerHTML=html`<div class="cfg-resp-estado">Cargando respaldos…</div>`;
+  let r;
+  try{r=await api.listar();}catch(e){r={filas:[],errorNube:String((e&&e.message)||e)};}
+  _respaldosFilas=r.filas;
+  if(!r.filas.length){
+    cont.innerHTML=html`<div class="cfg-resp-estado">${r.errorNube?'No se pudo leer la lista de la nube ('+r.errorNube+') y en este dispositivo todavía no hay copias.':'Aún no hay respaldos. El primero se crea la próxima vez que se guarde algo en un día nuevo.'}</div>`;
+    return;
+  }
+  cont.innerHTML=html`${r.errorNube?html`<div class="cfg-resp-estado cfg-resp-aviso">No se pudo leer la lista de la nube (${r.errorNube}); se muestran solo las copias de este dispositivo.</div>`:''}
+    <div class="cfg-resp-lista">${r.filas.map(f=>html`<div class="cfg-resp-fila">
+      <div class="cfg-resp-info"><div class="cfg-resp-fecha">${_respFechaLarga(f)}</div><div class="cfg-resp-meta">${_respDescripcion(f)}</div></div>
+      <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:restaurarRespaldo',f.id))}>Restaurar</button>
+    </div>`)}</div>`;
+}
+async function restaurarRespaldo(id){
+  const api=window._fbRespaldos;
+  const fila=_respaldosFilas.find(f=>f.id===id);
+  if(!api||!fila){toast('No se encontró ese respaldo. Vuelve a abrir la lista.','err');return;}
+  try{
+    let data;
+    try{data=JSON.parse(await api.leer(fila));}
+    catch(_){toast('No se pudo leer ese respaldo (está dañado o no hay conexión).','err');return;}
+    // La misma validación que al importar un archivo: un respaldo que no pasa no reemplaza nada.
+    const errores=_validarEstructuraJSON(data);
+    if(errores.length>0){toast('Ese respaldo no es válido: '+errores[0],'err');return;}
+    const cuando=_respFechaLarga(fila);
+    const ok=await dialogo('Restaurar respaldo','¿Reemplazar todos tus datos actuales por el respaldo del '+cuando+'? Antes de reemplazar se guarda una copia de lo que tienes ahora, así que también podrás deshacerlo.','Restaurar',true);
+    if(!ok)return;
+    await _reemplazarDatos(data,'Para restaurar el respaldo del '+cuando,'Respaldo restaurado — recargando…');
+  }catch(err){
+    toast('Error al restaurar: '+err.message,'err');
+  }
 }
 
 /* ---- EXPORTAR CSV (gastos) ---- */
@@ -350,7 +433,7 @@ function toggleModulo(nombre){
 // a subir el S viejo y pisaría el borrado. Mismo criterio en _fbSignOut/_fbDeleteAccount
 // (firebase-sync.js).
 async function borrarTodo(){
-  const ok=await confirmarEliminar({titulo:'Borrar todos los datos',verbo:'Borrar',etiqueta:'Borrar todo',objeto:'TODOS tus datos',detalle:'Perderás toda tu información financiera.'});
+  const ok=await confirmarEliminar({titulo:'Borrar todos los datos',verbo:'Borrar',etiqueta:'Borrar todo',objeto:'TODOS tus datos',detalle:'Perderás toda tu información financiera, incluidos los respaldos automáticos.'});
   if(!ok)return;
   if(!await pedirPinAntesDe('Para borrar todos los datos'))return;
   const _overlay = document.getElementById('fb-loading-screen');
@@ -364,7 +447,9 @@ async function borrarTodo(){
       try { localStorage.setItem('mf_lastSavedAt', String(resetTs)); } catch(_){}
       window._lastSavedAt = resetTs;
       // Escritura intencional (forzar): sube la revisión sobre la que haya en la nube, así los otros dispositivos la ven como nueva.
-      await window._fbEscribirDoc(JSON.stringify({}), resetTs, true);
+      await window._fbEscribirDoc(JSON.stringify({}), resetTs, true, { sinRespaldo: true }); // los respaldos se borran justo después: es «borrar TODO»
+      // Recién con el documento ya vacío se borran los respaldos (si fallara antes, no se perdería la red de seguridad). Nunca lanza.
+      try { if(window._fbRespaldos) await window._fbRespaldos.borrarTodos(); } catch(_) {}
     }catch(e){
       console.error('Error borrando en Firebase:',e);
       _borradoFirebaseOk = false;
@@ -395,6 +480,9 @@ Events.registerAll('config', {
   // «Mis Wrapped»: abre un año guardado (wrapped-gate.js lo deja listo para renderWrapped)
   abrirWrapped: (anio) => window._wrappedAbrir(anio),
   eliminarWrapped: (anio) => eliminarWrapped(anio),
+  // Respaldos automáticos (Configuración → Datos)
+  verRespaldos: verRespaldos,
+  restaurarRespaldo: (id) => restaurarRespaldo(id),
 });
 
 /* ---- WIRING de controles que no son clicks simples (change/keydown/inputs de archivo) ---- */

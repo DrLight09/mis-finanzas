@@ -500,7 +500,7 @@ Los botones/badges de la pantalla ya no usan `onclick` inline — usan `data-act
 | `spotify:eliminarHistorial` | `deleteSpHistorial` |
 | `spotify:resolverPendiente` | `resolverPendienteSpHistorial` |
 | `spotify:deshacerAbonoPendiente` | `deshacerAbonoPendienteSp` |
-| `spotify:abrirSelectorPersona` | Abre el selector de personas unificado (`abrirSelPersona`) |
+| `personas:pickerAbrir` | Abre el selector de personas desde el campo «¿Quién es?» (`PersonaPicker`, `data-picker="sp-persona"` / `"sp-edit-persona"`) |
 | `spotify:onClickEditPersonaBtn` | `_onClickSpEditPersonaBtn` |
 
 Todas se registran en `spotify.js`: las de funciones base en el bloque "REGISTRO DE EVENTOS" y las dos del selector de personas junto a su integración.

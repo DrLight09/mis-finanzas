@@ -2710,9 +2710,13 @@
         <div class="sheet-title">Nuevo encargo</div>
         <p class="ix-div-168">Plata
           de otra persona que vas a administrar. No afecta tu patrimonio.</p>
-        <div class="ig"><label class="il" for="enc_nombre">¿De quién es la
-            plata?</label><input type="text" id="enc_nombre" maxlength="30"
-            placeholder="Ej: Papá, Carlos, Mamá..."></div>
+        <div class="ig"><div class="il">¿De quién es la plata?</div>
+        <div class="persona-btn" id="enc-persona-btn" data-action="personas:pickerAbrir" data-picker="enc-persona" role="button" tabindex="0">
+          <div class="avatar persona-btn-av" id="enc-persona-avatar" style="display:none;"></div>
+          <span id="enc-persona-label">Seleccionar persona...</span>
+          <svg aria-hidden="true" class="persona-chevron" id="enc-persona-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <input type="hidden" id="enc_nombre" value=""></div>
         <div class="ig"><label class="il" for="enc_saldo">Saldo inicial
             (opcional)</label><input type="text" inputmode="decimal"
             id="enc_saldo" placeholder="0,00" class="money-input"></div>
@@ -3874,8 +3878,13 @@
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Agregar persona a Spotify</div>
-        <div class="ig"><label class="il" for="sp_n">Nombre</label><input
-            type="text" id="sp_n" maxlength="30" placeholder="Ej: Carlos"></div>
+        <div class="ig"><div class="il">¿Quién es?</div>
+        <div class="persona-btn" id="sp-persona-btn" data-action="personas:pickerAbrir" data-picker="sp-persona" role="button" tabindex="0">
+          <div class="avatar persona-btn-av" id="sp-persona-avatar" style="display:none;"></div>
+          <span id="sp-persona-label">Seleccionar persona...</span>
+          <svg aria-hidden="true" class="persona-chevron" id="sp-persona-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <input type="hidden" id="sp_n" value=""></div>
         <div class="ig"><label class="il" for="sp_m">Cuota mensual</label><input
             type="text" inputmode="decimal" id="sp_m" placeholder="0,00"
             class="money-input"></div>
@@ -3899,8 +3908,14 @@
       <div class="sheet">
         <div class="sheet-handle"></div>
         <div class="sheet-title">Editar persona en Spotify</div>
-        <div class="ig"><label class="il" for="sp_edit_n">Nombre</label><input
-            type="text" id="sp_edit_n" maxlength="30" placeholder="Ej: Carlos"></div>
+        <div class="ig"><div class="il">¿Quién es?</div>
+        <div class="persona-btn" id="sp-edit-persona-btn" data-action="personas:pickerAbrir" data-picker="sp-edit-persona" role="button" tabindex="0">
+          <div class="avatar persona-btn-av" id="sp-edit-persona-avatar" style="display:none;"></div>
+          <span id="sp-edit-persona-label">Seleccionar persona...</span>
+          <svg aria-hidden="true" class="persona-chevron" id="sp-edit-persona-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div class="persona-hint" id="sp-edit-persona-hint" hidden>Para asignarle este cobro a otra persona, elimina este integrante y agrega uno nuevo — así el historial no se mezcla entre los dos.</div>
+        <input type="hidden" id="sp_edit_n" value=""></div>
         <div class="ig"><label class="il" for="sp_edit_m">Cuota
             mensual</label><input
             type="text" inputmode="decimal" id="sp_edit_m" placeholder="0,00"

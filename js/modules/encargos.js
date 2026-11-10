@@ -718,7 +718,7 @@ function volverEncargosLista() {
 
 function crearEncargo() {
   // personaId es obligatorio: no debe existir un encargo sin persona vinculada (enc_nombre se llena al elegirla).
-  const pId = _nuevoEncargoPersonaId;
+  const pId = _encPicker().valor;
   if (!pId) { toast('Selecciona una persona', 'err'); return; }
   const persona = getPersona(pId);
   const nombre = persona ? persona.nombre : document.getElementById('enc_nombre').value.trim();
@@ -742,7 +742,7 @@ function crearEncargo() {
   document.getElementById('enc_nota').value = '';
   document.getElementById('enc_cuenta_ini').value = '';
   document.getElementById('enc_cuenta_wrap').style.display = 'none';
-  _nuevoEncargoPersonaId = null;
+  _encPicker().limpiar();
   save(); renderEncargosList();
   closeSheet('nuevo-encargo');
   if(window.logCambio) logCambio('Creaste un encargo',nombre,'','editar');
@@ -3322,62 +3322,9 @@ Events.on('encargos-personas:irAEncargo', _irAEncargo);
 /* ═══════════════════════════════════════════════════════════════
    INTEGRACIÓN: Nuevo encargo usa selector de persona
    ═══════════════════════════════════════════════════════════════ */
-let _nuevoEncargoPersonaId = null;
-
-function _initNuevoEncargoPersonaSelector() {
-  const sheet = document.getElementById('sheet-nuevo-encargo');
-  if (!sheet || sheet._personaHook) return;
-  sheet._personaHook = true;
-
-  // Reemplazar el campo de texto "enc_nombre" con un selector de persona
-  const encNombreEl = document.getElementById('enc_nombre');
-  if (!encNombreEl) return;
-  const ig = encNombreEl.closest('.ig');
-  if (!ig) return;
-
-  ig.innerHTML = html`
-    <div class="il">¿De quién es la plata?</div>
-    <div id="enc-persona-btn" data-action="encargos:seleccionarPersonaNueva"
-      class="enc-persona-btn">
-      <div id="enc-persona-avatar" class="avatar enc-persona-av" style="display:none;"></div>
-      <span id="enc-persona-label">Seleccionar persona...</span>
-      <svg aria-hidden="true" class="enc-chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </div>
-    <input type="hidden" id="enc_nombre" value="">`;
-}
-
-function _onSelPersonaNuevoEncargo(personaId) {
-  const p = getPersona(personaId);
-  if (!p) return;
-  _nuevoEncargoPersonaId = personaId;
-  document.getElementById('enc_nombre').value = p.nombre;
-
-  const btn = document.getElementById('enc-persona-btn');
-  const lbl = document.getElementById('enc-persona-label');
-  const av = document.getElementById('enc-persona-avatar');
-  if (btn) btn.style.borderColor = 'var(--accent)';
-  if (lbl) { lbl.textContent = p.nombre; lbl.style.color = 'var(--text)'; }
-  if (av) pintarAvatarPersona(av, p, { mostrar: true });
-}
-
-/* ── Inicializar el selector al abrir «Nuevo encargo» (Ui.hoja, js/core/ui.js) ───────────── */
-Ui.hoja('nuevo-encargo', function() {
-  _inyectarPersonaSheets();
-  _nuevoEncargoPersonaId = null;
-  // Inicializar el selector después de que el sheet sea visible
-  setTimeout(_initNuevoEncargoPersonaSelector, 30);
-  // Resetear UI del selector
-  setTimeout(() => {
-    const lbl = document.getElementById('enc-persona-label');
-    const av = document.getElementById('enc-persona-avatar');
-    const btn = document.getElementById('enc-persona-btn');
-    if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
-    if (av) av.style.display = 'none';
-    if (btn) btn.style.borderColor = 'var(--border2)';
-    const encNombreEl = document.getElementById('enc_nombre');
-    if (encNombreEl) encNombreEl.value = '';
-  }, 50);
-}, { key: 'encargos-persona' });
+// Campo «¿De quién es la plata?»: PersonaPicker (js/modules/personas.js), markup estático en index.html. Arranca vacío al abrir la hoja.
+const _encPicker = () => PersonaPicker.crear({ prefijo: 'enc-persona', inputId: 'enc_nombre', titulo: '¿De quién es la plata?' });
+Ui.hoja('nuevo-encargo', function() { _encPicker().limpiar(); }, { key: 'encargos-persona' });
 
 /* ═══════════════════════════════════════════════════════════════
    BOTÓN DE PERFIL EN LISTA DE ENCARGOS Y DEUDORES
@@ -3455,7 +3402,3 @@ function _encDetallePersona(enc) {
     chip.onclick = () => abrirPerfilPersona(p.id);
   }
 }
-
-/* ── Registro de eventos ──────────────────────────────────────── */
-function _encAbrirSelectorPersonaNueva() { abrirSelPersona(_onSelPersonaNuevoEncargo); }
-Events.on('encargos:seleccionarPersonaNueva', _encAbrirSelectorPersonaNueva);

@@ -842,6 +842,87 @@ function _seleccionarColorPersona(containerId, varName, color) {
 // refresco al editar desde el sheet global viven en encargos.js y prestado.js. Ver docs/encargos.md
 // y docs/prestado.md.
 
+
+/* ── CAMPO «¿QUIÉN ES?» (PersonaPicker) ──────────────────────────────────────
+   Un solo componente para todo campo que elige una persona de S.personas (Spotify agregar/editar, Nuevo encargo). El HTML es
+   ESTÁTICO en index.html (no se reescribe en runtime): un <div class="persona-btn" id="PREFIJO-btn" data-action="personas:pickerAbrir"
+   data-picker="PREFIJO"> con hijos PREFIJO-avatar, PREFIJO-label, PREFIJO-chevron y, opcional, PREFIJO-hint; más un <input type="hidden">
+   con el id `inputId` que guarda el nombre (los formularios y validaciones existentes lo siguen leyendo).
+   PersonaPicker.crear({ prefijo, inputId, titulo, alCambiar }) es idempotente por prefijo y devuelve:
+     .valor                 personaId elegido (o null)
+     .abrir()               abre el selector de personas (no hace nada si está bloqueado)
+     .elegir(id)            lo que ocurre al elegir: guarda, pinta y llama alCambiar(id)
+     .precargar({personaId, nombre})  muestra un estado existente (editar). Con personaId queda BLOQUEADO (no se puede cambiar de persona)
+     .abiertoSinConfirmar   true si se abrió el buscador y se cerró sin elegir a nadie
+     .limpiar()             vuelve a «Seleccionar persona…» y quita el bloqueo
+     .marcarError()         borde rojo 2 s (para «Selecciona una persona»)  */
+const PersonaPicker = (() => {
+  const registro = new Map();
+  function crear(cfg) {
+    const prev = registro.get(cfg.prefijo);
+    if (prev) { prev._cfg = cfg; return prev; }
+    let valor = null, bloqueado = false, abierto = false, confirmado = false;
+    const el = s => document.getElementById(cfg.prefijo + '-' + s);
+    const input = () => document.getElementById(cfg.inputId);
+    function pintar(persona, nombreLibre) {
+      const btn = el('btn'), lbl = el('label'), av = el('avatar');
+      const hay = !!(persona || nombreLibre);
+      if (btn) { btn.classList.toggle('is-set', hay); btn.classList.remove('is-error'); }
+      if (lbl) { lbl.textContent = persona ? persona.nombre : (nombreLibre || 'Seleccionar persona...'); lbl.classList.toggle('is-set', hay); }
+      if (av) { if (persona) pintarAvatarPersona(av, persona, { mostrar: true }); else av.style.display = 'none'; }
+    }
+    function fijarBloqueo(b) {
+      bloqueado = !!b;
+      const btn = el('btn'), hint = el('hint');
+      if (btn) btn.classList.toggle('is-locked', bloqueado); // CSS oculta el chevron
+      if (hint) hint.hidden = !bloqueado;
+    }
+    const api = {
+      _cfg: cfg,
+      get valor() { return valor; },
+      get bloqueado() { return bloqueado; },
+      get abiertoSinConfirmar() { return abierto && !confirmado; },
+      abrir() {
+        if (bloqueado) return;
+        abierto = true;
+        abrirSelPersona(id => api.elegir(id), api._cfg.titulo || '¿Quién es?');
+      },
+      elegir(id) {
+        const p = getPersona(id);
+        if (!p) return;
+        valor = id; confirmado = true;
+        const i = input(); if (i) i.value = p.nombre;
+        pintar(p);
+        if (api._cfg.alCambiar) api._cfg.alCambiar(id);
+      },
+      precargar({ personaId, nombre } = {}) {
+        abierto = false; confirmado = false;
+        const p = personaId ? getPersona(personaId) : null;
+        valor = p ? p.id : null;
+        const i = input(); if (i) i.value = p ? p.nombre : (nombre || '');
+        pintar(p, p ? '' : nombre);
+        fijarBloqueo(!!p);
+      },
+      limpiar() {
+        valor = null; abierto = false; confirmado = false;
+        const i = input(); if (i) i.value = '';
+        pintar(null);
+        fijarBloqueo(false);
+      },
+      marcarError() {
+        const btn = el('btn');
+        if (!btn) return;
+        btn.classList.add('is-error');
+        setTimeout(() => btn.classList.remove('is-error'), 2000);
+      },
+    };
+    registro.set(cfg.prefijo, api);
+    return api;
+  }
+  return { crear, de: prefijo => registro.get(prefijo) || null };
+})();
+if (typeof window !== 'undefined') window.PersonaPicker = PersonaPicker;
+
 /* ── REGISTRO DE EVENTOS (data-action → handler) ───────────────── */
 // Reemplaza los onclick inline propios de este módulo. Los botones "Ver →" del perfil
 // (encargos, deudores, mis deudas) usan data-action con el prefijo de su módulo
@@ -858,4 +939,5 @@ Events.registerAll('personas', {
   selCrearDirecto: _selPersonaCrearDirecto,
   irASpotify: _irASpotify,
   seleccionarColor: _seleccionarColorPersona,
+  pickerAbrir: (el) => { const p = PersonaPicker.de(el && el.dataset && el.dataset.picker); if (p) p.abrir(); },
 });

@@ -55,15 +55,15 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 19 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 85 | 2 |
-| `js/modules/encargos.js` | lazy — grupo `encargos` | 88 | 0 |
+| `js/modules/encargos.js` | lazy — grupo `encargos` | 86 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 29 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 57 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
-| `js/modules/personas.js` | de entrada (defer) | 22 | 1 |
+| `js/modules/personas.js` | de entrada (defer) | 23 | 1 |
 | `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 34 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 117 | 1 |
-| `js/modules/spotify.js` | lazy — grupo `spotify` | 47 | 2 |
+| `js/modules/spotify.js` | lazy — grupo `spotify` | 42 | 2 |
 | `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 117 | 3 |
 
@@ -369,7 +369,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: lazy — grupo `encargos`
 
-**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difMiSplitPreview`, `_difRenderHistorialParte`, `_encAbrirSelectorPersonaNueva`, `_encDetallePartes`, `_encDetallePersona`, `_encGrupoSplit`, `_encListaPerfiles`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_initNuevoEncargoPersonaSelector`, `_irAEncargo`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_movEncActualizarFaltante`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_moverEncGetFuentesOptions`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_onSelPersonaNuevoEncargo`, `_pintarEncargoDetalle`, `_pintarEncargosList`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteFuentePreview`, `_usarParteFuentes`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
+**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difMiSplitPreview`, `_difRenderHistorialParte`, `_encDetallePartes`, `_encDetallePersona`, `_encGrupoSplit`, `_encListaPerfiles`, `_encPicker`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_irAEncargo`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_movEncActualizarFaltante`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_moverEncGetFuentesOptions`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_pintarEncargoDetalle`, `_pintarEncargosList`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteFuentePreview`, `_usarParteFuentes`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
 
 ### `js/modules/gastos.js`
 
@@ -403,7 +403,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_crearPersonaGlobal`, `_editarPersonaDesdePerfilSheet`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `getPersona`, `getPersonaColor`, `getPersonaDatos`, `getPersonaNombre`
+**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_crearPersonaGlobal`, `_editarPersonaDesdePerfilSheet`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `getPersona`, `getPersonaColor`, `getPersonaDatos`, `getPersonaNombre`, `PersonaPicker`
 
 **Globales:** `PERSONA_COLORES`
 
@@ -427,7 +427,7 @@ Carga: lazy — grupo `prestamos`
 
 Carga: lazy — grupo `spotify`
 
-**Funciones:** `_abrirSelPersonaSpotifyEdit`, `_borrarSpHistorial`, `_initSpotifyEditPersonaSelector`, `_initSpotifyPersonaSelector`, `_onClickSpEditPersonaBtn`, `_onSelPersonaSpotify`, `_onSelPersonaSpotifyEdit`, `_spEditPrecargarPersona`, `_spEnsureTC`, `_spExtraOpts`, `_spPintarAvatares`, `_spProporcionarSplits`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirElegirFuenteSpotify`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpFuente`, `getSpFuenteSaldo`, `guardarEditarSpotify`, `guardarFuenteSpotify`, `marcarPagoSpotify`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
+**Funciones:** `_borrarSpHistorial`, `_spEditPicker`, `_spEnsureTC`, `_spExtraOpts`, `_spPicker`, `_spPintarAvatares`, `_spProporcionarSplits`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirElegirFuenteSpotify`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpFuente`, `getSpFuenteSaldo`, `guardarEditarSpotify`, `guardarFuenteSpotify`, `marcarPagoSpotify`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
 
 **Globales:** `SP_EMPATE_PERIODOS`, `SP_PERIODO_DIAS`
 
@@ -468,7 +468,6 @@ Ninguno.
 | `_abrirPerfilDesdeDeudorActual` | `js/modules/prestado.js` |
 | `_abrirPerfilDesdeMiDeuda` | `js/modules/prestado.js` |
 | `_abrirPerfilDesdeMiDeudaActual` | `js/modules/prestado.js` |
-| `_abrirSelPersonaSpotifyEdit` | `js/modules/spotify.js` |
 | `_abrirSheetAbono` | `js/modules/prestado.js` |
 | `_abrirSheetNuevaDeuda` | `js/modules/prestado.js` |
 | `_abrirSheetNuevaPersona` | `js/modules/prestado.js` |
@@ -609,12 +608,12 @@ Ninguno.
 | `_difRenderHistorialParte` | `js/modules/encargos.js` |
 | `_editarPersonaDesdePerfilSheet` | `js/modules/personas.js` |
 | `_eliminarMovimientoImpl` | `js/core/movimientos.js` |
-| `_encAbrirSelectorPersonaNueva` | `js/modules/encargos.js` |
 | `_encargosConSaldoEn` | `js/modules/cuentas.js` |
 | `_encDetallePartes` | `js/modules/encargos.js` |
 | `_encDetallePersona` | `js/modules/encargos.js` |
 | `_encGrupoSplit` | `js/modules/encargos.js` |
 | `_encListaPerfiles` | `js/modules/encargos.js` |
+| `_encPicker` | `js/modules/encargos.js` |
 | `_encSplitCarrier` | `js/modules/encargos.js` |
 | `_encSplitKey` | `js/modules/encargos.js` |
 | `_enReversion` | `js/modules/prestado.js` |
@@ -658,9 +657,6 @@ Ninguno.
 | `_initEventListeners` | `js/core/sheet-stack.js` |
 | `_initGrupoSelector` | `js/modules/prestado.js` |
 | `_initMovGrupoSelector` | `js/modules/prestado.js` |
-| `_initNuevoEncargoPersonaSelector` | `js/modules/encargos.js` |
-| `_initSpotifyEditPersonaSelector` | `js/modules/spotify.js` |
-| `_initSpotifyPersonaSelector` | `js/modules/spotify.js` |
 | `_injectErrorSpans` | `js/core/sheet-stack.js` |
 | `_injectMasItem` | `js/modules/plata_comprometida.js` |
 | `_injectScreen` | `js/modules/plata_comprometida.js` |
@@ -749,12 +745,8 @@ Ninguno.
 | `_nuMovRenderCajitas` | `js/modules/nu.js` |
 | `_nuMovToggleApertura` | `js/modules/nu.js` |
 | `_obtenerTokenPush` | `js/core/notificaciones-push.js` |
-| `_onClickSpEditPersonaBtn` | `js/modules/spotify.js` |
 | `_onMovMontoInput` | `js/modules/prestado.js` |
 | `_onSelPersonaMeDeben` | `js/modules/prestado.js` |
-| `_onSelPersonaNuevoEncargo` | `js/modules/encargos.js` |
-| `_onSelPersonaSpotify` | `js/modules/spotify.js` |
-| `_onSelPersonaSpotifyEdit` | `js/modules/spotify.js` |
 | `_onSelPersonaYoDebo` | `js/modules/prestado.js` |
 | `_optGanancia` | `js/modules/prestado.js` |
 | `_patrimonioDependenciasListas` | `js/core/core-state.js` |
@@ -826,9 +818,10 @@ Ninguno.
 | `_showCuentasPanel` | `js/modules/cuentas.js` |
 | `_showScreenLoading` | `js/core/sheet-stack.js` |
 | `_situacion` | `js/modules/inicio.js` |
-| `_spEditPrecargarPersona` | `js/modules/spotify.js` |
+| `_spEditPicker` | `js/modules/spotify.js` |
 | `_spEnsureTC` | `js/modules/spotify.js` |
 | `_spExtraOpts` | `js/modules/spotify.js` |
+| `_spPicker` | `js/modules/spotify.js` |
 | `_spPintarAvatares` | `js/modules/spotify.js` |
 | `_spProporcionarSplits` | `js/modules/spotify.js` |
 | `_sumarASaldo` | `js/modules/alcancia.js` |
@@ -1397,6 +1390,7 @@ Ninguno.
 | `Periodo` | `js/core/periodo.js` |
 | `PERSONA_COLORES` | `js/modules/personas.js` |
 | `PERSONA_COLORES_MD` | `js/modules/prestado.js` |
+| `PersonaPicker` | `js/modules/personas.js` |
 | `pgfActualizarSaldo` | `js/modules/gastos.js` |
 | `pintarAvatarPersona` | `js/core/core-state.js` |
 | `PlanDeudas` | `js/core/plan-deudas.js` |

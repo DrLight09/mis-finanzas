@@ -1,8 +1,8 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v118'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
+const VERSION = 'mis-finanzas-v119'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
 // Huella del contenido desplegable: la sella `node scripts/sellar-sw.js` (y `npm test` falla si quedó vieja). Así, aunque se olvide
 // subir VERSION, la caché cambia de nombre en cuanto cambia cualquier archivo y no se sirven los .js anteriores.
-const BUILD = 'f92311d444be'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
+const BUILD = '9b59a7a705ef'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
 const CACHE = VERSION + '-' + BUILD;
 
 const APP_SHELL = [

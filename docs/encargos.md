@@ -221,7 +221,7 @@ Si el movimiento es una porción de una salida dividida de "Registrar salida" (`
 | `diffValidarMiCuenta(instId)` (`js/core/diferencial.js`) | Valida que el reparto del sobrante sume exactamente el sobrante y que cada fila tenga cuenta; se llama al confirmar en los tres flujos |
 | `_movEncActualizarFaltante()` | Muestra/oculta el banner "Prestar lo que falta" según monto vs. `encargoLibre()`, en cada input de monto |
 | `_movEncConfirmarPrestarFaltante()` | Registra la salida normal (lo disponible) en el encargo + el préstamo del faltante en `S.deudores`, vía `_autoGrupoIdMov` (de `prestado.js`) |
-| `_initNuevoEncargoPersonaSelector`, `_onSelPersonaNuevoEncargo`, `editarEncargoActual`/`guardarEditarEncargo` | Vínculo e integración con `S.personas` |
+| `_encPicker` (campo «¿De quién es la plata?» = `PersonaPicker`), `_encListaPerfiles`, `_encDetallePersona`, `editarEncargoActual`/`guardarEditarEncargo` | Vínculo e integración con `S.personas` |
 | `renderEncargosEnCuenta(elId, tipoCuenta)` | Muestra los encargos guardados en una cuenta específica dentro del detalle de esa cuenta (color de Nequi/Efectivo desde `CUENTAS_FIJAS`) |
 | `_normEncargos(S)` | Normaliza los movimientos de encargos para el feed unificado de historial/cambios |
 

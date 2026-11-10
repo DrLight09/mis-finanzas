@@ -3402,39 +3402,6 @@
       </div>
     </div>
 
-    <!-- NUEVA PERSONA -->
-    <div class="overlay" id="sheet-nueva-persona" data-sheet-id="nueva-persona">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title">Nueva persona</div>
-        <div class="ig"><label class="il" for="np_nombre">Nombre</label><input
-            type="text" id="np_nombre" maxlength="30"
-            placeholder="Ej: Papá, Carlos, Mamá..."></div>
-        <div class="ig">
-          <div class="il">Color del avatar</div>
-          <div class="ix-np-colores"
-            id="np_colores">
-            <div class="avatar-color-opt ix-div-283" data-color="#60b0f0"
-              data-pick-color="#60b0f0"></div>
-            <div class="avatar-color-opt ix-div-284" data-color="#c8f060"
-              data-pick-color="#c8f060"></div>
-            <div class="avatar-color-opt ix-div-285" data-color="#f0b840"
-              data-pick-color="#f0b840"></div>
-            <div class="avatar-color-opt ix-div-286" data-color="#b090f0"
-              data-pick-color="#b090f0"></div>
-            <div class="avatar-color-opt ix-div-287" data-color="#f06868"
-              data-pick-color="#f06868"></div>
-            <div class="avatar-color-opt ix-div-288" data-color="#c060f0"
-              data-pick-color="#c060f0"></div>
-          </div>
-        </div>
-        <button type="button" class="btn btn-primary"
-          id="btn-crear-deudor">Crear persona</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="nueva-persona">Cancelar</button>
-      </div>
-    </div>
-
     <!-- NUEVA DEUDA (yo le debo a alguien) -->
     <!-- EDITAR MI DEUDA -->
     <div class="overlay" id="sheet-editar-mi-deuda"
@@ -4687,6 +4654,11 @@
     <script src="js/core/events.js" defer></script>
     <script src="js/core/diferencial.js" defer></script>
     <script src="js/core/split.js" defer></script>
+<!--
+// js/core/ui.js — registro de ganchos de ciclo de vida (Ui.hoja / Ui.pantalla / Ui.en). Reemplaza a hookGlobal() y a los
+// `openSheet = function(){…}` de los módulos. No depende de nada: carga primero.
+-->
+<script src="js/core/ui.js" defer></script>
 <script src="js/core/fecha.js" defer></script>
 <script src="js/core/core-state.js" defer></script>
 <script src="js/core/cuenta-efectos.js" defer></script>
@@ -4731,30 +4703,14 @@
 <script src="js/core/color-picker.js" defer></script>
 <!--
 // js/core/wait-for.js — helper waitFor() para los <script defer> clásicos.
-// Consumidores directos: personas-init.js y js/core/hook-global.js (que
-// mejoras-adicionales.js/gastos-fijos-progress.js/mas-menu.js usan por
-// debajo, vía hookGlobal() — ver ese archivo más abajo). Antes de existir
-// hookGlobal(), cada uno de esos reimplementaba a mano su propio
-// setInterval + contador de reintentos.
+// Consumidor directo: personas-init.js. (hook-global.js, que también lo usaba, se eliminó: los ganchos de hojas/pantallas
+// ahora pasan por js/core/ui.js, que no necesita esperar a nada.)
 // pin-bio.js/firebase-sync.js usan su propia copia vía `import` de
 // js/core/wait-for-module.js (no de este archivo) — ver el comentario en
 // ambos archivos y CHANGELOG.md#infraestructura--seguridad para el porqué
 // de la separación.
 -->
 <script src="js/core/wait-for.js" defer></script>
-<!--
-// js/core/hook-global.js — helper hookGlobal() para envolver una función
-// global existente (window.refresh, window.openSheet, window.applyModulos)
-// sin repetir a mano "capturar original + envolver + esperar con waitFor si
-// todavía no existe". Reemplaza esa misma receta que tenían por separado
-// gastos-fijos-progress.js (refresh), mejoras-adicionales.js (refresh y
-// openSheet — antes repartida entre ese archivo y mejoras.js, fusionados
-// el 2026-09-10) y mas-menu.js (applyModulos). Depende de waitFor(), carga
-// justo después. pin-bio.js usa su propia copia vía `import` de
-// js/core/hook-global-module.js (no de este archivo) — mismo motivo de
-// separación classic/module que ya explica wait-for.js arriba.
--->
-<script src="js/core/hook-global.js" defer></script>
 <!--
 // js/core/wrapped-gate.js — ventana de disponibilidad de Wrapped
 // (2026-09-15, resuelve wrapped.md §7decies). Núcleo eager, chico, a

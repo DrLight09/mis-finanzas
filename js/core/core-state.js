@@ -4,8 +4,7 @@
 // mesKey, parseMoney, parsePct, toast, dialogo), calcPatrimonioTotal/
 // snapshotPatrimonio, los helpers centralizados _esGastoVarNoReal/
 // _esEntradaEspejoNoIngreso, y la definición BASE de refresh() (se envuelve
-// después vía hookGlobal(), ver js/core/gastos-fijos-progress.js y
-// js/core/mejoras-adicionales.js) — extraído de index.html. Debe cargar ANTES que cualquier módulo de
+// después con Refresh.registrar(), ver más abajo) — extraído de index.html. Debe cargar ANTES que cualquier módulo de
 // js/modules/ (todos asumen que S/fmt/uid/etc. ya existen como globales).
 // No exportar como type="module": el resto del archivo depende de que
 // estas sean variables globales léxicas normales de script clásico.
@@ -800,9 +799,8 @@ function _ensureSpotify(){
   if(!Array.isArray(S.spotify.personas))S.spotify.personas=[];
   if(!Array.isArray(S.spotify.historial))S.spotify.historial=[];
   if(typeof S.spotify.costo!=='number')S.spotify.costo=Number(S.spotify.costo)||0;
-  // `fuenteId`: cuenta o cajita donde guarda la plata de Spotify ('cajita:ID' | 'cuenta:ID'); '' = ninguna. Antes `cajitaId` (solo cajitas).
-  if(typeof S.spotify.fuenteId!=='string')S.spotify.fuenteId=(typeof S.spotify.cajitaId==='string'&&S.spotify.cajitaId)?'cajita:'+S.spotify.cajitaId:'';
-  delete S.spotify.cajitaId;
+  // `fuenteId`: cuenta o cajita donde guarda la plata de Spotify ('cajita:ID' | 'cuenta:ID'); '' = ninguna.
+  if(typeof S.spotify.fuenteId!=='string')S.spotify.fuenteId='';
 }
 
 /* ---- REGISTRO DE SONDAS (huella de invariantes) ----
@@ -2118,3 +2116,14 @@ function _refreshNucleo(){
 // crearSplitWidget(), definido justo arriba en este mismo bloque —
 // mismo criterio que Spotify: cargar donde la dependencia más
 // exigente ya esté satisfecha.
+
+function _markError(inputId, msgId, mensaje) {
+  const el = document.getElementById(inputId);
+  const msg = document.getElementById(msgId);
+  if (el) { el.classList.add('input-error'); el.focus(); }
+  if (msg) { msg.textContent = mensaje; msg.classList.add('visible'); }
+  setTimeout(() => {
+    if (el) el.classList.remove('input-error');
+    if (msg) msg.classList.remove('visible');
+  }, 3000);
+}

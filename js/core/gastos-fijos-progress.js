@@ -1,12 +1,7 @@
 // Barra de progreso de "gastos fijos pagados este mes" en panel-fijo —
 // extraído de index.html. Depende de S (bloque S/save, carga antes).
 //
-// El hook a window.refresh() pasa por hookGlobal() (js/core/hook-global.js):
-// antes esto era un wrap manual que asumía sin guard que window.refresh ya
-// existía en este punto (cierto solo por el orden de <script> en
-// index.html, no por ninguna garantía real — el mismo tipo de suposición
-// implícita que ya causó bugs en otros archivos). hookGlobal() resuelve
-// eso solo: si refresh ya existe lo envuelve de inmediato, si no, espera.
+// Se engancha a refresh() con Refresh.registrar() (core-state.js), no envolviendo la global.
 // Ver auditoria-tecnica.md #2/#4.
 
 // ── 4. GASTOS FIJOS PROGRESS BAR ─────────────────────────────────────────────

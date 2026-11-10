@@ -173,7 +173,13 @@ function calcCalendarioCaja(){
   return Periodo.saldoProyectado(calcLiquidez().neta,_eventosCaja(hoyStr,H),hoyStr,H);
 }
 
+/* «Necesita atención»: la pinta _pintarAtencion() y luego avisa con el evento 'atencion' (js/core/ui.js) para que otros módulos
+   (Plata comprometida) agreguen sus propias alertas sin envolver esta función. Un fallo en la base no corta a los ganchos. */
 function renderAttencion(){
+  try { _pintarAtencion(); } catch (e) { console.error('[renderAttencion]', e); }
+  Ui.emitir('atencion');
+}
+function _pintarAtencion(){
   // Las reglas devuelven TEXTO PLANO; html`` lo escapa (nombres de personas, tarjetas, encargos… son texto libre del usuario).
   const items=Reglas.evaluar('atencion',_ctxReglas()).map(it=>({tipo:it.tipo,texto:html`${it.texto}`}));
   const sec=document.getElementById('s-attn-section');

@@ -17,17 +17,7 @@
 //
 // ⚠️ Restricción de orden de carga (no mover el <script src> sin repetir
 // esta verificación):
-//   - Debe cargar DESPUÉS de js/modules/gastos.js y js/modules/spotify.js:
-//     los overrides `addGastoVar = function(){...}` / `addGastoFijo =
-//     function(){...}` de más abajo leen esos globales al parsear el
-//     script (nivel superior, no dentro de una función), así que ya deben
-//     existir en ese momento. (El override de `addSpotify`, en cambio,
-//     vive dentro de `_injectErrorSpans()` y se resuelve recién cuando esa
-//     función se invoca — sin esta restricción.)
-//   - Debe cargar ANTES de js/modules/prestado.js: ese módulo
-//     monkey-patchea `openSheet()` (intercepta `id==='nueva-persona'`
-//     antes de invocar el original) — necesita que `openSheet` ya exista
-//     como global al momento de parsearse.
+//   - Usa Ui (js/core/ui.js): los módulos enganchan sus hojas/pantallas con Ui.hoja()/Ui.pantalla(), ya no parchean openSheet().
 //   - Se mantiene en la misma posición relativa que tenía como bloque
 //     inline: después de core-state.js/mesada.js/spotify.js/gastos.js/
 //     prestado.js, antes de encargos.js.
@@ -39,6 +29,8 @@
 
 
 function mostrarAlertaFuente(prefix){
+  // Un módulo puede encargarse del aviso (Tarjetas de crédito con fuentes «tc:…»): su gancho devuelve true.
+  if(Ui.emitir('fuente-alerta',prefix).includes(true))return;
   // visibility, no display: el hint siempre ocupa su espacio (mismo criterio
   // que .field-hint/min-height en los demás hints, ver reglas-visuales.md#hints-vacíos)
   // para que elegir una cuenta no empuje de golpe los botones de más abajo.
@@ -66,12 +58,13 @@ const _sheetStack = [];
 function openSheet(id){
   // Efectos secundarios por sheet específico
   if(id==='gasto-var'){poblarFuente('gv_fuente',true);FuentesFiltro.podar('gv_fuente',{...FuentesFiltro.PRESET.SALIDA,sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO});const h=document.getElementById('gv_fuente_hint');if(h)h.style.visibility='hidden';document.getElementById('gv_fuente').onchange=function(){const sd=document.getElementById('gv_fuente_saldo');if(!sd)return;const val=this.value;if(!val){sd.textContent='';return;}const esTC=val.startsWith('tc:');const s=getSaldoFuente(val);if(esTC){const tcId=val.split(':')[1];const tc=(S.tarjetasCredito||[]).find(x=>x.id===tcId);const sinCupo=!tc||!tc.cupo;if(sinCupo){sd.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas.';sd.style.color='var(--text2)';}else{sd.textContent='Cupo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}}else{sd.textContent='Saldo disponible: '+fmt(s);sd.style.color=s>0?'var(--accent)':'var(--red)';}};}
-  if(id==='nueva-persona'){initColorPicker();document.getElementById('np_nombre').value='';}
   if(id==='registrar-movimiento'){poblarFuente('mov_fuente');poblarFuente('mov_destino');}
   if(id==='agregar-dinero-menu'){save();openSheet_adMenu();}
   if(id==='pagar-spotify'){save();openSheet_pagarSpotify();}
   if(id==='spotify'){const fd=document.getElementById('sp_fecha_ingreso');if(fd&&!fd.value)fd.value=hoy();}
   if(id==='chequeo-nu'){poblarChequeoNu();}
+  // Ganchos registrados por los módulos (Ui.hoja, fase 'antes'). Si alguno devuelve false, la hoja no se abre.
+  if(Ui.antesDeAbrirHoja(id)===false) return;
   // Si ya estaba en la pila, sacarlo para reposicionarlo al tope
   const _ssExist = _sheetStack.indexOf(id);
   if(_ssExist !== -1) _sheetStack.splice(_ssExist, 1);
@@ -84,6 +77,7 @@ function openSheet(id){
   _sheetStack.push(id);
   const _ssEl = document.getElementById('sheet-' + id);
   if(_ssEl){ _ssEl.classList.add('open'); _ssEl.classList.remove('sheet-background'); }
+  Ui.despuesDeAbrirHoja(id);
 }
 
 function closeSheet(id){
@@ -312,6 +306,7 @@ function applyModulos(){
   // Actualizar "Necesita atención" en Inicio para reflejar el nuevo estado de módulos
   // (ej: avisos de Spotify deben aparecer/desaparecer al activar/desactivar el módulo)
   if(typeof renderAttencion==='function') renderAttencion();
+  Ui.emitir('modulos'); // ganchos de otros módulos (menú Más, ...)
 }
 
 // toggleModulo/borrarTodo: migrado a js/modules/configuracion.js.
@@ -423,14 +418,6 @@ function _initEventListeners() {
   // --- Cuenta selector, Nequi/Efectivo, Nu (entró/salió plata) y
   // cajita (agregar): migrados a js/modules/cuentas.js. ---
 
-  // --- Avatar color picker (sheet "Nueva persona"): wiring migrado a
-  // js/modules/prestado.js (junto a selColor(), que sí existe ahí).
-  // Con prestado.js cargado, este sheet nunca se muestra:
-  // ese módulo sobrescribe openSheet() e intercepta 'nueva-persona'
-  // antes de llegar al sheet real, redirigiendo al selector genérico
-  // de Personas. Código muerto documentado, no borrado — ver detalle
-  // en prestado.js y en auditoria-tecnica.md/CHANGELOG.md (2026-07-27).
-
   // --- mpSplitToggle / btn-add-split-row: migrados a js/modules/mesada.js ---
 
   // --- Inputs que escriben directo en S (data-s-bind) ---
@@ -453,52 +440,8 @@ function _initEventListeners() {
    MEJORA 7: Validación inline en formularios
    ================================================================ */
 
-function _markError(inputId, msgId, mensaje) {
-  const el = document.getElementById(inputId);
-  const msg = document.getElementById(msgId);
-  if (el) { el.classList.add('input-error'); el.focus(); }
-  if (msg) { msg.textContent = mensaje; msg.classList.add('visible'); }
-  setTimeout(() => {
-    if (el) el.classList.remove('input-error');
-    if (msg) msg.classList.remove('visible');
-  }, 3000);
-}
-
-// Override addGastoVar with inline validation
-const _origAddGastoVar = addGastoVar;
-addGastoVar = function() {
-  const desc = document.getElementById('gv_desc').value.trim();
-  const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
-  let valid = true;
-  if (!desc) {
-    _markError('gv_desc', 'gv_desc_err', 'La descripción es obligatoria');
-    valid = false;
-  }
-  if (!monto) {
-    _markError('gv_monto', 'gv_monto_err', 'Ingresa un monto mayor a 0');
-    if (valid) valid = false; // only focus first error
-  }
-  if (!valid) return;
-  _origAddGastoVar();
-};
-
-// Override addGastoFijo with inline validation
-const _origAddGastoFijo = addGastoFijo;
-addGastoFijo = function() {
-  const n = document.getElementById('gf_n').value.trim();
-  const m = parseMoney(document.getElementById('gf_m').value) || 0;
-  let valid = true;
-  if (!n) {
-    _markError('gf_n', 'gf_n_err', 'El nombre es obligatorio');
-    valid = false;
-  }
-  if (!m) {
-    _markError('gf_m', 'gf_m_err', 'Ingresa un monto mayor a 0');
-    if (valid) valid = false;
-  }
-  if (!valid) return;
-  _origAddGastoFijo();
-};
+// _markError() vive en core-state.js (la usan gastos.js y otros). La validación inline de addGastoVar/addGastoFijo se
+// integró directo en js/modules/gastos.js (antes eran overrides acá, M1).
 
 // La validación de addDeudor/confirmarMovimiento ya no vive acá como override:
 // se integró directo en las funciones dentro de js/modules/prestado.js (ver
@@ -534,7 +477,6 @@ function _injectErrorSpans() {
     { inputId: 'gv_monto', errId: 'gv_monto_err' },
     { inputId: 'gf_n', errId: 'gf_n_err' },
     { inputId: 'gf_m', errId: 'gf_m_err' },
-    { inputId: 'np_nombre', errId: 'np_nombre_err' },
     { inputId: 'mov_monto', errId: 'mov_monto_err' },
     { inputId: 'md_monto', errId: 'md_monto_err' },
     { inputId: 'sp_n', errId: 'sp_n_err' },
@@ -548,39 +490,6 @@ function _injectErrorSpans() {
     span.className = 'field-error-msg';
     el.parentNode.insertBefore(span, el.nextSibling);
   });
-
-  // Also add validation to addSpotify
-  // GUARD (ronda de lazy-loading, ver auditoria-tecnica.md): con spotify.js
-  // como grupo lazy, addSpotify puede no existir todavía cuando
-  // _injectErrorSpans() corre en el arranque (bootstrap.js la llama una
-  // sola vez, temprano) — antes siempre existía porque spotify.js cargaba
-  // eager. Sin este guard, `addSpotify` (identificador no declarado) tira
-  // ReferenceError acá y aborta el resto del bootstrap. Si spotify.js
-  // todavía no cargó, no hay nada que envolver: el propio spotify.js ya
-  // resuelve addSpotify en vivo en su listener (`() => addSpotify()`, ver
-  // spotify.js) así que cuando el usuario entre a Spotify por primera vez
-  // seguirá llamando a la versión sin esta validación extra — se pierde la
-  // validación inline de "El nombre es obligatorio"/"Ingresa una cuota
-  // mayor a 0" para ese caso, mismo tipo de degradación aceptada que ya
-  // existe para el hint de mostrarAlertaFuente en tarjetas_credito.js.
-  if (typeof addSpotify === 'function') {
-    const _origAddSpotify = addSpotify;
-    addSpotify = function() {
-      const n = document.getElementById('sp_n').value.trim();
-      const m = parseMoney(document.getElementById('sp_m').value) || 0;
-      let valid = true;
-      if (!n) {
-        _markError('sp_n', 'sp_n_err', 'El nombre es obligatorio');
-        valid = false;
-      }
-      if (!m) {
-        _markError('sp_m', 'sp_m_err', 'Ingresa una cuota mayor a 0');
-        if (valid) valid = false;
-      }
-      if (!valid) return;
-      _origAddSpotify();
-    };
-  }
 }
 
 // Módulo Encargos migrado a js/modules/encargos.js — ver docs/encargos.md.

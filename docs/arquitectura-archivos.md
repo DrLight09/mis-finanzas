@@ -62,3 +62,16 @@ Lo que se repite en varios módulos vive una sola vez en el núcleo; un módulo 
 
 Quedan como están a propósito: la tarjeta-invitación de Inicio (`ix-cuentas-vacio`, lleva su botón ×) y los bloques estáticos de `index.html` (alcancía sin iniciar, personas) que se muestran u ocultan.
 
+## Ganchos de hojas y pantallas (`js/core/ui.js`)
+
+Un módulo que necesita reaccionar a «se abrió la hoja X» o «se mostró la pantalla Y» **se registra en `Ui`**; nunca reasigna `openSheet`/`showScreen` ni envuelve una función con `const _orig = X; X = function(){…}` (un test, `tests/ui.test.js`, lo prohíbe).
+
+| Necesidad | API |
+|---|---|
+| Preparar una hoja antes de abrirla (o cancelarla devolviendo `false`) | `Ui.hoja('id', fn, { key })` |
+| Hacer algo cuando la hoja ya está abierta (enfocar, pintar) | `Ui.hoja('id', fn, { fase: 'despues', key })` (`'*'` = cualquier hoja) |
+| Reaccionar a una pantalla | `Ui.pantalla('nombre', fn, { key })` |
+| Eventos de dominio | `Ui.en('modulos' \| 'atencion' \| 'persona-editada' \| 'fuente-alerta', fn, { key })`; quien los origina llama `Ui.emitir(evento, …)` |
+
+Reglas: toda key es única y registrar otra vez la misma la **reemplaza** (un módulo lazy cargado dos veces no duplica); cada gancho corre en su propio try/catch. Cuando una función base necesita lógica de otro módulo que SÍ siempre carga con ella (p. ej. Personas dentro de Spotify/Encargos), esa lógica vive **dentro de la función base** (o en un helper llamado explícitamente), no como parche encima.
+

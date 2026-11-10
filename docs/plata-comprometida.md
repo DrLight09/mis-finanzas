@@ -216,7 +216,7 @@ Las reversiones que restan saldo (reposición a cada destino, cajita usada para 
 
 ### Integración con `renderAttencion()` y `refresh()`
 
-El módulo se engancha a ambas funciones globales (definidas antes en la carga) para agregar sus propias alertas y mantener la lista actualizada tras cualquier cambio en la app — ver `js/core/hook-global.js` para el mecanismo (`hookGlobal('refresh', ...)`, `hookGlobal('renderAttencion', ...)`).
+El módulo agrega sus propias alertas con `Ui.en('atencion', …)` (el evento que `renderAttencion()` emite al terminar, `js/core/ui.js`) y mantiene la lista actualizada con `Refresh.registrar('comprometida-lista', …)` (core-state.js). Ninguno envuelve una función global.
 
 ### Dependencias externas
 

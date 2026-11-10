@@ -461,8 +461,10 @@ function renderGastosVar() {
 function addGastoVar() {
   const desc = document.getElementById('gv_desc').value.trim();
   const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
-  if (!desc) { toast('Ingresa una descripción del gasto', 'err'); return; }
-  if (!monto) { toast('Ingresa un monto válido', 'err'); return; }
+  // Validación inline (marca el campo y muestra el mensaje debajo); solo enfoca el primer error.
+  if (!desc) _markError('gv_desc', 'gv_desc_err', 'La descripción es obligatoria');
+  if (!monto) _markError('gv_monto', 'gv_monto_err', 'Ingresa un monto mayor a 0');
+  if (!desc || !monto) return;
 
   let fuente = '';
   let splits = null;
@@ -653,8 +655,9 @@ function renderGastosFijos() {
 
 function addGastoFijo() {
   const n = document.getElementById('gf_n').value.trim(), m = parseMoney(document.getElementById('gf_m').value) || 0;
-  if (!n) { toast('Ingresa el nombre del gasto fijo', 'err'); return; }
-  if (!m) { toast('Ingresa el monto mensual', 'err'); return; }
+  if (!n) _markError('gf_n', 'gf_n_err', 'El nombre es obligatorio');
+  if (!m) _markError('gf_m', 'gf_m_err', 'Ingresa un monto mayor a 0');
+  if (!n || !m) return;
   // Día de vencimiento: opcional. Vacío = sin aviso de vencimiento; si se escribe, debe ser un día válido (1–31).
   const diaTxt = (document.getElementById('gf_d') || { value: '' }).value.trim();
   const dia = diaTxt === '' ? null : Number(diaTxt);

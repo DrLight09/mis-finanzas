@@ -503,6 +503,8 @@ function _guardarEditarPersonaGlobal() {
   if (document.getElementById('sheet-perfil-persona')?.classList.contains('open')) {
     setTimeout(() => abrirPerfilPersona(p.id), 200);
   }
+  // Avisar a los módulos que muestran a esta persona (Préstamos refresca el detalle abierto) — js/core/ui.js
+  Ui.emitir('persona-editada', p.id);
 }
 
 /* ── PERFIL DE PERSONA ─────────────────────────────────────────── */

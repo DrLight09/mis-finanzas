@@ -1088,40 +1088,22 @@ if(ptcFuente)ptcFuente.addEventListener('change',ptcActualizarPreview);
 const ptcMonto=document.getElementById('ptc_monto');
 if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
 
-// Mostrar el label TC en el gasto variable al seleccionarlo
-// Patch via window para asegurar que la referencia a la función original es correcta.
-// Se ejecuta en DOMContentLoaded (o inmediatamente si ya cargó) para garantizar
-// que mostrarAlertaFuente ya está definida cuando aplicamos el patch.
-(function aplicarPatchMAF(){
-  function _patch(){
-    const _origMAF=window.mostrarAlertaFuente;
-    if(typeof _origMAF!=='function'){
-      console.warn('[TC] mostrarAlertaFuente no encontrada — patch de TC no aplicado.');
-      return;
-    }
-    window.mostrarAlertaFuente=function(prefix){
-      const sel=document.getElementById(prefix+'_fuente')||document.getElementById(prefix+'fuente');
-      if(!sel)return _origMAF(prefix);
-      const val=sel.value;
-      if(val&&val.startsWith('tc:')){
-        const id=val.split(':')[1];
-        const tc=getTCById(id);
-        const hint=document.getElementById(prefix+'_fuente_hint')||document.getElementById(prefix+'fuente_hint');
-        const saldoEl=document.getElementById(prefix+'_fuente_saldo')||document.getElementById(prefix+'fuente_saldo');
-        if(hint)hint.style.visibility='visible';
-        if(tc&&hint)hint.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas';
-        if(tc&&hint)hint.style.color='var(--red)';
-        if(saldoEl)saldoEl.textContent='Deuda actual en TC: '+fmt(tc?tc.deuda||0:0);
-        if(saldoEl)saldoEl.style.color='var(--red)';
-        return;
-      }
-      return _origMAF(prefix);
-    };
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',_patch);
-  } else {
-    _patch();
-  }
-})();
+// Mostrar el label TC en el gasto variable al seleccionarlo: mostrarAlertaFuente() (sheet-stack.js) pregunta al evento
+// 'fuente-alerta' (js/core/ui.js) y, si un gancho devuelve true, no pinta su aviso normal.
+Ui.en('fuente-alerta', function(prefix){
+  const sel=document.getElementById(prefix+'_fuente')||document.getElementById(prefix+'fuente');
+  if(!sel)return false;
+  const val=sel.value;
+  if(!(val&&val.startsWith('tc:')))return false;
+  const id=val.split(':')[1];
+  const tc=getTCById(id);
+  const hint=document.getElementById(prefix+'_fuente_hint')||document.getElementById(prefix+'fuente_hint');
+  const saldoEl=document.getElementById(prefix+'_fuente_saldo')||document.getElementById(prefix+'fuente_saldo');
+  if(hint)hint.style.visibility='visible';
+  if(tc&&hint)hint.textContent='El gasto se cargará a la TC — no sale plata de tus cuentas';
+  if(tc&&hint)hint.style.color='var(--red)';
+  if(saldoEl)saldoEl.textContent='Deuda actual en TC: '+fmt(tc?tc.deuda||0:0);
+  if(saldoEl)saldoEl.style.color='var(--red)';
+  return true;
+},{key:'tarjetas-alerta-fuente'});
 

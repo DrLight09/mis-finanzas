@@ -1880,10 +1880,11 @@ async function _cpEliminar(id){
 // tenía el mismo problema de encimada que tenía el de refresh() más arriba
 // en este archivo — si window.renderAttencion no existía todavía en este
 // punto, el guard `typeof` simplemente no enganchaba nada, en silencio,
-// para siempre. hookGlobal() cierra ese caso límite esperando con
+// para siempre. Ui.en('atencion') cierra ese caso límite: renderAttencion() emite el evento al terminar, exista o no ya este módulo; si carga después, el
+// siguiente renderAttencion() ya lo incluye. (Antes: hookGlobal() esperaba con
 // waitFor() en vez de rendirse. Ver CHANGELOG.md#infraestructura--seguridad.
 (function(){
-  hookGlobal('renderAttencion', function(){
+  Ui.en('atencion', function(){
     // Agregar alertas de plata que llega pronto o ya llegó
     const items = _cpData ? _cpData() : [];
     const list = document.getElementById('s-attn-list');
@@ -1937,7 +1938,7 @@ async function _cpEliminar(id){
         }
       });
     });
-  });
+  }, { key: 'plata-comprometida-atencion' });
 })();
 
 /* ── INTEGRACIÓN: swipe/sheet handle para los nuevos sheets ─────── */
@@ -1989,14 +1990,8 @@ function _cpInit(){
     if(target) setTimeout(_cpRenderLista, 100);
   });
 
-  // Integrar con refresh global para mantener stats actualizados — ver
-  // js/core/hook-global.js. Antes, si window.refresh todavía no existía en
-  // este punto, el guard `typeof` de abajo simplemente no enganchaba nada
-  // — en silencio, para siempre (no había reintento). En la práctica nunca
-  // pasaba (_cpInit corre con setTimeout sobre DOMContentLoaded/
-  // appDataLoaded, mucho después de que refresh() ya exista), pero
-  // hookGlobal() de paso cierra ese caso límite: si no existiera, esperaría
-  // en vez de rendirse.
+  // Integrar con refresh global para mantener stats actualizados (Refresh.registrar, core-state.js).
+  //
   Refresh.registrar('comprometida-lista', function(){ _cpRenderLista(); }, { pantalla: 'comprometida' }); // solo con la pantalla activa
 
   // Render inicial si hay datos

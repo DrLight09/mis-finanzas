@@ -291,6 +291,10 @@ registrarSonda('encargos', st => {
 });
 
 function renderEncargosList() {
+  _pintarEncargosList();
+  _encListaPerfiles();   // avatar con color de persona + clic al perfil (sección Personas, más abajo)
+}
+function _pintarEncargosList() {
   const el = document.getElementById('encargosList');
   const encargos = S.encargos||[];
   // El estado vacío ya trae «Crear encargo»: el botón de pie solo aparece con encargos.
@@ -330,6 +334,13 @@ function renderEncargosList() {
 }
 
 function abrirEncargoDetalle(id) {
+  _pintarEncargoDetalle(id);
+  const enc = getEncargo(id);
+  if (!enc) return;
+  _encDetallePartes(enc);      // partes del encargo + preview de monto
+  _encDetallePersona(enc);     // color de la persona + chip «Ver perfil» (sección Personas, más abajo)
+}
+function _pintarEncargoDetalle(id) {
   encargoActualId = id;
   const enc = getEncargo(id);
   if (!enc) return;
@@ -684,12 +695,9 @@ async function eliminarParte(encId, parteId) {
   toast('Parte eliminada', 'ok');
 }
 
-// Hook: agregar renderEncargoParts al final de abrirEncargoDetalle
-const _origAbrirDetalle = abrirEncargoDetalle;
-abrirEncargoDetalle = function(id) {
-  _origAbrirDetalle(id);
-  const enc = getEncargo(id);
-  if (enc) renderEncargoParts(enc);
+// Partes del encargo: las pinta abrirEncargoDetalle() al terminar de armar el detalle.
+function _encDetallePartes(enc) {
+  renderEncargoParts(enc);
   // Listener para preview en tiempo real del monto
   const montoInput = document.getElementById('parte-monto');
   if (montoInput && !montoInput._parteListenerAdded) {
@@ -699,7 +707,7 @@ abrirEncargoDetalle = function(id) {
     });
     montoInput._parteListenerAdded = true;
   }
-};
+}
 
 function volverEncargosLista() {
   encargoActualId = null;
@@ -709,7 +717,11 @@ function volverEncargosLista() {
 }
 
 function crearEncargo() {
-  const nombre = document.getElementById('enc_nombre').value.trim();
+  // personaId es obligatorio: no debe existir un encargo sin persona vinculada (enc_nombre se llena al elegirla).
+  const pId = _nuevoEncargoPersonaId;
+  if (!pId) { toast('Selecciona una persona', 'err'); return; }
+  const persona = getPersona(pId);
+  const nombre = persona ? persona.nombre : document.getElementById('enc_nombre').value.trim();
   if (!nombre) { toast('Ingresa el nombre de la persona', 'err'); return; }
   const saldoIni = parseMoney(document.getElementById('enc_saldo').value)||0;
   const cuentaIni = document.getElementById('enc_cuenta_ini').value || '';
@@ -717,6 +729,7 @@ function crearEncargo() {
   if (!S.encargos) S.encargos = [];
   S.encargos.push({
     id: uid(),
+    personaId: pId,
     nombre,
     nota,
     saldoInicial: saldoIni,
@@ -729,6 +742,7 @@ function crearEncargo() {
   document.getElementById('enc_nota').value = '';
   document.getElementById('enc_cuenta_ini').value = '';
   document.getElementById('enc_cuenta_wrap').style.display = 'none';
+  _nuevoEncargoPersonaId = null;
   save(); renderEncargosList();
   closeSheet('nuevo-encargo');
   if(window.logCambio) logCambio('Creaste un encargo',nombre,'','editar');
@@ -3346,62 +3360,31 @@ function _onSelPersonaNuevoEncargo(personaId) {
   if (av) pintarAvatarPersona(av, p, { mostrar: true });
 }
 
-/* ── Hook en openSheet para inicializar el selector ───────────── */
-const _origOpenSheetPersonas = openSheet;
-openSheet = function(id) {
-  if (id === 'nuevo-encargo') {
-    _inyectarPersonaSheets();
-    _nuevoEncargoPersonaId = null;
-    // Inicializar el selector después de que el sheet sea visible
-    setTimeout(_initNuevoEncargoPersonaSelector, 30);
-    // Resetear UI del selector
-    setTimeout(() => {
-      const lbl = document.getElementById('enc-persona-label');
-      const av = document.getElementById('enc-persona-avatar');
-      const btn = document.getElementById('enc-persona-btn');
-      if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
-      if (av) av.style.display = 'none';
-      if (btn) btn.style.borderColor = 'var(--border2)';
-      const encNombreEl = document.getElementById('enc_nombre');
-      if (encNombreEl) encNombreEl.value = '';
-    }, 50);
-  }
-  _origOpenSheetPersonas.apply(this, arguments);
-};
-
-/* ── Hook en crearEncargo para exigir y guardar personaId ───────── */
-const _origCrearEncargo = crearEncargo;
-crearEncargo = function() {
-  // personaId es obligatorio: no debe existir un encargo sin persona vinculada.
-  const pId = _nuevoEncargoPersonaId;
-  if (!pId) { toast('Selecciona una persona', 'err'); return; }
-  _origCrearEncargo.apply(this, arguments);
-  // Asignar personaId al último encargo creado
-  if (pId && S.encargos && S.encargos.length) {
-    const last = S.encargos[S.encargos.length - 1];
-    if (last && !last.personaId) {
-      last.personaId = pId;
-      // También asegurar nombre sincronizado
-      const p = getPersona(pId);
-      if (p) last.nombre = p.nombre;
-      save();
-      // El render dentro de _origCrearEncargo ocurrió ANTES de asignar
-      // personaId, así que el avatar quedó pintado con el color genérico.
-      // Volvemos a renderizar ya con personaId puesto para que tome el
-      // color de la persona de una vez, sin esperar a otra acción.
-      renderEncargosList();
-    }
-  }
+/* ── Inicializar el selector al abrir «Nuevo encargo» (Ui.hoja, js/core/ui.js) ───────────── */
+Ui.hoja('nuevo-encargo', function() {
+  _inyectarPersonaSheets();
   _nuevoEncargoPersonaId = null;
-};
+  // Inicializar el selector después de que el sheet sea visible
+  setTimeout(_initNuevoEncargoPersonaSelector, 30);
+  // Resetear UI del selector
+  setTimeout(() => {
+    const lbl = document.getElementById('enc-persona-label');
+    const av = document.getElementById('enc-persona-avatar');
+    const btn = document.getElementById('enc-persona-btn');
+    if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
+    if (av) av.style.display = 'none';
+    if (btn) btn.style.borderColor = 'var(--border2)';
+    const encNombreEl = document.getElementById('enc_nombre');
+    if (encNombreEl) encNombreEl.value = '';
+  }, 50);
+}, { key: 'encargos-persona' });
+
 /* ═══════════════════════════════════════════════════════════════
    BOTÓN DE PERFIL EN LISTA DE ENCARGOS Y DEUDORES
    ═══════════════════════════════════════════════════════════════ */
 
-// Agregar botón "perfil" al avatar del encargo en la lista
-const _origRenderEncargosList = renderEncargosList;
-renderEncargosList = function() {
-  _origRenderEncargosList.apply(this, arguments);
+// Agregar botón "perfil" al avatar del encargo en la lista (lo llama renderEncargosList() tras pintar)
+function _encListaPerfiles() {
   // Agregar mini botón perfil en cada card de encargo
   const lista = document.getElementById('encargosList');
   if (!lista) return;
@@ -3423,13 +3406,10 @@ renderEncargosList = function() {
       if (p) pintarAvatarPersona(av, p, { alphaFondo: '1a', alphaBorde: '33', conIniciales: false });
     }
   });
-};
+}
 
-// Agregar botón de perfil al header del detalle de encargo
-const _origAbrirEncargoDetallePersonas = abrirEncargoDetalle;
-abrirEncargoDetalle = function(id) {
-  _origAbrirEncargoDetallePersonas.apply(this, arguments);
-  const enc = getEncargo(id);
+// Agregar botón de perfil al header del detalle de encargo (lo llama abrirEncargoDetalle() tras pintar)
+function _encDetallePersona(enc) {
   const av = document.getElementById('encargoAvatar');
   const chipViejo = document.getElementById('enc-det-perfil-chip');
   if (!enc || !enc.personaId) {
@@ -3474,7 +3454,7 @@ abrirEncargoDetalle = function(id) {
     const chip = document.getElementById('enc-det-perfil-chip');
     chip.onclick = () => abrirPerfilPersona(p.id);
   }
-};
+}
 
 /* ── Registro de eventos ──────────────────────────────────────── */
 function _encAbrirSelectorPersonaNueva() { abrirSelPersona(_onSelPersonaNuevoEncargo); }

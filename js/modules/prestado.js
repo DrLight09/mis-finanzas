@@ -2512,7 +2512,8 @@ function editarDeudorActual() {
    ═══════════════════════════════════════════════════════════════ */
 
 function _abrirSheetNuevaPersona() {
-  openSheet('nueva-persona');
+  _inyectarPersonaSheets();
+  abrirSelPersona(_onSelPersonaMeDeben, '¿Quién te debe?', { excluir: pe => !!Deudas.porPersona('favor', pe.id) });
 }
 
 // Wrapper para el avatar del header de "Me deben" — el HTML es estático
@@ -2549,7 +2550,8 @@ function _abrirSheetPagoCompleto() {
 }
 
 function _abrirSheetNuevaDeuda() {
-  openSheet('nueva-deuda'); // el hook de openSheet (más abajo) abre el selector de personas
+  _inyectarPersonaSheets();
+  abrirSelPersona(_onSelPersonaYoDebo, '¿A quién le debes?', { excluir: pe => !!Deudas.porPersona('contra', pe.id) });
 }
 
 function _abrirMovMiDeudaRecibido() {
@@ -2695,7 +2697,7 @@ if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('m
 
    A diferencia de encargos-personas.js/spotify-personas.js, ESTE
    archivo sí tenía una dependencia real de nivel superior contra
-   personas.js (PERSONA_COLORES, _guardarEditarPersonaGlobal, leídos
+   personas.js (PERSONA_COLORES, leído
    al parsear, no dentro de una función) — confirmado, no una premisa
    falsa. Por eso el archivo fusionado completo (prestado.js +
    prestado-personas.js + deudores-personas.js) se movió a cargar
@@ -2709,19 +2711,15 @@ function _irADeudor(deudorId) {
   setTimeout(() => { showScreen('prestamos'); abrirDeudor(deudorId); }, 180);
 }
 
-/* ── Hook: si el detalle de un deudor (Préstamos > me deben) está abierto */
-/* y se guarda desde el sheet unificado "Editar persona", refrescar su    */
-/* encabezado (nombre/avatar) para reflejar el cambio al instante. ────── */
-const _origGuardarEditarPersonaGlobalDeudor = _guardarEditarPersonaGlobal;
-_guardarEditarPersonaGlobal = function() {
-  const idEditado = _editPersonaGlobalId;
-  _origGuardarEditarPersonaGlobalDeudor.apply(this, arguments);
+/* Si el detalle de un deudor (Préstamos > me deben) está abierto y se guarda desde el sheet unificado «Editar persona»,
+   refrescar su encabezado (nombre/avatar) al instante. personas.js emite 'persona-editada' (js/core/ui.js). */
+Ui.en('persona-editada', function(personaId) {
   const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
-  if (d && d.personaId === idEditado) {
+  if (d && d.personaId === personaId) {
     const detalle = document.getElementById('deudorDetalle');
     if (detalle && detalle.style.display !== 'none') abrirDeudor(deudorActualId);
   }
-};
+}, { key: 'prestado-detalle-deudor' });
 
 
 /* ── Abrir perfil desde una misDeuda (crea persona si no tiene) ── */
@@ -2859,7 +2857,6 @@ function _onSelPersonaMeDeben(personaId) {
   // lista. Mismo patrón que _onSelPersonaYoDebo (lado "Yo debo").
   const existente = Deudas.lista('favor').find(d => d.personaId === personaId);
   if (existente) {
-    closeSheet('nueva-persona');
     toast(`${p.nombre} ya está en tu lista de "Me deben"`, 'info');
     showScreen('prestamos');
     cambiarTabPrestamos('me-deben');
@@ -2898,20 +2895,6 @@ function _onSelPersonaYoDebo(personaId) {
   abrirMiDeuda(d.id);
 }
 
-/* ── Hook en openSheet: 'nueva-persona' (Me deben) y 'nueva-deuda' (Yo debo)
-     abren el selector de personas directo, cada uno con su título y su filtro ── */
-const _origOpenSheetMeDebenYoDebo = openSheet;
-openSheet = function(id) {
-  if (id === 'nueva-persona') {
-    _inyectarPersonaSheets();
-    abrirSelPersona(_onSelPersonaMeDeben, '¿Quién te debe?', { excluir: pe => !!Deudas.porPersona('favor', pe.id) });
-    return;
-  }
-  if (id === 'nueva-deuda') {
-    _inyectarPersonaSheets();
-    abrirSelPersona(_onSelPersonaYoDebo, '¿A quién le debes?', { excluir: pe => !!Deudas.porPersona('contra', pe.id) });
-    return;
-  }
-  _origOpenSheetMeDebenYoDebo.apply(this, arguments);
-};
+/* «Nueva persona» (Me deben) y «Nueva deuda» (Yo debo) ya no son hojas: los botones abren directo el selector de personas
+   (_abrirSheetNuevaPersona / _abrirSheetNuevaDeuda). Antes se parcheaba openSheet() para interceptar esos dos ids (M1/M3). */
 

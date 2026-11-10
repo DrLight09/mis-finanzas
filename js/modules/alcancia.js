@@ -577,9 +577,9 @@ function _actualizarDiferenciaHint(){
   }
 }
 
-/* ─── OPEN SHEET HOOK ─── ver js/core/hook-global.js ───────────────────── */
-hookGlobal('openSheet', function(id){
-  if(id === 'alcancia-depositar'){
+/* ─── OPEN SHEET HOOK ─── ver js/core/ui.js ───────────────────────────── */
+Ui.hoja('alcancia-depositar', function(){
+  {
     _inyectarAlcanciaSheets();
     setTimeout(()=>{
       const fd = document.getElementById('alc_dep_fecha');
@@ -611,7 +611,9 @@ hookGlobal('openSheet', function(id){
       _alcOrigenActualizar();
     }, 30);
   }
-  if(id === 'alcancia-destapar'){
+}, { fase: 'despues', key: 'alcancia-depositar' });
+Ui.hoja('alcancia-destapar', function(){
+  {
     _inyectarAlcanciaSheets();
     setTimeout(()=>{
       const mi = document.getElementById('alc_real_monto');
@@ -645,7 +647,7 @@ hookGlobal('openSheet', function(id){
       }
     }, 30);
   }
-});
+}, { fase: 'despues', key: 'alcancia-destapar' });
 
 /* ─── RENDER PANTALLA ───────────────────────────────────────────────────── */
 window.renderAlcancia = function(){
@@ -1451,10 +1453,8 @@ function _inyectarMasMenuItem(){
   });
 }
 
-/* ─── showScreen HOOK — ver js/core/hook-global.js ──────────────────────── */
-hookGlobal('showScreen', function(name){
-  if(name === 'alcancia') window.renderAlcancia();
-});
+/* ─── showScreen HOOK — ver js/core/ui.js ──────────────────────── */
+Ui.pantalla('alcancia', function(){ window.renderAlcancia(); }, { key: 'alcancia-render' });
 
 /* ─── INTEGRACIÓN CON data-screen en el mas-menu ────────────────────────── */
 // El sistema nativo usa data-screen en .mas-item → querySelectorAll detecta el click.

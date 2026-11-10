@@ -429,6 +429,7 @@ function renderSpotify(){
         </div>
       </div>`;
     })}</div>`;
+    _spPintarAvatares(el, pOrdenado); // color/foto/nombre de la persona vinculada (sección Personas, más abajo)
   }
   
   // Badge en home: avisar si hay pagos próximos o vencidos (<= 3 días)
@@ -1463,9 +1464,23 @@ async function confirmarPagarSpotify(){
 }
 
 function addSpotify(){
+  // El integrante es una persona real (S.personas): sp_n es un input oculto que llena el selector «¿Quién es?».
   const n=document.getElementById('sp_n').value.trim();
   const m=parseMoney(document.getElementById('sp_m').value)||0;
-  if(!n){toast('Ingresa el nombre','err');return;}
+  if(!n){
+    const btn=document.getElementById('sp-persona-btn');
+    if(btn){
+      btn.style.borderColor='var(--red)';
+      setTimeout(()=>{ btn.style.borderColor='var(--border2)'; },2000);
+    }
+    toast('Selecciona una persona','err');
+    return;
+  }
+  const pId=_spPersonaId;
+  if(pId&&(S.spotify.personas||[]).some(x=>x.personaId===pId)){
+    toast('Esta persona ya está agregada en Spotify','err');
+    return;
+  }
   const yaExisteNombre=(S.spotify.personas||[]).some(p=>(p.nombre||'').trim().toLowerCase()===n.toLowerCase());
   if(yaExisteNombre){
     toast(`Ya hay un integrante llamado "${n}". Usa un nombre distinto (agrega un apellido o apodo) para no mezclar sus cobros en el historial.`,'err',4200);
@@ -1475,10 +1490,17 @@ function addSpotify(){
   if(!fechaIngresoRaw){toast('Ingresa la fecha de ingreso','err');return;}
   // proximoPago = fechaIngreso + 30 dias (primer cobro)
   const proximoPago=spSumarDias(fechaIngresoRaw,SP_PERIODO_DIAS);
-  S.spotify.personas.push({id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',ultimoDestinoSplit:false,mesesAdelantados:1});
+  const nuevo={id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',ultimoDestinoSplit:false,mesesAdelantados:1};
+  if(pId){
+    nuevo.personaId=pId;
+    const per=getPersona(pId);
+    if(per)nuevo.nombre=per.nombre; // el nombre siempre sale del vínculo
+  }
+  S.spotify.personas.push(nuevo);
   document.getElementById('sp_n').value='';
   document.getElementById('sp_m').value='';
   document.getElementById('sp_fecha_ingreso').value='';
+  _spPersonaId=null;
   save();refresh();closeSheet('spotify');
   toast(`${n} agregado · primer cobro el ${proximoPago}`,'ok');
 }
@@ -1503,7 +1525,11 @@ function editarSpotify(i) {
   const mEl = document.getElementById('sp_edit_m');
   if (mEl) { mEl.value = fmtInput(p.monto || 0); mEl.dispatchEvent(new Event('input', {bubbles:true})); }
   document.getElementById('sp_edit_fecha_ingreso').value = p.fechaIngreso || '';
+  // Persona vinculada: queda bloqueada si ya existe el vínculo (sección Personas, más abajo)
+  _spEditPersonaId = p.personaId || null;
+  _spEditPersonaLocked = !!p.personaId;
   openSheet('editar-spotify');
+  _spEditPrecargarPersona(p);
 }
 function guardarEditarSpotify() {
   if (_spEditIdx === null) return;
@@ -1511,11 +1537,25 @@ function guardarEditarSpotify() {
   if (!p) return;
   const n = document.getElementById('sp_edit_n').value.trim();
   if (!n) { toast('Ingresa el nombre', 'err'); return; }
+  // Si se abrió el buscador de "¿Quién es?" pero se cerró sin confirmar ninguna selección (ni elegir a alguien de la lista, ni
+  // crear una persona nueva), el input oculto sigue con el nombre anterior — avisar en vez de guardarlo en silencio.
+  if (_spEditPersonaPickerAbierto && !_spEditPersonaPickerConfirmado) {
+    toast(`No se seleccionó una persona nueva — se mantuvo a "${p.nombre || 'la persona anterior'}"`, 'info', 4000);
+  }
+  // Si se vinculó (por primera vez) a una persona que ya está usada por OTRO integrante, bloquear — mismo criterio que addSpotify.
+  if (_spEditPersonaId && (S.spotify.personas || []).some((x, idx) => idx !== _spEditIdx && x.personaId === _spEditPersonaId)) {
+    toast('Esta persona ya está agregada en Spotify', 'err');
+    return;
+  }
   const m = parseMoney(document.getElementById('sp_edit_m').value) || 0;
   const fechaIngresoRaw = document.getElementById('sp_edit_fecha_ingreso').value;
   const fechaAnterior = p.fechaIngreso;
   p.nombre = n;
   p.monto = m;
+  if (_spEditPersonaId) p.personaId = _spEditPersonaId;
+  // Si sigue vinculado a una persona (la de antes o la recién elegida), el nombre SIEMPRE se resuelve desde ese vínculo —
+  // nunca queda el texto crudo del campo oculto: nombre y personaId no pueden desincronizarse.
+  if (p.personaId) p.nombre = spNombreDe(p);
   if (fechaIngresoRaw) {
     // Recalcular próximo pago SOLO si la fecha de ingreso realmente cambió — si no,
     // se pisaría el avance ya ganado por pagos adelantados o ciclos ya cobrados.
@@ -1533,8 +1573,11 @@ function guardarEditarSpotify() {
     p.fechaIngreso = fechaIngresoRaw;
   }
   _spEditIdx = null;
+  _spEditPersonaId = null;
+  _spEditPersonaPickerAbierto = false;
+  _spEditPersonaPickerConfirmado = false;
   save(); refresh(); closeSheet('editar-spotify');
-  toast(n + ' actualizado', 'ok');
+  toast(p.nombre + ' actualizado', 'ok');
 }
 
 /* ── Wiring de controles propios de la pantalla ──────────────────────────
@@ -1746,79 +1789,27 @@ function _onSelPersonaSpotifyEdit(personaId) {
 // esperar ningún evento: vive en js/core/sheet-stack.js, que es núcleo y
 // siempre carga eager mucho antes de que cualquier módulo lazy (spotify
 // incluido) pueda siquiera empezar a descargarse.
-const _origOpenSheetSpotifyPersonas = openSheet;
-openSheet = function(id) {
-  if (id === 'spotify') {
-    _inyectarPersonaSheets();
-    _spPersonaId = null;
-    _initSpotifyPersonaSelector();
-    // Resetear UI del selector
-    const lbl = document.getElementById('sp-persona-label');
-    const av  = document.getElementById('sp-persona-avatar');
-    const btn = document.getElementById('sp-persona-btn');
-    if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
-    if (av)  av.style.display = 'none';
-    if (btn) btn.style.borderColor = 'var(--border2)';
-    const spN = document.getElementById('sp_n');
-    if (spN) spN.value = '';
-  }
-  if (id === 'editar-spotify') {
-    _inyectarPersonaSheets();
-    _initSpotifyEditPersonaSelector();
-  }
-  _origOpenSheetSpotifyPersonas.apply(this, arguments);
-};
-
-/* ── Hook en addSpotify para guardar personaId ──────────────────── */
-const _origAddSpotifyPersonas = addSpotify;
-addSpotify = function() {
-  // Validar que se seleccionó una persona (ya que sp_n es ahora input oculto)
-  const spN = document.getElementById('sp_n');
-  if (spN && !spN.value.trim()) {
-    const btn = document.getElementById('sp-persona-btn');
-    if (btn) {
-      btn.style.borderColor = 'var(--red)';
-      setTimeout(() => { if (btn) btn.style.borderColor = 'var(--border2)'; }, 2000);
-    }
-    toast('Selecciona una persona', 'err');
-    return;
-  }
-  const pId = _spPersonaId;
-  if (pId && (S.spotify.personas||[]).some(x=>x.personaId===pId)) {
-    toast('Esta persona ya está agregada en Spotify','err');
-    return;
-  }
-  _origAddSpotifyPersonas.apply(this, arguments);
-  // Asignar personaId al último spotifyPersona creado
-  if (pId && S.spotify.personas && S.spotify.personas.length) {
-    const last = S.spotify.personas[S.spotify.personas.length - 1];
-    if (last && !last.personaId) {
-      last.personaId = pId;
-      // Sincronizar nombre con la persona
-      const p = getPersona(pId);
-      if (p) last.nombre = p.nombre;
-      save();
-      // FIX: faltaba esto. _origAddSpotifyPersonas() (arriba) ya renderizó
-      // la fila ANTES de que este hook asignara personaId — sin este
-      // segundo render, la fila se quedaba con el estado de "sin persona"
-      // (avatar sin color, iniciales crudas de 2 letras) hasta que alguna
-      // otra acción disparara un refresh() en cualquier parte de la app.
-      // El dato en S siempre quedó bien guardado — era solo la pantalla.
-      renderSpotify();
-    }
-  }
+Ui.hoja('spotify', function() {
+  _inyectarPersonaSheets();
   _spPersonaId = null;
-};
+  _initSpotifyPersonaSelector();
+  // Resetear UI del selector
+  const lbl = document.getElementById('sp-persona-label');
+  const av  = document.getElementById('sp-persona-avatar');
+  const btn = document.getElementById('sp-persona-btn');
+  if (lbl) { lbl.textContent = 'Seleccionar persona...'; lbl.style.color = 'var(--text2)'; }
+  if (av)  av.style.display = 'none';
+  if (btn) btn.style.borderColor = 'var(--border2)';
+  const spN = document.getElementById('sp_n');
+  if (spN) spN.value = '';
+}, { key: 'spotify-personas' });
+Ui.hoja('editar-spotify', function() {
+  _inyectarPersonaSheets();
+  _initSpotifyEditPersonaSelector();
+}, { key: 'spotify-personas-editar' });
 
-/* ── Hook en editarSpotify para pre-cargar la persona vinculada ─── */
-const _origEditarSpotifyPersonas = editarSpotify;
-editarSpotify = function(i) {
-  _origEditarSpotifyPersonas.apply(this, arguments);
-  const sp = (S.spotify.personas || [])[i];
-  if (!sp) return;
-  _spEditPersonaId = sp.personaId || null;
-  _spEditPersonaLocked = !!sp.personaId;
-  // Pre-cargar UI del selector tras abrir el sheet
+/* Pre-carga la UI del selector al editar (la lógica de guardado vive en guardarEditarSpotify). Corre tras abrir la hoja. */
+function _spEditPrecargarPersona(sp) {
   setTimeout(() => {
     _initSpotifyEditPersonaSelector();
     const btn = document.getElementById('sp-edit-persona-btn');
@@ -1848,80 +1839,21 @@ editarSpotify = function(i) {
     _spEditPersonaPickerAbierto = false;
     _spEditPersonaPickerConfirmado = false;
   }, 80);
-};
+}
 
-/* ── Hook en guardarEditarSpotify para guardar personaId ────────── */
-const _origGuardarEditarSpotifyPersonas = guardarEditarSpotify;
-guardarEditarSpotify = function() {
-  // Si se abrió el buscador de "¿Quién es?" pero se cerró sin confirmar ninguna
-  // selección (ni elegir a alguien de la lista, ni crear una persona nueva), el
-  // input oculto sigue con el nombre anterior — avisar en vez de guardarlo en silencio.
-  if (_spEditPersonaPickerAbierto && !_spEditPersonaPickerConfirmado) {
-    const spActual = (S.spotify.personas || [])[_spEditIdx];
-    toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? spActual.nombre : 'la persona anterior'}"`, 'info', 4000);
-  }
-  // Capturar idx ANTES de llamar al original (que lo pone a null)
-  const idxAntes = _spEditIdx;
-  // Si se vinculó (por primera vez) a una persona que ya está usada por OTRO integrante
-  // de Spotify, bloquear — mismo criterio que ya aplica en addSpotify.
-  if (_spEditPersonaId) {
-    const yaUsadaPorOtro = (S.spotify.personas || []).some((x, idx) => idx !== idxAntes && x.personaId === _spEditPersonaId);
-    if (yaUsadaPorOtro) {
-      toast('Esta persona ya está agregada en Spotify', 'err');
-      return;
-    }
-  }
-  _origGuardarEditarSpotifyPersonas.apply(this, arguments);
-  // Asignar personaId al spotifyPersona editado (si se confirmó una selección nueva)
-  if (idxAntes !== null && S.spotify.personas && S.spotify.personas[idxAntes]) {
-    const sp = S.spotify.personas[idxAntes];
-    if (_spEditPersonaId) {
-      sp.personaId = _spEditPersonaId;
-    }
-    // Sincronización final: si el registro sigue vinculado a una persona (personaId,
-    // ya sea la que había antes o la recién elegida), el nombre SIEMPRE se resuelve
-    // desde ese vínculo — nunca se deja el texto crudo que haya quedado en el campo
-    // oculto. Así nombre y personaId no pueden quedar desincronizados, así falle
-    // silenciosamente la confirmación del buscador de personas.
-    if (sp.personaId) {
-      sp.nombre = spNombreDe(sp);
-    }
-    save();
-    refresh();
-  }
-  _spEditPersonaId = null;
-  _spEditPersonaPickerAbierto = false;
-  _spEditPersonaPickerConfirmado = false;
-};
-
-/* ── Hook en renderSpotify para aplicar color de persona ─────────── */
-const _origRenderSpotifyPersonas = renderSpotify;
-renderSpotify = function() {
-  _origRenderSpotifyPersonas.apply(this, arguments);
-  // Aplicar color y nombre correcto a cada avatar del listado Spotify
-  const lista = document.getElementById('spotifyList');
-  if (!lista) return;
-  const p = S.spotify.personas || [];
-  // Ordenar igual que en renderSpotify
-  const pOrdenado = [...p].map((x, i) => ({ ...x, _origIdx: i })).sort((a, b) => {
-    const far = 99999;
-    const dA = a.proximoPago ? Fecha.diasEntre(hoy(), a.proximoPago) : far;
-    const dB = b.proximoPago ? Fecha.diasEntre(hoy(), b.proximoPago) : far;
-    return dA - dB;
-  });
-  const rows = lista.querySelectorAll('.sp-row');
-  rows.forEach((row, idx) => {
-    const sp = pOrdenado[idx];
+/* Color/foto y nombre de la persona vinculada en cada fila de la lista (la llama renderSpotify con la lista ya ordenada). */
+function _spPintarAvatares(lista, ordenados) {
+  lista.querySelectorAll('.sp-row').forEach((row, idx) => {
+    const sp = ordenados[idx];
     if (!sp || !sp.personaId) return;
     const persona = getPersona(sp.personaId);
     if (!persona) return;
     const av = row.querySelector('.avatar');
     if (av) pintarAvatarPersona(av, persona);
-    // Actualizar nombre si cambió
     const nameEl = row.querySelector('.row-name');
     if (nameEl) nameEl.textContent = persona.nombre;
   });
-};
+}
 
 /* ═══════════════════════════════════════════════════════════════
    REGISTRO DE EVENTOS (acciones propias de la integración con

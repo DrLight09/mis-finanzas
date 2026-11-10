@@ -1288,13 +1288,6 @@ describe('spotify-cajita', () => {
     assert.equal(freshApp({ cuentas: [{ ...NEQUI, archivada: true }], spotify: sp('cuenta:nequi') }).getSpFuente(), null);
   });
 
-  test('el estado viejo { cajitaId } se convierte a { fuenteId } al normalizar', () => {
-    const ctx = freshApp({ spotify: { personas: [], costo: 0, cajitaId: 'xyz', historial: [] } });
-    ctx._ensureSpotify();
-    assert.equal(ctx.S.spotify.fuenteId, 'cajita:xyz');
-    assert.ok(!('cajitaId' in ctx.S.spotify));
-  });
-
   test('las acciones del botón «Elegir» están registradas (en el primer bloque del módulo)', () => {
     const fs = require('node:fs');
     const t = fs.readFileSync(path.join(MODULES_DIR, 'spotify.js'), 'utf8');

@@ -337,7 +337,6 @@ window.mostrarAvisoNuevaVersion = mostrarAvisoNuevaVersion;
   const focusMap = {
     'gasto-var': 'gv_desc',
     'gasto-fijo': 'gf_n',
-    'nueva-persona': 'np_nombre',
     'spotify': 'sp_n',
     'nuevo-encargo': 'enc_nombre',
     'nueva-cuenta': 'nc_nombre',
@@ -349,18 +348,11 @@ window.mostrarAvisoNuevaVersion = mostrarAvisoNuevaVersion;
     'transferir': 'tr_monto',
   };
 
-  // Hook a openSheet — ver js/core/hook-global.js. Reemplaza el wrap manual
-  // + fallback con waitFor() que tenía este archivo (y de paso se saca un
-  // bug latente sin efecto real que tenía esa rama: comparaba
-  // `window.openSheet !== arguments.callee` dentro de un arrow function,
-  // donde arguments.callee apuntaba al IIFE completo, no a la función
-  // interna — la comparación nunca hacía lo que parecía. hookGlobal() no
-  // necesita esa comparación: waitFor() ya resuelve "esperar hasta que
-  // exista" con su propio checkFn).
-  hookGlobal('openSheet', function(id) {
+  // Foco al abrir cada hoja: un solo gancho comodín (Ui.hoja '*', fase 'despues': la hoja ya está visible).
+  Ui.hoja('*', function(id) {
     const focusId = focusMap[id];
     if (focusId) focusSheetField(focusId);   // js/core/sheet-behavior.js: foco en el momento justo, sin timers sueltos
-  }, { intervalMs: 100 });
+  }, { fase: 'despues', key: 'mejoras-foco' });
 })();
 
 /* ================================================================

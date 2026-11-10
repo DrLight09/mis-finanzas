@@ -21,7 +21,7 @@ Del plan original de modularización, los puntos 1 y 2 (extraer módulos a `js/m
 
 - **Namespace único** (`S.encargos.xxx` en vez de funciones sueltas globales) — ya existe el patrón en `S.personas`/`S.ingresosFijos`, extenderlo al resto es una decisión de diseño grande, no un bug.
 - **Bundler ligero (Vite/esbuild) solo para desarrollo**, deployando igual un único `index.html`+`styles.css` a GitHub Pages — habilitaría la minificación de arriba.
-- **`window.refresh` parcheado en cadena por 6 archivos distintos.** Discutido con el usuario (2026-09-08), no implementado a propósito por ahora.
+- ~~`window.refresh` parcheado en cadena por 6 archivos~~ — resuelto con `Refresh.registrar` (ver `CHANGELOG.md`, A7); ya no queda pendiente.
 
 ## Buenas prácticas a repetir (no hallazgos)
 

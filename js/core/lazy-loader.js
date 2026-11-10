@@ -111,7 +111,7 @@ const Loader = (function () {
     // auditoria-tecnica.md. Su wrapper de abrirDetalleMov (Events.registerAll
     // más abajo en el archivo) ya resolvía el nombre en tiempo de click, no
     // de carga, así que es lazy-safe sin tocarlo. Efecto secundario aceptado,
-    // no corregido: el parche a window.mostrarAlertaFuente al final del
+    // no corregido: el gancho Ui.en("fuente-alerta") al final del
     // archivo (hint "se carga a la TC" al elegir una tarjeta como fuente en
     // Gastos/Encargos/Préstamos) no aplica hasta que el usuario visite
     // Tarjetas por primera vez — el hint simplemente no aparece hasta
@@ -150,8 +150,8 @@ const Loader = (function () {
     // (ahorroTotal/getTasaCuenta llamados sin guard
     // desde core-state.js y firebase-sync.js). Se recibieron y auditaron
     // los 5 archivos núcleo que faltaban (core-state.js, firebase-sync.js,
-    // pin-bio.js, gastos-fijos-progress.js, mejoras.js — este último
-    // fusionado con mejoras-adicionales.js el 2026-09-10, ver CHANGELOG.md):
+    // pin-bio.js, gastos-fijos-progress.js, mejoras.js (hoy
+    // fusionado en mejoras-adicionales.js, 2026-09-10, ver CHANGELOG.md):
     // los tres puntos del error, más calcC/calcCDT/materializarIntereses/
     // registrarTasaHistorial/verificarVencimientosCDT (todo lo demás que
     // cuentas.js expone y que estos archivos llegan a tocar), ya tienen

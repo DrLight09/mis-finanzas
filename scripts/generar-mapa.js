@@ -127,7 +127,7 @@ function gruposLazy() {
 }
 
 // import estáticos (`import … from './x.js'`) y dinámicos (`import('./x.js')`) entre archivos de js/: ruta → [quién la importa].
-// Sin esto, un módulo ES que solo carga otro archivo (pin-bio.js → hook-global-module.js → wait-for-module.js; firebase-sync.js y
+// Sin esto, un módulo ES que solo carga otro archivo (pin-bio.js → wait-for-module.js; firebase-sync.js y
 // cierre.js → payload-codec.js) aparecía como «sin <script>» y parecía código muerto.
 function importadosPor() {
   const mapa = new Map();

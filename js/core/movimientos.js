@@ -71,22 +71,9 @@
    — todos ya cargados antes de este archivo en index.html.
    ========================================================================== */
 
-// fuenteLabel() devuelve HTML de confianza (el ícono SVG) cuando el código es
-// 'ganancia' — escHtml() sobre ese caso escapa el propio SVG y lo muestra como
-// texto literal en vez del ícono. Para cualquier otro código (nombre de cajita/
-// cuenta, texto libre del usuario) sigue escapando como siempre. Copia local
-// (no importada de prestado.js) porque este archivo es núcleo compartido por
-// los 4 módulos con historial de movimientos, y no se puede depender de que
-// prestado.js ya haya cargado — mismo criterio de las demás funciones de este
-// archivo que evitan acoplarse a un módulo de dominio específico.
 // ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogMov(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogMov = Libro.origen('movimientos');
-
-function _fuenteLabelHtml(code){
-  const raw = fuenteLabel(code);
-  return code === 'ganancia' ? raw : escHtml(raw);
-}
 
 /* ---- DETALLE DE MOVIMIENTO (sheet) ---- */
 // Abre un sheet con el detalle de un movimiento y el saldo de la cuenta
@@ -167,7 +154,7 @@ function abrirDetalleMov(el){
       ${otrasCuentas.map(oc=>{
         const ocPos = oc.monto>=0;
         return `<div class="mdet-otra-fila">
-          <span class="badge ${fuenteBadgeClass(oc.fuente)} badge-xs">${_fuenteLabelHtml(oc.fuente)}</span>
+          <span class="badge ${fuenteBadgeClass(oc.fuente)} badge-xs">${fuenteHtml(oc.fuente)}</span>
           <span class="mdet-oc-monto ${ocPos?'mdet-c-accent':'mdet-c-red'}">${ocPos?'+':'−'} ${fmt(Math.abs(oc.monto))}</span>
         </div>`;
       }).join('')}
@@ -237,7 +224,7 @@ function abrirDetalleMov(el){
         <div class="mdet-caja-saldo">
           <div class="mdet-cap-saldo">Del mismo abono</div>
           ${partes.map(x => `<div class="mdet-otra-fila">
-            <span class="badge ${fuenteBadgeClass(x.fuente)} badge-xs">${_fuenteLabelHtml(x.fuente)}</span>
+            <span class="badge ${fuenteBadgeClass(x.fuente)} badge-xs">${fuenteHtml(x.fuente)}</span>
             <span class="mdet-c-text2">${x._parteAbono === 'extra' ? 'Extra' : 'Abono de deuda'}</span>
             <span class="mdet-oc-monto mdet-c-accent">+ ${fmt(+x.monto)}</span>
           </div>`).join('')}
@@ -303,7 +290,7 @@ function abrirDetalleMov(el){
           <div class="mdet-dif-detalle">Cobrado ${fmt(d.dijo)} · Real ${fmt(d.real)}</div>
           ${d.yoMeQuedo > 0 && d.miCuenta ? `
           <div class="mdet-txt">
-            Guardaste <strong class="mdet-c-accent">${fmt(d.yoMeQuedo)}</strong> en <strong>${_fuenteLabelHtml(d.miCuenta)}</strong>.
+            Guardaste <strong class="mdet-c-accent">${fmt(d.yoMeQuedo)}</strong> en <strong>${fuenteHtml(d.miCuenta)}</strong>.
           </div>` : ''}
           ${benefsNorm.length ? `
           <div class="mdet-txt">
@@ -313,7 +300,7 @@ function abrirDetalleMov(el){
           ${benefsYoPague.length ? `
           <div class="mdet-txt">
             Pagaste de tu bolsillo por:
-            ${benefsYoPague.map(b => `<span class="mdet-chip-blue"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + _fuenteLabelHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' <i class="fa-solid fa-arrow-right"></i> recuperas en ' + _fuenteLabelHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
+            ${benefsYoPague.map(b => `<span class="mdet-chip-blue"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + fuenteHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' <i class="fa-solid fa-arrow-right"></i> recuperas en ' + fuenteHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
             <div class="mdet-nota-pie">Pusiste esa plata de tu cuenta pero se te descuenta del encargo, así que es plata neutra.</div>
           </div>` : ''}
         </div>`);
@@ -326,7 +313,7 @@ function abrirDetalleMov(el){
         <div class="mdet-panel-extra">
           <div class="mdet-cap-blue">¿A dónde fue el extra del pago? (${fmt(extraTotal)})</div>
           ${rm._extPartes.map(p => {
-            if (p.tipo==='guardar')   return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Guardaste <strong class="mdet-c-accent">${fmt(p.monto)}</strong> en <strong>${_fuenteLabelHtml(p.cuenta)}</strong></div>`;
+            if (p.tipo==='guardar')   return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Guardaste <strong class="mdet-c-accent">${fmt(p.monto)}</strong> en <strong>${fuenteHtml(p.cuenta)}</strong></div>`;
             if (p.tipo==='gastar')    return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Se usó como gasto <strong>${fmt(p.monto)}</strong></div>`;
             if (p.tipo==='regalar')   return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Lo regalaste: <strong>${fmt(p.monto)}</strong></div>`;
             if (p.tipo==='pendiente') return `<div class="mdet-txt"><i class="fa-solid fa-arrow-right"></i> Quedó sin asignar: <strong>${fmt(p.monto)}</strong></div>`;
@@ -351,7 +338,7 @@ function abrirDetalleMov(el){
       richParts.push(`
         <div class="mdet-caja">
           <div class="mdet-cap-neutra">Salió de</div>
-          ${rm.fuentes.map(f=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(f.fuente)}</strong> <i class="fa-solid fa-arrow-right"></i> ${fmt(f.monto)}</div>`).join('')}
+          ${rm.fuentes.map(f=>`<div class="mdet-txt-fila"><strong>${fuenteHtml(f.fuente)}</strong> <i class="fa-solid fa-arrow-right"></i> ${fmt(f.monto)}</div>`).join('')}
         </div>`);
     }
 
@@ -361,7 +348,7 @@ function abrirDetalleMov(el){
       richParts.push(`
         <div class="mdet-caja">
           <div class="mdet-cap-neutra">Entró a</div>
-          ${destinos.map(r=>`<div class="mdet-txt-fila"><strong>${_fuenteLabelHtml(r.fuente)}</strong>${r.monto ? ' <i class="fa-solid fa-arrow-right"></i> ' + fmt(r.monto) : ''}</div>`).join('')}
+          ${destinos.map(r=>`<div class="mdet-txt-fila"><strong>${fuenteHtml(r.fuente)}</strong>${r.monto ? ' <i class="fa-solid fa-arrow-right"></i> ' + fmt(r.monto) : ''}</div>`).join('')}
         </div>`);
     }
 

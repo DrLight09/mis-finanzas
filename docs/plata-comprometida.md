@@ -198,7 +198,6 @@ Las reversiones que restan saldo (reposición a cada destino, cajita usada para 
 | Función | Qué hace |
 |---|---|
 | `_cpData()` | Devuelve `S.plataComprometida`, garantizando que exista |
-| `_cpFuenteLabel(val)` | Envuelve `fuenteLabel()` para el texto de una cuenta/cajita |
 | `_cpRenderLista()` | Pinta la pantalla completa: stats hero, pendientes con su barra de compromiso, y recibidos con pagos de cajita aún abiertos |
 | `_cpDiasHastaStr(fecha)` | Texto relativo ("Mañana", "En 3 días", "Vencido") para una fecha |
 | `_cpAbrirNuevo()` / `_cpAbrirEditar(id)` | Abren el sheet de creación/edición, poblando destinos si corresponde |

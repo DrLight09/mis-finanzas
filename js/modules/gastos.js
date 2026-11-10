@@ -493,7 +493,7 @@ function addGastoVar() {
   const catGasto = document.getElementById('gv_cat').value;
   const notaGasto = document.getElementById('gv_nota').value.trim();
   if (!S.gastosVar) S.gastosVar = [];
-  const esTCFuente = fuente && fuente.startsWith('tc:');
+  const esTCFuente = fuente && Fuente.esTC(fuente);
   const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, splits: splits || undefined, nota: notaGasto, clase: 'gasto' };
   // La decisión de la casilla se guarda explícita: true si la marcó; false si no la marcó en un gasto desde el monto mínimo (así la
   // detección automática no se la cambia después). En gastos pequeños no se guarda nada (no hay nada que decidir).
@@ -706,7 +706,7 @@ function abrirPagarGastoFijo(id) {
   // Poblar fuentes
   const sel = document.getElementById('pgf-fuente');
   // Solo cuentas con saldo >= $1,00 y TC con cupo (FuentesFiltro, js/core/fuentes-filtro.js).
-  // FuentesFiltro.optsHtml filtra por saldo/cupo y arma las <option> con buildFuentesOptsHtml (core-state.js),
+  // FuentesFiltro.optsHtml filtra por saldo/cupo y arma las <option> con opcionesCuenta (core-state.js),
   // que escapa label y val: este sheet ya no reimplementa el selector a mano.
   sel.innerHTML = FuentesFiltro.optsHtml(getFuentes(), { ...FuentesFiltro.PRESET.SALIDA, placeholder: 'Seleccionar cuenta', sinOpcionesTexto: FuentesFiltro.MSG_SIN_SALDO });
   document.getElementById('pgf-saldo-info').textContent = '';
@@ -723,7 +723,7 @@ function pgfActualizarSaldo() {
   // retiro de saldo — mismo criterio que addGastoVar() (tcCrearCompra) y
   // confirmarPagarSpotify() (spotify.js). Antes este preview trataba la TC como
   // una cuenta con saldo, mostrando "Saldo disponible" de algo que en realidad es cupo.
-  if (fuente.startsWith('tc:')) {
+  if (Fuente.esTC(fuente)) {
     const tcId = fuente.split(':')[1];
     const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
     if (tc) {
@@ -758,7 +758,7 @@ function confirmarPagarGastoFijo() {
   const nota = document.getElementById('pgf-nota') ? document.getElementById('pgf-nota').value.trim() : '';
   if (!S.gastosVar) S.gastosVar = [];
   const gastoObj = { id: uid(), desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, fuente, nota: nota || 'Pago de gasto fijo', clase: 'neutro', esPagoGastoFijo: true, gastoFijoId: gf.id }; // neutro: el pago ya cuenta en Periodo.gastosFijosDelMes
-  if (fuente.startsWith('tc:')) {
+  if (Fuente.esTC(fuente)) {
     // Cargar el pago a la tarjeta (sube tc.deuda) en vez de descontar saldo de una
     // cuenta — misma ruta que addGastoVar() usa para un gasto variable con TC.
     const tcId = fuente.split(':')[1];

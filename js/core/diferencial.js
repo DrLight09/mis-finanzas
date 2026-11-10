@@ -54,7 +54,7 @@
        actualizó igual para que quien la use de acá en más copie ya
        el patrón data-action correcto.
 
-   buildFuentesOptsHtml() se QUEDÓ en index.html a propósito: es
+   opcionesCuenta() se QUEDÓ en index.html a propósito: es
    canónica y la usan muchos módulos más, no es exclusiva de este
    motor (ver su propio comentario ahí). _diffFuentesOptsHtml() es
    un envoltorio delgado específico de este motor, así que sí se
@@ -178,11 +178,10 @@ function diffSetCuentaSalida(instId, i, v) { const inst = diffInst(instId); if (
 function diffSetCuentaEntrada(instId, i, v) { const inst = diffInst(instId); if (inst) { inst.partes[i].miCuentaEntrada = v; diffResumen(instId); } }
 
 function _diffFuentesOptsHtml(selectedVal, soloConSaldo) {
-  return buildFuentesOptsHtml({
+  return opcionesCuenta({
     selectedVal,
     soloConSaldo,
     mostrarSaldo: soloConSaldo,
-    incluirTC: false,
     placeholder: soloConSaldo ? 'Seleccionar cuenta' : 'Sin especificar'
   });
 }
@@ -330,7 +329,7 @@ function _diffActualizarMiCuenta(instId, mostrar) {
   wrap.style.display = mostrar ? '' : 'none';
   if (mostrar) {
     const prevVal = sel.value;
-    sel.innerHTML = buildFuentesOptsHtml({ selectedVal: prevVal, incluirTC: false, placeholder: 'Sin especificar (queda como nota)' });
+    sel.innerHTML = opcionesCuenta({ selectedVal: prevVal, placeholder: 'Sin especificar (queda como nota)' });
   }
 }
 

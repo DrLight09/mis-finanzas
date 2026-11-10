@@ -1160,7 +1160,7 @@ function confirmarAgregarDinero(){
   save();
   closeSheet('agregar-dinero');
   refresh();
-  if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Agregaste dinero en '+_fLabel;const _cjId=adFuente&&adFuente.startsWith('cajita:')?adFuente.split(':')[1]:null;logCambio(_accion,descFinal||'',v,'ingreso',_cjId);}
+  if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Agregaste dinero en '+_fLabel;const _cjId=adFuente&&Fuente.esCajita(adFuente)?adFuente.split(':')[1]:null;logCambio(_accion,descFinal||'',v,'ingreso',_cjId);}
   adFuente='';
 toast(fmt(v) + (esApertura?' registrado como saldo inicial':' agregado — ' + descFinal), 'ok');
 }
@@ -1215,7 +1215,7 @@ function confirmarAgregarDineroMenu(){
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
-  if(window.logCambio){const _fLabel=fuenteLabel(fuente);const _cjId2=fuente&&fuente.startsWith('cajita:')?fuente.split(':')[1]:null;logCambio('Agregaste dinero en '+_fLabel,desc,v,'ingreso',_cjId2);}
+  if(window.logCambio){const _fLabel=fuenteLabel(fuente);const _cjId2=fuente&&Fuente.esCajita(fuente)?fuente.split(':')[1]:null;logCambio('Agregaste dinero en '+_fLabel,desc,v,'ingreso',_cjId2);}
   toast(fmt(v) + ' agregado — ' + desc, 'ok');
 }
 
@@ -1389,7 +1389,7 @@ function confirmarRestarDinero(){
   registrarSalida(rdFuente,v,fecha,desc,nota);
   save();refresh();
   closeSheet('restar-dinero');
-  if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);const _cjId3=rdFuente&&rdFuente.startsWith('cajita:')?rdFuente.split(':')[1]:null;logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto',_cjId3);}
+  if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);const _cjId3=rdFuente&&Fuente.esCajita(rdFuente)?rdFuente.split(':')[1]:null;logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto',_cjId3);}
   rdFuente='';
   toast('− '+fmt(v)+' retirado — '+desc,'salida');
 }
@@ -1531,7 +1531,7 @@ function validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOri
   }
   const centavos = Math.round(monto * 100);
   if (centavos <= 0) return fallo('sin_monto', 'Ingresa un monto válido');
-  const esCajita = v => typeof v === 'string' && v.startsWith('cajita:');
+  const esCajita = v => typeof v === 'string' && Fuente.esCajita(v);
   const esEfectivo = v => { const c = getCuentaDeFuente(v); return !!c && c.tipo === 'efectivo'; };
   const involucraEfectivo = esEfectivo(origen) || esEfectivo(destino);
   const soloCajitas = esCajita(origen) && esCajita(destino);

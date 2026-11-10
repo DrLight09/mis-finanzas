@@ -8,7 +8,7 @@
    index.html DESPUÉS de ese script. No tuvo que partirse en dos
    archivos (a diferencia de Spotify/Encargos): su única integración
    es con las cuentas (`getSaldoFuente`, `sumarFuente`,
-   `buildFuentesOptsHtml`), ya definidas más arriba en index.html
+   `opcionesCuenta`), ya definidas más arriba en index.html
    antes de que este script se cargue — mismo caso que Mesada.
 
    Todas las funciones y el estado (`window.S.alcancia`) siguen
@@ -164,7 +164,7 @@ let _alcSplitMode = false; // true = "Dividir" activo (varios orígenes)
 function _alcNombreFuente(f){
   if(!f) return '';
   if(typeof fuenteLabel === 'function'){ try { const l = fuenteLabel(f); if(l) return l; } catch(e){} }
-  if(f.startsWith('cajita:')){ const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===f.split(':')[1]); return c?c.nombre:'Cajita'; }
+  if(Fuente.esCajita(f)){ const c=(window.S&&window.S.cajitas||[]).find(x=>x.id===f.split(':')[1]); return c?c.nombre:'Cajita'; }
   if(esFuenteCuenta(f)){ const c=getCuentaDeFuente(f); return c?c.nombre:'Cuenta'; }
   return f;
 }
@@ -172,20 +172,23 @@ function _alcNombreFuente(f){
 // <option>s del selector de origen: cuentas con saldo + orígenes sin cuenta (+ deuda si aplica).
 // `conDeuda` solo en modo de un único origen (un cobro de deuda necesita elegir persona/préstamo).
 function _alcOrigenOptsHtml(selected, conDeuda){
-  const tmp = document.createElement('select');
-  tmp.innerHTML = (typeof buildFuentesOptsHtml === 'function')
-    ? buildFuentesOptsHtml({incluirTC:false, placeholder:'Elige de dónde viene'})
-    : '<option value="">Elige de dónde viene</option>';
-  _alcFiltrarFuentesPorSaldo(tmp);
-  const ph = tmp.querySelector('option[value=""]');
-  if(ph) ph.textContent = 'Elige de dónde viene'; // _alcFiltrarFuentesPorSaldo pone un texto de "sin cuentas" que aquí no aplica
-  let extra = '<optgroup label="Sin cuenta">'
-    + Object.keys(_ALC_ORIGENES_SIN_CUENTA).map(v => `<option value="${v}">${_ALC_ORIGENES_SIN_CUENTA[v].label}</option>`).join('')
-    + '</optgroup>';
-  if(conDeuda && Deudas.lista('favor').some(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5)){
-    extra += `<optgroup label="Deudas"><option value="${_ALC_VALOR_DEUDA}">Me pagaron una deuda</option></optgroup>`;
-  }
-  return tmp.innerHTML + extra;
+  // Cuentas con más de $50 (preset ALCANCIA; las tarjetas no se ofrecen) + los orígenes sin cuenta como extra.
+  return opcionesCuenta({
+    selectedVal: selected,
+    sentido: 'sale',
+    preset: 'ALCANCIA',
+    placeholder: 'Elige de dónde viene',
+    sinOpcionesTexto: 'Elige de dónde viene',
+    extra: () => {
+      let extra = '<optgroup label="Sin cuenta">'
+        + Object.keys(_ALC_ORIGENES_SIN_CUENTA).map(v => `<option value="${v}">${_ALC_ORIGENES_SIN_CUENTA[v].label}</option>`).join('')
+        + '</optgroup>';
+      if(conDeuda && Deudas.lista('favor').some(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5)){
+        extra += `<optgroup label="Deudas"><option value="${_ALC_VALOR_DEUDA}">Me pagaron una deuda</option></optgroup>`;
+      }
+      return extra;
+    },
+  });
 }
 
 // valor de un <select> de origen → parte { origen, monto, [fuente] }
@@ -455,30 +458,6 @@ function _getMoneyVal(id){
   return parseFloat((el.value||'').replace(/\./g,'').replace(',','.')) || 0;
 }
 
-/* ─── FILTRAR SELECTOR DE FUENTE POR SALDO ─────────────────────────────────
-   Solo aplica a selectores de ORIGEN de plata (de dónde sale el dinero que
-   entra a la alcancía) — nunca al selector de destino del destape, donde la
-   plata entra a la cuenta y no hace falta saldo previo. Umbral fijo: se
-   considera "sin plata utilizable" una cuenta con saldo <= 50 pesos.        */
-const _ALC_SALDO_MIN_FUENTE = 50;
-function _alcFiltrarFuentesPorSaldo(selectEl){
-  if(!selectEl || typeof getSaldoFuente !== 'function') return;
-  let quedanCuentas = false;
-  Array.from(selectEl.querySelectorAll('option')).forEach(opt => {
-    if(!opt.value) return; // placeholder ("Seleccionar cuenta"), nunca se filtra
-    const saldo = getSaldoFuente(opt.value) || 0;
-    if(saldo <= _ALC_SALDO_MIN_FUENTE){
-      opt.remove();
-    } else {
-      quedanCuentas = true;
-    }
-  });
-  if(!quedanCuentas){
-    const ph = selectEl.querySelector('option[value=""]');
-    if(ph) ph.textContent = 'No tienes cuentas con saldo disponible';
-  }
-}
-
 /* ─── "WRAPPED" DE ALCANCÍA: progreso de ahorro entre ciclos ──────────────
    Todo se calcula en vivo desde S.alcancia.historial — no se guarda ningún
    número nuevo aparte (mismo principio que el resto de la app: los
@@ -619,9 +598,7 @@ Ui.hoja('alcancia-destapar', function(){
       const mi = document.getElementById('alc_real_monto');
       if(mi) mi.value = '';
       const dest = document.getElementById('alc_destino');
-      if(dest && typeof buildFuentesOptsHtml==='function'){
-        dest.innerHTML = buildFuentesOptsHtml({incluirTC:false,placeholder:'Seleccionar cuenta'});
-      }
+      if(dest) dest.innerHTML = opcionesCuenta({placeholder:'Seleccionar cuenta'});
       const hint = document.getElementById('alc_diferencia_hint');
       if(hint) hint.textContent = '';
       // Resumen
@@ -1187,7 +1164,7 @@ window.alcanciaConfirmarDestapar = function(){
   // del DOM: no hay nada que sincronizar. Las cajitas Nu sí siguen espejadas en su input.
   if(typeof fmtInput === 'function'){
     // Si el destino fue una cajita, sincronizar su input de saldo
-    if(destino && destino.startsWith('cajita:')){
+    if(destino && Fuente.esCajita(destino)){
       const _cajId = destino.split(':')[1];
       const _cajEl = document.getElementById('cs_' + _cajId);
       const _caj = (window.S.cajitas||[]).find(c=>c.id===_cajId);
@@ -1225,7 +1202,7 @@ function _sumarASaldo(fuente, monto){
   // c.movimientos: las filas del destape ya viven en S.movimientos (transferencia y "Dinero extra…") y S.gastosVar
   // (faltante), y el historial de la cuenta las lee de ahí. Antes se duplicaban acá como 'ingreso'/'egreso'
   // (2026-09-29), y ese 'ingreso' de "Alcancía destapada" (plata que ya era tuya) contaba como ingreso del mes.
-  const cuenta = fuente.startsWith('cajita:')
+  const cuenta = Fuente.esCajita(fuente)
     ? (window.S.cajitas||[]).find(x=>x.id===fuente.split(':')[1])
     : getCuentaDeFuente(fuente);
   if(cuenta) ajustarSaldoCuenta(fuente, (cuenta.saldo||0) + monto, {tipo:'movimiento', desc:'Alcancía', origen:{modulo:'alcancia'}});

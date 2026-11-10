@@ -25,18 +25,18 @@
    - Auditoría de `.innerHTML` (auditoria-tecnica.md #2): se encontró
      y corrigió el mismo patrón ya visto en Spotify/Mesada/Encargos/TC
      — texto libre que llega envuelto en una función auxiliar
-     (_cpFuenteLabel(), que envuelve a fuenteLabel()) y se interpolaba
+     (fuenteTexto(), que envuelve a fuenteLabel()) y se interpolaba
      sin escapar. 5 sitios corregidos:
        1. item.cuentaDestino sin escapar en la card principal de la lista.
        2-3. tc.nombre (tarjeta) sin escapar en el plan de "Recibir",
             en dos ramas de subLabel (pagado / pendiente con TC).
-       4-5. _cpFuenteLabel(d.gastoCajita) sin escapar en las dos alertas
+       4-5. fuenteTexto(d.gastoCajita) sin escapar en las dos alertas
             de "Necesita atención" (gasto vencido / vence mañana).
      Un sexto sitio (toast() con errores.join(', '), que junta
      descripciones libres de destinos) también se corrigió.
-     Los usos de _cpFuenteLabel() dentro de logCambio(...) NO se
+     Los usos de fuenteTexto() dentro de logCambio(...) NO se
      tocaron: van al feed de actividad, que ya escapa en su propio
-     renderer — mismo criterio ya aplicado a toast()/buildFuentesOptsHtml()
+     renderer — mismo criterio ya aplicado a toast()/opcionesCuenta()
      en la sesión de TC (núcleo/otro módulo compartido, fuera de alcance).
 
    Integración a index.html: originalmente eager (confirmado 2026-07-23,
@@ -392,7 +392,7 @@ function _cpData(){
 function _cpPoblarCuentas(selId, incluirTC){
   const sel = document.getElementById(selId);
   if(!sel) return;
-  sel.innerHTML = buildFuentesOptsHtml({ incluirTC: !!incluirTC });
+  sel.innerHTML = opcionesCuenta({ tarjetas: !!incluirTC });
 }
 
 function _cpPoblarPersonas(selId){
@@ -433,10 +433,6 @@ function _cpPoblarTC(selId){
     opt.textContent = tc.nombre + (tc.deuda ? ' — deuda '+fmt(tc.deuda) : '');
     sel.appendChild(opt);
   });
-}
-
-function _cpFuenteLabel(val){
-  return typeof fuenteLabel === 'function' ? fuenteLabel(val) : (val||'Sin especificar');
 }
 
 /* ── TIPOS DE DESTINO ────────────────────────────────────────────── */
@@ -550,7 +546,7 @@ function _cpRenderLista(){
           </div>
           <div class="cp-item-der">
             <div class="cp-item-monto">${fmt(item.montoTotal)}</div>
-            ${item.cuentaDestino ? html`<div class="cp-item-fuente">${_cpFuenteLabel(item.cuentaDestino)}</div>` : ''}
+            ${item.cuentaDestino ? html`<div class="cp-item-fuente">${fuenteTexto(item.cuentaDestino)}</div>` : ''}
           </div>
         </div>
 
@@ -604,7 +600,7 @@ function _cpRenderLista(){
             <span class="cp-guardada-cap">Plata guardada para pagar</span>
           </div>
           ${raw(gastosGuardados.map(d => {
-            const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
+            const cajLabel = fuenteTexto(d.gastoCajita);
             let fechaInfo = '';
             if(d.fechaPago){
               const diasFecha = Fecha.diasEntre(hoy(), d.fechaPago);
@@ -835,14 +831,14 @@ function _cpdTipoChange(){
   }
 };
 
-// Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde buildFuentesOptsHtml() (core-state.js: cajitas de cuentas de ahorro activas +
+// Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde opcionesCuenta() (core-state.js: cajitas de cuentas de ahorro activas +
 // cuentas activas con saldo), así no aparecen cuentas archivadas ni la cuenta de ahorro en sí (no tiene saldo propio) y la lista se
 // refresca si cambian las cuentas. Conserva la opción elegida si sigue existiendo.
 function _cpdRepoblarFuentes(sel){
   if(!sel) return;
   const previo = sel.value;
   const placeholder = sel.options.length ? sel.options[0].textContent : 'Sin especificar';
-  sel.innerHTML = buildFuentesOptsHtml({ selectedVal: previo, incluirTC: false, placeholder });
+  sel.innerHTML = opcionesCuenta({ selectedVal: previo, placeholder });
 }
 
 function _cpdPoblarGastoSelectores(){
@@ -984,7 +980,7 @@ function _cpdConfirmar(){
   // Si ya adelantó plata de una cajita (reposicion)
   if(yaSaque && cuentaId && typeof sumarFuente === 'function'){
     try {
-      if(cuentaId.startsWith('cajita:')){
+      if(Fuente.esCajita(cuentaId)){
         const cajId = cuentaId.split(':')[1];
         const caj = (S.cajitas||[]).find(x=>x.id===cajId);
         if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
@@ -992,7 +988,7 @@ function _cpdConfirmar(){
       sumarFuente(cuentaId, -monto, _ogCp(destId));
       if(!S.movimientos) S.movimientos = [];
       S.movimientos.push({ id:uid(), tipo:'salida', fuente:cuentaId, monto, fecha:hoy(), desc:'Adelanto comprometido: '+desc });
-      if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), fmt(monto)+' — será repuesto al llegar el ingreso', monto, 'gasto');
+      if(window.logCambio) logCambio('Adelantaste plata de '+fuenteTexto(cuentaId), fmt(monto)+' — será repuesto al llegar el ingreso', monto, 'gasto');
       if(typeof refresh === 'function') refresh();
     } catch(e){ toast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
@@ -1011,13 +1007,13 @@ function _cpdConfirmar(){
   if(tipo === 'gasto' && yaPague){
     if(gastoOrigen === 'cajita' && gastoCajita && typeof descontarFuente === 'function'){
       try {
-        const cajId2 = gastoCajita.startsWith('cajita:') ? gastoCajita.split(':')[1] : null;
+        const cajId2 = Fuente.esCajita(gastoCajita) ? gastoCajita.split(':')[1] : null;
         const caj2 = cajId2 ? (S.cajitas||[]).find(x=>x.id===cajId2) : null;
         if(caj2 && typeof materializarIntereses==='function') materializarIntereses(caj2);
         descontarFuente(gastoCajita, monto, _ogCp(destId));
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({ id:uid(), tipo:'salida', fuente:gastoCajita, monto, fecha:hoy(), desc:'Pago: '+desc });
-        if(window.logCambio) logCambio('Pagaste '+desc, fmt(monto)+' de '+_cpFuenteLabel(gastoCajita), monto, 'gasto');
+        if(window.logCambio) logCambio('Pagaste '+desc, fmt(monto)+' de '+fuenteTexto(gastoCajita), monto, 'gasto');
         if(typeof refresh === 'function') refresh();
       } catch(e){ toast('No se pudo descontar el saldo: '+e.message,'err'); }
     } else if(gastoOrigen === 'tc' && gastoTcId){
@@ -1074,7 +1070,7 @@ function _cpRenderDestinosTmp(){
           ? `<span class="cp-bd-saque"><i class="fa-solid fa-check cp-ico-8"></i>Ya saqué</span>`
           : `<span class="cp-bd-pend"><i class="fa-regular fa-clock cp-ico-8"></i>Pendiente</span>`;
         if(d.cuentaId){
-          const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.cuentaId) : d.cuentaId;
+          const label = fuenteTexto(d.cuentaId);
           badges += html` <span class="cp-bd-label">${label}</span>`;
         }
       } else if(d.tipo === 'gasto'){
@@ -1179,7 +1175,7 @@ function _cpAbrirRecibir(id){
         if(d.tipo==='reposicion'){
           const cuentaId = d.cuentaId || item.cuentaDestino;
           if(cuentaId){
-            const label = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(cuentaId) : cuentaId;
+            const label = fuenteTexto(cuentaId);
             subLabel = 'Repone cajita/cuenta';
             extraInfo = html`<div class="cp-int-caja-purple">
               <i class="fa-solid fa-box cp-int-ico"></i>
@@ -1193,7 +1189,7 @@ function _cpAbrirRecibir(id){
           if(d.gastoOrigen==='tc' && d.gastoTcId){
             const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
             const tcNombre = tc ? tc.nombre : 'Tarjeta de crédito';
-            const cajDestLabel = d.gastoTcCajita && typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoTcCajita) : null;
+            const cajDestLabel = d.gastoTcCajita && fuenteTexto(d.gastoTcCajita);
             if(d.yaPague){
               subLabel = html`Pagado con ${tcNombre}`;
               extraInfo = html`<div class="cp-int-caja-ok">
@@ -1208,7 +1204,7 @@ function _cpAbrirRecibir(id){
               </div>`;
             }
           } else if(d.gastoOrigen==='cajita' && d.gastoCajita){
-            const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
+            const cajLabel = fuenteTexto(d.gastoCajita);
             if(d.yaPague){
               subLabel = 'Ya pagado';
               extraInfo = html`<div class="cp-int-caja-ok">
@@ -1275,7 +1271,7 @@ function _cpAbrirRecibir(id){
             <span class="cp-rec-cap">Recordatorio de pagos pendientes</span>
           </div>
           ${raw(pendientesConFecha.map(d=>{
-            const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
+            const cajLabel = fuenteTexto(d.gastoCajita);
             return html`<div class="cp-rec-it">
               <div>
                 <div class="cp-rec-it-desc">${d.desc}</div>
@@ -1312,7 +1308,7 @@ function _cpConfirmarRecibir(){
         if(!d.yaSaque){
           const cuenta = d.cuentaId || item.cuentaDestino;
           if(cuenta && typeof sumarFuente === 'function'){
-            if(cuenta.startsWith('cajita:')){
+            if(Fuente.esCajita(cuenta)){
               const cajId = cuenta.split(':')[1];
               const caj = (S.cajitas||[]).find(x=>x.id===cajId);
               if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
@@ -1321,13 +1317,13 @@ function _cpConfirmarRecibir(){
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (no es ingreso nuevo, es devolución)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
-            if(window.logCambio) logCambio('Reposición en '+_cpFuenteLabel(cuenta), fmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
+            if(window.logCambio) logCambio('Reposición en '+fuenteTexto(cuenta), fmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
           }
         } else {
           // Ya fue adelantada: la plata ya estaba descontada, ahora entra el arriendo y repone
           const cuenta = d.cuentaId || item.cuentaDestino;
           if(cuenta && typeof sumarFuente === 'function'){
-            if(cuenta.startsWith('cajita:')){
+            if(Fuente.esCajita(cuenta)){
               const cajId = cuenta.split(':')[1];
               const caj = (S.cajitas||[]).find(x=>x.id===cajId);
               if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
@@ -1336,7 +1332,7 @@ function _cpConfirmarRecibir(){
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (devolución de plata que ya salió)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
-            if(window.logCambio) logCambio('Reposición (ya adelantada) en '+_cpFuenteLabel(cuenta), fmt(d.monto)+' repuesto', d.monto, 'ingreso');
+            if(window.logCambio) logCambio('Reposición (ya adelantada) en '+fuenteTexto(cuenta), fmt(d.monto)+' repuesto', d.monto, 'ingreso');
           }
         }
       }
@@ -1368,7 +1364,7 @@ function _cpConfirmarRecibir(){
             // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
             const destCajita = d.gastoTcCajita;
             if(destCajita && typeof sumarFuente === 'function'){
-              if(destCajita.startsWith('cajita:')){
+              if(Fuente.esCajita(destCajita)){
                 const cajId = destCajita.split(':')[1];
                 const caj = (S.cajitas||[]).find(x=>x.id===cajId);
                 if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
@@ -1377,13 +1373,13 @@ function _cpConfirmarRecibir(){
               if(!S.movimientos) S.movimientos = [];
               // _esReposicionCP:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
               S.movimientos.push({id:uid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
-              if(window.logCambio) logCambio('Plata para pagar TC en '+_cpFuenteLabel(destCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
+              if(window.logCambio) logCambio('Plata para pagar TC en '+fuenteTexto(destCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
             }
           }
         } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){
           // Gasto de cajita: reponer esa cajita con el ingreso
           if(typeof sumarFuente === 'function'){
-            if(d.gastoCajita.startsWith('cajita:')){
+            if(Fuente.esCajita(d.gastoCajita)){
               const cajId = d.gastoCajita.split(':')[1];
               const caj = (S.cajitas||[]).find(x=>x.id===cajId);
               if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
@@ -1392,7 +1388,7 @@ function _cpConfirmarRecibir(){
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (repone cajita, no es ingreso nuevo)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
-            if(window.logCambio) logCambio('Repuesto gasto en '+_cpFuenteLabel(d.gastoCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
+            if(window.logCambio) logCambio('Repuesto gasto en '+fuenteTexto(d.gastoCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         }
         // si no tiene origen definido: solo registro, sin efecto
@@ -1412,7 +1408,7 @@ function _cpConfirmarRecibir(){
   if(ganancia > 0.99 && sobranteCuenta){
     try {
       if(typeof sumarFuente === 'function'){
-        if(sobranteCuenta.startsWith('cajita:')){
+        if(Fuente.esCajita(sobranteCuenta)){
           const cajId = sobranteCuenta.split(':')[1];
           const caj = (S.cajitas||[]).find(x=>x.id===cajId);
           if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
@@ -1424,7 +1420,7 @@ function _cpConfirmarRecibir(){
           desc:'Ingreso libre: '+item.desc, clase:'ingreso', _esSobrante:true, _cpItemId:item.id});
         if(window.logCambio) logCambio(
           '<i class="fa-solid fa-sack-dollar cp-ico-r4"></i>¡Ingreso libre de "'+item.desc+'"!',
-          fmt(ganancia)+' en '+_cpFuenteLabel(sobranteCuenta),
+          fmt(ganancia)+' en '+fuenteTexto(sobranteCuenta),
           ganancia, 'ingreso'
         );
       }
@@ -1573,7 +1569,7 @@ function _cpGuardarMarcados(){
       const cuentaId = dNuevo.cuentaId || item.cuentaDestino;
       if(cuentaId && typeof sumarFuente === 'function'){
         try {
-          if(cuentaId.startsWith('cajita:')){
+          if(Fuente.esCajita(cuentaId)){
             const cajId = cuentaId.split(':')[1];
             const caj = (S.cajitas||[]).find(x=>x.id===cajId);
             if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
@@ -1581,7 +1577,7 @@ function _cpGuardarMarcados(){
           sumarFuente(cuentaId, -dNuevo.monto, _ogCp(dNuevo.id));
           if(!S.movimientos) S.movimientos = [];
           S.movimientos.push({id:uid(),tipo:'salida',fuente:cuentaId,monto:dNuevo.monto,fecha:hoy(),desc:'Adelanto comprometido: '+dNuevo.desc});
-          if(window.logCambio) logCambio('Adelantaste plata de '+_cpFuenteLabel(cuentaId), fmt(dNuevo.monto)+' — será repuesto al llegar el ingreso', dNuevo.monto, 'gasto');
+          if(window.logCambio) logCambio('Adelantaste plata de '+fuenteTexto(cuentaId), fmt(dNuevo.monto)+' — será repuesto al llegar el ingreso', dNuevo.monto, 'gasto');
         } catch(e){}
       }
     }
@@ -1589,7 +1585,7 @@ function _cpGuardarMarcados(){
     // La plata ya estaba guardada en la cajita desde _cpConfirmarRecibir → ahora hay que descontarla
     if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='cajita' && dNuevo.gastoCajita && !dViejo.yaPague && dNuevo.yaPague){
       try {
-        const cajId2 = dNuevo.gastoCajita.startsWith('cajita:') ? dNuevo.gastoCajita.split(':')[1] : null;
+        const cajId2 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
         const caj2 = cajId2 ? (S.cajitas||[]).find(x=>x.id===cajId2) : null;
         if(caj2 && typeof materializarIntereses==='function') materializarIntereses(caj2);
         if(typeof descontarFuente==='function') descontarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogCp(dNuevo.id));
@@ -1597,13 +1593,13 @@ function _cpGuardarMarcados(){
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:uid(), tipo:'salida', fuente:dNuevo.gastoCajita, monto:dNuevo.monto,
           fecha:hoy(), desc:'Pago: '+dNuevo.desc});
-        if(window.logCambio) logCambio('Pagaste '+dNuevo.desc, fmt(dNuevo.monto)+' de '+_cpFuenteLabel(dNuevo.gastoCajita), dNuevo.monto, 'gasto');
+        if(window.logCambio) logCambio('Pagaste '+dNuevo.desc, fmt(dNuevo.monto)+' de '+fuenteTexto(dNuevo.gastoCajita), dNuevo.monto, 'gasto');
       } catch(e){ console.warn('[CP] Error descontando cajita al marcar pago:', e); }
     }
     // Detectar si un gasto de cajita pasó de true→false (desmarcó — revertir el descuento)
     if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='cajita' && dNuevo.gastoCajita && dViejo.yaPague && !dNuevo.yaPague){
       try {
-        const cajId3 = dNuevo.gastoCajita.startsWith('cajita:') ? dNuevo.gastoCajita.split(':')[1] : null;
+        const cajId3 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
         const caj3 = cajId3 ? (S.cajitas||[]).find(x=>x.id===cajId3) : null;
         if(caj3 && typeof materializarIntereses==='function') materializarIntereses(caj3);
         if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogCp(dNuevo.id, true));
@@ -1611,7 +1607,7 @@ function _cpGuardarMarcados(){
           m.tipo==='salida' && m.fuente===dNuevo.gastoCajita && m.monto===dNuevo.monto &&
           (m.desc||'').startsWith('Pago: '+dNuevo.desc)
         ));
-        if(window.logCambio) logCambio('Revertiste pago de '+dNuevo.desc, fmt(dNuevo.monto)+' devuelto a '+_cpFuenteLabel(dNuevo.gastoCajita), dNuevo.monto, 'ingreso');
+        if(window.logCambio) logCambio('Revertiste pago de '+dNuevo.desc, fmt(dNuevo.monto)+' devuelto a '+fuenteTexto(dNuevo.gastoCajita), dNuevo.monto, 'ingreso');
       } catch(e){ console.warn('[CP] Error revirtiendo pago cajita:', e); }
     }
     // Detectar si un gasto con TC pasó de false→true (acaba de marcar "ya lo cargué a la TC")
@@ -1717,7 +1713,7 @@ async function _cpEliminar(id){
     if(fechaRef){
       cuentasAfectadas.forEach(c=>{
         let ops=0;
-        if(c.startsWith('tc:')){
+        if(Fuente.esTC(c)){
           const tc=(S.tarjetasCredito||[]).find(x=>x.id===c.slice(3));
           if(tc && typeof _tcOpsPosteriores==='function') ops=_tcOpsPosteriores(tc,fechaRef,null);
         } else if(typeof _cuentaOpsPosteriores==='function'){
@@ -1774,7 +1770,7 @@ async function _cpEliminar(id){
           if(d.tipo==='reposicion'){
             const cuenta = d.cuentaId || item.cuentaDestino;
             if(cuenta && typeof descontarFuente==='function'){
-              if(cuenta.startsWith('cajita:')){
+              if(Fuente.esCajita(cuenta)){
                 const caj=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
                 if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
               }
@@ -1788,7 +1784,7 @@ async function _cpEliminar(id){
               if(_compraVieja) tcEliminarCompraInterna(tc, _compraVieja.id);
               // También revertir la cajita a la que se movió la plata para pagar TC
               if(d.gastoTcCajita && typeof descontarFuente==='function'){
-                if(d.gastoTcCajita.startsWith('cajita:')){
+                if(Fuente.esCajita(d.gastoTcCajita)){
                   const caj=(S.cajitas||[]).find(x=>x.id===d.gastoTcCajita.split(':')[1]);
                   if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
                 }
@@ -1798,7 +1794,7 @@ async function _cpEliminar(id){
           } else if(d.tipo==='gasto' && d.gastoOrigen==='cajita' && d.gastoCajita){
             // Revertir la reposición del gasto de cajita
             if(typeof descontarFuente==='function'){
-              if(d.gastoCajita.startsWith('cajita:')){
+              if(Fuente.esCajita(d.gastoCajita)){
                 const caj=(S.cajitas||[]).find(x=>x.id===d.gastoCajita.split(':')[1]);
                 if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
               }
@@ -1838,7 +1834,7 @@ async function _cpEliminar(id){
           if(d.tipo==='reposicion' && d.yaSaque){
             const cuenta = d.cuentaId || item.cuentaDestino;
             if(cuenta && typeof sumarFuente==='function'){
-              if(cuenta.startsWith('cajita:')){
+              if(Fuente.esCajita(cuenta)){
                 const caj=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
                 if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
               }
@@ -1920,7 +1916,7 @@ async function _cpEliminar(id){
       ).forEach(d => {
         const diasG = Fecha.diasEntre(hoyStr, d.fechaPago);
         let txtG = '', tipoG = '';
-        const cajLabelG = typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita;
+        const cajLabelG = fuenteTexto(d.gastoCajita);
         if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='red'; }
         else if(diasG === 0){ txtG = html`¡Hoy hay que pagar "${d.desc}"! Tienes ${fmt(d.monto)} guardado`; tipoG='amber'; }
         else if(diasG === 1){ txtG = html`Mañana vence "${d.desc}" — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='amber'; }

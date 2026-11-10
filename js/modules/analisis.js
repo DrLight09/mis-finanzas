@@ -702,7 +702,7 @@ let cbSplitMode=false;
 crearSplitWidget('cb',{
   simpleId:'cbModoSimple',splitId:'cbModoDividido',toggleId:'cbSplitToggle',rowsId:'cbSplitRows',
   getModo:()=>cbSplitMode,setModo:v=>{cbSplitMode=v;},
-  getFuentesFn:selectedVal=>buildFuentesOptsHtml({selectedVal,placeholder:'No especificar',incluirTC:false}),
+  getFuentesFn:selectedVal=>opcionesCuenta({selectedVal,placeholder:'No especificar'}),
   onPreview:()=>actualizarCbPreview(),
 });
 
@@ -749,7 +749,7 @@ function abrirCobroIngresoFijo(id){
   document.getElementById('cbPreview').textContent='';
   splitReset('cb');
   document.getElementById('cbSplitToggle').style.display='';
-  document.getElementById('cbDestino').innerHTML=buildFuentesOptsHtml({placeholder:'No especificar / lo gasté',incluirTC:false});
+  document.getElementById('cbDestino').innerHTML=opcionesCuenta({placeholder:'No especificar / lo gasté'});
   actualizarCbAvisoMes();
   actualizarCbPreview();
   openSheet('cobro-ingreso');

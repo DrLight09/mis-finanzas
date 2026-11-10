@@ -100,7 +100,7 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
       });
       // Una fila por cajita específica
       Object.entries(mapRaw).forEach(([k, v]) => {
-        if (v > 0 && k && k.startsWith('cajita:') && cajitasPropias.has(k.split(':')[1])) {
+        if (v > 0 && k && Fuente.esCajita(k) && cajitasPropias.has(k.split(':')[1])) {
           filas.push({ enc, cajitaId: k.split(':')[1], saldoEncargo: v });
         }
       });
@@ -394,7 +394,7 @@ function _pintarEncargoDetalle(id) {
           const lbl = k === '__sin__' ? 'Sin especificar' : fuenteLabel(k);
           const pct = saldo > 0 ? Math.round(v/saldo*100) : 0;
           // Si está en una cajita de ahorro, calcular interés diario que genera (es mío)
-          const esCajita = k && k.startsWith('cajita:');
+          const esCajita = k && Fuente.esCajita(k);
           const interesMio = esCajita ? v * tasaDiariaDe(k) : 0;
           return html`<div class="enc-int-cab">
             <div>
@@ -777,7 +777,7 @@ const _dif_movenc = diffRegistrarInstancia('movenc', {
 const _sp_movencDifMi = crearSplitWidget('movencDifMi', {
   simpleId: 'movenc_dif_mi_simple', splitId: 'movenc_dif_mi_split', toggleId: 'movenc_dif_mi_toggle', rowsId: 'movencDifMiRows',
   getModo: () => _difMiSplitMode, setModo: v => { _difMiSplitMode = v; },
-  getFuentesFn: sel => buildFuentesOptsHtml({ selectedVal: sel, incluirTC: false, placeholder: 'Elegir cuenta' }),
+  getFuentesFn: sel => opcionesCuenta({ selectedVal: sel, placeholder: 'Elegir cuenta' }),
   onPreview: () => _difMiSplitPreview()
 });
 
@@ -1033,7 +1033,7 @@ function _crearSplitSobrante(instId, key, ids) {
   crearSplitWidget(key, {
     simpleId: ids.simple, splitId: ids.split, toggleId: ids.toggle, rowsId: ids.rows,
     getModo: () => modo, setModo: v => { modo = v; },
-    getFuentesFn: sel => buildFuentesOptsHtml({ selectedVal: sel, incluirTC: false, placeholder: 'Elegir cuenta' }),
+    getFuentesFn: sel => opcionesCuenta({ selectedVal: sel, placeholder: 'Elegir cuenta' }),
     onPreview: () => ctl.preview()
   });
   return ctl;
@@ -1367,7 +1367,7 @@ function abrirMovEncargo(tipo) {
     // Entrada: mostrar fuentes reales (sin TC — no se puede guardar plata ajena en una TC)
     const fuentes = getFuentesSinTC();
     // FIX (2026-08-15): f.val/f.label sin escapar — mismo patrón que ya se
-    // corrigió en buildFuentesOptsHtml() (core-state.js), pero esta es una
+    // corrigió en opcionesCuenta() (core-state.js), pero esta es una
     // segunda implementación separada que nunca pasaba por escHtml(). Nombres
     // de cuenta personalizada son texto libre del usuario. Ver CHANGELOG.md.
     sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
@@ -2407,7 +2407,7 @@ function _moverEncGetFuentesOptions(selectedVal) {
   if (!enc) return html`<option value="">Elige cuenta</option>`;
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc).filter(c => FuentesFiltro.puedeRecibir(c.cuenta));
   const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
-  // Construido a mano (no vía buildFuentesOptsHtml) a propósito: ese helper
+  // Construido a mano (no vía opcionesCuenta) a propósito: ese helper
   // usa "Sin especificar" como texto neutro de "nada elegido todavía" (value=""),
   // que acá chocaba con nuestra opción real "Sin especificar (bucket con plata
   // del encargo)" — dos opciones con el mismo nombre pero significados
@@ -2815,7 +2815,7 @@ function abrirNuevoEncargo() {
     // FIX (2026-08-15, reportado por el usuario vía warning de consola
     // "select tag was parsed within another select tag"): f.val/f.label sin
     // escapar acá — mismo patrón que las otras 3 ocurrencias de este bug en
-    // este archivo (líneas ~1175/1184/1186) y que buildFuentesOptsHtml() en
+    // este archivo (líneas ~1175/1184/1186) y que opcionesCuenta() en
     // core-state.js. Nombres de cuenta personalizada son texto libre del
     // usuario — con caracteres como <, >, & sin escapar dentro del
     // innerHTML de un <select>, el parser del navegador puede comportarse

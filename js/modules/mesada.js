@@ -19,7 +19,7 @@
    existen en `window`:
      - El núcleo compartido: S, save, refresh, escHtml, fmt, fmtInput,
        parseMoney, hoy, uid, toast, openSheet, closeSheet, dialogo,
-       buildFuentesOptsHtml, fuenteLabel, fuenteBadgeClass, getSaldoFuente,
+       opcionesCuenta, fuenteLabel, fuenteBadgeClass, getSaldoFuente,
        sumarFuente, descontarFuente, MC, nivelAntiguedadMovimiento,
        avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, html/raw.
      - js/core/calc-helpers.js: _ensureMesadas, getMesadaData, _getCuotaAnio,
@@ -592,18 +592,14 @@ function cambiarAnio(d) {
 crearSplitWidget('mp', {
   simpleId: 'mpModoSimple', splitId: 'mpModoDividido', toggleId: 'mpSplitToggle', rowsId: 'mpSplitRows',
   getModo: () => mpSplitMode, setModo: v => { mpSplitMode = v; },
-  getFuentesFn: getFuentesOptions,
+  getFuentesFn: selectedVal => opcionesCuenta({ selectedVal, placeholder: 'No especificar' }),
   onPreview: () => actualizarMpPreview(),
 });
-
-function getFuentesOptions(selectedVal) {
-  return buildFuentesOptsHtml({ selectedVal, placeholder: 'No especificar', incluirTC: false });
-}
 
 // <select> de destino: cuentas rastreables (sin TC: es plata que entra) + "no especificar".
 function _poblarDestinoMesada(selectId) {
   const sel = _msEl(selectId);
-  if (sel) sel.innerHTML = buildFuentesOptsHtml({ placeholder: 'No especificar / lo gasté', incluirTC: false });
+  if (sel) sel.innerHTML = opcionesCuenta({ placeholder: 'No especificar / lo gasté'});
 }
 
 // La Mesada cuenta como ingreso del mes en que te la PAGAN (la fecha), no del mes que cubre (la clave del pago). Si son

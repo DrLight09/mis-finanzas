@@ -7,7 +7,7 @@
 // conocidos, revisar función por función). Eso nunca cierra el hallazgo de
 // raíz — solo lo reduce hasta la próxima vez que se agregue un campo de
 // texto libre nuevo o se lo envuelva en una función auxiliar nueva
-// (spNombreDe, fuenteLabel, _cpFuenteLabel... ya pasó con las tres).
+// (spNombreDe, fuenteLabel... ya pasó con las dos; por eso hoy hay fuenteTexto/fuenteHtml explícitas).
 //
 // Este archivo no reemplaza escHtml() (sigue existiendo en core-state.js,
 // se sigue usando igual en sitios que arman un string suelto, no un

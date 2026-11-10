@@ -14,11 +14,11 @@
    diffInst, diffReset, diffToggle, diffEstaAbierto, diffAddParte, diffRemoveParte,
    diffSetNombre, diffSetMonto, diffTogglePagoYo, diffSetCuentaSalida, diffSetCuentaEntrada).
    Se carga justo después de js/core/events.js — ver ese archivo para el detalle completo,
-   incluida la nota de por qué se carga tan temprano. buildFuentesOptsHtml() se queda acá
+   incluida la nota de por qué se carga tan temprano. _buildFuentesOpts() (privada) se queda acá
    abajo: es canónica y la usan muchos módulos más, no es exclusiva de este motor. ---- */
 
 /**
- * buildFuentesOptsHtml — función canónica para generar <option>s de fuentes.
+ * _buildFuentesOpts — constructor interno de <option>s de fuentes (privado: las pantallas usan opcionesCuenta, más abajo).
  * Reemplaza: getFuentesOptions, _diffFuentesOptsHtml, poblarFuente,
  *            _cpPoblarCuentas (y sirve de base para las variantes de encargos).
  *
@@ -31,7 +31,7 @@
  * @param {Array}   [opts.fuentesCustom=null]      Lista custom (ej: cuentas de encargo).
  *                  Cada item debe tener { val, label } o { cuenta, label, saldo }.
  */
-function buildFuentesOptsHtml({
+function _buildFuentesOpts({
   selectedVal = '',
   soloConSaldo = false,
   incluirTC = true,
@@ -62,16 +62,17 @@ function buildFuentesOptsHtml({
 
 /**
  * opcionesCuenta — LA función para «¿de qué cuenta?» / «¿a qué cuenta?» (A2). Cada pantalla declara su configuración en vez de escribir
- * su propia función de <option>s; todas pasan por buildFuentesOptsHtml (escapa) o FuentesFiltro (filtra por saldo/cupo).
+ * su propia función de <option>s; todas pasan por _buildFuentesOpts (escapa) o FuentesFiltro (filtra por saldo/cupo).
  *   sentido        'sale' (plata que SALE: cuentas con saldo ≥ $1 y tarjetas con cupo) | null (plata que ENTRA o sin filtro de saldo)
  *   preset         clave de FuentesFiltro.PRESET si no es la de salida ('SPOTIFY': saldo ≥ $50)
  *   tarjetas       incluir tarjetas de crédito (por defecto no: solo se piden cuando la plata sale con tarjeta)
  *   soloDe         lista { cuenta, label, saldo } a ofrecer en lugar de todas (p. ej. las cuentas de un encargo); [] = ninguna, null = todas
  *   mostrarSaldo   «Nombre ($saldo)»
+ *   soloConSaldo   ofrecer solo las que tienen saldo > 0 (sin el filtro de $1 ni cupo de 'sale')
  *   placeholder / placeholderDeshabilitado / sinOpcionesTexto
  *   extra          HTML de opciones al final, o función (selectedVal) → HTML (p. ej. «Ganancia (no salió plata)» de préstamos)
  */
-function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarjetas = false, soloDe = null, mostrarSaldo = false,
+function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarjetas = false, soloDe = null, mostrarSaldo = false, soloConSaldo = false,
   placeholder, placeholderDeshabilitado = false, sinOpcionesTexto, extra = '' } = {}) {
   const hayCustom = Array.isArray(soloDe); // `soloDe: []` = «ninguna» (solo el placeholder); `null` = todas
   let out;
@@ -81,10 +82,10 @@ function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarje
     if (sinOpcionesTexto !== undefined) base.sinOpcionesTexto = sinOpcionesTexto;
     out = FuentesFiltro.optsHtml(tarjetas ? getFuentes() : getFuentesSinTC(), base);
   } else {
-    const o = { selectedVal, incluirTC: tarjetas, mostrarSaldo, placeholderDeshabilitado };
+    const o = { selectedVal, incluirTC: tarjetas, mostrarSaldo, soloConSaldo, placeholderDeshabilitado };
     if (placeholder !== undefined) o.placeholder = placeholder;
     if (hayCustom) o.fuentesCustom = soloDe;
-    out = buildFuentesOptsHtml(o);
+    out = _buildFuentesOpts(o);
   }
   return out + (typeof extra === 'function' ? extra(selectedVal) : extra);
 }
@@ -360,7 +361,7 @@ const Libro = (() => {
   let _seq = 0, _ctx = null;
   const _arr = x => (Array.isArray(x) ? x : []);
   const _id = () => 'l' + Date.now().toString(36) + (_seq++).toString(36);
-  const esCuenta = k => typeof k === 'string' && (esFuenteCuenta(k) || k.startsWith('cajita:'));
+  const esCuenta = k => typeof k === 'string' && (esFuenteCuenta(k) || Fuente.esCajita(k));
 
   function _cuentasDe(st) {
     const out = {};
@@ -436,7 +437,7 @@ const _libroPata = (fuente, monto, opts) => Libro.registrar(fuente, monto, opts)
 // Fija el saldo de una cuenta a `nuevoSaldo` (intereses de Nu, chequeo rápido, CDT…) y registra la DIFERENCIA en el
 // libro. Devuelve esa diferencia. Es la única forma permitida de asignar un saldo "absoluto".
 function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
-  const c=fuente.startsWith('cajita:')?(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]):getCuentaDeFuente(fuente);
+  const c=Fuente.esCajita(fuente)?(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]):getCuentaDeFuente(fuente);
   if(!c||esCuentaAhorro(c))return 0;
   const delta=nuevoSaldo-(c.saldo||0);
   c.saldo=nuevoSaldo;
@@ -455,7 +456,7 @@ function descontarFuente(fuente,monto,opts){
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
     if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)-monto;_libroPata(fuente,-monto,opts);return true;}
-  } else if(fuente.startsWith('cajita:')){
+  } else if(Fuente.esCajita(fuente)){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c){
@@ -474,7 +475,7 @@ function descontarFuente(fuente,monto,opts){
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
       return true;
     }
-  } else if(fuente.startsWith('tc:')){
+  } else if(Fuente.esTC(fuente)){
     // Para TC: descontar = hacer una compra = aumentar la deuda
     const id=fuente.split(':')[1];
     const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
@@ -487,7 +488,7 @@ function sumarFuente(fuente,monto,opts){
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
     if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)+monto;_libroPata(fuente,monto,opts);return true;}
-  } else if(fuente.startsWith('cajita:')){
+  } else if(Fuente.esCajita(fuente)){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c){
@@ -498,7 +499,7 @@ function sumarFuente(fuente,monto,opts){
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
       return true;
     }
-  } else if(fuente.startsWith('tc:')){
+  } else if(Fuente.esTC(fuente)){
     // Para TC: sumar = revertir compra = disminuir la deuda
     const id=fuente.split(':')[1];
     const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
@@ -532,8 +533,8 @@ const Plata=(()=>{
     if(!f)return null;
     if(f==='ganancia'||f==='alcancia')return'virtual';
     if(esFuenteCuenta(f))return'cuenta';
-    if(f.startsWith('cajita:'))return'cajita';
-    if(f.startsWith('tc:'))return'tc';
+    if(Fuente.esCajita(f))return'cajita';
+    if(Fuente.esTC(f))return'tc';
     return null;
   };
   function disponibilidad(fuente,opts){
@@ -594,7 +595,7 @@ const Plata=(()=>{
     if(!fuente)return{texto:'',ok:true};
     const v=validarSalida(fuente,monto>0?monto:0.01);
     const disp=getSaldoFuente(fuente);
-    return{texto:(fuente.startsWith('tc:')?'Cupo disponible: ':'Saldo disponible: ')+fmt(disp),ok:monto>0?v.ok:true};
+    return{texto:(Fuente.esTC(fuente)?'Cupo disponible: ':'Saldo disponible: ')+fmt(disp),ok:monto>0?v.ok:true};
   }
   function transferir(origen,destino,monto,opts){
     const o=opts||{};
@@ -634,23 +635,57 @@ function _listaFuentes(incluirTC){
 function getFuentes(){return _listaFuentes(true);}
 function getFuentesSinTC(){return _listaFuentes(false);}
 
-function fuenteLabel(val){
+/* ---- CÓDIGO DE FUENTE: Fuente.parsear y etiquetas ----
+   Una «fuente» es el código de dónde sale o a dónde entra la plata: '' (sin especificar), 'alcancia', 'ganancia' (plata virtual),
+   'cuenta:ID', 'cajita:ID' o 'tc:ID'. El prefijo se interpreta SOLO acá (Fuente.*), nunca con startsWith/split en cada módulo.
+     Fuente.parsear(val) → { tipo: 'vacia'|'alcancia'|'ganancia'|'cuenta'|'cajita'|'tc'|'otra', id }
+     Fuente.esCuenta / esCajita / esTC(val) · Fuente.id(val) (la parte tras «:») · Fuente.de(tipo, id) (arma el código)
+   Etiquetas (contrato explícito, ya no depende del contexto):
+     fuenteTexto(val) → SIEMPRE texto plano. Usar con textContent, toast, logCambio o dentro de html`` (que lo escapa).
+     fuenteHtml(val)  → SIEMPRE HTML seguro (texto escapado; 'ganancia' lleva su ícono). Solo para armar strings de HTML a mano
+                        o dentro de raw(); en html`` usar ${raw(fuenteHtml(v))}.
+     fuenteLabel(val) → alias de fuenteTexto (compatibilidad). */
+const Fuente = (() => {
+  const PREFIJOS = { cuenta: 'cuenta:', cajita: 'cajita:', tc: 'tc:' };
+  const tipoDe = val => {
+    if (!val || typeof val !== 'string') return 'vacia';
+    if (val === 'alcancia' || val === 'ganancia') return val;
+    for (const t in PREFIJOS) if (val.startsWith(PREFIJOS[t])) return t;
+    return 'otra';
+  };
+  return {
+    parsear: val => { const tipo = tipoDe(val); return { tipo, id: PREFIJOS[tipo] ? val.slice(PREFIJOS[tipo].length) : '' }; },
+    tipo: tipoDe,
+    esCuenta: val => tipoDe(val) === 'cuenta',
+    esCajita: val => tipoDe(val) === 'cajita',
+    esTC: val => tipoDe(val) === 'tc',
+    id: val => { const t = tipoDe(val); return PREFIJOS[t] ? val.slice(PREFIJOS[t].length) : ''; },
+    de: (tipo, id) => (PREFIJOS[tipo] || '') + id,
+  };
+})();
+if (typeof window !== 'undefined') window.Fuente = Fuente;
+
+function fuenteTexto(val){
   if(!val)return'Sin especificar';
   if(val==='alcancia')return'Alcancía';
-  if(val==='ganancia')return'<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg> Ganancia (no desembolsada)';
-  if(esFuenteCuenta(val))return nombreCuenta(getCuentaDeFuente(val));
-  if(val.startsWith('cajita:')){
-    const id=val.split(':')[1];
-    const c=(S.cajitas||[]).find(x=>x.id===id);
+  if(val==='ganancia')return'Ganancia (no desembolsada)';
+  const f=Fuente.parsear(val);
+  if(f.tipo==='cuenta')return nombreCuenta(getCuentaDeFuente(val));
+  if(f.tipo==='cajita'){
+    const c=(S.cajitas||[]).find(x=>x.id===f.id);
     return c?c.nombre+' ('+nombreCuenta(cuentaDeCajita(c))+')':'Cajita eliminada';
   }
-  if(val.startsWith('tc:')){
-    const id=val.split(':')[1];
-    const tc=(S.tarjetasCredito||[]).find(x=>x.id===id);
+  if(f.tipo==='tc'){
+    const tc=(S.tarjetasCredito||[]).find(x=>x.id===f.id);
     return tc?tc.nombre:'Tarjeta de crédito';
   }
   return val;
 }
+const _ICONO_GANANCIA='<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
+function fuenteHtml(val){
+  return val==='ganancia' ? _ICONO_GANANCIA+' Ganancia (no desembolsada)' : escHtml(fuenteTexto(val));
+}
+function fuenteLabel(val){ return fuenteTexto(val); }
 
 /* Clase de «badge» de una fuente. Cada cuenta tiene su propio color, así que la clase se genera por cuenta (bg-cta-<id>) y su regla
    se inyecta una sola vez en <style id="badges-cuentas">: los sitios que escriben class="badge ${fuenteBadgeClass(f)}" no cambian. */
@@ -674,15 +709,15 @@ function fuenteBadgeClass(val){
   if(!val)return'bg-blue';
   if(val==='ganancia')return'bg-green';
   if(esFuenteCuenta(val)){const c=getCuentaDeFuente(val);return c?_clasePorCuenta(c):'bg-blue';}
-  if(val.startsWith('cajita:')){const c=cuentaDeCajita((S.cajitas||[]).find(x=>x.id===val.split(':')[1]));return c?_clasePorCuenta(c):'bg-blue';}
-  if(val.startsWith('tc:'))return'bg-red';
+  if(Fuente.esCajita(val)){const c=cuentaDeCajita((S.cajitas||[]).find(x=>x.id===val.split(':')[1]));return c?_clasePorCuenta(c):'bg-blue';}
+  if(Fuente.esTC(val))return'bg-red';
   return'bg-blue';
 }
 
 function poblarFuente(selectId, required=false, incluirTC=true){
   const sel=document.getElementById(selectId);
   if(!sel)return;
-  sel.innerHTML=buildFuentesOptsHtml({ placeholder: required ? 'Seleccionar cuenta' : 'Sin especificar', incluirTC });
+  sel.innerHTML=opcionesCuenta({ placeholder: required ? 'Seleccionar cuenta' : 'Sin especificar', tarjetas: incluirTC });
 }
 
 function getSaldoFuente(fuente){
@@ -692,12 +727,12 @@ function getSaldoFuente(fuente){
     if(!c)return 0;
     return esCuentaAhorro(c)?ahorroTotal(c.id):(c.saldo||0);
   }
-  if(fuente.startsWith('cajita:')){
+  if(Fuente.esCajita(fuente)){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     return c?calcC(c).val:0;
   }
-  if(fuente.startsWith('tc:')){
+  if(Fuente.esTC(fuente)){
     // TC: retornar el cupo disponible real (cupo - deuda).
     // Si la TC no tiene cupo configurado, retornar Infinity para no bloquear
     // (el gasto en TC no descuenta plata real, solo aumenta la deuda).

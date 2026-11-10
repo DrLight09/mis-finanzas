@@ -42,7 +42,7 @@ function _espejoLista(cuenta, flujo, crear) {
   if (!cuenta || typeof cuenta !== 'string') return null;
   const entra = flujo !== 'salida';
   const existe = (esFuenteCuenta(cuenta) && !!getCuentaDeFuente(cuenta))
-    || (cuenta.startsWith('cajita:') && !!(S.cajitas || []).find(x => x.id === cuenta.split(':')[1]));
+    || (Fuente.esCajita(cuenta) && !!(S.cajitas || []).find(x => x.id === cuenta.split(':')[1]));
   if (!existe) return null;
   if (!S.movimientos) { if (!crear) return null; S.movimientos = []; }
   return { lista: S.movimientos, tipo: entra ? 'entrada' : 'salida', campoTexto: 'desc', conFuente: true };

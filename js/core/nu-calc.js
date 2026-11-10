@@ -375,7 +375,7 @@ function cajitasChequeables(cuentaId){
 }
 
 function getCajitaNombre(fuente) {
-  if (!fuente || !fuente.startsWith('cajita:')) return null;
+  if (!fuente || !Fuente.esCajita(fuente)) return null;
   const id = fuente.split(':')[1];
   const c = (S.cajitas || []).find(x => x.id === id);
   return c ? (c.nombre || 'Cajita') : null;

@@ -38,7 +38,7 @@
    S, save, refresh, escHtml, fmt, fmtInput, parseMoney, uid, hoy,
    toast, dialogo, openSheet, closeSheet, showScreen, sumarFuente,
    descontarFuente, getFuentesSinTC, getFuentes, fuenteLabel,
-   fuenteLabel2, fuenteBadgeClass, poblarFuente, buildFuentesOptsHtml,
+   fuenteBadgeClass, poblarFuente, opcionesCuenta,
    abrirDetalleMov, logCambio, _markError, calcC — y del motor
    genérico de diferencial (diffRegistrarInstancia/diffToggle/
    diffResumen/diffReset/diffEstaAbierto/diffCalcular/diffAplicar) y
@@ -139,7 +139,7 @@ function _updatePrestSplitResumen(){
     </div>`);
   }
   splitData.forEach(r=>{
-    if(!r.fuente || !r.fuente.startsWith('cajita:') || !r.monto) return;
+    if(!r.fuente || !Fuente.esCajita(r.fuente) || !r.monto) return;
     const cajitaId = r.fuente.split(':')[1];
     const c = (S.cajitas||[]).find(x=>x.id===cajitaId);
     if(!c || !c.meta || typeof calcC!=='function') return;
@@ -548,16 +548,16 @@ function abrirDeudor(id) {
       } else if (m._viaAlcancia) {
         destinoInfo = html` <span class="pr-chip pr-chip-amber"><i class="fa-solid fa-arrow-right"></i> Alcancía</span>`;
       } else if (m.destinos && m.destinos.length) {
-        destinoInfo = html` ${arrowSvg} ${raw(m.destinos.map(r => _fuenteLabelHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + '))}`;
+        destinoInfo = html` ${arrowSvg} ${raw(m.destinos.map(r => fuenteHtml(r.fuente) + ' ' + fmt(r.monto)).join(' + '))}`;
       } else if (m.destino) {
-        destinoInfo = html` ${arrowSvg} ${raw(_fuenteLabelHtml(m.destino))}`;
+        destinoInfo = html` ${arrowSvg} ${raw(fuenteHtml(m.destino))}`;
       }
       // Extra parts breakdown
       let extraHtml = '';
       if (!esPrestamo && m._extPartes && m._extPartes.length) {
         const extraTotal = m._extPartes.reduce((a,p)=>a+(p.monto||0),0);
         const partesTexto = m._extPartes.map(p => {
-          if (p.tipo === 'guardar') return `${_fuenteLabelHtml(p.cuenta)} ${fmt(p.monto)}`;
+          if (p.tipo === 'guardar') return `${fuenteHtml(p.cuenta)} ${fmt(p.monto)}`;
           if (p.tipo === 'gastar') return `Gasto ${fmt(p.monto)}`;
           if (p.tipo === 'regalar') return `Regalo ${fmt(p.monto)}`;
           if (p.tipo === 'pendiente') return `Sin asignar ${fmt(p.monto)}`;
@@ -587,7 +587,7 @@ function abrirDeudor(id) {
               ${m._viaTC ? html` <span class="pr-chip pr-chip-blue">TC${m._tcId ? ' · ' + ((S.tarjetasCredito||[]).find(t=>t.id===m._tcId)||{nombre:''}).nombre : ''}</span>` : ''}
               ${m.nota ? html` <span class="pr-nota">${m.nota}</span>` : ''}
             </div>
-            <div class="pr-fecha pr-mt-3">${m.fecha}${m._viaTC ? '' : raw(m.fuentes ? ' · ' + m.fuentes.map(f=>_fuenteLabelHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + _fuenteLabelHtml(m.fuente) : ''))}${destinoInfo}</div>
+            <div class="pr-fecha pr-mt-3">${m.fecha}${m._viaTC ? '' : raw(m.fuentes ? ' · ' + m.fuentes.map(f=>fuenteHtml(f.fuente)+' '+fmt(f.monto)).join(' + ') : (m.fuente ? ' · ' + fuenteHtml(m.fuente) : ''))}${destinoInfo}</div>
             ${extraHtml}
             ${esPrestamo && m.diferencial && !m._viaTC ? raw(diffRenderHistorial(m.diferencial)) : ''}
           </div>
@@ -1328,7 +1328,7 @@ function _planAbonoEncargo(base) {
     for (const cuenta in porCuenta) {
       const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
       if (porCuenta[cuenta] > saldoEnCuenta + Deudas.TOL_FINO) {
-        return _planErr(`En ${_fuenteLabelHtml(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`);
+        return _planErr(`En ${fuenteHtml(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`);
       }
     }
     encCuentaSplits = Object.entries(porCuenta).map(([fuente, m]) => ({ fuente, monto: m }));
@@ -1336,7 +1336,7 @@ function _planAbonoEncargo(base) {
     const esSinEsp = _abonoEncCuenta === '__sinesp__';
     const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
     if (monto > saldoEnCuenta + Deudas.TOL_FINO) {
-      return _planErr(`En ${esSinEsp ? 'la parte sin especificar' : _fuenteLabelHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`);
+      return _planErr(`En ${esSinEsp ? 'la parte sin especificar' : fuenteHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`);
     }
   }
   // Extra: reparto y saldo del encargo para abono + extra (saldo antes de cualquier escritura)
@@ -1350,7 +1350,7 @@ function _planAbonoEncargo(base) {
       const esSinEsp2 = _abonoEncCuenta === '__sinesp__';
       const saldoEnCuenta2 = esSinEsp2 ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
       if (monto + ex.extraMonto > saldoEnCuenta2 + Deudas.TOL_FINO) {
-        return _planErr(`En ${esSinEsp2 ? 'la parte sin especificar' : _fuenteLabelHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 4500);
+        return _planErr(`En ${esSinEsp2 ? 'la parte sin especificar' : fuenteHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 4500);
       }
     }
   }
@@ -1532,10 +1532,6 @@ function _confirmarMovimientoInterno() {
   }
 }
 
-function fuenteLabel2(f){ return f ? fuenteLabel(f) : '—'; }
-
-// _fuenteLabelHtml() vive en js/core/movimientos.js (núcleo, eager, carga
-// antes que este módulo) — estaba redefinida acá idéntica, byte a byte.
 
 /* ── ABONO: desde un encargo ──────────────────────────────────────── */
 function toggleDesdeEncargo() {
@@ -1944,7 +1940,7 @@ function abrirMiDeuda(id) {
               <span class="badge badge-xs ${esRecibido ? 'bg-amber' : esPerdon ? 'bg-blue' : 'bg-green'}">${esRecibido ? 'Me prestó' : esPerdon ? 'Perdonada' : 'Pago'}</span>
               ${m.nota ? html` <span class="pr-nota">${m.nota}</span>` : ''}
             </div>
-            <div class="pr-fecha pr-mt-3">${m.fecha}${cuentasRef.length ? raw(' · ' + cuentasRef.map(_fuenteLabelHtml).join(' + ')) : ''}</div>
+            <div class="pr-fecha pr-mt-3">${m.fecha}${cuentasRef.length ? raw(' · ' + cuentasRef.map(fuenteHtml).join(' + ')) : ''}</div>
             ${m.extra ? html`<div class="pr-extra-aviso">Pagaste de más ${fmt(m.extra.monto)} · queda como gasto</div>` : ''}
           </div>
           <div class="pr-der">
@@ -2079,7 +2075,7 @@ function abrirMovMiDeuda(tipo) {
   // 'recibido' = plata que entra (sin tarjetas ni filtro de saldo); 'pago' = plata que sale: cuentas con
   // saldo >= $1,00 y tarjetas de crédito con cupo disponible (el pago queda como deuda de la tarjeta).
   sel.innerHTML = tipo === 'recibido'
-    ? buildFuentesOptsHtml({ incluirTC: false })
+    ? opcionesCuenta({})
     : FuentesFiltro.optsHtml(getFuentes(), FuentesFiltro.PRESET.SALIDA);
   _mdEl('md_monto').value = '';
   _mdEl('md_fecha').value = hoy();
@@ -2129,12 +2125,12 @@ function _planMovMiDeuda() {
       cuentas = [{ cuenta: cuentaSimple, monto: total }];
     }
     // Una tarjeta nunca es destino de plata que entra (regla del proyecto).
-    if (tipo === 'recibido' && cuentas.some(c => c.cuenta.startsWith('tc:'))) return _planErr('Una tarjeta de crédito no puede recibir plata');
+    if (tipo === 'recibido' && cuentas.some(c => Fuente.esTC(c.cuenta))) return _planErr('Una tarjeta de crédito no puede recibir plata');
     if (tipo === 'pago') {
       for (const c of cuentas) {
         const disponible = getSaldoFuente(c.cuenta); // en una tarjeta es el cupo disponible
         if (c.monto > disponible + Deudas.TOL_FINO) {
-          return _planErr(c.cuenta.startsWith('tc:')
+          return _planErr(Fuente.esTC(c.cuenta)
             ? `Cupo insuficiente en ${escHtml(fuenteLabel(c.cuenta))} — disponible: ${fmt(disponible)}`
             : `En ${escHtml(fuenteLabel(c.cuenta))} solo hay ${fmt(disponible)}`);
         }
@@ -2155,7 +2151,7 @@ function _aplicarMovMiDeuda(p) {
   const movId = uid();
   const efectos = cuentas.map(c => {
     if (entra) sumarFuente(c.cuenta, c.monto, _og(movId)); else descontarFuente(c.cuenta, c.monto, _og(movId));
-    if (c.cuenta.startsWith('tc:')) {
+    if (Fuente.esTC(c.cuenta)) {
       // Pago con tarjeta: sube la deuda de la TC. descontarFuente ya la subió; falta el cargo que la respalda
       // (tcRecalcular reconstruye tc.deuda desde sus registros en cada refresh). Es deuda PROPIA, no ajena.
       const tcMovId = uid();
@@ -2226,7 +2222,7 @@ function _revertirMovMiDeudaImpl(m) {
   else filas = (m.fuentes && m.fuentes.length) ? m.fuentes : (m.fuente ? [{ fuente: m.fuente, monto: total, _movId: m._movSecId, _tcMovId: m._tcMovId }] : []);
   filas.forEach(r => {
     if (!r.fuente) return;
-    if (r.fuente.startsWith('tc:')) {
+    if (Fuente.esTC(r.fuente)) {
       // Pago con tarjeta: se quita el cargo y baja la deuda de la TC. Si el cargo ya no existe, no se resta otra vez.
       const antes = (S.tcMovimientos || []).length;
       if (r._tcMovId) S.tcMovimientos = (S.tcMovimientos || []).filter(x => x.id !== r._tcMovId);
@@ -2465,7 +2461,7 @@ function _abonoEncCuentaSplitPreview() {
   if (!splits.length) { el.textContent = ''; return; }
   const total = splits.reduce((a, s) => a + (s.monto || 0), 0);
   const restante = monto - total;
-  const lines = raw(splits.map(s => `${s.fuente ? _fuenteLabelHtml(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · '));
+  const lines = raw(splits.map(s => `${s.fuente ? fuenteHtml(s.fuente) : 'Sin esp.'}: ${fmt(s.monto)}`).join(' · '));
 
   // Validar que ninguna cuenta del encargo se pase de lo que tiene guardado
   let excedeCuenta = false;

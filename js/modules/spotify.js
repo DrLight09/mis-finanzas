@@ -112,10 +112,10 @@ function abrirElegirFuenteSpotify(){
   const actual=getSpFuente();
   let sugerida='';
   if(!actual){
-    const cand=getFuentesSinTC().filter(x=>x.val.startsWith('cajita:')&&/spotify/i.test(x.label));
+    const cand=getFuentesSinTC().filter(x=>Fuente.esCajita(x.val)&&/spotify/i.test(x.label));
     if(cand.length===1)sugerida=cand[0].val;
   }
-  sel.innerHTML=buildFuentesOptsHtml({selectedVal:actual||sugerida,incluirTC:false,placeholder:'Ninguna (no mostrar saldo)'});
+  sel.innerHTML=opcionesCuenta({selectedVal:actual||sugerida,placeholder:'Ninguna (no mostrar saldo)'});
   const nota=document.getElementById('spFuenteSelNota');
   if(nota)nota.textContent=sugerida?'Te sugerimos esta cajita por su nombre. Confírmala con Guardar.':'La cuenta o cajita donde vas guardando lo que cobras para pagar Spotify.';
   openSheet('sp-fuente');
@@ -1283,7 +1283,7 @@ async function actualizarSpPagarPreview(){
   // Pagar con tarjeta de crédito es un CARGO (sube la deuda de la tarjeta), no un
   // retiro de saldo de una cuenta/cajita — por eso se muestra aparte, igual que en
   // ptcActualizarPreview() (tarjetas_credito.js) para el flujo inverso de "Pagar TC".
-  if(fuente&&fuente.startsWith('tc:')){
+  if(fuente&&Fuente.esTC(fuente)){
     if(!(await _spEnsureTC())){ fuenteInfo.textContent=''; prev.textContent=''; return; }
     const tc=getTCById(fuente.slice(3));
     if(tc){
@@ -1349,7 +1349,7 @@ async function confirmarPagarSpotify(){
     notaGasto+=' · dividido entre '+splits.map(s=>fuenteLabel(s.fuente)).join(', ');
   } else {
     fuente=document.getElementById('spPagarFuente').value;
-    if(fuente&&fuente.startsWith('tc:')){
+    if(fuente&&Fuente.esTC(fuente)){
       if(!(await _spEnsureTC())) return;
       // Pagar con tarjeta de crédito es un CARGO: sube la deuda de la tarjeta, no
       // descuenta el saldo de una cuenta/cajita. Mismo patrón que Encargos/Préstamos

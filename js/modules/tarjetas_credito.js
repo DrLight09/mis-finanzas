@@ -48,7 +48,7 @@
      cajita/cuenta personalizada) sin escapar
 
    Hallazgo colateral, fuera de alcance de esta sesión: el mismo
-   patrón (`f.label` sin escapar) existe en `buildFuentesOptsHtml()`,
+   patrón (`f.label` sin escapar) existe en `opcionesCuenta()`,
    función núcleo compartida por TODA la app (no solo por Tarjetas de
    Crédito) — no se tocó acá por el mismo criterio que ya aplicó la
    auditoría a `toast()`: cambiar una función compartida en medio de
@@ -1094,7 +1094,7 @@ Ui.en('fuente-alerta', function(prefix){
   const sel=document.getElementById(prefix+'_fuente')||document.getElementById(prefix+'fuente');
   if(!sel)return false;
   const val=sel.value;
-  if(!(val&&val.startsWith('tc:')))return false;
+  if(!(val&&Fuente.esTC(val)))return false;
   const id=val.split(':')[1];
   const tc=getTCById(id);
   const hint=document.getElementById(prefix+'_fuente_hint')||document.getElementById(prefix+'fuente_hint');

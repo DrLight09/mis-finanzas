@@ -59,8 +59,25 @@ describe('notificaciones — activar', () => {
     assert.equal(e.calls.getToken, 1); assert.equal(e.calls.setDoc, 1);
     assert.equal(e.sub(), 'Activadas en este dispositivo');
     assert.deepEqual(e.toasts.map(t => t.m), ['Notificaciones activadas']);
-    assert.equal(e.store.mf_push_ok, '1');
+    assert.equal(e.store.mf_push_ok, 'u1', 'la marca es de esta cuenta');
     assert.equal(e.calls.permisoPedido, 0, 'permiso ya concedido: no se vuelve a pedir');
+  });
+
+  test('si ya estaban activadas, tocar solo avisa: sin «Activando…», sin registrar y sin repetir el «activadas»', async () => {
+    const e = entorno({ getToken: async () => 'tok' });
+    await e.ctx.activarNotificaciones(); e.toasts.length = 0;
+    const p = e.ctx.activarNotificaciones();
+    assert.equal(e.sub(), 'Activadas en este dispositivo', 'el texto no vuelve a «Activando…»');
+    await p;
+    assert.equal(e.calls.getToken, 1); assert.equal(e.calls.setDoc, 1);
+    assert.deepEqual(e.toasts, [{ m: 'Las notificaciones ya están activadas en este dispositivo', t: 'info' }]);
+  });
+
+  test('otra cuenta en el mismo navegador sí se registra (el token se guarda por cuenta)', async () => {
+    const e = entorno({ getToken: async () => 'tok' });
+    e.store.mf_push_ok = 'otra-cuenta';
+    await e.ctx.activarNotificaciones();
+    assert.equal(e.calls.getToken, 1); assert.equal(e.store.mf_push_ok, 'u1');
   });
 
   test('«push service error» se reintenta una vez borrando la suscripción vieja y funciona', async () => {

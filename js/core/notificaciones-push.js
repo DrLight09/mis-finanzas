@@ -49,10 +49,13 @@ function _estadoPush(texto) {
   if (_textoOriginalPush === null) _textoOriginalPush = el.textContent;
   el.textContent = texto == null ? _textoOriginalPush : texto;
 }
-function _pushYaActivo() {
+// `uid`: si se pasa, solo cuenta como activo cuando la marca es de ESA cuenta (el token se guarda por cuenta, así que otra cuenta en
+// el mismo navegador sí debe registrarse). Sin `uid` (al abrir la app, aún sin sesión) basta con que haya marca.
+function _pushYaActivo(uid) {
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') { localStorage.removeItem('mf_push_ok'); return false; }
-    return localStorage.getItem('mf_push_ok') === '1';
+    const marca = localStorage.getItem('mf_push_ok');
+    return !!marca && (uid == null || marca === uid);
   } catch (_) { return false; }
 }
 function _refrescarEstadoPush() { if (_pushYaActivo()) _estadoPush('Activadas en este dispositivo'); }
@@ -102,6 +105,11 @@ async function activarNotificaciones() {
     if (typeof toast === 'function') toast('Inicia sesión primero', 'err');
     return;
   }
+  // Ya activadas en este dispositivo: no se vuelve a registrar ni a mostrar «Activando…»; solo se avisa.
+  if (_pushYaActivo(window._fbUser.uid)) {
+    if (typeof toast === 'function') toast('Las notificaciones ya están activadas en este dispositivo', 'info');
+    return;
+  }
   if (_activandoPush) return; // otro toque mientras ya está registrando: se ignora (antes lanzaba otro registro en paralelo)
   _activandoPush = true;
   const fila = document.getElementById('cfg-notificaciones-row');
@@ -139,7 +147,7 @@ async function activarNotificaciones() {
     const r = await Promise.race([guardado.then(() => 'ok'), new Promise((res) => setTimeout(() => res(pendiente), 3000))]);
     if (r === pendiente) guardado.catch((e) => { console.error('Guardado tardío del token falló:', e); if (typeof toast === 'function') toast('No se pudo guardar el aviso en la nube: ' + (e.message || e), 'err'); });
 
-    try { localStorage.setItem('mf_push_ok', '1'); } catch (_) {}
+    try { localStorage.setItem('mf_push_ok', window._fbUser.uid); } catch (_) {}
     _estadoPush('Activadas en este dispositivo');
     if (typeof toast === 'function') toast('Notificaciones activadas', 'ok');
   } catch (e) {

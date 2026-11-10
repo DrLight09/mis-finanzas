@@ -1,90 +1,68 @@
-# Respaldos automáticos
+# Respaldos automáticos — cómo funcionan
 
-Desde 2026-11-09 (SW v115) la app conserva sola copias de tus datos, sin que tengas que exportar nada. Complementan la exportación manual a `.json`, no la reemplazan.
+Complementan la exportación manual a `.json`; no la reemplazan. La idea: **antes de que un guardado sobrescriba tus datos en la nube, la app se queda con una copia de lo que había.**
 
-## 1. El problema
+## 1. Por qué existen
 
-Todos los datos viven en **un solo documento** de Firestore (`usuarios/{uid}/data/finanzas`) que cada guardado sobrescribe. No guarda historial: si un error, una importación equivocada o un guardado malo lo daña, queda dañado en la nube. La única red de seguridad era acordarse de exportar el JSON.
+Todos tus datos viven en un solo documento de Firestore (`usuarios/{uid}/data/finanzas`) que cada guardado sobrescribe sin historial. Si un error o una importación equivocada lo dañaba, quedaba dañado en la nube. Ahora siempre queda una copia anterior a la que volver.
 
-## 2. Qué hace
+## 2. Cuándo se crea un respaldo
 
-Antes de sobrescribir la nube, la app copia lo que había. Hay dos clases de respaldo:
+Hay dos clases:
 
-| Clase | Cuándo se crea | Qué contiene | Cuántos se conservan |
+- **Diario.** La primera vez que se guarda algo en un día nuevo. Contiene el estado con que terminó el día anterior (lo que había en la nube justo antes de ese guardado). Se hace una vez por día; los guardados siguientes del mismo día no crean otro ni tocan el de ese día.
+- **Previo.** Justo antes de importar un JSON o de restaurar un respaldo: guarda lo que estaba un instante antes de pisarlo. Por eso importar o restaurar por error también se puede deshacer.
+
+El día es el de tu dispositivo (hora local), no el de UTC.
+
+## 3. Cuándo NO se crea
+
+- **Si no abres la app, no hay respaldo ese día.** La app solo corre cuando la abres; un respaldo «a las 11:59 pm» sin abrirla pediría un servidor (plan Blaze de Firebase). Tampoco hace falta: si no abres la app, nada cambió.
+- **Si no hay nada que guardar** (los datos son idénticos a los ya guardados), la app no escribe, y por tanto no crea respaldo.
+- **Si no hay datos en absoluto** (usuario nuevo, o el documento está vacío tras «Borrar todo»), no se respalda: no hay nada que proteger.
+- **Tener todo en 0 no cuenta como «sin datos».** Cuentas, categorías, módulos, historial… siguen existiendo aunque los saldos sean $0, y eso sí vale la pena proteger. Solo se salta un documento realmente vacío.
+- **Si hubo un conflicto de revisión** (otro dispositivo guardó antes), el guardado se descarta y no se respalda: no se pisó nada.
+
+## 4. Días sin abrir la app e intereses
+
+Los intereses de las cajitas no se guardan día a día: se **calculan al abrir la app**, desde la última fecha en que se sellaron, con el saldo y el historial de tasas de la cuenta. Entonces, tras varios días sin abrirla:
+
+1. Abres la app: se calculan los intereses de todos esos días y se sellan en el saldo.
+2. Se hace el primer guardado del día. El respaldo diario guarda lo que había **antes** de sellar (la fecha vieja y el saldo viejo).
+3. Si restauras ese respaldo y vuelves a abrir la app, los intereses se recalculan hasta hoy desde esa fecha vieja: **no se pierde nada de lo generado.**
+
+Lo único que un respaldo no trae es lo que registraste *después* de que se creó (movimientos, un cambio de tasa anotado más tarde, etc.): restaurar vuelve al estado de ese momento.
+
+## 5. Dónde se guardan y cuántos
+
+| | Dónde | Cuántos | Para qué |
 |---|---|---|---|
-| **diario** | La primera vez que se guarda algo en un día nuevo | El estado con que terminó el día anterior | 30 en la nube · 7 en el dispositivo |
-| **previo** | Justo antes de importar un JSON o de restaurar un respaldo | Lo que había un instante antes de pisarlo | 5 en la nube · 2 en el dispositivo |
+| **Nube** | Documentos hermanos del principal, en `usuarios/{uid}/data/` (`respaldo-AAAA-MM-DD`, `respaldo-previo-…`) y un índice `respaldos-indice` | 30 diarios · 5 previos | Es la copia principal, disponible desde cualquier dispositivo |
+| **Dispositivo** | IndexedDB del navegador (`mf-respaldos`) | 7 diarios · 2 previos | Sirve sin conexión y no depende de Firebase; se pierde si borras los datos del navegador o desinstalas la app |
 
-Se guardan en **dos sitios independientes**:
+Al llegar al tope se borra el más antiguo de cada clase. El índice guarda fecha, tamaño y origen de cada respaldo, así listar cuesta una sola lectura en vez de descargar todos. Se actualiza en la misma transacción que crea o borra el respaldo, así que no se desincroniza.
 
-- **La nube:** documentos hermanos del principal, en la misma colección `data`: `respaldo-AAAA-MM-DD`, `respaldo-previo-AAAA-MM-DD-HHMMSS` y un índice `respaldos-indice` con sus metadatos (así listar y podar cuesta **una** lectura).
-- **El dispositivo:** IndexedDB (`mf-respaldos`). Sirve sin conexión y no depende de Firebase. Se pierde si limpias los datos del navegador o desinstalas la app, por eso es complemento y no reemplazo de la nube.
+Cada copia es idéntica al documento original (el payload ya comprimido se copia tal cual, sin recomprimir). Pesan como tu documento principal; 35 copias caben de sobra en el plan gratis de Firebase.
 
-**Lo que NO hace:** no corre si no abres la app (un respaldo «a las 11:59 pm» sin abrirla exige un servidor: plan Blaze, ver §7). Si un día no abres la app, ese día no tiene respaldo, y tampoco hace falta: no cambió nada.
+## 6. Restaurar
 
-## 3. Restaurar
+Configuración → Datos → Respaldos automáticos → «Ver respaldos» → «Restaurar». La app:
 
-Configuración → Datos → **Respaldos automáticos** → «Ver respaldos» → «Restaurar» en la fila que quieras.
+1. lee el respaldo (de la nube; si no responde, del dispositivo);
+2. lo valida igual que un archivo importado (uno inválido no reemplaza nada);
+3. pide confirmación y el PIN;
+4. crea un respaldo **previo** de lo que tienes ahora y recién entonces lo reemplaza.
 
-1. Se lee el respaldo (de la nube; si no responde, del dispositivo).
-2. Pasa por **la misma validación que importar un archivo** (`_validarEstructuraJSON`): uno que no la pasa no reemplaza nada.
-3. Pide confirmación y el **PIN** (si lo tienes activo).
-4. Antes de pisar, el guardado forzado crea un respaldo **previo** de lo que tienes ahora: restaurar también se puede deshacer.
+Importar un JSON usa exactamente el mismo camino.
 
-Importar un JSON usa exactamente el mismo camino (`_reemplazarDatos` en `configuracion.js`) y también deja un previo.
+## 7. Garantías de diseño
 
-## 4. Reglas que no se rompen
+- **Un respaldo que falla nunca impide guardar.** Se hace en una transacción propia, aparte del guardado de los datos. Lo peor que puede pasar es «hoy no hubo respaldo».
+- **Si Firestore rechazara los respaldos** (reglas de seguridad), la app avisa una vez y no insiste durante esa sesión; la copia del dispositivo sigue funcionando.
+- **Las reglas de Firestore ya los permiten:** cubren todo `usuarios/{uid}/…` solo para su dueño, así que los respaldos heredan esa misma protección: solo tú puedes leerlos o escribirlos.
+- **«Borrar todos los datos» y «Eliminar cuenta» también borran los respaldos** (nube y dispositivo), porque son tus datos. Con «Borrar todo», los respaldos se borran solo después de confirmar que el documento principal quedó vacío.
+- **Se guardan dentro de `data/`**, junto al documento principal, para no depender de reglas nuevas.
 
-- **Un respaldo que falla jamás impide guardar.** Va en una transacción propia y dentro de `try/catch`, separada del guardado de los datos. Si las reglas de Firestore lo rechazan, el guardado sigue normal.
-- **Nunca se respalda un documento vacío ni inexistente** (`{}`, usuario nuevo, «borrar todo»): no hay nada que proteger.
-- **El payload se copia tal cual** (ya comprimido, `gz1:`): no se descomprime ni se recomprime, así que la copia es idéntica byte a byte.
-- **Si las reglas deniegan, se avisa una vez y no se insiste** en esa sesión (cero peticiones fallidas extra). Configuración muestra el motivo.
-- **«Borrar todos los datos» y «Eliminar cuenta» también borran los respaldos** (nube y dispositivo). Es el comportamiento esperado de «borrar todo»; el diálogo lo dice. El borrado de respaldos ocurre **después** de confirmar que el documento principal se vació.
+## 8. Dónde está el código
 
-## 5. Reglas de seguridad de Firestore (lo único que se revisa en la consola)
-
-Esas reglas **no están en este repo**: se editan en Firebase Console → Firestore → Reglas. Los respaldos viven bajo `usuarios/{uid}/data/…`, la misma ruta del documento principal, así que:
-
-- Si tus reglas ya cubren todo `usuarios/{uid}` o todo `usuarios/{uid}/data/{documento}` → **no hay que cambiar nada.**
-- Si solo permiten el documento `finanzas` por nombre → hay que ampliarlas. Una regla mínima y suficiente:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /usuarios/{uid}/{documento=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
-
-**Cómo comprobar que funciona (en tu app real):** guarda algo (basta abrir la app: el snapshot diario de patrimonio ya dispara un guardado) y mira en Firestore → `usuarios/{uid}/data`: deben aparecer `respaldo-AAAA-MM-DD` y `respaldos-indice`. En la app, «Ver respaldos» debe listar el de hoy. Si las reglas lo impiden, la app lo dice en Configuración y con un aviso.
-
-## 6. Costos y tamaño
-
-- Cada día: 1 lectura del principal + 2 del respaldo/índice y 2 escrituras (+ 1 borrado cuando se llega al tope). Listar respaldos: 1 lectura.
-- Cada copia pesa como el documento principal (hoy una fracción del límite de 1 MiB; ver «Tamaño de tus datos»). 30 diarios + 5 previos = 35 copias: aun con el documento en el tope serían ~35 MiB, muy por debajo del 1 GiB del plan gratis.
-- Todo cabe en el plan gratis (Spark); no hace falta tarjeta.
-
-## 7. Decisiones de diseño
-
-- **Dentro de `data/` y no en una subcolección `backups/`.** Se propuso `usuarios/{uid}/backups/…`, pero una subcolección nueva casi seguro exige tocar las reglas; `data/` ya está cubierta por las reglas del documento principal. Menos fricción, mismo resultado.
-- **Índice en un documento aparte.** Firestore no permite leer solo los metadatos de un documento: listar 35 respaldos completos serían 35 lecturas y hasta decenas de MiB. Con el índice son 1 lectura y unos bytes. Se actualiza en la misma transacción que crea/borra el respaldo, así que no se desincroniza.
-- **Transacción propia, no la del guardado.** Si el respaldo viviera en la transacción principal, unas reglas que lo denieguen harían fallar TODO el guardado. Separadas, el peor caso es «no hay respaldo hoy».
-- **Se identifica por día local** (hora del dispositivo, `fechaLocal`), no UTC: el «día» es el tuyo. La marca «hoy ya respaldé» (`mf_respaldoDia`, `mf_respaldoEquipoDia`) lleva el uid para que otra cuenta en el mismo navegador no la herede.
-- **La copia del dispositivo parte del último estado conocido de la nube** (`_lastSavedPayload`, que solo se actualiza después de escribir), así funciona sin conexión.
-- **Si hay conflicto de revisión, no se respalda:** el guardado se descarta y se carga la versión de la nube (ver `rev` en `firebase-sync.js`); no hay nada que pisar.
-- **Alternativa de servidor (plan Blaze, no implementada):** una Cloud Function programada o la recuperación a un punto en el tiempo de Firestore (hasta 7 días) funcionan aunque no abras la app, pero piden tarjeta y configurar Cloud Functions. Si algún día se quiere, es independiente de esto y se suma, no lo reemplaza.
-
-## 8. Referencia de implementación
-
-| Qué | Dónde |
-|---|---|
-| Lógica pura (ids, poda, copia a la nube, almacén IndexedDB, copia al dispositivo, fusión, lectura, borrado) | `js/core/respaldos.js` (módulo ES, sin DOM; todo lo externo entra por parámetros) |
-| Cuándo respaldar, manejo de errores, `window._fbRespaldos` (`listar`, `leer`, `estado`, `borrarTodos`) | `js/core/firebase-sync.js` (`_respaldarAntesDeEscribir`, llamado desde `_escribirNube`) |
-| `collection` / `getDocs` expuestos (solo para limpiar huérfanos) | `js/core/firebase-init.js` |
-| UI: lista, restaurar, reemplazo de datos compartido con importar | `js/modules/configuracion.js` (`renderRespaldos`, `verRespaldos`, `restaurarRespaldo`, `_reemplazarDatos`) |
-| Pruebas | `tests/respaldos.test.js` (Firestore e IndexedDB simulados; integración con `firebase-sync.js` real) |
-
-**Claves de `localStorage`:** `mf_respaldoDia`, `mf_respaldoEquipoDia` (día ya respaldado, con uid), `mf_respaldoUltimo` (último respaldo creado, para mostrarlo), `mf_respaldoError` (`permisos` u otro motivo). Todas llevan prefijo `mf_`, así que «Eliminar cuenta» las limpia.
+`js/core/respaldos.js` (lógica: ids, poda, copia, almacén IndexedDB, lectura), `js/core/firebase-sync.js` (cuándo respaldar y qué hacer si falla), `js/modules/configuracion.js` (lista y restaurar). Pruebas en `tests/respaldos.test.js`.

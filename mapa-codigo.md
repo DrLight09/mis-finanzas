@@ -32,7 +32,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/mejoras-adicionales.js` | de entrada (defer) | 1 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 5 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 8 | 0 |
-| `js/core/notificaciones-push.js` | de entrada (defer) | 1 | 0 |
+| `js/core/notificaciones-push.js` | de entrada (defer) | 6 | 0 |
 | `js/core/nu-calc.js` | de entrada (defer) | 29 | 0 |
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
@@ -223,7 +223,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `activarNotificaciones`
+**Funciones:** `_estadoPush`, `_mensajePushError`, `_obtenerTokenPush`, `_pushYaActivo`, `_refrescarEstadoPush`, `activarNotificaciones`
 
 ### `js/core/nu-calc.js`
 
@@ -623,6 +623,7 @@ Ninguno.
 | `_esEntradaEspejoNoIngreso` | `js/core/core-state.js` |
 | `_esGastoVarNoReal` | `js/core/core-state.js` |
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
+| `_estadoPush` | `js/core/notificaciones-push.js` |
 | `_eventosCaja` | `js/modules/inicio.js` |
 | `_fechaCorta` | `js/modules/inicio.js` |
 | `_fechaSafe` | `js/core/core-state.js` |
@@ -682,6 +683,7 @@ Ninguno.
 | `_mdPickColor` | `js/modules/prestado.js` |
 | `_mdTitulo` | `js/modules/prestado.js` |
 | `_mdTotalCuentas` | `js/modules/prestado.js` |
+| `_mensajePushError` | `js/core/notificaciones-push.js` |
 | `_mesadaAnioDeKey` | `js/modules/mesada.js` |
 | `_mesadaApiEncargos` | `js/modules/mesada.js` |
 | `_mesadaAplicarEntrada` | `js/modules/mesada.js` |
@@ -743,6 +745,7 @@ Ninguno.
 | `_nuMovActualizarPreview` | `js/modules/nu.js` |
 | `_nuMovRenderCajitas` | `js/modules/nu.js` |
 | `_nuMovToggleApertura` | `js/modules/nu.js` |
+| `_obtenerTokenPush` | `js/core/notificaciones-push.js` |
 | `_onClickSpEditPersonaBtn` | `js/modules/spotify.js` |
 | `_onMovMontoInput` | `js/modules/prestado.js` |
 | `_onSelPersonaMeDeben` | `js/modules/prestado.js` |
@@ -770,8 +773,10 @@ Ninguno.
 | `_procesarDiferencial` | `js/modules/encargos.js` |
 | `_procesarMovEncMia` | `js/modules/encargos.js` |
 | `_procesarSiguienteCDTVencido` | `js/modules/nu.js` |
+| `_pushYaActivo` | `js/core/notificaciones-push.js` |
 | `_rachaDeficitRelevante` | `js/modules/inicio.js` |
 | `_reemplazarDatos` | `js/modules/configuracion.js` |
+| `_refrescarEstadoPush` | `js/core/notificaciones-push.js` |
 | `_refreshCajitaDet` | `js/modules/nu.js` |
 | `_refreshNucleo` | `js/core/core-state.js` |
 | `_reiniciarPantallasCuenta` | `js/modules/cuentas.js` |

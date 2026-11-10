@@ -2367,3 +2367,23 @@ button.inicio-pilar-accion{cursor:pointer;}
 .ix-cuentas-vacio{position:relative;}
 .ix-cuentas-vacio-x{position:absolute;top:4px;right:6px;min-width:32px;min-height:32px;font-size:20px;line-height:1;color:var(--text3);background:none;border:none;cursor:pointer;}
 .ix-cuentas-vacio-x:empty{min-height:0 !important;}
+
+/* Orden de las cuentas (screen-cuentas): encabezado con botón «Ordenar» y fichas con flechas ‹ › */
+.sec-fila{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 8px;}
+.sec-fila .sec-title{margin:0;}
+.btn-ordenar-cuentas{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.6px;text-transform:uppercase;cursor:pointer;transition:all .15s;}
+.btn-ordenar-cuentas[hidden]{display:none;}
+.btn-ordenar-cuentas.activo{background:rgba(200,240,96,.15);border-color:rgba(200,240,96,.45);color:var(--accent);}
+.cuentas-ord-ayuda{font-size:12px;color:var(--text3);margin:0 2px 10px;line-height:1.5;}
+.cuentas-selector-ordenando > .cuenta-card:last-child:nth-child(odd){grid-column:auto;} /* en modo orden todas miden lo mismo: los huecos se intercambian */
+.cuenta-card-ord{cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;outline:1.5px dashed rgba(var(--cuenta-rgb),.45);outline-offset:-5px;transition:box-shadow .2s;}
+.cuenta-card-ord .cuenta-card-saldo{opacity:.55;font-size:16px;}
+.cuenta-ord-grip{position:absolute;top:6px;right:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:none;border-radius:10px;background:rgba(var(--cuenta-rgb),.14);color:var(--cuenta);cursor:grab;touch-action:none;}
+.cuenta-ord-grip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.cuentas-selector-ordenando .cuenta-card-head{padding-right:42px;}
+.reord-activo{cursor:grabbing;}
+.reord-activo .cuenta-card-ord{cursor:grabbing;}
+.reord-mueve{transition:transform .22s cubic-bezier(.2,.8,.2,1);will-change:transform;}
+.reord-arrastrando{background-color:var(--bg2);position:relative;z-index:30;transition:none;will-change:transform;box-shadow:0 14px 32px rgba(0,0,0,.55),0 0 0 1.5px rgba(var(--cuenta-rgb),.7);}
+.reord-encaja{position:relative;z-index:30;}
+@media (prefers-reduced-motion:reduce){.reord-mueve{transition:none;}}

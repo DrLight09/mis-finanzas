@@ -2744,3 +2744,88 @@ describe('plata-reglas-unicas', () => {
     assert.equal(app.sumarFuente('cuenta:a', 10), true);
   });
 });
+
+describe('cuentas-orden-personalizable', () => {
+  const { test } = require('node:test');
+  const assert = require('node:assert/strict');
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const { loadApp } = require('./support/load-app');
+  const RAIZ = path.join(__dirname, '..');
+  const core = f => path.join(RAIZ, 'js', 'core', f);
+  const modulo = f => path.join(RAIZ, 'js', 'modules', f);
+  const ARCHIVOS = [core('html-tag.js'), core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('fuentes-filtro.js'),
+    core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js')];
+  const ef = { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 };
+  const nq = { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 };
+  const cs = { id: 'cs', tipo: 'banco', nombre: 'Caja Social', saldo: 0 };
+  const entorno = cuentas => {
+    const app = loadApp(ARCHIVOS, { permissive: true });
+    Object.assign(app.S, { libro: [], movimientos: [], encargos: [], cajitas: [], cuentas: cuentas.map(c => ({ ...c })) });
+    app.save = () => { app._guardados = (app._guardados || 0) + 1; };
+    return app;
+  };
+  const ids = app => app.cuentasActivas().map(c => c.id);
+
+  test('Efectivo puede dejar de ser la primera: se mueve al final paso a paso', () => {
+    const app = entorno([ef, nq, cs]);
+    assert.equal(app.moverCuenta('efectivo', 1), true);
+    assert.deepEqual(ids(app), ['nequi', 'efectivo', 'cs']);
+    assert.equal(app.moverCuenta('efectivo', 1), true);
+    assert.deepEqual(ids(app), ['nequi', 'cs', 'efectivo']);
+    assert.equal(app._guardados, 2, 'cada movimiento se guarda');
+  });
+
+  test('en los extremos no hace nada ni guarda; un id desconocido tampoco', () => {
+    const app = entorno([ef, nq, cs]);
+    assert.equal(app.moverCuenta('efectivo', -1), false);
+    assert.equal(app.moverCuenta('cs', 1), false);
+    assert.equal(app.moverCuenta('fantasma', 1), false);
+    assert.deepEqual(ids(app), ['efectivo', 'nequi', 'cs']);
+    assert.equal(app._guardados || 0, 0);
+  });
+
+  test('las archivadas se saltan y conservan su sitio en el arreglo', () => {
+    const app = entorno([ef, { ...nq, archivada: true }, cs]);
+    assert.equal(app.moverCuenta('efectivo', 1), true);
+    assert.deepEqual(ids(app), ['cs', 'efectivo']);
+    assert.deepEqual(app.S.cuentas.map(c => c.id), ['cs', 'nequi', 'efectivo'], 'nequi (archivada) queda en medio');
+  });
+
+  test('el orden elegido sobrevive a asegurarEfectivo y a las cuentas nuevas se añaden al final', () => {
+    const app = entorno([nq, cs, ef]);
+    assert.equal(app.asegurarEfectivo(), false);
+    assert.deepEqual(ids(app), ['nequi', 'cs', 'efectivo']);
+    app.S.cuentas.push({ id: 'nueva', tipo: 'banco', nombre: 'Nueva', saldo: 0 });
+    assert.deepEqual(ids(app), ['nequi', 'cs', 'efectivo', 'nueva']);
+  });
+
+  test('mover cuentas no toca saldos ni el libro', () => {
+    const app = entorno([{ ...ef, saldo: 5000 }, nq, cs]);
+    app.S.libro = [{ cuenta: 'cuenta:efectivo', monto: 5000 }];
+    app.moverCuenta('efectivo', 1);
+    assert.equal(app.S.cuentas.find(c => c.id === 'efectivo').saldo, 5000);
+    assert.equal(app.S.libro.length, 1);
+  });
+
+  test('la interfaz está cableada: botón Ordenar, acciones registradas y estilos', () => {
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    assert.ok(html.includes('id="btn-ordenar-cuentas"') && html.includes('data-action="cuentas:alternarOrdenCuentas"'));
+    const js = fs.readFileSync(modulo('cuentas.js'), 'utf8');
+    assert.match(js, /alternarOrdenCuentas,/);
+    assert.match(js, /Reordenable\.activar\(_selectorCuentasLista/, 'el arrastre se activa sobre el selector');
+    assert.ok(html.includes('src="js/core/reordenable.js"'), 'el núcleo del arrastre se carga');
+    const css = fs.readFileSync(path.join(RAIZ, 'css', 'styles.css'), 'utf8');
+    for (const c of ['sec-fila', 'btn-ordenar-cuentas', 'cuentas-ord-ayuda', 'cuenta-card-ord', 'cuenta-ord-grip', 'reord-activo', 'reord-mueve', 'reord-arrastrando', 'reord-encaja']) assert.ok(css.includes('.' + c), c);
+  });
+
+  test('ordenarCuentas aplica un orden completo: las archivadas no se mueven, ids raros se ignoran, lo que falta queda al final', () => {
+    const app = entorno([ef, { ...nq, archivada: true }, cs, { id: 'nu', tipo: 'ahorro', nombre: 'Nu' }]);
+    assert.equal(app.ordenarCuentas(['nu', 'cs', 'efectivo']), true);
+    assert.deepEqual(app.S.cuentas.map(c => c.id), ['nu', 'nequi', 'cs', 'efectivo'], 'nequi (archivada) sigue en su sitio');
+    assert.equal(app.ordenarCuentas(['nu', 'cs', 'efectivo']), false, 'mismo orden: no hay cambio ni guardado');
+    assert.equal(app.ordenarCuentas(['fantasma', 'efectivo', 'efectivo']), true);
+    assert.deepEqual(ids(app), ['efectivo', 'nu', 'cs'], 'repetidos ignorados; nu y cs (omitidas) conservan su orden relativo');
+    assert.equal(app._guardados, 2);
+  });
+});

@@ -371,10 +371,101 @@ function _cuentaSelectorHtml(d){
   }
 }
 
+/* ---- ORDEN DE LAS CUENTAS ----
+   El orden es el del arreglo S.cuentas (nada está «fijado» arriba: Efectivo solo aparece primero porque se crea primero). Lo siguen el
+   selector, las fichas de Inicio y las listas de cuentas. «Ordenar» deja mover cada cuenta una posición con ‹ ›; las archivadas
+   conservan su sitio y se saltan. */
+let _ordenandoCuentas=false;
+function _activasEnOrden(){return cuentasTodas().filter(c=>!c.archivada);}
+// Mueve la cuenta `id` una posición (dir −1 = antes, +1 = después) entre las activas. Devuelve true si cambió algo.
+function moverCuenta(id,dir){
+  const arr=cuentasTodas();
+  const idx=arr.map((c,i)=>c.archivada?-1:i).filter(i=>i>=0);
+  const p=idx.findIndex(i=>arr[i].id===id);
+  const q=p+(dir<0?-1:1);
+  if(p<0||q<0||q>=idx.length)return false;
+  const a=idx[p],b=idx[q];
+  [arr[a],arr[b]]=[arr[b],arr[a]];
+  save();
+  return true;
+}
+// Aplica un orden completo de las cuentas ACTIVAS (ids en el orden nuevo): ocupan los mismos sitios del arreglo que tenían las activas, de
+// modo que las archivadas no se mueven. Devuelve true si algo cambió. Ids desconocidos o repetidos se ignoran; las activas que falten en
+// la lista conservan su orden relativo al final.
+function ordenarCuentas(ids){
+  const arr=cuentasTodas();
+  const activas=arr.filter(c=>!c.archivada);
+  const vistos=new Set();
+  const nuevas=[];
+  (ids||[]).forEach(id=>{const c=activas.find(x=>x.id===id);if(c&&!vistos.has(id)){vistos.add(id);nuevas.push(c);}});
+  activas.forEach(c=>{if(!vistos.has(c.id))nuevas.push(c);});
+  if(nuevas.every((c,i)=>c===activas[i]))return false;
+  let k=0;
+  for(let i=0;i<arr.length;i++)if(!arr[i].archivada)arr[i]=nuevas[k++];
+  save();
+  return true;
+}
+function _aplicarOrdenArrastre(ids){
+  if(ordenarCuentas(ids))refresh();
+}
+function alternarOrdenCuentas(){
+  _ordenandoCuentas=!_ordenandoCuentas;
+  renderSelectorCuentas();
+}
+// Mueve y repinta con animación (las fichas se deslizan a su sitio nuevo) dejando el foco en el mismo botón para seguir moviendo.
+function moverCuentaUI(id,dir){
+  const lista=document.getElementById('selector-cuentas-lista');
+  const antes=new Map();
+  if(lista)lista.querySelectorAll('[data-cuenta-id]').forEach(n=>antes.set(n.dataset.cuentaId,n.getBoundingClientRect()));
+  if(!moverCuenta(id,dir))return;
+  refresh(); // repinta selector, Inicio y listas con el orden nuevo
+  if(!lista)return;
+  const reducir=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  lista.querySelectorAll('[data-cuenta-id]').forEach(n=>{
+    const r0=antes.get(n.dataset.cuentaId);
+    if(!r0||reducir||!n.animate)return;
+    const r1=n.getBoundingClientRect();
+    const dx=r0.left-r1.left,dy=r0.top-r1.top;
+    if(!dx&&!dy)return;
+    n.animate([{transform:'translate('+dx+'px,'+dy+'px)'},{transform:'none'}],{duration:260,easing:'cubic-bezier(.2,.8,.2,1)'});
+  });
+  const btn=lista.querySelector('[data-cuenta-id="'+id+'"] [data-mover="'+(dir<0?'-1':'1')+'"]:not([disabled])')
+         ||lista.querySelector('[data-cuenta-id="'+id+'"] [data-mover]:not([disabled])');
+  if(btn&&btn.focus)btn.focus({preventScroll:true});
+}
+
+function _cuentaOrdenHtml(d,pos,total){
+  const vars='--cuenta:'+d.color+';--cuenta-rgb:'+d.rgb;
+  return html`<div class="cuenta-card cuenta-card-ord" data-cuenta-id="${d.id}" style="${vars}">
+    <button type="button" class="cuenta-ord-grip" aria-label="Reordenar ${d.nombre}: posición ${pos} de ${total}. Arrastra, o usa las flechas del teclado." title="Arrastra para mover">
+      <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg>
+    </button>
+    <div class="cuenta-card-head">
+      ${d.iconoHtml(34)}
+      <span class="cuenta-card-nombre">${d.nombre}</span>
+    </div>
+    <div class="cuenta-card-etiqueta">${d.etiqueta}</div>
+    <div class="cuenta-card-saldo">${fmtSaldoSelector(d.saldo())}</div>
+  </div>`;
+}
+
 function renderSelectorCuentas(){
   const el=document.getElementById('selector-cuentas-lista');
   if(!el)return;
   const cuentas=_cuentasSelector();
+  // «Ordenar» solo tiene sentido con 2 o más cuentas; el botón vive en el encabezado de la pantalla.
+  if(cuentas.length<2)_ordenandoCuentas=false;
+  const btnOrd=document.getElementById('btn-ordenar-cuentas');
+  if(btnOrd&&btnOrd.classList){
+    btnOrd.hidden=cuentas.length<2;
+    btnOrd.classList.toggle('activo',_ordenandoCuentas);
+    btnOrd.setAttribute('aria-pressed',_ordenandoCuentas?'true':'false');
+    const t=btnOrd.querySelector('.btn-ordenar-txt');if(t)t.textContent=_ordenandoCuentas?'Listo':'Ordenar';
+  }
+  if(_ordenandoCuentas){
+    el.innerHTML=html`<div class="cuentas-ord-ayuda">Mantén y arrastra cada cuenta para moverla. Este orden también se usa en Inicio.</div><div class="cuentas-selector-grid cuentas-selector-ordenando">${cuentas.map((d,i)=>_cuentaOrdenHtml(d,i+1,cuentas.length))}</div>`;
+    return;
+  }
   const archivadas=_cuentasSelector({archivadas:true});
   const tarjetas=cuentas;
   el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<button type="button" class="btn-cuentas-archivadas" ${raw(Events.attr('cuentas:abrirArchivadas'))}>Cuentas archivadas (${archivadas.length})<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>`:''}`;
@@ -1539,6 +1630,7 @@ Events.registerAll('cuentas', {
   alternarAhorroNC,
   ocultarInvitacionCuentas,
   abrirArchivadas,
+  alternarOrdenCuentas,
   selColorNC,
   abrirOnboarding,
   reactivarCuenta,
@@ -1595,6 +1687,15 @@ const _selectorCuentasLista = document.getElementById('selector-cuentas-lista');
 if (_selectorCuentasLista) _selectorCuentasLista.addEventListener('click', e => {
   const item = e.target.closest('[data-fuente]');
   if (item) abrirCuenta(item.dataset.fuente);
+});
+// Arrastrar para ordenar (solo mientras el modo «Ordenar» está activo). Las flechas del teclado sobre el agarre mueven de a una.
+if (_selectorCuentasLista && typeof Reordenable !== 'undefined' && typeof Reordenable.activar === 'function') Reordenable.activar(_selectorCuentasLista, {
+  item: '[data-cuenta-id]',
+  id: n => n.dataset.cuentaId,
+  agarre: '.cuenta-ord-grip',
+  activo: () => _ordenandoCuentas,
+  onOrden: _aplicarOrdenArrastre,
+  onTeclado: moverCuentaUI,
 });
 const _archivadasLista = document.getElementById('archivadas-lista');
 if (_archivadasLista) _archivadasLista.addEventListener('click', e => {

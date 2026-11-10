@@ -40,6 +40,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/plan-deudas.js` | de entrada (defer) | 1 | 0 |
 | `js/core/reglas.js` | de entrada (defer) | 1 | 0 |
+| `js/core/reordenable.js` | de entrada (defer) | 1 | 0 |
 | `js/core/salud.js` | de entrada (defer) | 1 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
 | `js/core/sheet-stack.js` | de entrada (defer) | 13 | 0 |
@@ -52,7 +53,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 32 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 13 | 0 |
-| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 78 | 2 |
+| `js/modules/cuentas.js` | lazy — grupo `cuentas` | 85 | 2 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 83 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 28 | 1 |
@@ -265,6 +266,12 @@ Carga: de entrada (defer)
 
 **Funciones:** `Reglas`
 
+### `js/core/reordenable.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `Reordenable`
+
 ### `js/core/salud.js`
 
 Carga: de entrada (defer)
@@ -347,7 +354,7 @@ Carga: lazy — grupo `config`
 
 Carga: lazy — grupo `cuentas`
 
-**Funciones:** `_accionAdministrarCuenta`, `_aperturaToggleUI`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorDeCuenta`, `_encargosConSaldoEn`, `_fuentesDeCuenta`, `_getMovsFilter`, `_mostrarTipoNC`, `_motivoNoArchivar`, `_motivoSinRetiro`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_pintarAdministrarCuenta`, `_reiniciarPantallasCuenta`, `_renderDetalleSimple`, `_renderTiposNC`, `_resetSheetNuevaCuenta`, `_setBtnEstado`, `_setBtnTransferir`, `_showCuentasPanel`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `abrirAgregarDinero`, `abrirArchivadas`, `abrirCuenta`, `abrirEditarApertura`, `abrirNuevaCuenta`, `abrirOnboarding`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarBotonRetirar`, `actualizarTransfPreview`, `alternarAhorroNC`, `archivarCuenta`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarEditarApertura`, `confirmarRestarDinero`, `confirmarTransferir`, `crearCuenta`, `cuentaSePuedeEliminar`, `editarCuenta`, `eliminarCuenta`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `hexToRgb`, `ocultarInvitacionCuentas`, `openSheet_adMenu`, `reactivarCuenta`, `registrarEntradaConApertura`, `registrarSalida`, `renderArchivadas`, `renderBannerApertura`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `selTipoNC`, `toggleAdApertura`, `validarTransferencia`, `volverSelector`
+**Funciones:** `_accionAdministrarCuenta`, `_activasEnOrden`, `_aperturaToggleUI`, `_aplicarOrdenArrastre`, `_cuentaOrdenHtml`, `_cuentaSelectorHtml`, `_cuentasSelector`, `_descriptorCuenta`, `_descriptorDeCuenta`, `_encargosConSaldoEn`, `_fuentesDeCuenta`, `_getMovsFilter`, `_mostrarTipoNC`, `_motivoNoArchivar`, `_motivoSinRetiro`, `_movsAplicarFiltro`, `_movsLimpiarFechas`, `_movsOnFecha`, `_movsOnSearch`, `_movsOnTipo`, `_movsRefresh`, `_pintarAdministrarCuenta`, `_reiniciarPantallasCuenta`, `_renderDetalleSimple`, `_renderTiposNC`, `_resetSheetNuevaCuenta`, `_setBtnEstado`, `_setBtnTransferir`, `_showCuentasPanel`, `_tituloCuentaHtml`, `_trDestinoCambio`, `_trOrigenCambio`, `_trPodarSelect`, `abrirAgregarDinero`, `abrirArchivadas`, `abrirCuenta`, `abrirEditarApertura`, `abrirNuevaCuenta`, `abrirOnboarding`, `abrirRegistrarApertura`, `abrirRestarDinero`, `abrirTransferir`, `actualizarAdMenuPreview`, `actualizarAdMenuSaldo`, `actualizarBotonesTransferir`, `actualizarBotonRetirar`, `actualizarTransfPreview`, `alternarAhorroNC`, `alternarOrdenCuentas`, `archivarCuenta`, `confirmarAgregarDinero`, `confirmarAgregarDineroMenu`, `confirmarEditarApertura`, `confirmarRestarDinero`, `confirmarTransferir`, `crearCuenta`, `cuentaSePuedeEliminar`, `editarCuenta`, `eliminarCuenta`, `getAperturaMov`, `getIconoData`, `getMovimientosCuenta`, `hexToRgb`, `moverCuenta`, `moverCuentaUI`, `ocultarInvitacionCuentas`, `openSheet_adMenu`, `ordenarCuentas`, `reactivarCuenta`, `registrarEntradaConApertura`, `registrarSalida`, `renderArchivadas`, `renderBannerApertura`, `renderDetalleCuenta`, `renderIconGrid`, `renderIconoCustom`, `renderMovsCuenta`, `renderMovsFiltros`, `renderSelectorCuentas`, `selColorNC`, `selIconoNC`, `selTipoNC`, `toggleAdApertura`, `validarTransferencia`, `volverSelector`
 
 **Globales:** `ICONOS_CUENTA`, `TR_MIN_EFECTIVO`
 
@@ -461,6 +468,7 @@ Ninguno.
 | `_abrirSheetNuevoPrestamo` | `js/modules/prestado.js` |
 | `_abrirSheetPagoCompleto` | `js/modules/prestado.js` |
 | `_accionAdministrarCuenta` | `js/modules/cuentas.js` |
+| `_activasEnOrden` | `js/modules/cuentas.js` |
 | `_actualizarBtnPrestamoTC` | `js/modules/prestado.js` |
 | `_actualizarCierresPatrimonio` | `js/core/core-state.js` |
 | `_actualizarDiferenciaHint` | `js/modules/alcancia.js` |
@@ -505,6 +513,7 @@ Ninguno.
 | `_aplicarExtraPartes` | `js/modules/prestado.js` |
 | `_aplicarMovimiento` | `js/modules/prestado.js` |
 | `_aplicarMovMiDeuda` | `js/modules/prestado.js` |
+| `_aplicarOrdenArrastre` | `js/modules/cuentas.js` |
 | `_aplicarPerdon` | `js/modules/prestado.js` |
 | `_aplicarPrestamo` | `js/modules/prestado.js` |
 | `_autoCerrarGruposEnCero` | `js/modules/prestado.js` |
@@ -572,6 +581,7 @@ Ninguno.
 | `_ctcMiSplitToggle` | `js/modules/encargos.js` |
 | `_ctxReglas` | `js/modules/inicio.js` |
 | `_cuentaOpsPosteriores` | `js/core/movimientos.js` |
+| `_cuentaOrdenHtml` | `js/modules/cuentas.js` |
 | `_cuentasArr` | `js/core/core-state.js` |
 | `_cuentaSelectorHtml` | `js/modules/cuentas.js` |
 | `_cuentasSelector` | `js/modules/cuentas.js` |
@@ -1048,6 +1058,7 @@ Ninguno.
 | `alcanciaToggleDividir` | `js/modules/alcancia.js` (window.alcanciaToggleDividir = …) |
 | `alcanciaToggleMontoDeposito` | `js/modules/alcancia.js` (window.alcanciaToggleMontoDeposito = …) |
 | `alternarAhorroNC` | `js/modules/cuentas.js` |
+| `alternarOrdenCuentas` | `js/modules/cuentas.js` |
 | `aplicarMigraciones` | `js/core/core-state.js` |
 | `applyModulos` | `js/core/sheet-stack.js` |
 | `archivarCuenta` | `js/modules/cuentas.js` |
@@ -1340,6 +1351,8 @@ Ninguno.
 | `mostrarAlertaFuente` | `js/core/sheet-stack.js` |
 | `mostrarAvisoNuevaVersion` | `js/core/mejoras-adicionales.js` |
 | `mostrarSi` | `js/core/core-state.js` |
+| `moverCuenta` | `js/modules/cuentas.js` |
+| `moverCuentaUI` | `js/modules/cuentas.js` |
 | `movimientosSinClase` | `js/core/core-state.js` |
 | `nextMonthFixed` | `js/modules/spotify.js` |
 | `nivelAntiguedadMovimiento` | `js/core/core-state.js` |
@@ -1351,6 +1364,7 @@ Ninguno.
 | `openSheet` | `js/core/sheet-stack.js` |
 | `openSheet_adMenu` | `js/modules/cuentas.js` |
 | `openSheet_pagarSpotify` | `js/modules/spotify.js` |
+| `ordenarCuentas` | `js/modules/cuentas.js` |
 | `parseMiles` | `js/core/money-input.js` |
 | `parseMoney` | `js/core/core-state.js` |
 | `parsePct` | `js/core/core-state.js` |
@@ -1427,6 +1441,7 @@ Ninguno.
 | `renderTCScreen` | `js/modules/tarjetas_credito.js` |
 | `renderWrapped` | `js/modules/wrapped.js` (window.renderWrapped = …) |
 | `rendimientoCajitaPorMes` | `js/core/nu-calc.js` |
+| `Reordenable` | `js/core/reordenable.js` |
 | `resolverPendienteSpHistorial` | `js/modules/spotify.js` |
 | `Reversibles` | `js/core/core-state.js` |
 | `S` | `js/core/core-state.js` |

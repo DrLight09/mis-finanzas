@@ -902,8 +902,14 @@
         <div class="screen" id="screen-cuentas">
           <!-- Selector de cuenta -->
           <div id="cuentas-selector">
-            <div class="sec-title ix-mt4">Selecciona una
-              cuenta</div>
+            <div class="sec-fila">
+              <div class="sec-title">Selecciona una
+                cuenta</div>
+              <button type="button" class="btn-ordenar-cuentas" id="btn-ordenar-cuentas" hidden aria-pressed="false" data-action="cuentas:alternarOrdenCuentas" data-args="[]">
+                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 4 3 8 7 12"/><line x1="3" y1="8" x2="21" y2="8"/><polyline points="17 12 21 16 17 20"/><line x1="21" y1="16" x2="3" y2="16"/></svg>
+                <span class="btn-ordenar-txt">Ordenar</span>
+              </button>
+            </div>
             <!-- Cuentas fijas y personalizadas: las pinta renderSelectorCuentas() (cuentas.js) -->
             <div id="selector-cuentas-lista"></div>
             <!-- Botón agregar cuenta -->
@@ -4703,6 +4709,11 @@
 // módulos lazy (cuentas, spotify, prestado, tarjetas). Ver CHANGELOG.md.
 -->
 <script src="js/core/fuentes-filtro.js" defer></script>
+<!--
+// js/core/reordenable.js — Reordenable.activar(): arrastrar y soltar para reordenar fichas/filas (hoy: cuentas). Núcleo eager y
+// genérico; no depende de nada de la app. Cuentas lo activa al cargar su módulo (lazy).
+-->
+<script src="js/core/reordenable.js" defer></script>
 <!--
 // js/core/color-picker.js — marcarColorSeleccionado(): marca el círculo de color elegido en los
 // selectores de color (Cuentas, Tarjetas de crédito, Prestado). Núcleo eager: lo usan tres módulos

@@ -147,12 +147,13 @@ function spPeriodosVencidos(p,fechaCorte,estricto){
   // un ciclo largo y luego se le venció OTRO sin pagarlo, "total cobrado ≥ una cuota"
   // ya daba pend=0 aunque en la realidad debía el período nuevo. Ver CHANGELOG.md.
   if(!p||!p.proximoPago)return 0;
-  const corte=_fechaSafe(fechaCorte);
-  let cursor=_fechaSafe(p.proximoPago);
+  if(!Fecha.esValida(fechaCorte)||!Fecha.esValida(p.proximoPago))return 0;
+  const corte=Fecha.iso(_fechaSafe(fechaCorte));
+  let cursor=Fecha.iso(_fechaSafe(p.proximoPago));   // 'YYYY-MM-DD' (normalizado): se compara como texto
   let n=0;
   // `estricto`: no cuenta el período que empieza EXACTAMENTE el día de corte (ver
   // SP_EMPATE_PERIODOS más abajo — ese período ya pertenece al ciclo nuevo).
-  while(estricto?cursor<corte:cursor<=corte){ n++; cursor.setDate(cursor.getDate()+30); }
+  while(estricto?cursor<corte:cursor<=corte){ n++; cursor=Fecha.sumarDias(cursor,SP_PERIODO_DIAS); }
   return n;
 }
 
@@ -171,16 +172,6 @@ function spCicloCobrosActual(){
 function spCobradoDePersona(p,cicloCobros){
   // Suma lo que una persona ya aportó en el ciclo actual, vinculando por id.
   return (cicloCobros||spCicloCobrosActual()).filter(h=>h.spId===p.id).reduce((a,h)=>a+(h.monto||0),0);
-}
-
-function nextMonthFixed(dateStr, mesesAdelantar){
-  // Avanza N*30 dias desde la fechaProximoPago (no desde hoy ni desde cuando pago)
-  // Ej: si la proxima fecha era el 8-jun y pago el 5-jun o el 10-jun, la siguiente es 8-jun + 30d
-  if(!dateStr)return'';
-  const d=_fechaSafe(dateStr);
-  const dias=(mesesAdelantar||1)*30;
-  d.setDate(d.getDate()+dias);
-  return d.toISOString().split('T')[0];
 }
 
 // ── Períodos flotantes y atribución de cobros a ciclos ─────────────────────
@@ -202,11 +193,9 @@ function nextMonthFixed(dateStr, mesesAdelantar){
 const SP_PERIODO_DIAS=30;
 const SP_EMPATE_PERIODOS=2;
 
-function spSumarDias(fechaStr,dias){
-  const d=_fechaSafe(fechaStr);
-  d.setDate(d.getDate()+dias);
-  return d.toISOString().split('T')[0];
-}
+// Avanza `meses` períodos de 30 días desde una fecha (desde la fecha de próximo pago, no desde hoy ni desde cuando se pagó:
+// si tocaba el 8-jun y pagó el 5 o el 10, el siguiente es 8-jun + 30 d). Antes: nextMonthFixed(f,k) ≡ spSumarDias(f,30*k).
+function spSumarDias(fechaStr,dias){ return Fecha.sumarDias(fechaStr,dias); }
 
 function spTramosDeCobro(h){
   // Divide un registro de cobro en sus períodos. Un cobro sin `proximoPagoAntes` (la persona
@@ -400,8 +389,8 @@ function renderSpotify(){
     // Ordenar por proximidad al próximo pago: vencidos primero (más negativos), luego más próximos
     const pOrdenado=[...p].map((x,i)=>({...x,_origIdx:i})).sort((a,b)=>{
       const far=99999;
-      const dA=a.proximoPago?Math.ceil((_fechaSafe(a.proximoPago)-new Date())/86400000):far;
-      const dB=b.proximoPago?Math.ceil((_fechaSafe(b.proximoPago)-new Date())/86400000):far;
+      const dA=a.proximoPago?Fecha.diasEntre(hoy(),a.proximoPago):far;
+      const dB=b.proximoPago?Fecha.diasEntre(hoy(),b.proximoPago):far;
       return dA-dB;
     });
     // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2):
@@ -413,7 +402,7 @@ function renderSpotify(){
     const i=x._origIdx;
       let fechaInfo='';
       if(x.proximoPago){
-        const diasRestantes=Math.ceil((_fechaSafe(x.proximoPago)-new Date())/86400000);
+        const diasRestantes=Fecha.diasEntre(hoy(),x.proximoPago);
         const vencido=diasRestantes<0;
         const hoy0=diasRestantes===0;
         fechaInfo=html`<span class="badge badge-xs ${raw(vencido?'bg-red':hoy0?'bg-amber':'bg-purple')}">${vencido?'Vencido hace '+Math.abs(diasRestantes)+'d':hoy0?'Vence hoy':'Paga en '+diasRestantes+'d · '+x.proximoPago}</span>`;
@@ -1085,7 +1074,7 @@ function confirmarSpDestino(){
     sumarFuente(spDestinoSel,cuotaRecibida,_ogSp(_cobroRef));
   }
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
-  if(p.proximoPago)p.proximoPago=nextMonthFixed(p.proximoPago,meses);
+  if(p.proximoPago)p.proximoPago=spSumarDias(p.proximoPago,(meses||1)*SP_PERIODO_DIAS);
   if(!S.spotify.historial)S.spotify.historial=[];
   const notaPeriodos=meses>1?`${meses} períodos × ${fmt(p.monto||0)} (pago adelantado)`:'';
   const notaBase=[notaUsuario,notaPeriodos].filter(Boolean).join(' · ');
@@ -1148,10 +1137,10 @@ function confirmarSpDestino(){
   spcSplitMode=false;
   save();refresh();closeSheet('sp-destino');
   if(diferenciaSp>0){
-    toast(`Cobro registrado · ${escHtml(nombreActual)} quedó debiendo ${fmt(diferenciaSp)}`,'ok',3500);
+    toast(`Cobro registrado · ${nombreActual} quedó debiendo ${fmt(diferenciaSp)}`,'ok',3500);
   } else {
     const sufijoExtra=extraSp>0?` · extra +${fmt(extraSp)}`:'';
-    toast((meses>1?`Cobrados ${meses} períodos adelantados a ${escHtml(nombreActual)} · ${fmt(cuotaRecibida)}`:`Cobro registrado · ${escHtml(nombreActual)}`)+sufijoExtra,'ok');
+    toast((meses>1?`Cobrados ${meses} períodos adelantados a ${nombreActual} · ${fmt(cuotaRecibida)}`:`Cobro registrado · ${nombreActual}`)+sufijoExtra,'ok');
   }
 }
 
@@ -1479,21 +1468,19 @@ function addSpotify(){
   if(!n){toast('Ingresa el nombre','err');return;}
   const yaExisteNombre=(S.spotify.personas||[]).some(p=>(p.nombre||'').trim().toLowerCase()===n.toLowerCase());
   if(yaExisteNombre){
-    toast(`Ya hay un integrante llamado "${escHtml(n)}". Usa un nombre distinto (agrega un apellido o apodo) para no mezclar sus cobros en el historial.`,'err',4200);
+    toast(`Ya hay un integrante llamado "${n}". Usa un nombre distinto (agrega un apellido o apodo) para no mezclar sus cobros en el historial.`,'err',4200);
     return;
   }
   const fechaIngresoRaw=document.getElementById('sp_fecha_ingreso').value;
   if(!fechaIngresoRaw){toast('Ingresa la fecha de ingreso','err');return;}
   // proximoPago = fechaIngreso + 30 dias (primer cobro)
-  const dIng=_fechaSafe(fechaIngresoRaw);
-  dIng.setDate(dIng.getDate()+30);
-  const proximoPago=dIng.toISOString().split('T')[0];
+  const proximoPago=spSumarDias(fechaIngresoRaw,SP_PERIODO_DIAS);
   S.spotify.personas.push({id:uid(),nombre:n,monto:m,pagado:false,proximoPago,fechaIngreso:fechaIngresoRaw,ultimoDestino:'',ultimoDestinoSplit:false,mesesAdelantados:1});
   document.getElementById('sp_n').value='';
   document.getElementById('sp_m').value='';
   document.getElementById('sp_fecha_ingreso').value='';
   save();refresh();closeSheet('spotify');
-  toast(`${escHtml(n)} agregado · primer cobro el ${proximoPago}`,'ok');
+  toast(`${n} agregado · primer cobro el ${proximoPago}`,'ok');
 }
 async function deleteSpotify(i){
   const p=(S.spotify.personas||[])[i];
@@ -1503,7 +1490,7 @@ async function deleteSpotify(i){
   if(!ok)return;
   S.spotify.personas.splice(i,1);
   save();refresh();
-  toast(`${escHtml(nombreActual)} eliminado de Spotify`,'ok');
+  toast(`${nombreActual} eliminado de Spotify`,'ok');
 }
 
 let _spEditIdx = null;
@@ -1537,22 +1524,17 @@ function guardarEditarSpotify() {
         // Es una corrección de una fecha de ingreso que ya se venía usando (no la primera
         // vez que se define): desplazar proximoPago por la misma cantidad de días que
         // cambió la fecha de ingreso, para no perder los períodos que ya se pagaron.
-        const deltaDias = Math.round((_fechaSafe(fechaIngresoRaw) - _fechaSafe(fechaAnterior)) / 86400000);
-        const dProx = _fechaSafe(p.proximoPago);
-        dProx.setDate(dProx.getDate() + deltaDias);
-        p.proximoPago = dProx.toISOString().split('T')[0];
+        p.proximoPago = spSumarDias(p.proximoPago, Fecha.diasEntre(fechaAnterior, fechaIngresoRaw));
       } else {
         // No había fecha de ingreso previa: es la primera vez que se calcula, cálculo normal.
-        const dIng = _fechaSafe(fechaIngresoRaw);
-        dIng.setDate(dIng.getDate() + 30);
-        p.proximoPago = dIng.toISOString().split('T')[0];
+        p.proximoPago = spSumarDias(fechaIngresoRaw, SP_PERIODO_DIAS);
       }
     }
     p.fechaIngreso = fechaIngresoRaw;
   }
   _spEditIdx = null;
   save(); refresh(); closeSheet('editar-spotify');
-  toast(escHtml(n) + ' actualizado', 'ok');
+  toast(n + ' actualizado', 'ok');
 }
 
 /* ── Wiring de controles propios de la pantalla ──────────────────────────
@@ -1876,7 +1858,7 @@ guardarEditarSpotify = function() {
   // input oculto sigue con el nombre anterior — avisar en vez de guardarlo en silencio.
   if (_spEditPersonaPickerAbierto && !_spEditPersonaPickerConfirmado) {
     const spActual = (S.spotify.personas || [])[_spEditIdx];
-    toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? escHtml(spActual.nombre) : 'la persona anterior'}"`, 'info', 4000);
+    toast(`No se seleccionó una persona nueva — se mantuvo a "${spActual ? spActual.nombre : 'la persona anterior'}"`, 'info', 4000);
   }
   // Capturar idx ANTES de llamar al original (que lo pone a null)
   const idxAntes = _spEditIdx;
@@ -1923,8 +1905,8 @@ renderSpotify = function() {
   // Ordenar igual que en renderSpotify
   const pOrdenado = [...p].map((x, i) => ({ ...x, _origIdx: i })).sort((a, b) => {
     const far = 99999;
-    const dA = a.proximoPago ? Math.ceil((_fechaSafe(a.proximoPago) - new Date()) / 86400000) : far;
-    const dB = b.proximoPago ? Math.ceil((_fechaSafe(b.proximoPago) - new Date()) / 86400000) : far;
+    const dA = a.proximoPago ? Fecha.diasEntre(hoy(), a.proximoPago) : far;
+    const dB = b.proximoPago ? Fecha.diasEntre(hoy(), b.proximoPago) : far;
     return dA - dB;
   });
   const rows = lista.querySelectorAll('.sp-row');

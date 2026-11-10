@@ -229,7 +229,7 @@ function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
   const deltaReal = saldoDespues - saldoAntes;
   if (Math.abs(deltaReal - deltaEsperado) > Deudas.TOL) {
     console.warn(`[Integridad] Saldo de ${escHtml(d.nombre)} cambió ${deltaReal} en vez de ${deltaEsperado} (antes: ${saldoAntes}, después: ${saldoDespues}). Revisa d.movimientos por duplicados.`, d.movimientos);
-    toast(`El saldo de ${escHtml(d.nombre)} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
+    toast(`El saldo de ${d.nombre} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
   }
 }
 // ── Libro (core-state.js): origen de cada cambio de saldo ────────────────────────────────────────────────
@@ -663,7 +663,7 @@ async function eliminarDeudorActual() {
   if (!ok) return;
   Deudas.quitar('favor', deudorActualId);
   save(); refresh(); volverDeudores();
-  toast(`${escHtml(d.nombre)} eliminado`, 'ok');
+  toast(`${d.nombre} eliminado`, 'ok');
 }
 
 // Alcancía es un grupo de carga diferida (Loader.GROUPS.alcancia, ver
@@ -1524,11 +1524,11 @@ function _confirmarMovimientoInterno() {
   abrirDeudor(deudorActualId);
   if (enc) {
     const msgExtra = extraMonto > 0 ? ` + ${fmt(extraMonto)} de extra` : '';
-    toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${escHtml(enc.nombre)}`, 'ok', 3500);
+    toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${enc.nombre}`, 'ok', 3500);
   } else if (perdon) {
     toast(perdonTodo
-      ? `Deuda de ${escHtml(d.nombre)} perdonada — quedó como gasto de ${fmt(monto)}`
-      : `Le perdonaste ${fmt(monto)} a ${escHtml(d.nombre)} — quedó como gasto. Todavía te debe ${fmt(plan.saldoAntes - monto)}`, 'ok', 4000);
+      ? `Deuda de ${d.nombre} perdonada — quedó como gasto de ${fmt(monto)}`
+      : `Le perdonaste ${fmt(monto)} a ${d.nombre} — quedó como gasto. Todavía te debe ${fmt(plan.saldoAntes - monto)}`, 'ok', 4000);
   }
 }
 
@@ -2291,7 +2291,7 @@ async function eliminarMiDeuda() {
   Deudas.quitar('contra', miDeudaActualId);
   save(); refresh();
   volverMisDeudas();
-  toast(`${escHtml(d.nombre)} eliminado`, 'ok');
+  toast(`${d.nombre} eliminado`, 'ok');
 }
 
 /* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */
@@ -2376,7 +2376,7 @@ function confirmarPrestamoTC() {
   // `dijo` (lo que le dijiste al deudor) — con diferencial activo esos dos
   // valores pueden ser distintos, y lo que importa acá es cuánto va a la TC.
   if (tc.cupo && tcCupoDisponible(tc) < montoTC) {
-    toast('Cupo insuficiente en '+escHtml(tc.nombre)+' — cupo disponible: '+fmt(tcCupoDisponible(tc)), 'err', 4000);
+    toast('Cupo insuficiente en '+tc.nombre+' — cupo disponible: '+fmt(tcCupoDisponible(tc)), 'err', 4000);
     return;
   }
 
@@ -2426,7 +2426,7 @@ function confirmarPrestamoTC() {
   save(); refresh();
   closeSheet('prestamo-tc');
   abrirDeudor(deudorActualId);
-  toast(`Préstamo con TC registrado — ${escHtml(d.nombre)} te debe ${fmt(dijo)}`, 'ok', 3500);
+  toast(`Préstamo con TC registrado — ${d.nombre} te debe ${fmt(dijo)}`, 'ok', 3500);
 }
 /* ── ABONO desde encargo: dividir entre VARIAS cuentas del encargo ──────────
    (ej: el encargo tiene 400mil en Nequi y 100mil en efectivo, y el abono de
@@ -2807,7 +2807,7 @@ function guardarEditarMiDeuda() {
   if (typeof refresh === 'function') refresh();
   abrirMiDeuda(miDeudaActualId);
   if (typeof closeSheet === 'function') closeSheet('editar-mi-deuda');
-  if (typeof toast === 'function') toast(escHtml(nombre) + ' actualizado', 'ok');
+  if (typeof toast === 'function') toast(nombre + ' actualizado', 'ok');
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -2860,7 +2860,7 @@ function _onSelPersonaMeDeben(personaId) {
   const existente = Deudas.lista('favor').find(d => d.personaId === personaId);
   if (existente) {
     closeSheet('nueva-persona');
-    toast(`${escHtml(p.nombre)} ya está en tu lista de "Me deben"`, 'info');
+    toast(`${p.nombre} ya está en tu lista de "Me deben"`, 'info');
     showScreen('prestamos');
     cambiarTabPrestamos('me-deben');
     setTimeout(() => abrirDeudor(existente.id), 200);
@@ -2868,7 +2868,7 @@ function _onSelPersonaMeDeben(personaId) {
   }
   const d = Deudas.agregar('favor', { id: uid(), nombre: p.nombre, color: p.color || '#60b0f0', personaId: p.id, movimientos: [] });
   save(); refresh();
-  toast(`${escHtml(p.nombre)} agregado/a`, 'ok');
+  toast(`${p.nombre} agregado/a`, 'ok');
   showScreen('prestamos');
   cambiarTabPrestamos('me-deben');
   abrirDeudor(d.id);
@@ -2884,7 +2884,7 @@ function _onSelPersonaYoDebo(personaId) {
   // Red de seguridad: el selector ya no ofrece a quien tiene deuda (excluir), pero si llegara, se abre la existente.
   const existente = Deudas.porPersona('contra', personaId);
   if (existente) {
-    toast(`Ya tienes una deuda registrada con ${escHtml(p.nombre)}`, 'info');
+    toast(`Ya tienes una deuda registrada con ${p.nombre}`, 'info');
     showScreen('prestamos');
     cambiarTabPrestamos('yo-debo');
     setTimeout(() => abrirMiDeuda(existente.id), 200);
@@ -2892,7 +2892,7 @@ function _onSelPersonaYoDebo(personaId) {
   }
   const d = Deudas.agregar('contra', { id: uid(), nombre: p.nombre, color: p.color || '#f06868', personaId: p.id, movimientos: [] });
   save(); refresh();
-  toast(`${escHtml(p.nombre)} agregado/a`, 'ok');
+  toast(`${p.nombre} agregado/a`, 'ok');
   showScreen('prestamos');
   cambiarTabPrestamos('yo-debo');
   abrirMiDeuda(d.id);

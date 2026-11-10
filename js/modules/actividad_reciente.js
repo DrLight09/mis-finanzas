@@ -391,15 +391,11 @@
 
   function _labelFecha(fechaStr) {
     if (!fechaStr || fechaStr === '0000-00-00') return 'Sin fecha';
-    var hoyStr = (typeof hoy === 'function') ? hoy() : new Date().toISOString().slice(0, 10);
+    var hoyStr = hoy();
     if (fechaStr === hoyStr) return 'Hoy';
-    var dHoy = _fechaSafe(hoyStr, 12);
-    dHoy.setDate(dHoy.getDate() - 1);
-    var ayerStr = dHoy.toISOString().slice(0, 10);
-    if (fechaStr === ayerStr) return 'Ayer';
-    var meses = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+    if (fechaStr === Fecha.sumarDias(hoyStr, -1)) return 'Ayer';
     var partes = fechaStr.split('-');
-    return parseInt(partes[2], 10) + ' ' + meses[parseInt(partes[1], 10) - 1];
+    return parseInt(partes[2], 10) + ' ' + Fecha.nombreMes(parseInt(partes[1], 10)).toLowerCase();
   }
 
   // ── RENDER PRINCIPAL ───────────────────────────────────────────────

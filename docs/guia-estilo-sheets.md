@@ -105,6 +105,8 @@ Los grupos de campo usan `class="ig"` con `margin-bottom: 13px`.
 
 No usar "Sumar"/"Restar", "Entró plata"/"Salió plata" en Cuentas. **Encargos** conserva "Entró plata / Salió plata" a propósito: no es una cuenta propia sino plata ajena que se administra.
 
+**El mensaje del toast es TEXTO** (2026-11-10): `toast(\`Cuenta "${nombre}" creada\`)` — **no** uses `escHtml()` ahí (se vería `&amp;`); se pinta con `textContent`. Para marcado deliberado (un ícono, un `<br>`) pasa `html\`…\`` o `raw(…)`: `toast(html\`Listo <i class="fa-solid fa-check"></i>\`)`. `tests/toast.test.js` falla si vuelve un `escHtml()` dentro de `toast(`. Los validadores (`Plata.validarSalida().motivo`, etc.) devuelven texto plano; si lo pintas con `innerHTML`, escápalo (o usa `textContent`).
+
 **Tipos de toast** (`toast(msg, tipo)` en `core-state.js`; los estilos `.toast-<tipo>` están en el CSS crítico de `index.html`):
 
 | Tipo | Color / ícono | Cuándo |

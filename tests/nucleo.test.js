@@ -791,21 +791,23 @@ describe('toast', () => {
   const RAIZ = path.join(__dirname, '..');
   const ctxToast = () => {
     const ctx = loadApp([path.join(RAIZ, 'js', 'core', 'core-state.js')], { permissive: true });
-    const hijos = [];
-    const nuevo = () => { const attrs = {}; return { className: '', innerHTML: '', attrs, setAttribute(k, v) { attrs[k] = v; }, classList: { add() {} }, remove() {} }; };
-    ctx.document.getElementById = () => ({ appendChild(e) { hijos.push(e); } });
-    ctx.document.createElement = nuevo;
+    // DOM real: toast() construye nodos (textContent para el texto), no una cadena de HTML.
+    const { JSDOM } = require('jsdom');
+    const doc = new JSDOM('<!doctype html><body><div id="toast-container"></div></body>').window.document;
+    ctx.document = doc;
     ctx.setTimeout = () => 0;
-    return { ctx, hijos };
+    const hijos = { get length() { return doc.querySelector('#toast-container').children.length; }, get all() { return Array.from(doc.querySelector('#toast-container').children); } };
+    return { ctx, hijos: hijos.all, vivo: hijos };
   };
 
   test('cada tipo lleva su clase; salida y err se distinguen por el ícono, no solo por el color', () => {
-    const { ctx, hijos } = ctxToast();
+    const { ctx, vivo } = ctxToast();
     for (const tipo of ['ok', 'salida', 'warn', 'err', 'info']) ctx.toast('mensaje ' + tipo, tipo);
+    const hijos = vivo.all;
     assert.deepEqual(hijos.map(h => h.className), ['toast toast-ok', 'toast toast-salida', 'toast toast-warn', 'toast toast-err', 'toast toast-info']);
-    const icono = h => /<span class="toast-ico">(.*?)<\/span><span class="toast-msg">/.exec(h.innerHTML)[1];
+    const icono = h => h.querySelector('.toast-ico').innerHTML;
     assert.equal(new Set(hijos.map(icono)).size, 5, 'cinco íconos distintos');
-    assert.ok(hijos.every((h, i) => h.innerHTML.includes('mensaje ' + ['ok', 'salida', 'warn', 'err', 'info'][i])));
+    assert.ok(hijos.every((h, i) => h.querySelector('.toast-msg').textContent === 'mensaje ' + ['ok', 'salida', 'warn', 'err', 'info'][i]));
   });
   test('todo toast() de la app usa un tipo válido y cada tipo tiene su estilo (un tipo mal escrito salía sin color)', () => {
     const fs = require('node:fs');
@@ -822,15 +824,16 @@ describe('toast', () => {
     assert.deepEqual(malos, []);
   });
   test('un error se anuncia como alerta; lo demás como estado', () => {
-    const { ctx, hijos } = ctxToast();
+    const { ctx, vivo } = ctxToast();
     ctx.toast('x', 'err'); ctx.toast('y', 'salida');
-    assert.equal(hijos[0].attrs.role, 'alert');
-    assert.equal(hijos[1].attrs.role, 'status');
+    const hijos = vivo.all;
+    assert.equal(hijos[0].getAttribute('role'), 'alert');
+    assert.equal(hijos[1].getAttribute('role'), 'status');
   });
   test('un tipo desconocido no rompe: usa un punto como ícono', () => {
-    const { ctx, hijos } = ctxToast();
+    const { ctx, vivo } = ctxToast();
     ctx.toast('x', 'raro');
-    assert.match(hijos[0].innerHTML, /toast-ico">•</);
+    assert.equal(vivo.all[0].querySelector('.toast-ico').textContent, '•');
   });
 });
 

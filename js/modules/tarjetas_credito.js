@@ -623,7 +623,7 @@ function confirmarCompraTC(){
   const monto=parseMoney(document.getElementById('tcc_monto').value)||0;
   if(!desc){toast('Ingresa una descripción','err');return;}
   if(!monto){toast('Ingresa un monto válido','err');return;}
-  if(tc.cupo&&tcCupoDisponible(tc)<monto){toast('Cupo insuficiente en '+escHtml(tc.nombre)+' — cupo disponible: '+fmt(tcCupoDisponible(tc)),'err');return;}
+  if(tc.cupo&&tcCupoDisponible(tc)<monto){toast('Cupo insuficiente en '+tc.nombre+' — cupo disponible: '+fmt(tcCupoDisponible(tc)),'err');return;}
   const fecha=document.getElementById('tcc_fecha').value||hoy();
   const cat=document.getElementById('tcc_cat').value;
   const nota=document.getElementById('tcc_nota').value.trim();

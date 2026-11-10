@@ -590,7 +590,6 @@ function _cpRenderLista(){
     (item.destinos||[]).some(d => d.tipo==='gasto' && !d.yaPague && d.gastoOrigen==='cajita' && d.gastoCajita)
   );
   if(recibidosConPendientes.length){
-    const hoyMs = _fechaSafe(hoy()).getTime();
     contenido += '<div class="sec-title cp-mt14">Plata guardada para pagar</div>';
     recibidosConPendientes.sort((a,b)=>(b.fechaRecibido||'').localeCompare(a.fechaRecibido||'')).slice(0,5).forEach(item=>{
       // Gastos pendientes de cajita con plata guardada
@@ -608,7 +607,7 @@ function _cpRenderLista(){
             const cajLabel = typeof _cpFuenteLabel==='function' ? _cpFuenteLabel(d.gastoCajita) : d.gastoCajita;
             let fechaInfo = '';
             if(d.fechaPago){
-              const diasFecha = Math.round((_fechaSafe(d.fechaPago).getTime() - hoyMs)/86400000);
+              const diasFecha = Fecha.diasEntre(hoy(), d.fechaPago);
               let colorFecha = 'cp-c-text3';
               let iconoFecha = 'fa-calendar';
               let textoFecha = 'Pagar el '+d.fechaPago;
@@ -631,7 +630,7 @@ function _cpRenderLista(){
 
       const tieneUrgente = gastosGuardados.some(d => {
         if(!d.fechaPago) return false;
-        const dias = Math.round((_fechaSafe(d.fechaPago).getTime() - hoyMs)/86400000);
+        const dias = Fecha.diasEntre(hoy(), d.fechaPago);
         return dias <= 3;
       });
 
@@ -658,9 +657,7 @@ function _cpRenderLista(){
 
 function _cpDiasHastaStr(fecha){
   if(!fecha) return { texto:'Sin fecha definida', urgente:false };
-  const hoyMs = _fechaSafe(hoy()).getTime();
-  const llegaMs = _fechaSafe(fecha).getTime();
-  const dias = Math.round((llegaMs - hoyMs)/86400000);
+  const dias = Fecha.diasEntre(hoy(), fecha);
   if(dias < 0)  return { texto:`Llegaba hace ${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''} — ¿ya recibiste?`, urgente:true };
   if(dias === 0) return { texto:'Llega hoy', urgente:true };
   if(dias === 1) return { texto:'Llega mañana', urgente:true };
@@ -748,7 +745,7 @@ function _cpGuardar(){
   save();
   closeSheet('cp-nuevo');
   _cpRenderLista();
-  toast(_cpEditId ? 'Ingreso actualizado' : 'Ingreso registrado <i class="fa-solid fa-check"></i>', 'ok');
+  toast(_cpEditId ? 'Ingreso actualizado' : html`Ingreso registrado <i class="fa-solid fa-check"></i>`, 'ok');
   _cpEditId = null;
   _cpDestinosTmp = [];
 
@@ -1445,12 +1442,12 @@ function _cpConfirmarRecibir(){
   _cpRecibirId = null;
 
   if(errores.length){
-    toast('Recibido con errores menores en: '+escHtml(errores.join(', ')),'warn');
+    toast('Recibido con errores menores en: '+errores.join(', '),'warn');
   } else {
     const gananciaMsg = ganancia > 0.99
-      ? ` · <b>+${fmt(ganancia)}</b> libres`
+      ? html` · <b>+${fmt(ganancia)}</b> libres`
       : (totalAsignado > 0.99 ? ' · Todo asignado' : '');
-    toast('¡Plata distribuida! <i class="fa-solid fa-check cp-ico-l3"></i>'+gananciaMsg,'ok');
+    toast(html`¡Plata distribuida! <i class="fa-solid fa-check cp-ico-l3"></i>${gananciaMsg}`,'ok');
   }
 
   if(typeof renderAttencion === 'function') renderAttencion();
@@ -1653,7 +1650,7 @@ function _cpGuardarMarcados(){
   if(typeof refresh === 'function') refresh();
   if(typeof closeSheet==='function') closeSheet('cp-marcar');
   _cpRenderLista();
-  toast('Estados actualizados <i class="fa-solid fa-check"></i>','ok');
+  toast(html`Estados actualizados <i class="fa-solid fa-check"></i>`,'ok');
 };
 
 
@@ -1874,7 +1871,7 @@ async function _cpEliminar(id){
   save();
   if(typeof refresh==='function') refresh();
   _cpRenderLista();
-  toast('Ingreso eliminado y efectos revertidos <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><polyline points="20 6 9 17 4 12"/></svg>','ok');
+  toast(html`Ingreso eliminado y efectos revertidos <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><polyline points="20 6 9 17 4 12"/></svg>`,'ok');
 };
 
 /* ── INTEGRACIÓN CON renderAttencion — ver js/core/hook-global.js ── */
@@ -1895,7 +1892,7 @@ async function _cpEliminar(id){
     const hoyStr = hoy();
     items.filter(i=>!i.recibido).forEach(item => {
       const dias = item.fechaLlegada
-        ? Math.round((_fechaSafe(item.fechaLlegada)-_fechaSafe(hoyStr))/86400000)
+        ? Fecha.diasEntre(hoyStr, item.fechaLlegada)
         : null;
       if(dias === null) return;
       let txt = '', tipo = '';
@@ -1920,7 +1917,7 @@ async function _cpEliminar(id){
       (item.destinos||[]).filter(d =>
         d.tipo === 'gasto' && !d.yaPague && d.gastoOrigen === 'cajita' && d.gastoCajita && d.fechaPago
       ).forEach(d => {
-        const diasG = Math.round((_fechaSafe(d.fechaPago) - _fechaSafe(hoyStr))/86400000);
+        const diasG = Fecha.diasEntre(hoyStr, d.fechaPago);
         let txtG = '', tipoG = '';
         const cajLabelG = typeof _cpFuenteLabel==='function'?_cpFuenteLabel(d.gastoCajita):d.gastoCajita;
         if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='red'; }

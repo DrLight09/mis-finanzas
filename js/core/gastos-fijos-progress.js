@@ -27,7 +27,7 @@
 
   function updateFijosProgress() {
     if(typeof S === 'undefined' || !S.gastosFijos) return;
-    const mes = (function(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');})();
+    const mes = Fecha.mes();
     const fijos = S.gastosFijos || [];
     const total = fijos.length;
     if(total === 0) {

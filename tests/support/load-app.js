@@ -83,6 +83,11 @@ function loadApp(appFiles, options = {}) {
 
   vm.createContext(context);
 
+  // js/core/fecha.js es núcleo puro y core-state.js delega en él (hoy, mesActual, _fechaSafe, MC): en el navegador carga antes que
+  // core-state.js, así que aquí se precarga siempre (una sola vez) y ningún test tiene que acordarse de listarlo.
+  const FECHA = require('path').join(__dirname, '..', '..', 'js', 'core', 'fecha.js');
+  if (!appFiles.some(f => /[\\/]fecha\.js$/.test(f))) appFiles = [FECHA, ...appFiles];
+
   for (const file of appFiles) {
     const code = fs.readFileSync(file, 'utf8');
     vm.runInContext(code, context, { filename: file });

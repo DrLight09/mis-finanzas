@@ -49,7 +49,7 @@ function _initA(){
     window.S.alcancia = {
       saldoRegistrado: 0,
       depositos: 0,
-      fechaInicio: (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10)),
+      fechaInicio: hoy(),
       movimientos: [],
       historial: []
     };
@@ -71,9 +71,7 @@ function _getSaldoOfuscado(){
 /* ─── TIEMPO ────────────────────────────────────────────────────────────── */
 function _diasDesde(fechaStr){
   if(!fechaStr) return 0;
-  const inicio = _fechaSafe(fechaStr, 12);
-  const ahora  = new Date();
-  return Math.max(0, Math.round((ahora - inicio) / 86400000));
+  return Math.max(0, Fecha.diasEntre(fechaStr, hoy()));   // días de calendario (un solo criterio: Fecha.diasEntre)
 }
 function _fmtTiempo(dias){
   if(dias === 0) return 'Hoy';
@@ -585,7 +583,7 @@ hookGlobal('openSheet', function(id){
     _inyectarAlcanciaSheets();
     setTimeout(()=>{
       const fd = document.getElementById('alc_dep_fecha');
-      if(fd) fd.value = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
+      if(fd) fd.value = hoy();
       const mi = document.getElementById('alc_dep_monto');
       if(mi) mi.value = '';
       const desc = document.getElementById('alc_dep_desc');
@@ -814,7 +812,7 @@ window.alcanciaIniciarNueva = function(){
   const a = window.S.alcancia;
   a.saldoRegistrado = 0;
   a.depositos = 0;
-  a.fechaInicio = (typeof hoy==='function'?hoy():new Date().toISOString().slice(0,10));
+  a.fechaInicio = hoy();
   a.movimientos = [];
   if(!a.historial) a.historial = [];
   delete a._destapada;
@@ -880,7 +878,7 @@ window.alcanciaConfirmarDeposito = function(){
     }
     const saldoDisp = cobroGrupoId ? getGrupoSaldo(dCheck, cobroGrupoId) : getDeudorSaldo(dCheck);
     if(monto > saldoDisp + 0.5){
-      err(`${escHtml(dCheck.nombre)} solo debe ${typeof fmt==='function'?fmt(saldoDisp):saldoDisp}`); return;
+      err(`${dCheck.nombre} solo debe ${typeof fmt==='function'?fmt(saldoDisp):saldoDisp}`); return;
     }
   }
 
@@ -1018,7 +1016,7 @@ window.alcanciaConfirmarDestapar = function(){
   const a = window.S.alcancia;
   const saldoReg = a.saldoRegistrado || 0;
   const dif = saldoReal - saldoReg;
-  const hoyStr = typeof hoy==='function' ? hoy() : new Date().toISOString().slice(0,10);
+  const hoyStr = hoy();
 
   // ── Movimiento 1: transferir saldo registrado desde alcancía → destino
   // Los gastos marcados _esAlcancia ya descontaron el dinero de las cuentas.

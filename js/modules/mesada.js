@@ -709,7 +709,7 @@ function _syncMpDebeWrap(v) {
 // y toast() inserta con innerHTML: se escapa acá.
 function _mesadaMostrarError(r, previewId) {
   if (r.motivo === 'encargo-invalido') toast('Selecciona un encargo válido', 'err');
-  else if (r.motivo === 'encargo-insuficiente') toast('Ahí solo hay ' + fmt(r.disponible) + ' guardados de ' + escHtml(r.encNombre), 'err');
+  else if (r.motivo === 'encargo-insuficiente') toast('Ahí solo hay ' + fmt(r.disponible) + ' guardados de ' + r.encNombre, 'err');
   else if (r.motivo === 'split-excede') {
     const prev = _msEl(previewId);
     prev.textContent = 'El total dividido supera el monto recibido';

@@ -96,7 +96,7 @@ function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarje
    migrado a js/core/diferencial.js. Ver comentario ahí para el detalle de qué se
    migró exactamente (incluida la limpieza de onclick/oninput/onchange en
    diffRenderPartes/diffHtmlBloque). ---- */
-const MC=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MC=Fecha.MESES_CORTOS;   // alias de la lista única de js/core/fecha.js
 const CATS_VAR_DEFAULT=['Alimentación','Transporte','Salud','Entretenimiento','Ropa','Hogar','Educación','Servicios','Cuidado personal','Otro'];
 const CATS_FIJO_DEFAULT=['Vivienda','Transporte','Alimentación','Entretenimiento','Salud','Educación','Servicios','Suscripciones','Otro'];
 const MAX=10;
@@ -219,7 +219,7 @@ function medirAnchoTexto(texto, font){
   _medirCtx.font = font;
   return _medirCtx.measureText(texto).width;
 }
-function hoy(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hoy(){return Fecha.hoy();}   // alias: la lógica vive en js/core/fecha.js
 
 function crearMovimientoApertura(monto,fecha,nota){
   // Objeto de movimiento "apertura" estándar. Cualquier sheet que necesite
@@ -521,7 +521,7 @@ function _fuenteHuerfana(fuente){
 /* ---- PLATA: reglas únicas para validar y mover ---- */
 // Antes cada módulo comparaba el saldo a su manera (centavos exactos, +0.01, +0.5…) y con su propio mensaje, y cada transferencia
 // aplicaba "descontar" y luego "sumar" por separado: si el segundo fallaba, quedaba a medias. Aquí vive la regla única:
-//   · Plata.validarSalida(fuente, monto)        → { ok, disponible, motivo }  (compara en centavos; `motivo` ya viene escapado para toast)
+//   · Plata.validarSalida(fuente, monto)        → { ok, disponible, motivo }  (compara en centavos; `motivo` es TEXTO plano: toast() y textContent lo pintan seguro; en innerHTML hay que escaparlo)
 //   · Plata.validarSalidas([{fuente, monto}])   → { ok, motivo }  suma por fuente antes de comparar (plata dividida entre cuentas)
 //   · Plata.resumenSalida(fuente, monto)        → { texto, ok }  el aviso vivo «Saldo disponible» de los formularios
 //   · Plata.disponibilidad(fuente, opts)        → { ok, motivo }  ¿esa fuente puede entregar/recibir plata hoy?
@@ -550,7 +550,7 @@ const Plata=(()=>{
     if(t==='cuenta'){
       cuenta=getCuentaDeFuente(fuente);
       if(!cuenta)return{ok:false,motivo:'La cuenta ya no existe'};
-      if(esCuentaAhorro(cuenta))return{ok:false,motivo:escHtml(nombreCuenta(cuenta))+' guarda su plata en cajitas: elige una cajita'};
+      if(esCuentaAhorro(cuenta))return{ok:false,motivo:nombreCuenta(cuenta)+' guarda su plata en cajitas: elige una cajita'};
     }else{
       const caj=(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]);
       if(!caj)return{ok:false,motivo:'La cajita ya no existe'};
@@ -558,10 +558,10 @@ const Plata=(()=>{
       cuenta=getCuenta(caj.cuentaId);
       if(!cuenta)return{ok:false,motivo:'La cuenta de esa cajita ya no existe'};
     }
-    if(cuenta.archivada&&!o.permitirArchivada)return{ok:false,motivo:'"'+escHtml(nombreCuenta(cuenta))+'" está archivada: reactívala o elige otra cuenta'};
+    if(cuenta.archivada&&!o.permitirArchivada)return{ok:false,motivo:'"'+nombreCuenta(cuenta)+'" está archivada: reactívala o elige otra cuenta'};
     return{ok:true};
   }
-  // ÚNICA regla de "¿alcanza?" de toda la app. `{ok, disponible, motivo}`; `motivo` ya viene escapado para toast/HTML.
+  // ÚNICA regla de "¿alcanza?" de toda la app. `{ok, disponible, motivo}`; `motivo` es TEXTO plano (sin escapar): toast() y textContent lo pintan seguro; si va a innerHTML, escápalo.
   //  · Cuenta/cajita: compara en CENTAVOS contra el saldo disponible. Nunca se permite dejar una cuenta en negativo.
   //  · TC: solo falla si la tarjeta tiene cupo configurado y el cupo disponible no alcanza (sin cupo no hay límite que validar).
   //  · 'ganancia' (plata virtual) y fuente vacía («sin especificar», no mueve plata): siempre ok.
@@ -573,11 +573,11 @@ const Plata=(()=>{
     const disponible=getSaldoFuente(fuente);
     if(t==='tc'){
       const tc=(S.tarjetasCredito||[]).find(x=>x.id===fuente.slice(3));
-      if(tc&&tc.cupo&&cent(monto)>cent(disponible))return{ok:false,disponible,motivo:'Cupo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disponible)};
+      if(tc&&tc.cupo&&cent(monto)>cent(disponible))return{ok:false,disponible,motivo:'Cupo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(disponible)};
       return{ok:true,disponible};
     }
     if(disponible===Infinity||cent(monto)<=cent(disponible))return{ok:true,disponible};
-    return{ok:false,disponible,motivo:'Saldo insuficiente en '+escHtml(fuenteLabel(fuente))+'. Disponible: '+fmt(disponible)};
+    return{ok:false,disponible,motivo:'Saldo insuficiente en '+fuenteLabel(fuente)+'. Disponible: '+fmt(disponible)};
   }
   // Varias salidas a la vez (plata dividida entre cuentas, pagos de varios orígenes…): se SUMA por fuente antes de comparar. Si dos filas
   // sacan de la misma cuenta, cada una por separado puede alcanzar y el total no. [{fuente, monto}] → {ok, motivo, fuente}.
@@ -712,8 +712,8 @@ function getSaldoFuente(fuente){
 }
 // ¿Se puede sacar `monto` de esta fuente? Un solo lugar para el "Saldo/Cupo insuficiente" que antes
 // escribía a mano cada módulo (Gastos, Spotify…) con redacción distinta y, en Spotify, sin escapar el
-// nombre de la cuenta antes de toast() (que pinta HTML). Devuelve {ok:true} o {ok:false, mensaje}, con
-// `mensaje` YA escapado y listo para toast(). No toca el DOM ni los saldos.
+// nombre de la cuenta. Devuelve {ok:true} o {ok:false, mensaje}, con
+// `mensaje` en texto plano (toast() ya no pinta HTML). No toca el DOM ni los saldos.
 //  · Cuenta/cajita: falla si el saldo disponible es menor que el monto.
 //  · TC: falla solo si la tarjeta tiene cupo configurado y el cupo disponible no alcanza (sin cupo, no
 //    hay límite que validar; una TC inexistente tampoco bloquea: eso lo decide quien la busca).
@@ -1129,7 +1129,7 @@ function calcValorBien(b, hoyStr){
   const v=Number(b&&b.valor)||0;
   const dep=Number(b&&b.depreciacionAnual)||0;
   if(!(dep>0)||!(b&&b.fecha))return v;
-  const anios=(_fechaSafe(hoyStr||hoy())-_fechaSafe(b.fecha))/(365.25*86400000);
+  const anios=(_fechaSafe(hoyStr||hoy())-_fechaSafe(b.fecha))/(365.25*Fecha.MS_DIA);
   if(!isFinite(anios))return v;
   return Math.round(v*Math.pow(1-Math.min(dep,100)/100,Math.max(0,anios)));
 }
@@ -1377,9 +1377,8 @@ function diaCreacionMov(item){
     const id=item.id!=null?item.id:item._id;
     ms=(typeof id==='string'&&/^[0-9a-z]{10,12}$/.test(id))?parseInt(id.slice(0,-3),36):NaN;
   }
-  if(Number.isFinite(ms)&&ms>1.5778e12&&ms<=Date.now()+864e5){
-    const d=new Date(ms);
-    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(Number.isFinite(ms)&&ms>1.5778e12&&ms<=Date.now()+Fecha.MS_DIA){
+    return Fecha.iso(new Date(ms));
   }
   return item.fecha||'';
 }
@@ -1452,7 +1451,7 @@ function _saldoEncargosEnCuenta(cuentaKey){
 // Se mantiene esta función con nombre propio porque calcC() ya la usa así.
 // Nu: tasa EA (historial por tramos) y cálculo de CDTs migrados a js/modules/nu.js (el cálculo puro, a nu-calc.js).
 
-function mesActual(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');}
+function mesActual(){return Fecha.mes();}   // alias de Fecha.mes()
 
 function gastosMes(mesK){
   return(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesK);
@@ -1517,24 +1516,19 @@ function _esGastoVarNoReal(g){
 }
 
 /* ---- TOAST ---- */
-// REVERTIDO (2026-08-17): la versión anterior de este fix agregaba un 4º
-// parámetro `msgEsHtml` y escapaba `msg` completo por defecto, asumiendo que
-// el problema eran unas pocas llamadas con HTML intencional (íconos). Al
-// revisar los ~63 call sites reales (alcancia/analisis/encargos/mesada/
-// prestado/spotify/tarjetas_credito/cuentas/gastos.js) resultó que NINGUNO
-// pasa HTML de ícono — pero la gran mayoría (~60) ya sigue el patrón
-// establecido en todo el proyecto: escapar el texto libre en el punto de
-// interpolación (`toast('Cuenta "'+escHtml(nombre)+'" creada')`, etc.), no
-// en `toast()`. Escapar `msg` completo ahí adentro las hubiera
-// DOBLE-escapado — cualquier mensaje con comillas o "&" literales
-// (`Cuenta "${escHtml(nombre)}" creada`, con comillas fuera del escHtml)
-// habría mostrado `&quot;`/`&amp;` en vez del carácter real. Se revierte a
-// la firma y comportamiento original; los 3 bugs reales encontrados
-// (texto libre interpolado SIN escHtml) se corrigieron en su lugar real:
-// `encargos.js`/`guardarEditarEncargo()`, `prestado.js`/
-// `guardarEditarMiDeuda()` (ambos: `nombre` del input sin escapar) y
-// `diferencial.js`/`diffValidarIntercambios()` (`fuenteLabel(...)` sin
-// escapar). Ver CHANGELOG.md para el detalle de esos tres.
+// toast(msg, tipo, dur) — M6 (2026-11-10): el mensaje es TEXTO por defecto (se pinta con textContent: nada de lo que venga de datos del
+// usuario puede inyectar marcado, no hay nada que "olvidar" escapar). Para marcado deliberado (un ícono, un <br>) se pasa un html`…`
+// o raw(…) (js/core/html-tag.js): ese objeto lleva `__raw` y SÍ se pinta como HTML, con los valores interpolados ya escapados por html``.
+//   toast(`Cuenta "${nombre}" creada`)                   ← texto: NO uses escHtml() aquí (se vería &amp;)
+//   toast(html`Ingreso registrado <i class="fa-solid fa-check"></i>`)   ← marcado explícito
+// Historia: el 2026-08-17 se había intentado "escapar por defecto" y se revirtió, porque ~60 llamadas ya escapaban en el sitio de
+// interpolación y salía `&amp;amp;`. Esta vez se migraron todas en el mismo cambio (tests/interfaz.test.js vigila que no vuelva
+// escHtml() dentro de toast()) y, como red para cualquier texto que aún llegue pre-escapado desde un validador, `_toastTexto()` decodifica
+// SOLO las cinco entidades que produce escHtml() — compatibilidad transitoria, no contrato: ya no hay llamadas que dependan de ella.
+function _toastTexto(v){
+  if(v==null)return'';
+  return String(v).replace(/&(amp|lt|gt|quot|#39);/g,(_,e)=>({amp:'&',lt:'<',gt:'>',quot:'"','#39':"'"}[e]));
+}
 function toast(msg, tipo='ok', dur=2800){
   // El color indica el RESULTADO de la acción, no el tipo de dato: 'ok' (se hizo: registrar, guardar, eliminar; verde) · 'salida'
   //       (se hizo y es plata que sale: verde con flecha, para distinguirla de una entrada sin confundirla con un error) · 'warn' (se
@@ -1552,7 +1546,11 @@ function toast(msg, tipo='ok', dur=2800){
   };
   el.className='toast toast-'+tipo;
   el.setAttribute('role',tipo==='err'?'alert':'status');
-  el.innerHTML=`<span class="toast-ico">${ICONOS[tipo]||'•'}</span><span class="toast-msg">${msg}</span>`;
+  const ico=document.createElement('span');ico.className='toast-ico';ico.innerHTML=ICONOS[tipo]||'•';
+  const cuerpo=document.createElement('span');cuerpo.className='toast-msg';
+  if(msg&&msg.__raw===true)cuerpo.innerHTML=msg.value;   // marcado explícito (html``/raw())
+  else cuerpo.textContent=_toastTexto(msg);              // todo lo demás es texto
+  el.appendChild(ico);el.appendChild(cuerpo);
   c.appendChild(el);
   setTimeout(()=>{el.classList.add('hiding');setTimeout(()=>el.remove(),220);},dur);
 }
@@ -1631,13 +1629,7 @@ function avisarNoSePuede(titulo,motivo){
 // `hora` (opcional, 0 por defecto) fija la hora local: _fechaSafe(f, 12) reemplaza a new Date(f+'T12:00:00') en las lecturas de
 // visualización o de diferencia de días (el mediodía evita que un cambio de hora o una zona horaria lleve el día a otro al formatear).
 // Acepta también 'AAAA-MM-DDTHH:MM…' (toma solo la parte de la fecha), porque algunos registros guardan la hora.
-function _fechaSafe(fechaStr, hora){
-  if(!fechaStr) return new Date(NaN);
-  const partes=String(fechaStr).split('T')[0].split('-').map(Number);
-  if(partes.length!==3||partes.some(isNaN)) return new Date(NaN);
-  const [anio,mes,dia]=partes;
-  return new Date(anio,mes-1,dia,hora||0); // hora local, sin pasar por el parser de strings ISO
-}
+function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora); }   // alias: la lógica vive en js/core/fecha.js
 
 /* ---- PROTECCIÓN POR ANTIGÜEDAD DE MOVIMIENTOS ---- */
 // Ver docs/proteccion-antiguedad-movimientos.md para el detalle completo.
@@ -1665,7 +1657,7 @@ function _fechaSafe(fechaStr, hora){
 function nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo){
   const cfg=S.config.proteccionAntiguedad;
   const modCfg=cfg[modulo]||{};
-  const dias=Math.floor((Date.now()-_fechaSafe(fecha).getTime())/86400000);
+  const dias=Fecha.diasEntre(fecha,hoy());
   const ops=opsPosteriores||0;
   if(dias>cfg.diasBloqueo || (modCfg.opsBloqueo!=null && ops>=modCfg.opsBloqueo)) return 'bloqueado';
   if(dias>cfg.diasAviso || (modCfg.opsAviso!=null && ops>=modCfg.opsAviso)) return 'viejo';

@@ -49,7 +49,7 @@ function renderBienes(){
 let _anPatDias=30; // ventana de la gráfica de patrimonio (solo vista; no se guarda)
 function renderAnalisis(){
   const mes=mesActual();
-  const MESES_NOMBRE=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const MESES_NOMBRE=Fecha.MESES_CORTOS;
 
   // ── Ingresos fijos (card editable) ────────────────────────────────────
   renderIngresosFijos();
@@ -250,7 +250,7 @@ function renderAnalisis(){
   // Con el módulo apagado el desglose solo se muestra si ese año tiene mesada registrada (esa plata ya está en el total de ingresos).
   if(mesadaSection&&mesadaTotal){
     let totalMesada=0;
-    for(let m=1;m<=12;m++) totalMesada+=Periodo.mesadaDelMes(anio+'-'+String(m).padStart(2,'0'));
+    for(let m=1;m<=12;m++) totalMesada+=Periodo.mesadaDelMes(Fecha.mesKey(anio,m));
     const moduloActivo=!!(S.modulos&&S.modulos.mesada);
     mostrarSi(mesadaSection,moduloActivo||totalMesada>0);
     mesadaTotal.textContent=fmt(totalMesada);
@@ -281,7 +281,7 @@ function renderAnalisis(){
   if(compEl){
     // Calcular mes anterior
     const dPrev=new Date(parseInt(mes.split('-')[0]),parseInt(mes.split('-')[1])-2,1);
-    const mesPrev=dPrev.getFullYear()+'-'+String(dPrev.getMonth()+1).padStart(2,'0');
+    const mesPrev=Fecha.mes(dPrev);
     const mesNomPrev=MESES_NOMBRE[dPrev.getMonth()]+' '+dPrev.getFullYear();
     const balPrev=Periodo.balanceDelMes(mesPrev,undefined,{conRendimientos:true});
     const totalPrev=balPrev.gastos.total;
@@ -339,7 +339,7 @@ function renderAnalisis(){
     // El selector (30 días / 90 días / 1 año) solo aparece si cambia lo que se ve: con una historia total de 30 días o menos, las tres
     // ventanas muestran lo mismo. Cada botón se ofrece solo si hay datos más viejos que la ventana anterior (90 si la historia pasa de 30; 1 año si pasa de 90).
     const _todoFechas=(S.patrimonioHistorial||[]).map(h=>_fechaSafe(h.fecha).getTime()).filter(isFinite);
-    const _spanTotal=_todoFechas.length>1?Math.round((Math.max(..._todoFechas)-Math.min(..._todoFechas))/86400000):0;
+    const _spanTotal=_todoFechas.length>1?Math.round((Math.max(..._todoFechas)-Math.min(..._todoFechas))/Fecha.MS_DIA):0;
     const _opcionesVent=[30,90,365].filter((d,i)=>i===0?_spanTotal>30:_spanTotal>[30,90,365][i-1]);
     const ventana=_opcionesVent.length?(_opcionesVent.includes(_anPatDias)?_anPatDias:_opcionesVent[0]):365;
     const corte=(()=>{const d=_fechaSafe(hoy());d.setDate(d.getDate()-ventana);return d;})();
@@ -363,7 +363,7 @@ function renderAnalisis(){
       // guardas algo, así que un salto de 10 días no debe verse igual que uno de 1 día. (Sin fechas distintas, partes iguales.)
       const _ms=h=>_fechaSafe(h.fecha).getTime(); // tolera «2026-9-26» (sin cero), igual que la Proyección
       const _t0=_ms(hist[0]), _span=_ms(hist[hist.length-1])-_t0;
-      const _diasVentana=_span>0?Math.round(_span/86400000)+1:hist.length;
+      const _diasVentana=_span>0?Math.round(_span/Fecha.MS_DIA)+1:hist.length;
       const pts=valsReales.map((v,i)=>{
         const px=PAD+(_span>0?(_ms(hist[i])-_t0)/_span:i/(hist.length-1))*(W-PAD*2);
         const py=PAD+(1-(v-minV)/rng)*(H-PAD*2);
@@ -634,7 +634,7 @@ function abrirSheetIngresoFijo(id){
   const dEl=document.getElementById('if_d');
   const diaEl=document.getElementById('if_dia');
   // Mes actual como default para "desde"
-  const mesHoy=new Date().getFullYear()+'-'+String(new Date().getMonth()+1).padStart(2,'0');
+  const mesHoy=mesActual();
   if(_ifEditId){
     const ing=(S.ingresosFijos||[]).find(x=>x.id===_ifEditId);
     if(!ing)return;
@@ -904,10 +904,10 @@ function renderPresupuestos(){
     const tono = pctReal >= 100 ? 'red' : pctReal >= 80 ? 'amber' : 'accent';
     const warnKey = cat+'_'+mes;
     if(pctReal >= 80 && pctReal < 100 && avisarUnaVez(warnKey)) {
-      if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${escHtml(cat)}`,'info',4000);
+      if(window.toast) window.toast(`¡Atención! Llevas ${pct}% del presupuesto de ${cat}`,'info',4000);
     } else if(pctReal >= 100 && avisarUnaVez(warnKey+'_sobre')) {
       // Antes el aviso solo existía entre 80 % y 99 %: al SUPERAR el presupuesto no avisaba nada.
-      if(window.toast) window.toast(`Superaste el presupuesto de ${escHtml(cat)}${exceso>0?' por '+fmt(exceso):''}`,'warn',4500);
+      if(window.toast) window.toast(`Superaste el presupuesto de ${cat}${exceso>0?' por '+fmt(exceso):''}`,'warn',4500);
     }
     return html`<div class="presup-row">
       <div class="presup-label-row">

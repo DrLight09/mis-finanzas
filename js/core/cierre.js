@@ -261,14 +261,14 @@ const Cierre = (() => {
     _fuentes.forEach(f => f.registros(st).forEach(r => { if (_fechaOk(r.fecha)) fechas.push(r.fecha.slice(0, 10)); }));
     fechas.sort();
     const masAntigua = fechas[0] || null;
-    const dias = masAntigua ? Math.max(1, Math.round((_fechaSafe(hoyStr, 12) - _fechaSafe(masAntigua, 12)) / 864e5) + 1) : 0;
+    const dias = masAntigua ? Math.max(1, Fecha.diasEntre(masAntigua, hoyStr) + 1) : 0;
     const ratio = bruto ? comprimido / bruto : 0;
     // Lo que crece con el tiempo = las claves con historia (aproximación: incluye los campos fijos de cada entidad, que son pocos).
     const bytesHistoria = porClave.filter(k => ['historica', 'entidad-con-historia'].includes(CLASIFICACION[k.clave])).reduce((a, k) => a + k.bytes, 0);
     const lim = _limites();
     const porDia = dias ? bytesHistoria * ratio / dias : 0;
     const hasta = tope => (porDia > 0 ? Math.max(0, Math.round((tope - comprimido) / porDia)) : null);
-    const fechaEn = d => { if (d == null) return null; const x = _fechaSafe(hoyStr, 12); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+    const fechaEn = d => (d == null ? null : Fecha.sumarDias(hoyStr, d));
     const dAviso = hasta(lim.aviso), dLimite = hasta(lim.limite);
     return {
       bruto, comprimido, comprimidoEstimado: estimado, porClave, limites: lim,

@@ -476,7 +476,7 @@ describe('mesada-ui', () => {
     assert.equal(d.el('mpEncargoBox').style.display, 'none');
   });
 
-  test('REGRESIÓN bug 3 — el nombre del encargo se escapa en el toast de saldo insuficiente', () => {
+  test('REGRESIÓN bug 3 — el nombre del encargo va como texto (no HTML) en el toast de saldo insuficiente', () => {
     const nombre = 'Papá <img src=x onerror=alert(1)>';
     const { ctx, d, toasts } = ui({ encargos: [enc('e1', nombre, 1000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
@@ -484,8 +484,9 @@ describe('mesada-ui', () => {
     d.el('mpUsarEncargo').click();
     d.fire('btn-confirmar-mesada', 'click');
     assert.equal(toasts.length, 1);
-    assert.ok(!toasts[0][0].includes('<img'), toasts[0][0]);
-    assert.ok(toasts[0][0].includes('&lt;img'));
+    // toast() pinta texto (textContent): el nombre viaja tal cual y el navegador no lo interpreta como HTML (tests/toast.test.js)
+    assert.ok(toasts[0][0].includes(nombre), toasts[0][0]);
+    assert.ok(!toasts[0][0].includes('&lt;'), 'sin doble escape');
     assert.equal(ctx.encargoSaldo(ctx.S.encargos[0]), 1000); // y no se tocó nada
   });
 

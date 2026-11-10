@@ -67,8 +67,7 @@ const Periodo = (() => {
   // 'YYYY-MM' ± n meses.
   function mesDesplazado(mes, n) {
     const [a, m] = String(mes).split('-').map(Number);
-    const d = new Date(a, m - 1 + n, 1);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    return Fecha.mes(new Date(a, m - 1 + n, 1));
   }
   const mesAnterior = mes => mesDesplazado(mes, -1);
 

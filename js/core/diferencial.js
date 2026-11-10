@@ -343,7 +343,7 @@ function diffValidarIntercambios(instId) {
     if (!b.miCuentaSalida) continue;
     const val = Plata.validarSalida(b.miCuentaSalida, b.monto);
     if (!val.ok) {
-      const nombre = b.nombre ? `"${escHtml(b.nombre)}"` : 'una persona';
+      const nombre = b.nombre ? `"${b.nombre}"` : 'una persona';   // texto plano: lo pinta toast()/textContent
       return `${val.motivo} para pagarle a ${nombre}.`;
     }
   }

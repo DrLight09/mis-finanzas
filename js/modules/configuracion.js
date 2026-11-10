@@ -147,7 +147,7 @@ function agregarCat(tipo){
   else S.catsFijo=cats;
   document.getElementById(inputId).value='';
   save();renderCatsConfig();
-  toast(`Categoría "${escHtml(val)}" agregada`,'ok');
+  toast(`Categoría "${val}" agregada`,'ok');
 }
 
 function eliminarCat(tipo,cat){
@@ -157,13 +157,13 @@ function eliminarCat(tipo,cat){
   let enUso=false;
   if(tipo==='var') enUso=(S.gastosVar||[]).some(g=>g.cat===cat);
   else enUso=(S.gastosFijos||[]).some(g=>g.cat===cat);
-  if(enUso){toast(`"${escHtml(cat)}" está siendo usada en gastos existentes. Cámbiala primero.`,'err',4000);return;}
+  if(enUso){toast(`"${cat}" está siendo usada en gastos existentes. Cámbiala primero.`,'err',4000);return;}
   const cats=tipo==='var'?getCatsVar():getCatsFijo();
   const nuevas=cats.filter(c=>c!==cat);
   if(tipo==='var')S.catsVar=nuevas;
   else S.catsFijo=nuevas;
   save();renderCatsConfig();
-  toast(`Categoría "${escHtml(cat)}" eliminada`,'ok');
+  toast(`Categoría "${cat}" eliminada`,'ok');
 }
 
 /* ---- COPIA DE SEGURIDAD: EXPORTAR / IMPORTAR JSON ---- */
@@ -173,7 +173,7 @@ function exportarJSON(){
   const blob=new Blob([data],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  const _fd=new Date();const fecha=_fd.getFullYear()+'-'+String(_fd.getMonth()+1).padStart(2,'0')+'-'+String(_fd.getDate()).padStart(2,'0');
+  const fecha=hoy();
   a.href=url;a.download=`mis-finanzas-backup-${fecha}.json`;
   a.click();URL.revokeObjectURL(url);
   toast('Copia de seguridad exportada','ok');
@@ -411,8 +411,7 @@ function exportarCSV(){
   const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const fd = new Date();
-  a.href=url; a.download=`gastos-${fd.getFullYear()}-${String(fd.getMonth()+1).padStart(2,'0')}.csv`;
+  a.href=url; a.download=`gastos-${Fecha.mes()}.csv`;
   a.click(); URL.revokeObjectURL(url);
   toast('CSV exportado','ok');
 }

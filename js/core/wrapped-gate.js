@@ -66,7 +66,7 @@
 const WRAPPED_VENTANA_DIAS = UMBRALES.wrapped.ventanaDias; // 1-31 de enero. Ver nota arriba. El valor vive en umbrales.js.
 
 function _wrappedGateHoy(){
-  return typeof hoy === 'function' ? hoy() : new Date().toISOString().slice(0,10);
+  return hoy();
 }
 
 function _wrappedGateForzado(){

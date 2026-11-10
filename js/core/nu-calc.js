@@ -107,7 +107,7 @@ function _diasEntreFechas(a,b){
   // Ver _fechaSafe() en core-state.js: new Date(str+'T00:00:00') da Invalid
   // Date si a/b no tienen mes/día de 2 dígitos, propagando NaN en silencio
   // a calcC() y todo lo que dependa de esta función.
-  return Math.round((_fechaSafe(b)-_fechaSafe(a))/86400000);
+  return Fecha.diasEntre(a,b);
 }
 function _segmentosTasa(cuentaId,desdeStr,hastaStr){
   const cambios=_historialTasas(cuentaId)
@@ -261,7 +261,7 @@ function cdtVencido(cdt,ahora){
   if(!cdt||!cdt.vence)return false;
   const v=_fechaSafe(cdt.vence);
   if(isNaN(v))return false;
-  return Math.ceil((v-(ahora||new Date()))/86400000)<0;
+  return Math.ceil((v-(ahora||new Date()))/Fecha.MS_DIA)<0;
 }
 
 function calcCDT(cdt){
@@ -272,7 +272,7 @@ function calcCDT(cdt){
   const hasta=cdt.vence?_fechaSafe(cdt.vence):new Date();
   const ahora=new Date();
   const fechaFin=ahora<hasta?ahora:hasta;
-  const dias=Math.max(0,Math.floor((fechaFin-desde)/86400000));
+  const dias=Math.max(0,Math.floor((fechaFin-desde)/Fecha.MS_DIA));
   // Rendimiento bruto compuesto (fórmula EA base 365, igual que Nu)
   const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
   // Nu redondea el bruto al $0,50 más cercano antes de calcular RTE
@@ -312,8 +312,8 @@ function calcRendimientoCDTMes(cdt,mesK){
   // Días acumulados desde el inicio del CDT hasta el corte de inicio/fin de este mes
   const cortePrev=inicioMes>inicio?inicioMes:inicio;
   const corteFin=limiteSup<finMes?limiteSup:finMes;
-  const diasPrev=Math.max(0,Math.floor((cortePrev-inicio)/86400000));
-  const diasFin=Math.max(0,Math.floor((corteFin-inicio)/86400000));
+  const diasPrev=Math.max(0,Math.floor((cortePrev-inicio)/Fecha.MS_DIA));
+  const diasFin=Math.max(0,Math.floor((corteFin-inicio)/Fecha.MS_DIA));
   if(diasFin<=diasPrev)return 0;
   return Math.max(0,_rendimientoCDTaDias(cdt,diasFin)-_rendimientoCDTaDias(cdt,diasPrev));
 }

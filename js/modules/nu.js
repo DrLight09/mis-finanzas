@@ -234,7 +234,7 @@ async function guardarChequeoNu(){
     const enc=_saldoEncargosEnCajita(l.cajitaId);
     if(l.val<enc){
       const c=(S.cajitas||[]).find(cc=>cc.id===l.cajitaId);
-      toast('En "'+escHtml((c&&c.nombre)||'la cajita')+'" anotaste '+fmt(l.val)+', pero ahí hay '+fmt(enc)+' de encargos. Pon el total que ves en la app de '+escHtml(_nombreAhorro(cuentaId))+' (encargos incluidos).','err',5000);
+      toast('En "'+((c&&c.nombre)||'la cajita')+'" anotaste '+fmt(l.val)+', pero ahí hay '+fmt(enc)+' de encargos. Pon el total que ves en la app de '+_nombreAhorro(cuentaId)+' (encargos incluidos).','err',5000);
       return;
     }
   }
@@ -806,7 +806,7 @@ async function liberarCDTManual(cajitaId,cdtId){
   c.cdts=(c.cdts||[]).filter(x=>x.id!==cdtId);
   refresh();save();
   if(window.logCambio)logCambio('Cerraste CDT en "'+c.nombre+'"','Capital '+fmt(cdt.monto)+' + intereses acreditados',k.val,'ingreso',c.id);
-  toast(`CDT cerrado — ${fmt(k.val)} acreditados a "${escHtml(c.nombre)}"`,'ok',4000);
+  toast(`CDT cerrado — ${fmt(k.val)} acreditados a "${c.nombre}"`,'ok',4000);
 }
 
 
@@ -866,7 +866,7 @@ async function confirmarCobrarCDT(){
   closeSheet('cobrar-cdt');
   refresh();save();
   if(window.logCambio)logCambio('Cobraste CDT de "'+c.nombre+'"','Valor real acreditado a la cajita',valorReal,'ingreso',c.id);
-  toast('CDT cobrado — '+fmt(valorReal)+' acreditados a "'+escHtml(c.nombre)+'"','ok',4000);
+  toast('CDT cobrado — '+fmt(valorReal)+' acreditados a "'+c.nombre+'"','ok',4000);
   // Si este CDT venía de la cola de vencimientos automáticos, sacarlo y seguir
   // con el siguiente pendiente (si hay más vencidos esperando confirmación).
   if(_colaCDTsVencidos.length&&_colaCDTsVencidos[0].cajitaId===cajitaId&&_colaCDTsVencidos[0].cdtId===cdtId){
@@ -1207,7 +1207,7 @@ function abrirSubCDTs(){
   } else {
     contenido=html`${cdts.map(cdt=>{
       const cdtK=calcCDT(cdt);
-      const dr=cdt.vence?Math.ceil((_fechaSafe(cdt.vence)-new Date())/86400000):null;
+      const dr=cdt.vence?Fecha.diasEntre(hoy(),cdt.vence):null;
       const vencido=dr!==null&&dr<=0;
       return html`<div class="card nu-cdt-card">
         <div class="nu-cdt-cab">
@@ -1421,11 +1421,11 @@ function confirmarNuMovimiento() {
   if (_nuMovTipo === 'entrada') {
     const descFinal = registrarEntradaConApertura(_nuMovCajitaSel, v, fecha, desc, esApertura, nota);
     if (window.logCambio) logCambio('Agregaste dinero en ' + (caj.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
-    toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' agregado a ') + escHtml(caj.nombre || 'cajita'), 'ok');
+    toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' agregado a ') + (caj.nombre || 'cajita'), 'ok');
   } else {
     registrarSalida(_nuMovCajitaSel, v, fecha, desc, nota);
     if (window.logCambio) logCambio('Retiraste dinero de ' + (caj.nombre || 'cajita'), desc, v, 'gasto', cid);
-    toast('− ' + fmt(v) + ' de ' + escHtml(caj.nombre || 'cajita') + ' — ' + escHtml(desc), 'salida');
+    toast('− ' + fmt(v) + ' de ' + (caj.nombre || 'cajita') + ' — ' + desc, 'salida');
   }
 
   save();
@@ -1542,7 +1542,7 @@ document.addEventListener('input',function(e){
   const prev=document.getElementById('cdt_preview');
   if(!prev)return;
   if(monto>=50000&&vence){
-    const dias=Math.max(0,Math.ceil((_fechaSafe(vence)-new Date())/86400000));
+    const dias=Math.max(0,Fecha.diasEntre(hoy(),vence));
     const tasaDiaria=Math.pow(1+tasa/100,1/365)-1;
     const tasaDiariaNet=tasaDiaria*(1-rte);
     const valorFinal=monto*Math.pow(1+tasaDiariaNet,dias);

@@ -73,7 +73,7 @@ function guardarEditarEncargo() {
   save();
   abrirEncargoDetalle(encargoActualId);
   closeSheet('editar-encargo');
-  toast(escHtml(nombre) + ' actualizado', 'ok');
+  toast(nombre + ' actualizado', 'ok');
 }
 function renderEncargosEnCuenta(elId, tipoCuenta) {
   const el = document.getElementById(elId);
@@ -546,7 +546,7 @@ function renderEncargoParts(enc) {
     const hoyStr = hoy();
     let fechaInfo = '';
     if (p.fecha) {
-      const dias = Math.round((_fechaSafe(p.fecha) - _fechaSafe(hoyStr)) / 86400000);
+      const dias = Fecha.diasEntre(hoyStr, p.fecha);
       if (dias < 0) fechaInfo = `<span class="enc-venc-rojo">venció hace ${Math.abs(dias)}d</span>`;
       else if (dias === 0) fechaInfo = `<span class="enc-venc-rojo">hoy</span>`;
       else if (dias === 1) fechaInfo = `<span class="enc-venc-amber">mañana</span>`;
@@ -1129,7 +1129,7 @@ async function _confirmarUsarParte() {
     if (!f.fuente) continue;
     const saldoEnc = _getEncargoSaldoEnCuenta(enc, f.fuente);
     if (f.monto > saldoEnc + 0.5) {
-      toast(`El encargo solo tiene ${fmt(saldoEnc)} guardado en ${escHtml(fuenteLabel(f.fuente))}`, 'err');
+      toast(`El encargo solo tiene ${fmt(saldoEnc)} guardado en ${fuenteLabel(f.fuente)}`, 'err');
       return;
     }
   }
@@ -1591,7 +1591,7 @@ function confirmarMovEncargo() {
       if (!s.fuente) continue;
       const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, s.fuente);
       if (s.monto > saldoEnCuenta + 0.5) {
-        toast(`En ${escHtml(fuenteLabel(s.fuente))} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+        toast(`En ${fuenteLabel(s.fuente)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
       }
     }
     // Validar intercambios antes de registrar
@@ -1639,7 +1639,7 @@ function confirmarMovEncargo() {
       if (cuenta) {
         const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
         if (monto > saldoEnCuenta) {
-          toast(`En ${escHtml(fuenteLabel(cuenta))} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+          toast(`En ${fuenteLabel(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
         }
       }
     }
@@ -1815,7 +1815,7 @@ function _movEncConfirmarPrestarFaltante() {
   if (cuenta) {
     const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
     if (libre > saldoEnCuenta + 0.5) {
-      toast(`En ${escHtml(fuenteLabel(cuenta))} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+      toast(`En ${fuenteLabel(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
     }
   }
 
@@ -1863,7 +1863,7 @@ function _movEncConfirmarPrestarFaltante() {
   refresh();
   closeSheet('mov-encargo');
   abrirEncargoDetalle(encargoActualId);
-  toast(`${fmt(libre)} retirados del encargo · ${fmt(faltante)} prestados a ${escHtml(persona.nombre)} (Me deben)`, 'ok', 4500);
+  toast(`${fmt(libre)} retirados del encargo · ${fmt(faltante)} prestados a ${persona.nombre} (Me deben)`, 'ok', 4500);
 }
 
 async function deleteMovEncargo(encId, movId) {
@@ -2218,7 +2218,7 @@ function confirmarTraspasoEncargo() {
   if (cuentaOrigen) {
     const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuentaOrigen);
     if (monto > saldoEnCuenta) {
-      toast(`El encargo solo tiene ${fmt(saldoEnCuenta)} guardado en ${escHtml(fuenteLabel(cuentaOrigen))}`, 'err');
+      toast(`El encargo solo tiene ${fmt(saldoEnCuenta)} guardado en ${fuenteLabel(cuentaOrigen)}`, 'err');
       return;
     }
   }
@@ -2261,7 +2261,7 @@ function confirmarTraspasoEncargo() {
   refresh();
   closeSheet('traspaso-encargo');
   abrirEncargoDetalle(encargoActualId);
-  toast(`${fmt(monto)} traspasado a ${escHtml(fuenteLabel(destino))}`, 'ok', 3500);
+  toast(`${fmt(monto)} traspasado a ${fuenteLabel(destino)}`, 'ok', 3500);
 }
 
 
@@ -2521,7 +2521,7 @@ function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
     const labelOrigen = esSinEsp ? 'Sin especificar' : fuenteLabel(s.fuente);
     const saldoEnOrigen = esSinEsp ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, s.fuente);
     if (s.monto > saldoEnOrigen + 0.5) {
-      toast('El encargo solo tiene ' + fmt(saldoEnOrigen) + ' en ' + escHtml(labelOrigen), 'err');
+      toast('El encargo solo tiene ' + fmt(saldoEnOrigen) + ' en ' + labelOrigen, 'err');
       return;
     }
   }
@@ -2559,7 +2559,7 @@ function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
   save();
   closeSheet('mover-enc-cuentas');
   abrirEncargoDetalle(encargoActualId);
-  toast(fmt(totalSplit) + ' reubicados a ' + escHtml(fuenteLabel(destino)), 'ok', 3500);
+  toast(fmt(totalSplit) + ' reubicados a ' + fuenteLabel(destino), 'ok', 3500);
 }
 
 function confirmarMoverEncCuentas() {
@@ -2582,7 +2582,7 @@ function confirmarMoverEncCuentas() {
   if (origen === destino) { toast('Origen y destino no pueden ser la misma cuenta', 'err'); return; }
 
   const esOrigenSinEspecificar = origen === '__sinesp__';
-  const labelOrigen = esOrigenSinEspecificar ? 'Sin especificar' : escHtml(fuenteLabel(origen));
+  const labelOrigen = esOrigenSinEspecificar ? 'Sin especificar' : fuenteLabel(origen);
 
   // Verificar saldo del encargo en la cuenta origen (o en "Sin especificar")
   const saldoEnOrigen = esOrigenSinEspecificar
@@ -2622,7 +2622,7 @@ function confirmarMoverEncCuentas() {
   save();
   closeSheet('mover-enc-cuentas');
   abrirEncargoDetalle(encargoActualId);
-  toast(fmt(monto) + ' reubicados de ' + labelOrigen + ' a ' + escHtml(fuenteLabel(destino)), 'ok', 3500);
+  toast(fmt(monto) + ' reubicados de ' + labelOrigen + ' a ' + fuenteLabel(destino), 'ok', 3500);
 }
 
 // Listener para el botón confirmar
@@ -2727,7 +2727,7 @@ function confirmarTransferenciaEncargo() {
   if (cuentaOrigen) {
     const saldoEnCuenta = _getEncargoSaldoEnCuenta(encOrigen, cuentaOrigen);
     if (monto > saldoEnCuenta) {
-      toast(`El encargo solo tiene ${fmt(saldoEnCuenta)} guardado en ${escHtml(fuenteLabel(cuentaOrigen))}`, 'err');
+      toast(`El encargo solo tiene ${fmt(saldoEnCuenta)} guardado en ${fuenteLabel(cuentaOrigen)}`, 'err');
       return;
     }
   }
@@ -2775,7 +2775,7 @@ function confirmarTransferenciaEncargo() {
   refresh();
   closeSheet('transferencia-encargo');
   abrirEncargoDetalle(encargoActualId);
-  toast(`${fmt(monto)} transferidos a ${escHtml(encDestino.nombre)}`, 'ok', 3500);
+  toast(`${fmt(monto)} transferidos a ${encDestino.nombre}`, 'ok', 3500);
 }
 
 // Listener para el botón confirmar
@@ -3071,7 +3071,7 @@ function confirmarCompraConTC() {
   if (cuentaEnc) {
     const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuentaEnc);
     if (monto > saldoEnCuenta + 0.5) {
-      toast(`En ${escHtml(fuenteLabel(cuentaEnc))} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
+      toast(`En ${fuenteLabel(cuentaEnc)} solo hay ${fmt(saldoEnCuenta)} de este encargo`, 'err'); return;
     }
   }
 
@@ -3168,7 +3168,7 @@ function confirmarCompraConTC() {
   refresh();
   closeSheet('compra-tc-encargo');
   abrirEncargoDetalle(encargoActualId);
-  toast(`${fmt(monto)} del encargo a ${escHtml(fuenteLabel(destino))} · TC sube ${fmt(tcMonto)}`, 'ok', 4000);
+  toast(`${fmt(monto)} del encargo a ${fuenteLabel(destino)} · TC sube ${fmt(tcMonto)}`, 'ok', 4000);
 }
 
 // Conectar el botón confirmar al cargar

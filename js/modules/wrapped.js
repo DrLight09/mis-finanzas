@@ -93,7 +93,7 @@ function _wrappedEnRango(fecha, tipo, mesK, anioK){
 }
 
 function _wrappedHoy(){
-  return typeof hoy === 'function' ? hoy() : new Date().toISOString().slice(0,10);
+  return hoy();
 }
 
 /* Único punto que decide "año actual" y "mes actual (0-indexado)" para todo
@@ -408,7 +408,7 @@ function _wrappedCuotaAnioFallback(cuotas, anio){
 // Mesada e ingresos fijos de un mes: definición única en js/core/periodo.js (la misma de
 // Inicio y Análisis). `mesIdx` es 0-indexado (convención de Mesada), `mesK` es 'YYYY-MM'.
 function _wrappedMesadaMes(S, anio, mesIdx){
-  return Periodo.mesadaDelMes(anio + '-' + String(mesIdx + 1).padStart(2, '0'), S);
+  return Periodo.mesadaDelMes(Fecha.mesKey(anio, mesIdx + 1), S);
 }
 function _wrappedIngresosFijosMes(S, mesK){
   return Periodo.ingresosFijosDelMes(mesK, S);
@@ -470,7 +470,7 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
     const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
     const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
     for(let m=0; m<=mesMax; m++){
-      const mesKLoop = anioK + '-' + String(m+1).padStart(2,'0');
+      const mesKLoop = Fecha.mesKey(anioK, m+1);
       ingresoMesadaFijos += _wrappedMesadaMes(S, anio, m) + _wrappedIngresosFijosMes(S, mesKLoop) + _wrappedSpotifyMes(S, mesKLoop);
     }
   }
@@ -576,7 +576,7 @@ function _wrappedInicioRachaReal(S, anioK, mesMax){
   let inicio = mesMax;
   let vaciosSeguidos = 0;
   for(let m = mesMax; m >= 0; m--){
-    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const mesK = Fecha.mesKey(anioK, m+1);
     const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
     if(stats.totalIngresos > 0 || stats.totalGastos > 0){
       vaciosSeguidos = 0;
@@ -595,7 +595,7 @@ function _wrappedMejorPeorMesAnio(S, anioK){
   const mesInicio = _wrappedInicioRachaReal(S, anioK, mesMax);
   const meses = [];
   for(let m=mesInicio; m<=mesMax; m++){
-    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const mesK = Fecha.mesKey(anioK, m+1);
     const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
     if(stats.totalIngresos > 0 || stats.totalGastos > 0){
       // ingresos/gastos van acá desde 2026-09-15 para que el copy del
@@ -656,7 +656,7 @@ function _wrappedHistoriasMensuales(S, anioK, mesMax){
   const mesInicio = _wrappedInicioRachaReal(S, anioK, mesMax); // ver cabecera de esa función
   const meses = [];
   for(let m=mesInicio; m<=mesMax; m++){
-    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const mesK = Fecha.mesKey(anioK, m+1);
     const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
     if(stats.totalIngresos > 0 || stats.totalGastos > 0){
       meses.push({ mesK, balance: stats.balance, topCategoria: stats.topCategoria });
@@ -734,7 +734,7 @@ function _wrappedSerieMensualAnio(S, anioK){
 
   const serie = [];
   for(let m=0; m<=mesMax; m++){
-    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const mesK = Fecha.mesKey(anioK, m+1);
     const puntosDelMes = hist.filter(p => p.fecha.slice(0,7) === mesK);
     if(puntosDelMes.length) ultimoConocido = val(puntosDelMes[puntosDelMes.length-1]);
     serie.push({ mesK, valor: ultimoConocido });
@@ -743,7 +743,7 @@ function _wrappedSerieMensualAnio(S, anioK){
   return primerIdxConDato === -1 ? [] : serie.slice(primerIdxConDato);
 }
 
-const _MES_NOMBRE = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const _MES_NOMBRE = Fecha.MESES_CORTOS;
 function _wrappedMesKaNombre(mesK){
   const partes = (mesK||'').split('-');
   const idx = parseInt(partes[1],10) - 1;
@@ -1925,7 +1925,7 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
    exactamente el mismo corte de fechas, en vez de reimplementarlo. */
 function _wrappedCorteMitadAnio(anioK, mesMax){
   const mitad = Math.floor((mesMax+1) / 2);
-  const mesKDeCorte = anioK + '-' + String(mitad+1).padStart(2,'0'); // primer mesK de la segunda mitad
+  const mesKDeCorte = Fecha.mesKey(anioK, mitad+1); // primer mesK de la segunda mitad
   return {
     enPrimera: fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) < mesKDeCorte,
     enSegunda: fecha => typeof fecha === 'string' && fecha.slice(0,4) === anioK && fecha.slice(0,7) >= mesKDeCorte
@@ -2696,7 +2696,7 @@ function _wrappedProtagonistas(S, tipo, mesK, anioK){
 function _wrappedSerieMensualIngresoGasto(S, anioK, mesMax){
   const meses = [];
   for(let m=0; m<=mesMax; m++){
-    const mesK = anioK + '-' + String(m+1).padStart(2,'0');
+    const mesK = Fecha.mesKey(anioK, m+1);
     const stats = _wrappedCalcularPeriodo(S, 'mes', mesK, anioK);
     if(stats.totalIngresos > 0 || stats.totalGastos > 0){
       meses.push({ mesK, ingresos: stats.totalIngresos, gastos: stats.totalGastos, balance: stats.balance });
@@ -2899,7 +2899,7 @@ function _wrappedRecuperacionMasRapida(S, anioK){
     if(segundo._perdon) return; // perdonada ≠ recuperada: no es una devolución rápida
     if((segundo.monto||0) < (primero.monto||0)) return;
     if(primero.fecha.slice(0,4) !== anioK) return;
-    const dias = Math.round((new Date(segundo.fecha) - new Date(primero.fecha)) / 86400000);
+    const dias = Fecha.diasEntre(primero.fecha, segundo.fecha);
     if(!Number.isFinite(dias) || dias < 0) return;
     if(!mejor || dias < mejor.dias){
       mejor = { dias, nombre: d.nombre, personaId: d.personaId || null, monto: primero.monto||0 };

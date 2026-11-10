@@ -59,7 +59,7 @@
 function _diasDeUso(){
   const t=(S.patrimonioHistorial||[]).map(p=>p&&p.fecha?_fechaSafe(p.fecha).getTime():NaN).filter(isFinite);
   if(!t.length) return null;
-  const d=Math.round((_fechaSafe(hoy()).getTime()-Math.min(...t))/86400000);
+  const d=Fecha.diasEntre(Fecha.iso(new Date(Math.min(...t))),hoy());
   return isFinite(d)?Math.max(0,d):null;
 }
 function _situacion(){
@@ -160,8 +160,7 @@ function _eventosCaja(hoyStr, dias){
   (S.cajitas||[]).forEach(c=>(c.cdts||[]).forEach(cdt=>{
     const v=cdt&&cdt.vence?_fechaSafe(cdt.vence):null;
     if(!v||isNaN(v))return;
-    v.setDate(v.getDate()+1);
-    const fecha=v.getFullYear()+'-'+String(v.getMonth()+1).padStart(2,'0')+'-'+String(v.getDate()).padStart(2,'0');
+    const fecha=Fecha.sumarDias(cdt.vence,1);
     if(fecha>hoyStr)ev.push({fecha,monto:calcCDT(cdt).val,tipo:'cdt',texto:'CDT de '+(c.nombre||'una cajita')});
   }));
   return ev;
@@ -330,8 +329,7 @@ function calcHealthScore(sit){
   const U = UMBRALES.salud;
   const _gMes = Periodo.gastosDelMes(mes);
   const ingresosMes = Periodo.ingresosDelMes(mes).total;
-  const _d90 = _fechaSafe(hoy()); _d90.setDate(_d90.getDate() - 90);
-  const _desde90 = _d90.getFullYear() + '-' + String(_d90.getMonth() + 1).padStart(2, '0') + '-' + String(_d90.getDate()).padStart(2, '0');
+  const _desde90 = Fecha.sumarDias(hoy(), -90);
   const gastoRef = Periodo.gastoPromedioPrevio(mes, U.mesesReferencia).promedio;
   const e = {
     patrimonio: calcPatrimonioVisible(), gvMes: _gMes.gvTotal, gastosMes: _gMes.total,
@@ -631,7 +629,7 @@ function renderProyeccion(){
     let cambioNetoTotal = 0;
     for(let i=1;i<hist.length;i++){
       // _fechaSafe: una fecha mal formada («2026-9-26») haría NaN en toda la tendencia; si aun así no se puede leer, el intervalo cuenta 1 día.
-      const _dd = Math.round((_fechaSafe(hist[i].fecha) - _fechaSafe(hist[i-1].fecha))/86400000);
+      const _dd = Fecha.diasEntre(hist[i-1].fecha, hist[i].fecha);
       const diasEntre = isFinite(_dd) ? Math.max(1, _dd) : 1;
       // valorVisible (sin alcancía) en vez de valor crudo — mismo motivo que
       // el patrimonio de arriba: un depósito/destape de alcancía no debe

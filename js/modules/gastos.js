@@ -323,14 +323,10 @@ function _gvDiaLabel(fecha) {
   const y = +p[1], mo = +p[2] - 1, d = +p[3];
   const hoyStr = hoy();
   if (fecha === hoyStr) return 'Hoy';
-  const h = /^(\d{4})-(\d{2})-(\d{2})$/.exec(hoyStr);
-  const hoyD = h ? new Date(+h[1], +h[2] - 1, +h[3]) : new Date();
-  const ayerD = new Date(hoyD.getFullYear(), hoyD.getMonth(), hoyD.getDate() - 1);
-  const pad = n => String(n).padStart(2, '0');
-  if (fecha === ayerD.getFullYear() + '-' + pad(ayerD.getMonth() + 1) + '-' + pad(ayerD.getDate())) return 'Ayer';
+  const hoyD = Fecha.esValida(hoyStr) ? _fechaSafe(hoyStr) : new Date();
+  if (fecha === Fecha.sumarDias(hoyStr, -1)) return 'Ayer';
   const dias = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
-  const meses = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
-  return dias[new Date(y, mo, d).getDay()] + ' ' + d + ' ' + meses[mo] + (y !== hoyD.getFullYear() ? ' ' + y : '');
+  return dias[new Date(y, mo, d).getDay()] + ' ' + d + ' ' + Fecha.nombreMes(mo + 1).toLowerCase() + (y !== hoyD.getFullYear() ? ' ' + y : '');
 }
 
 function renderGastosVar() {
@@ -515,7 +511,7 @@ function addGastoVar() {
       gastoObj._tcId = tcId;
       gastoObj._tcCompraId = compra.id;
       S.gastosVar.push(gastoObj);
-      toast('Compra cargada a ' + escHtml(tc.nombre) + ' — deuda: ' + fmt(tc.deuda), 'ok', 3500);
+      toast('Compra cargada a ' + tc.nombre + ' — deuda: ' + fmt(tc.deuda), 'ok', 3500);
     } else {
       S.gastosVar.push(gastoObj);
     }
@@ -766,7 +762,7 @@ function confirmarPagarGastoFijo() {
     const tc = (S.tarjetasCredito || []).find(x => x.id === tcId);
     if (!tc) { errEl.textContent = 'Tarjeta no encontrada.'; errEl.style.display = 'block'; return; }
     const vTc = Plata.validarSalida('tc:' + tcId, gf.monto);
-    if (!vTc.ok) { errEl.innerHTML = vTc.motivo; errEl.style.display = 'block'; return; }
+    if (!vTc.ok) { errEl.textContent = vTc.motivo; errEl.style.display = 'block'; return; }
     const compra = tcCrearCompra(tc, { desc: 'Pago de ' + gf.nombre, monto: gf.monto, fecha, cat: gf.cat, nota: nota || 'Pago de gasto fijo' });
     gastoObj._esCompraTC = true;
     gastoObj._tcId = tcId;
@@ -774,7 +770,7 @@ function confirmarPagarGastoFijo() {
     S.gastosVar.push(gastoObj);
   } else {
     const vSal = Plata.validarSalida(fuente, gf.monto);
-    if (!vSal.ok) { errEl.innerHTML = vSal.motivo; errEl.style.display = 'block'; return; }
+    if (!vSal.ok) { errEl.textContent = vSal.motivo; errEl.style.display = 'block'; return; }
     descontarFuente(fuente, gf.monto, _ogGv(gastoObj.id));
     S.gastosVar.push(gastoObj);
   }

@@ -312,7 +312,6 @@ const REVISADOS = {
   'modules/inicio.js': 4,
   'modules/analisis.js': 2,
   'core/diferencial.js': 1,
-  'core-state.js': 1, // toast(): el mensaje es HTML por contrato; quien llama escapa nombres con escHtml()
 };
 function archivos(dir) {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? archivos(path.join(dir, e.name)) : e.name.endsWith('.js') ? [path.join(dir, e.name)] : []);

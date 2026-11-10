@@ -780,7 +780,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     if(patrimonioMes != null) lineas.push(`Patrimonio al cierre: <b>${fmt(patrimonioMes)}</b>`);
     if(totalGastos > 0) lineas.push(`Total gastado: <b>${fmt(totalGastos)}</b>`);
     else lineas.push('Sin gastos registrados ese mes.');
-    if(typeof toast === 'function') toast(lineas.join('<br>'), 'info', 7000);
+    if(typeof toast === 'function') toast(raw(lineas.join('<br>')), 'info', 7000)   // marcado deliberado (<b>/<br>); fmt() y los nombres de mes no llevan texto libre;
   }
 
   // ── Login con Google ──────────────────────────────────────────────────────

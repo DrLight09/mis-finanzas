@@ -302,7 +302,7 @@ async function crearCuenta(){
   const nombre=(document.getElementById('nc_nombre').value||'').trim();
   if(!nombre){toast('Escribe un nombre para la cuenta','err');return;}
   if(cuentasTodas().some(c=>(c.nombre||'').trim().toLowerCase()===nombre.toLowerCase())){
-    toast('Ya tienes una cuenta llamada "'+escHtml(nombre)+'". Usa otro nombre (puede ser archivada: míralo en Archivadas).','err',5000);return;
+    toast('Ya tienes una cuenta llamada "'+nombre+'". Usa otro nombre (puede ser archivada: míralo en Archivadas).','err',5000);return;
   }
   const tipo=_ncTipoSel;
   const esAhorro=tipo==='ahorro';
@@ -317,7 +317,7 @@ async function crearCuenta(){
   if(movApertura)_libroPata(fuente,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:movApertura.id}});
   save();refresh();
   closeSheet('nueva-cuenta');
-  toast(`Cuenta "${escHtml(nombre)}" creada`,'ok');
+  toast(`Cuenta "${nombre}" creada`,'ok');
   if(window.logCambio)logCambio('Creaste cuenta "'+nombre+'"','',saldo||0,'cajita');
   // Primer uso: lo normal es tener más de una (banco + efectivo…), así que se ofrece seguir sin tener que buscar el botón.
   if(eraLaPrimera){
@@ -554,7 +554,7 @@ async function archivarCuenta(id){
   c.archivada=true;
   save();refresh();
   volverSelector();
-  toast(`Cuenta "${escHtml(c.nombre)}" archivada`,'ok');
+  toast(`Cuenta "${c.nombre}" archivada`,'ok');
   if(window.logCambio)logCambio('Archivaste cuenta "'+c.nombre+'"','',0,'editar');
 }
 
@@ -565,7 +565,7 @@ function reactivarCuenta(id){
   save();refresh();
   renderSelectorCuentas();
   if(cuentaActual===fuenteDeCuenta(id))renderDetalleCuenta(cuentaActual);
-  toast(`Cuenta "${escHtml(c.nombre)}" reactivada`,'ok');
+  toast(`Cuenta "${c.nombre}" reactivada`,'ok');
 }
 
 async function eliminarCuenta(id){
@@ -580,7 +580,7 @@ async function eliminarCuenta(id){
   S.cuentas=_cuentasArr().filter(x=>x.id!==id);
   save();refresh();
   volverSelector();
-  toast(`Cuenta "${escHtml(c.nombre)}" eliminada`,'ok');
+  toast(`Cuenta "${c.nombre}" eliminada`,'ok');
 }
 /* ---- Editar cuenta personalizada ---- */
 function editarCuenta(id){
@@ -619,7 +619,7 @@ function editarCuenta(id){
       const cc=getCuenta(id);
       if(!cc){closeSheet('nueva-cuenta');return;}
       if(cuentasTodas().some(x=>x.id!==id&&(x.nombre||'').trim().toLowerCase()===nombre.toLowerCase())){
-        toast('Ya tienes otra cuenta llamada "'+escHtml(nombre)+'"','err');return;
+        toast('Ya tienes otra cuenta llamada "'+nombre+'"','err');return;
       }
       cc.nombre=nombre;
       cc.icono=_ncIconoSel;
@@ -628,7 +628,7 @@ function editarCuenta(id){
       closeSheet('nueva-cuenta');
       // Volver a abrir la cuenta con datos actualizados
       abrirCuenta(fuenteDeCuenta(id));
-      toast(`Cuenta "${escHtml(nombre)}" actualizada`,'ok');
+      toast(`Cuenta "${nombre}" actualizada`,'ok');
       if(window.logCambio)logCambio('Editaste cuenta "'+nombre+'"','',0,'editar');
       // Resetear estado del sheet
       _resetSheetNuevaCuenta();
@@ -1162,7 +1162,7 @@ function confirmarAgregarDinero(){
   refresh();
   if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Agregaste dinero en '+_fLabel;const _cjId=adFuente&&adFuente.startsWith('cajita:')?adFuente.split(':')[1]:null;logCambio(_accion,descFinal||'',v,'ingreso',_cjId);}
   adFuente='';
-toast(fmt(v) + (esApertura?' registrado como saldo inicial':' agregado — ' + escHtml(descFinal)), 'ok');
+toast(fmt(v) + (esApertura?' registrado como saldo inicial':' agregado — ' + descFinal), 'ok');
 }
 
 function openSheet_adMenu(){
@@ -1216,7 +1216,7 @@ function confirmarAgregarDineroMenu(){
   closeSheet('agregar-dinero-menu');
   refresh();
   if(window.logCambio){const _fLabel=fuenteLabel(fuente);const _cjId2=fuente&&fuente.startsWith('cajita:')?fuente.split(':')[1]:null;logCambio('Agregaste dinero en '+_fLabel,desc,v,'ingreso',_cjId2);}
-  toast(fmt(v) + ' agregado — ' + escHtml(desc), 'ok');
+  toast(fmt(v) + ' agregado — ' + desc, 'ok');
 }
 
 
@@ -1391,7 +1391,7 @@ function confirmarRestarDinero(){
   closeSheet('restar-dinero');
   if(window.logCambio){const _fLabel=fuenteLabel(rdFuente);const _cjId3=rdFuente&&rdFuente.startsWith('cajita:')?rdFuente.split(':')[1]:null;logCambio('Retiraste dinero de '+_fLabel,desc,v,'gasto',_cjId3);}
   rdFuente='';
-  toast('− '+fmt(v)+' retirado — '+escHtml(desc),'salida');
+  toast('− '+fmt(v)+' retirado — '+desc,'salida');
 }
 
 /* ---- Botones "Mover a otra cuenta": solo activos si la cuenta tiene >= $1,00 ----
@@ -1614,7 +1614,7 @@ function confirmarTransferir() {
 
   save(); refresh();
   closeSheet('transferir');
-  toast(`${fmt(monto)} transferido de ${escHtml(fuenteLabel(origen))} a ${escHtml(fuenteLabel(destino))}`, 'ok', 3500);
+  toast(`${fmt(monto)} transferido de ${fuenteLabel(origen)} a ${fuenteLabel(destino)}`, 'ok', 3500);
 }
 
 

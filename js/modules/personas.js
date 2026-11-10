@@ -447,7 +447,7 @@ function _crearPersonaGlobal() {
   const p = { id: uid(), nombre, color: _cpgColorSel, creadoEn: hoy() };
   S.personas.push(p);
   save();
-  toast(escHtml(nombre) + ' creado/a', 'ok');
+  toast(nombre + ' creado/a', 'ok');
   if (_cpgDesdeListaPersonas) {
     _renderListaPersonas();
     document.getElementById('sheet-crear-persona-global').classList.remove('open');
@@ -498,7 +498,7 @@ function _guardarEditarPersonaGlobal() {
   if (typeof renderEncargosList === 'function') renderEncargosList();
   if (typeof renderMisDeudasList === 'function') renderMisDeudasList();
   document.getElementById('sheet-editar-persona-global').classList.remove('open');
-  toast(escHtml(nombre) + ' actualizado', 'ok');
+  toast(nombre + ' actualizado', 'ok');
   // Si había perfil abierto, refrescar
   if (document.getElementById('sheet-perfil-persona')?.classList.contains('open')) {
     setTimeout(() => abrirPerfilPersona(p.id), 200);
@@ -568,7 +568,7 @@ function abrirPerfilPersona(personaId) {
     const mayorPrestamo = prestamos.length ? prestamos.reduce((mx, m) => m.monto > mx.monto ? m : mx, prestamos[0]) : null;
     const mayorAbono    = abonos.length    ? abonos.reduce((mx, m) => m.monto > mx.monto ? m : mx, abonos[0])       : null;
     const cuantasveces  = prestamos.length;
-    const diasDesde     = movs.length ? Math.floor((new Date() - _fechaSafe(movs[0].fecha)) / 86400000) : null;
+    const diasDesde     = movs.length ? Fecha.diasEntre(movs[0].fecha, hoy()) : null;
     const ultimoMov     = movs.length ? movs[movs.length - 1] : null;
 
     contenido.push(html`<div class="pe-card-amber">
@@ -674,7 +674,7 @@ function abrirPerfilPersona(personaId) {
   // ── Sección Spotify ──
   if (spEntry) {
     const diasRestantes = spEntry.proximoPago
-      ? Math.ceil((_fechaSafe(spEntry.proximoPago) - new Date()) / 86400000)
+      ? Fecha.diasEntre(hoy(), spEntry.proximoPago)
       : null;
     const vencido = diasRestantes !== null && diasRestantes < 0;
     const hoy0    = diasRestantes === 0;
@@ -692,7 +692,7 @@ function abrirPerfilPersona(personaId) {
     const totalCobradoSp = histSp.reduce((a, h) => a + (h.monto || 0), 0);
     const mayorCobroSp   = histSp.length ? histSp.reduce((mx, h) => h.monto > mx.monto ? h : mx, histSp[0]) : null;
     const diasEnPlan     = spEntry.fechaIngreso
-      ? Math.floor((new Date() - _fechaSafe(spEntry.fechaIngreso)) / 86400000)
+      ? Fecha.diasEntre(spEntry.fechaIngreso, hoy())
       : null;
     const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
 

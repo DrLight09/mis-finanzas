@@ -832,7 +832,7 @@ describe('nu-cdt', () => {
       assert.equal(e.app.S.movimientos.length, 0);
       assert.equal(e.guardados(), 0);
       assert.equal(e.cerrados.length, 0);
-      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Cajita &lt;A&gt; \(Nu\). Disponible: \$5\.000/);
+      assert.match(e.toasts.at(-1).msg, /Saldo insuficiente en Cajita <A> \(Nu\). Disponible: \$5\.000/);
       assert.equal(e.toasts.at(-1).ms, 3500);
     });
     test('una ENTRADA no se limita por el saldo', () => {
@@ -987,11 +987,11 @@ describe('restar-dinero', () => {
       assert.equal(e.app.S.movimientos.length, 0);
       assert.match(e.toasts.at(-1).msg, /Saldo insuficiente/);
     });
-    test('el nombre de la cuenta va escapado en el aviso', () => {
+    test('el nombre de la cuenta va tal cual en el aviso (toast() lo pinta como texto, no como HTML)', () => {
       const e = entorno({ fuente: 'cuenta:z', saldo: 100, monto: '500,00' });
       e.app.confirmarRestarDinero();
-      assert.match(e.toasts.at(-1).msg, /Ahorro &lt;z&gt;/);
-      assert.ok(!e.toasts.at(-1).msg.includes('<z>'));
+      assert.match(e.toasts.at(-1).msg, /Ahorro <z>/);
+      assert.ok(!e.toasts.at(-1).msg.includes('&lt;'), 'sin escapar: escapar es cosa de quien pinta');
     });
     test('monto 0 o vacío avisa (antes: no pasaba nada y no se sabía por qué) y no mueve nada', () => {
       for (const monto of ['0,00', '']) {
@@ -2078,15 +2078,15 @@ describe('cuentas-textos', () => {
     assert.match(gastos, /toast\('Gasto registrado', 'salida'\)/);
     assert.match(gastos, /toast\('Gasto registrado — dividido entre ' \+ splits\.length \+ ' cuentas', 'salida'\)/);
     assert.match(gastos, /toast\('Pago registrado correctamente', 'salida'\)/);
-    assert.match(leer('js/modules/cuentas.js'), /transferido de \$\{escHtml\(fuenteLabel\(origen\)\)\} a \$\{escHtml\(fuenteLabel\(destino\)\)\}`, 'ok'/);
+    assert.match(leer('js/modules/cuentas.js'), /transferido de \$\{fuenteLabel\(origen\)\} a \$\{fuenteLabel\(destino\)\}`, 'ok'/);
   });
   test('cambiar la tasa ya no muestra el aviso "Cajitas recalculadas" (no recalculaba nada hacia atrás)', () => {
     assert.doesNotMatch(leer('js/core/firebase-sync.js'), /recalculadas/);
     assert.doesNotMatch(leer('js/core/firebase-sync.js'), /nuTasaVigenciaFecha/, 'el campo "Vigente desde" ya no existe en la página');
   });
   test('retirar dinero (cuentas y Nu) avisa con el toast de salida, no con el azul de info', () => {
-    assert.match(leer('js/modules/cuentas.js'), /retirado — '\+escHtml\(desc\),'salida'/);
-    assert.match(leer('js/modules/nu.js'), /escHtml\(desc\), 'salida'\)/);
+    assert.match(leer('js/modules/cuentas.js'), /retirado — '\+desc,'salida'/);
+    assert.match(leer('js/modules/nu.js'), /' — ' \+ desc, 'salida'\)/);
     assert.match(index, /\.toast\.toast-salida\{/);
   });
 });
@@ -2654,7 +2654,7 @@ describe('plata-reglas-unicas', () => {
   };
   const sumaLibro = app => app.S.libro.reduce((t, l) => t + l.monto, 0);
 
-  test('validarSalida compara en centavos con un solo mensaje (y escapa el nombre)', () => {
+  test('validarSalida compara en centavos con un solo mensaje (en texto plano)', () => {
     const app = nuevo();
     assert.equal(app.Plata.validarSalida('cuenta:a', 10000).ok, true);
     const r = app.Plata.validarSalida('cuenta:a', 10000.01);
@@ -2663,7 +2663,7 @@ describe('plata-reglas-unicas', () => {
     assert.equal(app.Plata.validarSalida('cuenta:a', 0).ok, false);
     assert.equal(app.Plata.validarSalida('ganancia', 5).ok, true, 'la ganancia futura es virtual');
     app.S.cuentas[0].nombre = '<b>x</b>';
-    assert.ok(!app.Plata.validarSalida('cuenta:a', 99999).motivo.includes('<b>'));
+    assert.ok(app.Plata.validarSalida('cuenta:a', 99999).motivo.includes('<b>x</b>'), 'texto plano: no se escapa aquí');
   });
 
   test('validarSalidas SUMA por fuente: dos filas que alcanzan solas pero no juntas se rechazan', () => {

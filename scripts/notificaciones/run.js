@@ -28,6 +28,9 @@ const admin = require('firebase-admin');
 const { ejecutarChecks } = require('./checks');
 const { decodificarPayload } = require('./payload-codec');
 
+// Dónde vive la app (con la barra final). Se cambia con la variable de entorno APP_BASE_URL del workflow si el repo o el dominio cambian.
+const APP_BASE_URL = (process.env.APP_BASE_URL || 'https://drlight09.github.io/mis-finanzas/').replace(/\/?$/, '/');
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY);
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 const db = admin.firestore();
@@ -97,13 +100,10 @@ async function main() {
 
         const message = {
           tokens,
-          notification: { title, body: item.texto },
-          webpush: {
-            notification: {
-              icon: 'https://drlight09.github.io/mis-finanzas/icons/icon-192.png',
-            },
-            fcmOptions: { link: '/mis-finanzas/' },
-          },
+          // Mensaje SOLO-DATOS: lo muestra únicamente el handler de sw.js (con `notification` aquí, FCM podía mostrar uno propio
+          // además → aviso doble). La base se parametriza con APP_BASE_URL (por defecto, la de GitHub Pages).
+          data: { title, body: item.texto, icon: APP_BASE_URL + 'icons/icon-192.png', link: APP_BASE_URL },
+          webpush: { headers: { Urgency: 'high' } },
         };
 
         const resp = await admin.messaging().sendEachForMulticast(message);

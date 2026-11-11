@@ -377,7 +377,7 @@ input.movs-search-input:focus{border-color:var(--accent);}
 .toast.toast-salida{border-color:rgba(200,240,96,.5);background:#1d2614;}
 .toast.toast-info{border-color:rgba(96,176,240,.5);background:#131e26;}
 .toast.hiding{animation:toastOut .22s ease forwards;}
-/* Aviso «hay una versión nueva» (mejoras-adicionales.js, mostrarAvisoNuevaVersion): barra abajo, encima de la navegación */
+/* Aviso «hay una versión nueva» (sw-registro.js, mostrarAvisoNuevaVersion): barra abajo, encima de la navegación */
 .sw-aviso{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 78px);z-index:2147483646;width:calc(100% - 32px);max-width:400px;display:flex;align-items:center;gap:10px;padding:11px 12px 11px 16px;background:#131e26;border:1px solid rgba(96,176,240,.5);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.85);font-size:13px;color:var(--text);}
 .sw-aviso-texto{flex:1;}
 .sw-aviso-btn{background:var(--accent);color:#0f0f0f;border:none;border-radius:9px;padding:8px 14px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;}

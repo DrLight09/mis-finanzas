@@ -1,3 +1,13 @@
+## Revisión estructural, parte 3: Service Worker robusto (M8) (2026-11-10, SW v122)
+
+- **Precaché atómico por versión:** `sw.js` lleva un bloque `PRECACHE` (lista de todos los archivos desplegables) que escribe `npm run sellar`; `install` los baja TODOS a la caché de la versión y, si uno falla, la instalación falla (nunca queda una versión a medias). `sellar --check` también falla si la lista está desactualizada.
+- **Sin mezcla de versiones:** la app se sirve cache-first desde la caché de SU versión; ya no hay stale-while-revalidate que mezclaba JS nuevo con viejo.
+- **Actualización controlada:** el SW nuevo queda *waiting* y no se activa solo; el aviso «Actualizar» manda `SKIP_WAITING` y recarga una sola vez. Lógica en el nuevo `js/core/sw-registro.js` (salió de `mejoras-adicionales.js`).
+- **Sin rutas fijas:** la base se deriva de `self.registration.scope`; ya no aparece `/mis-finanzas/` escrito en el cliente (el repo puede cambiar de nombre).
+- **Push sin duplicados:** `scripts/notificaciones/run.js` envía mensajes solo-datos (`data`, sin `notification`) y el SW muestra UN aviso; `notificationclick` enfoca la ventana abierta o abre una. Variable opcional `APP_BASE_URL` en el workflow.
+- **Limpieza:** al activar solo se borran cachés `mis-finanzas-v*` viejas; la de fuentes/SDK (`mis-finanzas-ext`) se conserva.
+- Tests nuevos: `tests/sw.test.js` (SW simulado en vm: precaché, activate, fetch offline, mensajes, clicks).
+
 ## Revisión estructural, parte 2: ciclo de vida `Ui`, sin parches de funciones, Firebase/CSS/higiene (M3, M1, M2, M4, M10, M9, M11, M12) (2026-11-10, SW v121)
 **Origen:** `revision-estructural-mis-finanzas.md`; todos los hallazgos de esta parte eran ciertos (había 14 parches `const _orig = X; X = function…` y 3 formas distintas de «engancharse»).
 **M3 — `js/core/ui.js` (`Ui`).** Un solo registro: `Ui.hoja(id, fn, {fase, key})`, `Ui.pantalla`, `Ui.en/emitir`. Misma key reemplaza; cada gancho en try/catch; una hoja puede cancelarse desde `antes` devolviendo `false`. `openSheet()` y `showScreen()` lo consultan; `applyModulos()`, `renderAttencion()`, `mostrarAlertaFuente()` y el guardado de personas emiten eventos (`modulos`, `atencion`, `fuente-alerta`, `persona-editada`). Se eliminó `js/core/hook-global.js` (y su `<script>`). Migrados: Alcancía (2 hojas + pantalla), foco de campos al abrir hojas (`mejoras-adicionales.js`), menú Más (`modulos`), Plata comprometida (`atencion`), Tarjetas de crédito (`fuente-alerta`, ya sin el truco de DOMContentLoaded), Préstamos (`persona-editada`).

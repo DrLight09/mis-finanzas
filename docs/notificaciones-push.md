@@ -65,3 +65,9 @@ deberías recibir el push del sistema.
 - El cron de GitHub Actions es "mejor esfuerzo": en momentos de mucha
   carga en GitHub puede atrasarse algunos minutos respecto al horario
   exacto. Para un aviso diario esto no importa.
+
+## Formato del mensaje y Service Worker (M8)
+
+- El script de envío manda mensajes **solo-datos** (`data: {title, body, icon, link}`, sin campo `notification`). Así Firebase no pinta un segundo aviso por su cuenta y el SW (`onBackgroundMessage`) muestra exactamente uno.
+- `notificationclick` enfoca la ventana de la app si ya está abierta; si no, abre `link`.
+- La URL base de los íconos/enlaces sale de `APP_BASE_URL` (por defecto `https://drlight09.github.io/mis-finanzas/`). Si el repo cambia de nombre o dominio, define esa variable en el workflow de GitHub Actions.

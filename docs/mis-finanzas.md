@@ -62,7 +62,8 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 | `wrapped-gate.js` | clásico | Decide si Wrapped está disponible en este momento (solo durante la ventana de enero, ver `wrapped.md`): muestra/oculta la tarjeta `#wrapped-promo` y le avisa a `Loader.ensureAll()` que no precargue el grupo lazy `wrapped` fuera de esa ventana, sin descargar el módulo real solo para saber si mostrarlo. |
 | `mas-menu.js` | clásico | Abrir/cerrar el menú "Más", navegación desde sus ítems, y mostrar/ocultar Spotify/Mesada en ese menú según los módulos activos. |
 | `gastos-fijos-progress.js` | clásico | Barra de progreso de "gastos fijos pagados este mes" en el panel de Gastos. |
-| `mejoras-adicionales.js` | clásico | Ocultar/mostrar saldos (blur), render de salud financiera/proyección/presupuestos tras cada `refresh()`, validación de montos grandes, animación de carga inicial, registro del Service Worker (PWA offline), autofocus del primer campo al abrir un sheet, aria-labels de las pantallas. |
+| `sw-registro.js` | clásico | Registra `sw.js` (scope `./`), muestra el aviso «Actualizar» cuando hay una versión esperando y recarga una sola vez tras `SKIP_WAITING`. |
+| `mejoras-adicionales.js` | clásico | Ocultar/mostrar saldos (blur), render de salud financiera/proyección/presupuestos tras cada `refresh()`, validación de montos grandes, animación de carga inicial, autofocus del primer campo al abrir un sheet, aria-labels de las pantallas. |
 | `personas-init.js` | clásico | Inicializa `_inyectarPersonaSheets()` una vez que los datos cargan. |
 
 **Inputs y validación**

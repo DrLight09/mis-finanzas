@@ -29,7 +29,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/huella.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/lazy-loader.js` | de entrada (defer) | 1 | 0 |
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
-| `js/core/mejoras-adicionales.js` | de entrada (defer) | 1 | 0 |
+| `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 5 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 7 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 6 | 0 |
@@ -46,6 +46,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
 | `js/core/sheet-stack.js` | de entrada (defer) | 11 | 0 |
 | `js/core/split.js` | de entrada (defer) | 10 | 0 |
+| `js/core/sw-registro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/ui.js` | de entrada (defer) | 1 | 0 |
 | `js/core/umbrales.js` | de entrada (defer) | 1 | 0 |
 | `js/core/wait-for-module.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/pin-bio.js` | 0 | 0 |
@@ -206,7 +207,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `mostrarAvisoNuevaVersion`
+**Funciones:** —
 
 ### `js/core/money-input.js`
 
@@ -303,6 +304,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `crearSplitWidget`, `splitActualizarBotones`, `splitActualizarOpciones`, `splitAgregarRow`, `splitCuentasValidas`, `splitGetData`, `splitOpcionesUsadas`, `splitPreview`, `splitReset`, `splitToggle`
+
+### `js/core/sw-registro.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `mostrarAvisoNuevaVersion`
 
 ### `js/core/ui.js`
 
@@ -1371,7 +1378,7 @@ Ninguno.
 | `mesKey` | `js/core/core-state.js` |
 | `MIGRACIONES` | `js/core/core-state.js` |
 | `mostrarAlertaFuente` | `js/core/sheet-stack.js` |
-| `mostrarAvisoNuevaVersion` | `js/core/mejoras-adicionales.js` |
+| `mostrarAvisoNuevaVersion` | `js/core/sw-registro.js` |
 | `mostrarSi` | `js/core/core-state.js` |
 | `moverCuenta` | `js/modules/cuentas.js` |
 | `moverCuentaUI` | `js/modules/cuentas.js` |

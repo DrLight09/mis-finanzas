@@ -436,16 +436,7 @@ function _initEventListeners() {
   // migrados a js/modules/cuentas.js (su propio wiring).
 }
 
-/* ================================================================
-   MEJORA 7: Validación inline en formularios
-   ================================================================ */
-
-// _markError() vive en core-state.js (la usan gastos.js y otros). La validación inline de addGastoVar/addGastoFijo se
-// integró directo en js/modules/gastos.js (antes eran overrides acá, M1).
-
-// La validación de addDeudor/confirmarMovimiento ya no vive acá como override:
-// se integró directo en las funciones dentro de js/modules/prestado.js (ver
-// docs/prestado.md) ahora que el módulo es autocontenido.
+// Validación inline de formularios: js/core/formulario.js (Formulario.validar / Formulario.error), llamada desde cada módulo.
 
 /* ================================================================
    MEJORA 4: Renderizado selectivo (evitar refresh total innecesario)
@@ -470,27 +461,6 @@ function saveAndRefresh() {
 /* ================================================================
    AÑADIR error msg spans al DOM (Mejora 7)
    ================================================================ */
-
-function _injectErrorSpans() {
-  const campos = [
-    { inputId: 'gv_desc', errId: 'gv_desc_err' },
-    { inputId: 'gv_monto', errId: 'gv_monto_err' },
-    { inputId: 'gf_n', errId: 'gf_n_err' },
-    { inputId: 'gf_m', errId: 'gf_m_err' },
-    { inputId: 'mov_monto', errId: 'mov_monto_err' },
-    { inputId: 'md_monto', errId: 'md_monto_err' },
-    { inputId: 'sp_n', errId: 'sp_n_err' },
-    { inputId: 'sp_m', errId: 'sp_m_err' },
-  ];
-  campos.forEach(({ inputId, errId }) => {
-    const el = document.getElementById(inputId);
-    if (!el || document.getElementById(errId)) return;
-    const span = document.createElement('span');
-    span.id = errId;
-    span.className = 'field-error-msg';
-    el.parentNode.insertBefore(span, el.nextSibling);
-  });
-}
 
 // Módulo Encargos migrado a js/modules/encargos.js — ver docs/encargos.md.
 // Carga acá y no más arriba (donde vivía antes) por el mismo motivo que

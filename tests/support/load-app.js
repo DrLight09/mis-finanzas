@@ -86,7 +86,7 @@ function loadApp(appFiles, options = {}) {
   // js/core/fecha.js es núcleo puro y core-state.js delega en él (hoy, mesActual, _fechaSafe, MC): en el navegador carga antes que
   // core-state.js, así que aquí se precarga siempre (una sola vez) y ningún test tiene que acordarse de listarlo.
   // js/core/ui.js (registro de ganchos de hojas/pantallas) tampoco depende de nada: los módulos se registran en él al cargar.
-  const NUCLEO = ['fecha.js', 'ui.js'];
+  const NUCLEO = ['fecha.js', 'ui.js', 'formulario.js'];
   const pre = NUCLEO.filter(n => !appFiles.some(f => f.endsWith('/' + n) || f.endsWith('\\' + n)))
     .map(n => require('path').join(__dirname, '..', '..', 'js', 'core', n));
   appFiles = [...pre, ...appFiles];

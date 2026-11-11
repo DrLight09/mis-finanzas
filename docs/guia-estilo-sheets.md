@@ -332,3 +332,17 @@ Reglas para que un sheet suba y baje con el teclado sin saltos. Código: `js/cor
 - No agregues `transition` a `.sheet` sin incluir `translate` y `max-height`.
 - Un sheet con campos y mucho contenido scrollea internamente (`.sheet` es el contenedor de scroll); `ensureFocusedVisible` solo corrige si el campo queda tapado y espera a que la transición termine.
 - Tras un deploy, abre la app dos veces (la primera instala el SW nuevo) y confirma el build con `#sheetdebug`: el panel muestra la fuente de teclado activa, `--kb` y la **latencia** entre enfocar y el primer `--kb > 0`. Si esa latencia fuera alta en algún teléfono (el navegador avisa tarde del teclado), el sheet empezaría a subir tarde: sería el momento de añadir una predicción con la última altura conocida.
+
+## Validación de formularios (`Formulario`, `js/core/formulario.js`)
+
+Regla de producto: **error de campo → inline; error de operación → toast.** Falta el nombre, monto 0, fecha vacía = el campo se pinta de rojo con el mensaje debajo (`Formulario.validar([...])`). «Saldo insuficiente», «no se pudo guardar» = `toast('…', 'err')`.
+
+```js
+if (!Formulario.validar([
+  { campo: 'gv_desc',  mensaje: 'La descripción es obligatoria' },                 // regla por defecto: no vacío
+  { campo: 'gv_monto', mensaje: 'Ingresa un monto mayor a 0', regla: 'monto' },    // 'monto' = parseMoney > 0
+  { campo: 'gv_fecha', mensaje: 'Fecha inválida', regla: (v) => Fecha.esValida(v) } // o una función (valor, elemento)
+])) return;
+```
+Marca todos los que fallan y enfoca el primero; el error se quita al escribir o a los 3 s. El `<span class="field-error-msg" id="CAMPO_err">` se crea solo, no se escribe en el HTML. Se llama **desde la función de guardar del módulo** (nunca por parche del núcleo). Un campo que ya trae `{field, msg}` (planes de Préstamos): `Formulario.error(campo, mensaje)`. Pruebas: `tests/formulario.test.js`.
+

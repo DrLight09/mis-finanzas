@@ -132,9 +132,7 @@ const Loader = (function () {
     //    guard a globales de estos módulos que corrían en CADA llamada a
     //    showScreen(), no solo al entrar a esas pantallas: el bloque de
     //    reset de Préstamos (deudorActualId/miDeudaActualId/
-    //    prestamosTabActiva) y la captura de addSpotify dentro de
-    //    _injectErrorSpans(). Ambos ya tienen guard typeof — ver
-    //    sheet-stack.js.
+    //    prestamosTabActiva), que ya tiene guard typeof — ver sheet-stack.js.
     // #screen-spotify/#screen-prestamos/#screen-cuentas/#screen-encargos ya
     // eran HTML estático desde antes (mismo caso que Mesada/Tarjetas), y
     // #screen-analisis vive dentro de "Más", también estático — ninguno

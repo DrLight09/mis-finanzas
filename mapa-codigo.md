@@ -15,13 +15,14 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cierre.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/cobros.js` | de entrada (defer) | 13 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 124 | 14 |
+| `js/core/core-state.js` | de entrada (defer) | 123 | 14 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
 | `js/core/fecha.js` | de entrada (defer) | 1 | 0 |
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/firebase-sync.js` | de entrada (módulo ES) | 0 | 0 |
+| `js/core/formulario.js` | de entrada (defer) | 1 | 0 |
 | `js/core/fuentes-filtro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/gastos-fijos-progress.js` | de entrada (defer) | 0 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
@@ -43,7 +44,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 1 | 0 |
 | `js/core/salud.js` | de entrada (defer) | 1 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
-| `js/core/sheet-stack.js` | de entrada (defer) | 12 | 0 |
+| `js/core/sheet-stack.js` | de entrada (defer) | 11 | 0 |
 | `js/core/split.js` | de entrada (defer) | 10 | 0 |
 | `js/core/ui.js` | de entrada (defer) | 1 | 0 |
 | `js/core/umbrales.js` | de entrada (defer) | 1 | 0 |
@@ -117,7 +118,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_buildFuentesOpts`, `_clasePorCuenta`, `_claseValida`, `_closeDialog`, `_colorSeguro`, `_cuentasArr`, `_ensureSpotify`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_fuenteHuerfana`, `_libroPata`, `_listaFuentes`, `_luminancia`, `_markError`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_refreshNucleo`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `_toastTexto`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `asegurarEfectivo`, `avisarMovimientoBloqueado`, `avisarNoSePuede`, `botonEliminarFila`, `cajitasDeCuenta`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `claseEfectivaMovimiento`, `colorCuenta`, `colorLegible`, `conEstadoAislado`, `confirmarBorrarMovimientoViejo`, `confirmarEliminar`, `crearMovimientoApertura`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `debounceSave`, `descontarFuente`, `diaCreacionMov`, `dialogo`, `Dinero`, `emptyInline`, `emptyState`, `entradasIngresoReal`, `escHtml`, `esCuentaAhorro`, `esCuentaFija`, `esFuenteCuenta`, `filaMovimiento`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `Fuente`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteHtml`, `fuenteLabel`, `fuenteTexto`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `idDeFuenteCuenta`, `ingresosRealesDelMes`, `Libro`, `load`, `medirAnchoTexto`, `medirPatrimonioParaHistorial`, `mesActual`, `mesKey`, `mostrarSi`, `movimientosSinClase`, `nivelAntiguedadMovimiento`, `nombreCuenta`, `opcionesCuenta`, `parseMoney`, `parsePct`, `patrimonioFormulaTexto`, `pedirPinAntesDe`, `pintarAvatarPersona`, `Plata`, `poblarCatSelect`, `poblarFuente`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `Refresh`, `refresh`, `registrarSonda`, `renderCuentasInicio`, `Reversibles`, `saldoCuentas`, `save`, `setMoneyInput`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
+**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_buildFuentesOpts`, `_clasePorCuenta`, `_claseValida`, `_closeDialog`, `_colorSeguro`, `_cuentasArr`, `_ensureSpotify`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_fuenteHuerfana`, `_libroPata`, `_listaFuentes`, `_luminancia`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_refreshNucleo`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `_toastTexto`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `asegurarEfectivo`, `avisarMovimientoBloqueado`, `avisarNoSePuede`, `botonEliminarFila`, `cajitasDeCuenta`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `claseEfectivaMovimiento`, `colorCuenta`, `colorLegible`, `conEstadoAislado`, `confirmarBorrarMovimientoViejo`, `confirmarEliminar`, `crearMovimientoApertura`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `debounceSave`, `descontarFuente`, `diaCreacionMov`, `dialogo`, `Dinero`, `emptyInline`, `emptyState`, `entradasIngresoReal`, `escHtml`, `esCuentaAhorro`, `esCuentaFija`, `esFuenteCuenta`, `filaMovimiento`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `Fuente`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteHtml`, `fuenteLabel`, `fuenteTexto`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `idDeFuenteCuenta`, `ingresosRealesDelMes`, `Libro`, `load`, `medirAnchoTexto`, `medirPatrimonioParaHistorial`, `mesActual`, `mesKey`, `mostrarSi`, `movimientosSinClase`, `nivelAntiguedadMovimiento`, `nombreCuenta`, `opcionesCuenta`, `parseMoney`, `parsePct`, `patrimonioFormulaTexto`, `pedirPinAntesDe`, `pintarAvatarPersona`, `Plata`, `poblarCatSelect`, `poblarFuente`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `Refresh`, `refresh`, `registrarSonda`, `renderCuentasInicio`, `Reversibles`, `saldoCuentas`, `save`, `setMoneyInput`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
 
 **Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CuentaPantallas`, `FUENTE_CUENTA_PREFIJO`, `ICONO_VACIO_CUENTAS`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`, `TIPOS_CUENTA`
 
@@ -158,6 +159,12 @@ Carga: de entrada (módulo ES)
 Carga: de entrada (módulo ES)
 
 **Funciones:** —
+
+### `js/core/formulario.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `Formulario`
 
 ### `js/core/fuentes-filtro.js`
 
@@ -289,7 +296,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_bindInputsAS`, `_hideScreenLoading`, `_initEventListeners`, `_injectErrorSpans`, `_showScreenLoading`, `applyModulos`, `closeSheet`, `markDirty`, `mostrarAlertaFuente`, `openSheet`, `saveAndRefresh`, `showScreen`
+**Funciones:** `_bindInputsAS`, `_hideScreenLoading`, `_initEventListeners`, `_showScreenLoading`, `applyModulos`, `closeSheet`, `markDirty`, `mostrarAlertaFuente`, `openSheet`, `saveAndRefresh`, `showScreen`
 
 ### `js/core/split.js`
 
@@ -655,7 +662,6 @@ Ninguno.
 | `_initEventListeners` | `js/core/sheet-stack.js` |
 | `_initGrupoSelector` | `js/modules/prestado.js` |
 | `_initMovGrupoSelector` | `js/modules/prestado.js` |
-| `_injectErrorSpans` | `js/core/sheet-stack.js` |
 | `_injectMasItem` | `js/modules/plata_comprometida.js` |
 | `_injectScreen` | `js/modules/plata_comprometida.js` |
 | `_injectSheet` | `js/modules/plata_comprometida.js` |
@@ -673,7 +679,6 @@ Ninguno.
 | `_listaFuentes` | `js/core/core-state.js` |
 | `_locallyModified` | `js/core/core-state.js` (window._locallyModified = …) |
 | `_luminancia` | `js/core/core-state.js` |
-| `_markError` | `js/core/core-state.js` |
 | `_mdEl` | `js/modules/prestado.js` |
 | `_mdEsPerdon` | `js/modules/prestado.js` |
 | `_mdExtra` | `js/modules/prestado.js` |
@@ -1265,6 +1270,7 @@ Ninguno.
 | `fmtInput` | `js/core/core-state.js` |
 | `fmtNoCents` | `js/core/core-state.js` |
 | `fmtSaldoSelector` | `js/core/core-state.js` |
+| `Formulario` | `js/core/formulario.js` |
 | `Fuente` | `js/core/core-state.js` |
 | `FUENTE_CUENTA_PREFIJO` | `js/core/core-state.js` |
 | `fuenteBadgeClass` | `js/core/core-state.js` |

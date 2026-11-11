@@ -370,7 +370,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     // en milisegundos — bastante rápido para ganarle la carrera a la cola
     // de defer, incluido el script donde vive _initEventListeners. Cuando
     // eso pasa: ReferenceError acá, que interrumpe _initAppUI a la mitad
-    // (nunca llega a _injectErrorSpans/verificarVencimientosCDT) → pantalla
+    // (nunca llega a verificarVencimientosCDT) → pantalla
     // en negro. Reportado por el usuario: PC suspendido con la pestaña
     // abierta, al reanudar la sesión/caché de Firestore ya estaban
     // calientes y ganaron la carrera.
@@ -391,7 +391,6 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   function _runWhenEventListenersReady() {
     waitFor(() => typeof _initEventListeners === 'function', () => {
       _initEventListeners();
-      _injectErrorSpans();
       // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
       // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
       // corre en cada arranque de la app, no solo al visitar Cuentas.

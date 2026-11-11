@@ -462,9 +462,10 @@ function addGastoVar() {
   const desc = document.getElementById('gv_desc').value.trim();
   const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
   // Validación inline (marca el campo y muestra el mensaje debajo); solo enfoca el primer error.
-  if (!desc) _markError('gv_desc', 'gv_desc_err', 'La descripción es obligatoria');
-  if (!monto) _markError('gv_monto', 'gv_monto_err', 'Ingresa un monto mayor a 0');
-  if (!desc || !monto) return;
+  if (!Formulario.validar([
+    { campo: 'gv_desc', mensaje: 'La descripción es obligatoria', regla: () => !!desc },
+    { campo: 'gv_monto', mensaje: 'Ingresa un monto mayor a 0', regla: () => !!monto },
+  ])) return;
 
   let fuente = '';
   let splits = null;
@@ -655,9 +656,10 @@ function renderGastosFijos() {
 
 function addGastoFijo() {
   const n = document.getElementById('gf_n').value.trim(), m = parseMoney(document.getElementById('gf_m').value) || 0;
-  if (!n) _markError('gf_n', 'gf_n_err', 'El nombre es obligatorio');
-  if (!m) _markError('gf_m', 'gf_m_err', 'Ingresa un monto mayor a 0');
-  if (!n || !m) return;
+  if (!Formulario.validar([
+    { campo: 'gf_n', mensaje: 'El nombre es obligatorio', regla: () => !!n },
+    { campo: 'gf_m', mensaje: 'Ingresa un monto mayor a 0', regla: () => !!m },
+  ])) return;
   // Día de vencimiento: opcional. Vacío = sin aviso de vencimiento; si se escribe, debe ser un día válido (1–31).
   const diaTxt = (document.getElementById('gf_d') || { value: '' }).value.trim();
   const dia = diaTxt === '' ? null : Number(diaTxt);
@@ -807,12 +809,6 @@ const _gBtnGastoFijo = document.querySelector('.btn-open-gasto-fijo');
 if (_gBtnGastoFijo) _gBtnGastoFijo.addEventListener('click', abrirNuevoGastoFijo);
 
 const _gBtnGVSave = document.getElementById('btn-guardar-gasto-var');
-// OJO: llamar addGastoVar() dentro de una flecha, no pasar la referencia
-// directa. index.html sobrescribe el global addGastoVar más abajo
-// (_injectErrorSpans(), le agrega validación inline) DESPUÉS de que este
-// módulo se carga — si se captura la referencia acá, el botón queda
-// pegado a la versión sin validar. Mismo motivo que editarSpotify en
-// spotify.js. Ídem addGastoFijo.
 if (_gBtnGVSave) _gBtnGVSave.addEventListener('click', () => addGastoVar());
 const _gBtnBienSave = document.getElementById('btn-guardar-bien');
 if (_gBtnBienSave) _gBtnBienSave.addEventListener('click', () => guardarBien());

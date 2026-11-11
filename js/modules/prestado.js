@@ -39,7 +39,7 @@
    toast, dialogo, openSheet, closeSheet, showScreen, sumarFuente,
    descontarFuente, getFuentesSinTC, getFuentes, fuenteLabel,
    fuenteBadgeClass, poblarFuente, opcionesCuenta,
-   abrirDetalleMov, logCambio, _markError, calcC — y del motor
+   abrirDetalleMov, logCambio, Formulario, calcC — y del motor
    genérico de diferencial (diffRegistrarInstancia/diffToggle/
    diffResumen/diffReset/diffEstaAbierto/diffCalcular/diffAplicar) y
    de split (crearSplitWidget/splitToggle/splitAgregarRow/splitGetData/
@@ -1113,7 +1113,7 @@ function _errFilaSinCuenta(filas) {
 }
 // Muestra el error de un plan (los dos formularios): en el campo si trae `field`, o como aviso.
 function _mostrarErrorPlan(error) {
-  if (error.field) _markError(error.field, error.field + '_err', error.msg);
+  if (error.field) Formulario.error(error.field, error.msg);
   else toast(error.msg, 'err', error.dur || 4000);
 }
 

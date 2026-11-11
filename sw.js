@@ -2,7 +2,7 @@
 const VERSION = 'mis-finanzas-v122'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
 // Huella del contenido desplegable: la sella `node scripts/sellar-sw.js` (y `npm test` falla si quedó vieja). Así, aunque se olvide
 // subir VERSION, la caché cambia de nombre en cuanto cambia cualquier archivo y no se sirven los .js anteriores.
-const BUILD = '8ff99ff12567'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
+const BUILD = 'a4abeef2f8ea'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
 const CACHE = VERSION + '-' + BUILD;
 // Caché que SÍ sobrevive entre versiones: fuentes y SDK de Firebase (de otro origen, no forman parte de la versión de la app).
 const CACHE_EXT = 'mis-finanzas-ext';
@@ -27,6 +27,7 @@ const PRECACHE = [
   "icons/icon-512.png",
   "icons/icon-maskable-512.png",
   "index.html",
+  "js/core/arranque-ui.js",
   "js/core/async-css.js",
   "js/core/bootstrap.js",
   "js/core/busqueda-global.js",
@@ -42,13 +43,13 @@ const PRECACHE = [
   "js/core/firebase-init.js",
   "js/core/firebase-sync.js",
   "js/core/formulario.js",
+  "js/core/formularios-ui.js",
   "js/core/fuentes-filtro.js",
   "js/core/gastos-fijos-progress.js",
   "js/core/html-tag.js",
   "js/core/huella.js",
   "js/core/lazy-loader.js",
   "js/core/mas-menu.js",
-  "js/core/mejoras-adicionales.js",
   "js/core/money-input.js",
   "js/core/movimientos.js",
   "js/core/notificaciones-push.js",
@@ -61,6 +62,7 @@ const PRECACHE = [
   "js/core/reglas.js",
   "js/core/reordenable.js",
   "js/core/respaldos.js",
+  "js/core/saldos-ocultos.js",
   "js/core/salud.js",
   "js/core/sheet-behavior.js",
   "js/core/sheet-stack.js",

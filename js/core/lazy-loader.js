@@ -14,13 +14,8 @@
    para esos casos.
 
    ── Por qué en orden y no en paralelo (Promise.all) ──────────────
-   El patrón "parchar la función original" (const _orig = X; X =
-   function(){...}) usado en spotify-personas.js/encargos-personas.js/
-   prestado-personas.js/deudores-personas.js/alcancia.js exige que cada
-   archivo cargue DESPUÉS de que el anterior ya haya definido lo que va
-   a parchar. Cargar los archivos de un grupo en paralelo podría hacer
-   que el segundo intente parchar una función que el primero todavía no
-   definió. Se cargan uno por vez, en el orden declarado en GROUPS.
+   Un archivo de un grupo puede usar, al cargar, lo que definió el anterior (p. ej. registrar ganchos de Ui sobre funciones del
+   primero). Se cargan uno por vez, en el orden declarado en GROUPS.
    ═══════════════════════════════════════════════════════════════ */
 
 const Loader = (function () {
@@ -147,16 +142,12 @@ const Loader = (function () {
     // intento se revirtió por 3 ReferenceError encadenados al arrancar
     // (ahorroTotal/getTasaCuenta llamados sin guard
     // desde core-state.js y firebase-sync.js). Se recibieron y auditaron
-    // los 5 archivos núcleo que faltaban (core-state.js, firebase-sync.js,
-    // pin-bio.js, gastos-fijos-progress.js, mejoras.js (hoy
-    // fusionado en mejoras-adicionales.js, 2026-09-10, ver CHANGELOG.md):
+    // los archivos núcleo (core-state.js, firebase-sync.js, pin-bio.js, gastos-fijos-progress.js, …):
     // los tres puntos del error, más calcC/calcCDT/materializarIntereses/
     // registrarTasaHistorial/verificarVencimientosCDT (todo lo demás que
     // cuentas.js expone y que estos archivos llegan a tocar), ya tienen
     // guard `typeof` — confirmado contra el código real, no por inferencia.
-    // pin-bio.js/mejoras-adicionales.js/gastos-fijos-progress.js no llaman
-    // ninguna función de cuentas.js. Ver auditoria-tecnica.md, corrección
-    // del 2026-08-13.
+    // pin-bio.js/gastos-fijos-progress.js no llaman ninguna función de cuentas.js.
     // El grupo carga DOS archivos, uno tras otro: nu.js (cajitas, tasa, CDTs, metas, chequeo) y cuentas.js (selector, cuentas
     // simples, historial, agregar/retirar/transferir). Ninguno usa al otro al cargar, solo cuando una función corre, así que el
     // orden no es obligatorio; se deja nu.js primero por convención.

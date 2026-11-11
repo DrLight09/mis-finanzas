@@ -63,7 +63,9 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 | `mas-menu.js` | clásico | Abrir/cerrar el menú "Más", navegación desde sus ítems, y mostrar/ocultar Spotify/Mesada en ese menú según los módulos activos. |
 | `gastos-fijos-progress.js` | clásico | Barra de progreso de "gastos fijos pagados este mes" en el panel de Gastos. |
 | `sw-registro.js` | clásico | Registra `sw.js` (scope `./`), muestra el aviso «Actualizar» cuando hay una versión esperando y recarga una sola vez tras `SKIP_WAITING`. |
-| `mejoras-adicionales.js` | clásico | Ocultar/mostrar saldos (blur), render de salud financiera/proyección/presupuestos tras cada `refresh()`, validación de montos grandes, animación de carga inicial, autofocus del primer campo al abrir un sheet, aria-labels de las pantallas. |
+| `saldos-ocultos.js` | clásico | Ocultar/mostrar saldos (blur) con el botón del ojo; recuerda la elección en localStorage. |
+| `arranque-ui.js` | clásico | Render de salud financiera/proyección/presupuestos tras cada `refresh()`, fade-in de la app, role/aria-label de las pantallas. |
+| `formularios-ui.js` | clásico | Validación de montos grandes/negativos y foco automático del primer campo al abrir una hoja. |
 | `personas-init.js` | clásico | Inicializa `_inyectarPersonaSheets()` una vez que los datos cargan. |
 
 **Inputs y validación**

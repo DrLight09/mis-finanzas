@@ -4782,8 +4782,7 @@
      mas-menu.js, sheet-behavior.js [fusión 2026-09-08 de
      sheet-viewport.js + sheet-swipe.js — ver ese archivo],
      gastos-fijos-progress.js, firebase-sync.js,
-     mejoras-adicionales.js [fusión 2026-09-10 de mejoras.js +
-     mejoras-adicionales.js — ver CHANGELOG.md#infraestructura--seguridad],
+     saldos-ocultos.js, arranque-ui.js, formularios-ui.js,
      busqueda-global.js, pin-bio.js — nav.js retirado, 2026-09-10, ver
      nota más abajo) — ninguno tiene
      código de nivel superior que dependa de personas.js, ni
@@ -4868,7 +4867,7 @@
 // definidas acá) sin guard. Se auditaron y corrigieron los 5 archivos
 // núcleo involucrados (core-state.js, firebase-sync.js, pin-bio.js,
 // gastos-fijos-progress.js, mejoras.js — este último fusionado con
-// mejoras-adicionales.js el 2026-09-10) — todo guardado con `typeof`
+// saldos-ocultos/arranque-ui/formularios-ui) — todo guardado con `typeof`
 // ahora, confirmado contra el código real. #screen-cuentas y #nav-cuentas
 // ya eran HTML estático.
 -->
@@ -4905,21 +4904,11 @@
          guard (overlay de eliminar cuenta, registro de Events('authgate'))
          ya se blindó — ver CHANGELOG.md#arranque. -->
     <script type="module" src="js/core/firebase-sync.js" async></script>
-    <!-- ===== MEJORAS ADICIONALES: ocultar saldos, hook de refresh
-         (salud financiera/proyección/presupuestos), validación de montos,
-         animación de carga inicial, Service Worker, autofocus de sheets,
-         aria-labels =====
-         Fusión (2026-09-10) de lo que antes eran dos archivos, mejoras.js
-         y mejoras-adicionales.js — literalmente la parte 1 y la parte 2 de
-         este mismo bloque "MEJORAS ADICIONALES", separadas solo por el
-         corte arbitrario de la sesión de extracción original (mismo caso
-         que sheet-behavior.js). Ver CHANGELOG.md#infraestructura--seguridad.
-         El <style> que vivía acá (fade-in del dashboard, health ring,
-         presupuestos, búsqueda) se movió a css/styles.css — ver
-         docs/auditoria-tecnica.md, ítem "CSS inline (44.7 KB)" y
-         CHANGELOG.md#infraestructura--seguridad. -->
-
-    <script src="js/core/mejoras-adicionales.js" defer></script>
+    <!-- Retoques de la interfaz (antes un solo archivo «mejoras-adicionales.js»): ocultar saldos, render tras refresh + fade-in + aria,
+         validación de montos + foco automático de las hojas. -->
+    <script src="js/core/saldos-ocultos.js" defer></script>
+    <script src="js/core/arranque-ui.js" defer></script>
+    <script src="js/core/formularios-ui.js" defer></script>
     <script src="js/core/busqueda-global.js" defer></script>
 
     <!-- `async` (docs/auditoria-tecnica.md #4, paso 2, mismo criterio que

@@ -8,6 +8,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 
 | Archivo | Carga | Funciones | Globales |
 |---|---|---|---|
+| `js/core/arranque-ui.js` | de entrada (defer) | 0 | 0 |
 | `js/core/async-css.js` | de entrada (async) | 0 | 0 |
 | `js/core/bootstrap.js` | de entrada (defer) | 1 | 0 |
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
@@ -23,13 +24,13 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/firebase-sync.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/formulario.js` | de entrada (defer) | 1 | 0 |
+| `js/core/formularios-ui.js` | de entrada (defer) | 0 | 0 |
 | `js/core/fuentes-filtro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/gastos-fijos-progress.js` | de entrada (defer) | 0 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
 | `js/core/huella.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/lazy-loader.js` | de entrada (defer) | 1 | 0 |
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
-| `js/core/mejoras-adicionales.js` | de entrada (defer) | 0 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 5 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 7 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 6 | 0 |
@@ -42,6 +43,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/reglas.js` | de entrada (defer) | 1 | 0 |
 | `js/core/reordenable.js` | de entrada (defer) | 1 | 0 |
 | `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 1 | 0 |
+| `js/core/saldos-ocultos.js` | de entrada (defer) | 0 | 0 |
 | `js/core/salud.js` | de entrada (defer) | 1 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
 | `js/core/sheet-stack.js` | de entrada (defer) | 11 | 0 |
@@ -70,6 +72,12 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 117 | 3 |
 
 ## 2. Qué declara cada archivo
+
+### `js/core/arranque-ui.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** —
 
 ### `js/core/async-css.js`
 
@@ -167,6 +175,12 @@ Carga: de entrada (defer)
 
 **Funciones:** `Formulario`
 
+### `js/core/formularios-ui.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** —
+
 ### `js/core/fuentes-filtro.js`
 
 Carga: de entrada (defer)
@@ -198,12 +212,6 @@ Carga: de entrada (defer)
 **Funciones:** `Loader`
 
 ### `js/core/mas-menu.js`
-
-Carga: de entrada (defer)
-
-**Funciones:** —
-
-### `js/core/mejoras-adicionales.js`
 
 Carga: de entrada (defer)
 
@@ -280,6 +288,12 @@ Carga: de entrada (defer)
 Carga: módulo ES — importado por `js/core/firebase-sync.js`
 
 **Funciones:** `dos`
+
+### `js/core/saldos-ocultos.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** —
 
 ### `js/core/salud.js`
 

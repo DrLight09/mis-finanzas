@@ -3123,12 +3123,12 @@ function _wrappedScoreInsight(c){
    artistas. */
 const WRAPPED_MAX_INSIGHTS_POOL = 8;
 
-/* Lee el estado de "Ocultar saldos" (mejoras-adicionales.js) directo de
+/* Lee el estado de "Ocultar saldos" (saldos-ocultos.js) directo de
    su localStorage ya documentado (`mf-saldos-ocultos`) — Wrapped no
    tiene forma de leer la variable interna de ese módulo (no está
    expuesta como `window._algo`, a diferencia de `_alcRachaAhorro`), así
    que usa la misma llave pública que ya persiste el toggle.
-   Confirmado 2026-09-15 contra `mejoras-adicionales.js`:
+   Confirmado contra `saldos-ocultos.js`:
    `toggleSaldos()` guarda literalmente `'1'`/`'0'` (no `'true'`/`'false'`,
    que era mi supuesto sin verificar de la pasada anterior — corregido
    acá). El fallback ante cualquier error sigue siendo "no ocultar"

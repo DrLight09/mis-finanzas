@@ -378,8 +378,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     // comentario en _finishFirstLoad más arriba) pero no contra llamarlo
     // ANTES DE TIEMPO. En vez de apostarle a un orden de <script> que no
     // está garantizado por el navegador, se espera activamente a que la
-    // función exista — mismo patrón (poll con setInterval) que ya usa
-    // mejoras-adicionales.js para envolver openSheet.
+    // función exista — espera activa a que exista la función.
     _runWhenEventListenersReady();
   }
 

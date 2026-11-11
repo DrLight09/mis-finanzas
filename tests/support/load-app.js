@@ -66,7 +66,7 @@ function loadApp(appFiles, options = {}) {
   // cuentas.js/prestado.js referencian por nombre corto, a nivel de
   // módulo (dentro de Events.registerAll(...) y wiring de listeners),
   // funciones de UI que viven en otros archivos core que este harness
-  // NO carga (openSheet/closeSheet/toast/dialogo — sheet-stack.js /
+  // NO carga (openSheet/closeSheet/toast/dialogo — navegacion.js /
   // events.js). Sin esto, cargarlos revienta con un ReferenceError
   // distinto por cada función de UI que no conocemos.
   let context = sandbox;

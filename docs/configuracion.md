@@ -214,7 +214,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
 | `Events.registerAll` / `Events.attr` | `events.js` | Sí (`attr` escapa los argumentos; `Events` solo despacha `click`) |
 | `getCatsVar` / `getCatsFijo` / `CATS_*_DEFAULT`, `save`, `toast`, `dialogo`, `refresh`, `fuenteLabel`, `escHtml`, `S.modulos` por defecto | `core-state.js` | Sí |
 | `html\`\`` / `raw()` | `html-tag.js` | Sí |
-| `applyModulos`, `showScreen` | `sheet-stack.js` | Sí |
+| `applyModulos` | `modulos-activos.js`; `showScreen` | `navegacion.js` | Sí |
 | Handler de `notificaciones:activar` | `notificaciones-push.js` | Sí (el backend del aviso está en `notificaciones-push.md`) |
 
-**Interruptor «Saldo inicial» sin valor guardado:** `applyModulos()` (`sheet-stack.js`) lo trata como encendido: marca `#cfg-corregirSaldo` con `mod.corregirSaldo !== false`, así que solo un `false` explícito lo apaga (aunque el HTML no traiga `checked`). Cuentas y Nu usan la misma condición.
+**Interruptor «Saldo inicial» sin valor guardado:** `applyModulos()` (`navegacion.js`) lo trata como encendido: marca `#cfg-corregirSaldo` con `mod.corregirSaldo !== false`, así que solo un `false` explícito lo apaga (aunque el HTML no traiga `checked`). Cuentas y Nu usan la misma condición.

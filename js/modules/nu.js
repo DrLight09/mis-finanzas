@@ -1603,3 +1603,6 @@ Events.registerAll('nu', {
     chk.addEventListener('change', _nuMovToggleApertura);
   }
 })();
+
+Ui.hoja('chequeo-nu', () => { poblarChequeoNu(); }, { key: 'nu-chequeo' });
+Ui.pantalla('cuentas', () => { if (typeof renderCajitas === 'function') renderCajitas(); }, { key: 'nu-cajitas-render' });

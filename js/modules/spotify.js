@@ -1690,3 +1690,8 @@ function _spPintarAvatares(lista, ordenados) {
 
 Events.registerAll('spotify', {
 });
+
+/* ── Ciclo de vida de la UI (antes ramas dentro de openSheet/showScreen, navegacion.js) ───────────────────── */
+Ui.hoja('pagar-spotify', () => { save(); openSheet_pagarSpotify(); }, { key: 'spotify-pagar' });
+Ui.hoja('spotify', () => { const fd = document.getElementById('sp_fecha_ingreso'); if (fd && !fd.value) fd.value = hoy(); }, { key: 'spotify-fecha' });
+Ui.pantalla('spotify', () => { if (typeof renderSpotify === 'function') renderSpotify(); }, { key: 'spotify-render' });

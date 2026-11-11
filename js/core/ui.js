@@ -22,7 +22,7 @@
 //
 // Los nombres de evento de hoja/pantalla son 'hoja:antes:<id>', 'hoja:despues:<id>' y 'pantalla:<nombre>'.
 //
-// Este archivo no depende de nada de la app (ni de document): carga antes que sheet-stack.js y que cualquier módulo.
+// Este archivo no depende de nada de la app (ni de document): carga antes que navegacion.js y que cualquier módulo.
 const Ui = (() => {
   const eventos = new Map(); // evento -> [{ key, fn, orden, n }]
   let n = 0;

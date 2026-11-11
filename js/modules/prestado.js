@@ -2697,7 +2697,7 @@ if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('m
    al parsear, no dentro de una función) — confirmado, no una premisa
    falsa. Por eso el archivo fusionado completo (prestado.js +
    prestado-personas.js + deudores-personas.js) se movió a cargar
-   después de personas.js Y después de sheet-stack.js (que define
+   después de personas.js Y después de navegacion.js (que define
    openSheet, necesario por deudores-personas.js más abajo) — ver el
    nuevo comentario de posición en index.html y CHANGELOG.md#préstamos.
    ═══════════════════════════════════════════════════════════════ */
@@ -2837,7 +2837,7 @@ Events.registerAll('prestado-personas', {
    Mismo selector de persona (existente o nueva) en "Agregar persona"
    (Me deben) y "Nueva deuda" (Yo debo): cada uno con su título y sin
    ofrecer a quien ya está en esa lista. Necesita openSheet definido
-   (sheet-stack.js). Ver prestado.md.
+   (navegacion.js). Ver prestado.md.
    ═══════════════════════════════════════════════════════════════ */
 
 
@@ -2894,3 +2894,23 @@ function _onSelPersonaYoDebo(personaId) {
 /* «Nueva persona» (Me deben) y «Nueva deuda» (Yo debo) ya no son hojas: los botones abren directo el selector de personas
    (_abrirSheetNuevaPersona / _abrirSheetNuevaDeuda). Antes se parcheaba openSheet() para interceptar esos dos ids (M1/M3). */
 
+
+/* ── Ciclo de vida de la UI (antes ramas dentro de showScreen, navegacion.js) ───────────────────────────── */
+// Al salir de Préstamos se cierra el detalle abierto y se restaura la pestaña activa; al entrar se pinta la lista de esa pestaña.
+Ui.pantalla('*', nombre => {
+  if (nombre === 'prestamos') return;
+  deudorActualId = null;
+  miDeudaActualId = null;
+  const ver = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v; };
+  // #prestamos-tabs trae display:flex inline; '' caería al block por defecto del div.
+  ver('prestamos-tabs', 'flex');
+  ver('deudorDetalle', 'none');
+  ver('miDeudaDetalle', 'none');
+  const yoDebo = prestamosTabActiva === 'yo-debo';
+  ver('deudoresView', yoDebo ? 'none' : '');
+  ver('misDeudasView', yoDebo ? '' : 'none');
+}, { key: 'prestado-reset' });
+Ui.pantalla('prestamos', () => {
+  if (prestamosTabActiva === 'yo-debo') { if (typeof renderMisDeudasList === 'function') renderMisDeudasList(); }
+  else if (typeof renderDeudoresList === 'function') renderDeudoresList();
+}, { key: 'prestado-render' });

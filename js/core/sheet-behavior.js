@@ -42,7 +42,7 @@
 //          sobre ~100 ms, cierre/rebote con duración proporcional al
 //          recorrido y fondo (backdrop) que se atenúa sin tocar el sheet.
 //
-// Depende de closeSheet (sheet-stack.js, carga antes). Expone:
+// Depende de closeSheet (navegacion.js, carga antes). Expone:
 //   window._makeSheetSwipeable(overlayEl)  — para overlays inyectados después
 //   window.makeSwipeable(panel, closeFn)   — para paneles sueltos (Alcancía)
 //   window.focusSheetField(idOEl, opts)    — enfocar el primer campo de un sheet recién

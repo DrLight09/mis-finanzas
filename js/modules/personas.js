@@ -941,3 +941,9 @@ Events.registerAll('personas', {
   seleccionarColor: _seleccionarColorPersona,
   pickerAbrir: (el) => { const p = PersonaPicker.de(el && el.dataset && el.dataset.picker); if (p) p.abrir(); },
 });
+
+Ui.pantalla('personas', () => {
+  _inyectarPersonaSheets();
+  if (typeof _renderListaPersonas === 'function') _renderListaPersonas();
+  if (typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
+}, { key: 'personas-render' });

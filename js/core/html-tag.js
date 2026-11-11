@@ -37,7 +37,7 @@
 // ya por otro motivo.
 //
 // Carga como <script> clásico (no type="module"), mismo criterio que
-// core-state.js/sheet-stack.js: sus globales (html, raw) deben quedar
+// core-state.js/navegacion.js: sus globales (html, raw) deben quedar
 // disponibles como variables léxicas para el resto de los <script>
 // clásicos del documento. Depende de escHtml(), definida en core-state.js
 // — debe cargar después de ese archivo.

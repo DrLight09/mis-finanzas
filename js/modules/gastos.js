@@ -98,7 +98,7 @@ const _ogGv = Libro.origen('gastos');
 
 
 /* gv_fuente (modo simple, "¿De dónde salió la plata?"): lo puebla openSheet('gasto-var') en
-   js/core/sheet-stack.js (poblarFuente + FuentesFiltro.podar: solo cuentas con saldo >= $1,00
+   js/core/navegacion.js (poblarFuente + FuentesFiltro.podar: solo cuentas con saldo >= $1,00
    y TC con cupo disponible). No se puebla acá. */
 
 const gvSplit = crearSplitWidget('gv', {
@@ -850,3 +850,33 @@ Events.registerAll('gastos', {
   abrirEditarBien,
   eliminarBien,
 });
+
+/* ── Ciclo de vida de la UI (antes ramas dentro de openSheet/showScreen, navegacion.js) ───────────────────── */
+Ui.hoja('gasto-var', () => {
+  poblarFuente('gv_fuente', true);
+  FuentesFiltro.podar('gv_fuente', { ...FuentesFiltro.PRESET.SALIDA, sinOpcionesTexto: FuentesFiltro.MSG_SIN_SALDO });
+  const hint = document.getElementById('gv_fuente_hint');
+  if (hint) hint.style.visibility = 'hidden';
+  // Al elegir cuenta: muestra el saldo disponible (o el cupo si es una TC).
+  document.getElementById('gv_fuente').onchange = function () {
+    const sd = document.getElementById('gv_fuente_saldo');
+    if (!sd) return;
+    const val = this.value;
+    if (!val) { sd.textContent = ''; return; }
+    const saldo = getSaldoFuente(val);
+    if (Fuente.esTC(val)) {
+      const tc = (S.tarjetasCredito || []).find(x => x.id === Fuente.id(val));
+      if (!tc || !tc.cupo) { sd.textContent = 'El gasto se cargará a la TC — no sale plata de tus cuentas.'; sd.style.color = 'var(--text2)'; return; }
+      sd.textContent = 'Cupo disponible: ' + fmt(saldo);
+    } else {
+      sd.textContent = 'Saldo disponible: ' + fmt(saldo);
+    }
+    sd.style.color = saldo > 0 ? 'var(--accent)' : 'var(--red)';
+  };
+}, { key: 'gastos-fuente' });
+
+Ui.pantalla('gastos', () => {
+  // renderMesFiltros() ya dispara renderGastosVar(); alcanza con estas dos (funciones puras de render).
+  if (typeof renderMesFiltros === 'function') renderMesFiltros();
+  if (typeof renderGastosFijos === 'function') renderGastosFijos();
+}, { key: 'gastos-render' });

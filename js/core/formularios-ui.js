@@ -42,3 +42,22 @@
     if (focusId) focusSheetField(focusId);   // js/core/sheet-behavior.js: foco en el momento justo, sin timers sueltos
   }, { fase: 'despues', key: 'mejoras-foco' });
 })();
+
+// Hint de saldo/destino bajo los selectores de cuenta («fuente»/«destino»): visible solo si hay una cuenta elegida.
+function mostrarAlertaFuente(prefix){
+  // Un módulo puede encargarse del aviso (Tarjetas de crédito con fuentes «tc:…»): su gancho devuelve true.
+  if(Ui.emitir('fuente-alerta',prefix).includes(true))return;
+  // visibility, no display: el hint siempre ocupa su espacio (mismo criterio
+  // que .field-hint/min-height en los demás hints, ver reglas-visuales.md#hints-vacíos)
+  // para que elegir una cuenta no empuje de golpe los botones de más abajo.
+  // EXCEPCIÓN (2026-09-25): en "Registrar gasto" (prefix='gv') se prefirió lo
+  // contrario — que #gv_fuente_hint/#gv_fuente_saldo no ocupen espacio estando
+  // vacíos, aceptando el salto de layout al elegir cuenta. Resuelto solo con
+  // CSS en styles.css (selector [style*="visibility: hidden"] por ID), sin
+  // tocar esta función — sigue devolviendo el mismo comportamiento de siempre
+  // para mov_fuente_hint/mov_destino_hint (Préstamos), que no cambiaron.
+  const fuenteEl=document.getElementById(prefix+'_fuente');
+  if(fuenteEl){const val=fuenteEl.value;const hint=document.getElementById(prefix+'_fuente_hint');if(hint)hint.style.visibility=val?'visible':'hidden';}
+  const destEl=document.getElementById(prefix+'_destino');
+  if(destEl){const val=destEl.value;const hint=document.getElementById(prefix+'_destino_hint');if(hint)hint.style.visibility=val?'visible':'hidden';}
+}

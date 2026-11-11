@@ -3402,3 +3402,5 @@ function _encDetallePersona(enc) {
     chip.onclick = () => abrirPerfilPersona(p.id);
   }
 }
+
+Ui.pantalla('encargos', () => { if (typeof renderEncargosList === 'function') renderEncargosList(); }, { key: 'encargos-render' });

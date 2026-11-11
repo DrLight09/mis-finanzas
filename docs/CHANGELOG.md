@@ -7,6 +7,7 @@
 - **Push sin duplicados:** `scripts/notificaciones/run.js` envía mensajes solo-datos (`data`, sin `notification`) y el SW muestra UN aviso; `notificationclick` enfoca la ventana abierta o abre una. Variable opcional `APP_BASE_URL` en el workflow.
 - **Limpieza:** al activar solo se borran cachés `mis-finanzas-v*` viejas; la de fuentes/SDK (`mis-finanzas-ext`) se conserva.
 - **Limpieza (M12):** `mejoras-adicionales.js` (mezcla de cuatro cosas) se partió en `saldos-ocultos.js`, `arranque-ui.js` y `formularios-ui.js`; `personas-init.js` y el encabezado de `lazy-loader.js` se simplificaron y se quitaron comentarios históricos que ya no aplican. Historial `window.refresh` parcheado: ya resuelto con `Refresh.registrar` (A7).
+- **M7 (parte 1):** `sheet-stack.js` se partió en `navegacion.js` (hojas + pantallas), `modulos-activos.js` y `eventos-base.js`; `mostrarAlertaFuente` pasó a `formularios-ui.js` y `saveAndRefresh` a `core-state.js` (`markDirty`/`_dirty` eliminados: sin uso). Las ramas `if(name===…)` de `showScreen` y los efectos por hoja de `openSheet` ahora los registra cada módulo dueño con `Ui.pantalla`/`Ui.hoja` (gastos, cuentas, nu, spotify, config, análisis, wrapped, personas, encargos, mesada, tarjetas, préstamos).
 - Tests nuevos: `tests/sw.test.js` (SW simulado en vm: precaché, activate, fetch offline, mensajes, clicks).
 
 ## Revisión estructural, parte 2: ciclo de vida `Ui`, sin parches de funciones, Firebase/CSS/higiene (M3, M1, M2, M4, M10, M9, M11, M12) (2026-11-10, SW v121)

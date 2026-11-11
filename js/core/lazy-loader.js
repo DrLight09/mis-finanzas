@@ -10,7 +10,7 @@
    Piloto: "alcancia" y "comprometida" en GROUPS por ahora (ver
    CHANGELOG.md). El resto de las pantallas sigue cargando de entrada
    como siempre — Loader.GROUPS[name] === undefined para ellas, así
-   que showScreen() (sheet-stack.js) ni siquiera pasa por este archivo
+   que showScreen() (navegacion.js) ni siquiera pasa por este archivo
    para esos casos.
 
    ── Por qué en orden y no en paralelo (Promise.all) ──────────────
@@ -42,8 +42,8 @@ const Loader = (function () {
     // Tercer grupo lazy. Más simple que los dos anteriores: #screen-config
     // y #mas-config YA eran HTML estático desde antes (no hubo que copiar
     // nada), y el único caller externo de una función suya (renderCatsConfig,
-    // desde sheet-stack.js) ya tenía guard `typeof` desde la sesión del
-    // piloto de Alcancía. gastos.js quedó afuera a propósito: sheet-stack.js
+    // desde navegacion.js) ya tenía guard `typeof` desde la sesión del
+    // piloto de Alcancía. gastos.js quedó afuera a propósito: navegacion.js
     // (núcleo) parchea addGastoVar/addGastoFijo a nivel superior de SU
     // propio archivo — haría lazy-loading imposible sin tocar antes ese
     // núcleo. Ver CHANGELOG.md#arranque.
@@ -123,16 +123,16 @@ const Loader = (function () {
     //    DOMContentLoaded que, con carga lazy, nunca dispara (el evento ya
     //    pasó) — se corrigió a top-level, ver cabecera de ese bloque en
     //    spotify.js.
-    // 2. sheet-stack.js (núcleo, siempre eager) tenía dos referencias sin
+    // 2. navegacion.js (núcleo, siempre eager) tenía dos referencias sin
     //    guard a globales de estos módulos que corrían en CADA llamada a
     //    showScreen(), no solo al entrar a esas pantallas: el bloque de
     //    reset de Préstamos (deudorActualId/miDeudaActualId/
-    //    prestamosTabActiva), que ya tiene guard typeof — ver sheet-stack.js.
+    //    prestamosTabActiva), que ya tiene guard typeof — ver navegacion.js.
     // #screen-spotify/#screen-prestamos/#screen-cuentas/#screen-encargos ya
     // eran HTML estático desde antes (mismo caso que Mesada/Tarjetas), y
     // #screen-analisis vive dentro de "Más", también estático — ninguno
     // necesitó copiar/inyectar HTML. Se agregaron ramas de re-render en
-    // showScreen() (sheet-stack.js) para spotify y prestamos, replicando el
+    // showScreen() (navegacion.js) para spotify y prestamos, replicando el
     // fix que ya se había hecho para tarjetas — cuentas/encargos/analisis ya
     // las tenían desde antes (antes de volverse lazy, esas ramas ya
     // corrían, solo que sobre un módulo cargado de entrada).

@@ -36,7 +36,7 @@
    ─────────────────────────────────────────────────────────────── */
 /* ---- CUENTAS SELECTOR ---- */
 // Fuente de la cuenta abierta en el detalle: 'cuenta:ID' ('' si no hay ninguna). Una sola variable para todas las
-// cuentas; la leen core-state.js, sheet-stack.js, movimientos.js y encargos.js (siempre con guard typeof: este archivo es lazy).
+// cuentas; la leen core-state.js, navegacion.js, movimientos.js y encargos.js (siempre con guard typeof: este archivo es lazy).
 let cuentaActual = '';
 
 // Abre el detalle de una cuenta. `fuente` es 'cuenta:ID'. Las cuentas de ahorro tienen su propia pantalla (cajitas, tasa, CDTs:
@@ -1767,3 +1767,12 @@ if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
 // 'core:eliminarMovimiento'. No se registran acá para no hacer parecer
 // que este módulo es dueño de esas dos funciones.
 
+
+/* ── Ciclo de vida de la UI (antes ramas dentro de openSheet/showScreen, navegacion.js) ───────────────────── */
+Ui.hoja('agregar-dinero-menu', () => { save(); openSheet_adMenu(); }, { key: 'cuentas-menu-agregar' });
+
+Ui.pantalla('cuentas', () => {
+  // Reflejar cambios hechos en otras pantallas: la cuenta abierta y la lista (las cajitas de Nu las pinta nu.js).
+  if (typeof renderDetalleCuenta === 'function' && typeof cuentaActual !== 'undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
+  if (typeof renderSelectorCuentas === 'function') renderSelectorCuentas();
+}, { key: 'cuentas-render' });

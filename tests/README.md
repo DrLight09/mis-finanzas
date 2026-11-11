@@ -68,7 +68,7 @@ MIS_FINANZAS_CORE_DIR=./ruta/a/core MIS_FINANZAS_MODULES_DIR=./ruta/a/modules np
 - **`permissive: true`** — usado por las suites `calcC-calcCDT` (`cuentas.test.js`) y
   `totalPrestadoPendiente` (`prestamos.test.js`), que cargan `cuentas.js`/`prestado.js`
   reales. Esos archivos referencian funciones de UI de otros core (
-  `openSheet`/`toast`/`dialogo`, viven en `sheet-stack.js`/`events.js`,
+  `openSheet`/`toast`/`dialogo`, viven en `navegacion.js`/`events.js`,
   no incluidos acá) a nivel de módulo — permissive las deja caer a
   no-op. **Ojo:** en este modo, `typeof cualquierCosa==='function'`
   siempre da `true` (el fallback fabrica una función para todo), así

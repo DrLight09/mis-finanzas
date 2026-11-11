@@ -9,7 +9,7 @@
 
    Funciones que NO viven acá a propósito, por ser núcleo compartido con
    otras pantallas:
-     - applyModulos() (js/core/sheet-stack.js): además de reflejar los toggles en esta pantalla,
+     - applyModulos() (js/core/navegacion.js): además de reflejar los toggles en esta pantalla,
        oculta/muestra la pestaña de Spotify en el nav, la pantalla de
        Mesada, los banners de saldo inicial en Cuentas y dispara
        renderAttencion() en Inicio. toggleModulo() (acá abajo) la llama.
@@ -510,3 +510,8 @@ if (_importFileInput) _importFileInput.addEventListener('change', leerArchivoImp
   const el=document.getElementById(id);
   if(el) el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();agregarCat(id.includes('var')?'var':'fijo');}});
 });
+
+Ui.pantalla('config', () => {
+  if (typeof renderCatsConfig === 'function') renderCatsConfig();
+  if (typeof window._pinRenderBtn === 'function') window._pinRenderBtn();
+}, { key: 'config-render' });

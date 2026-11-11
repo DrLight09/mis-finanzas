@@ -16,23 +16,26 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cierre.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/cobros.js` | de entrada (defer) | 13 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
-| `js/core/core-state.js` | de entrada (defer) | 123 | 14 |
+| `js/core/core-state.js` | de entrada (defer) | 124 | 14 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
+| `js/core/eventos-base.js` | de entrada (defer) | 2 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
 | `js/core/fecha.js` | de entrada (defer) | 1 | 0 |
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/firebase-sync.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/formulario.js` | de entrada (defer) | 1 | 0 |
-| `js/core/formularios-ui.js` | de entrada (defer) | 0 | 0 |
+| `js/core/formularios-ui.js` | de entrada (defer) | 1 | 0 |
 | `js/core/fuentes-filtro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/gastos-fijos-progress.js` | de entrada (defer) | 0 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
 | `js/core/huella.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/lazy-loader.js` | de entrada (defer) | 1 | 0 |
 | `js/core/mas-menu.js` | de entrada (defer) | 0 | 0 |
+| `js/core/modulos-activos.js` | de entrada (defer) | 1 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 5 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 7 | 0 |
+| `js/core/navegacion.js` | de entrada (defer) | 5 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 6 | 0 |
 | `js/core/nu-calc.js` | de entrada (defer) | 29 | 0 |
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 2 | 0 |
@@ -46,7 +49,6 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/saldos-ocultos.js` | de entrada (defer) | 0 | 0 |
 | `js/core/salud.js` | de entrada (defer) | 1 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
-| `js/core/sheet-stack.js` | de entrada (defer) | 11 | 0 |
 | `js/core/split.js` | de entrada (defer) | 10 | 0 |
 | `js/core/sw-registro.js` | de entrada (defer) | 1 | 0 |
 | `js/core/ui.js` | de entrada (defer) | 1 | 0 |
@@ -127,7 +129,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_buildFuentesOpts`, `_clasePorCuenta`, `_claseValida`, `_closeDialog`, `_colorSeguro`, `_cuentasArr`, `_ensureSpotify`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_fuenteHuerfana`, `_libroPata`, `_listaFuentes`, `_luminancia`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_refreshNucleo`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `_toastTexto`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `asegurarEfectivo`, `avisarMovimientoBloqueado`, `avisarNoSePuede`, `botonEliminarFila`, `cajitasDeCuenta`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `claseEfectivaMovimiento`, `colorCuenta`, `colorLegible`, `conEstadoAislado`, `confirmarBorrarMovimientoViejo`, `confirmarEliminar`, `crearMovimientoApertura`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `debounceSave`, `descontarFuente`, `diaCreacionMov`, `dialogo`, `Dinero`, `emptyInline`, `emptyState`, `entradasIngresoReal`, `escHtml`, `esCuentaAhorro`, `esCuentaFija`, `esFuenteCuenta`, `filaMovimiento`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `Fuente`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteHtml`, `fuenteLabel`, `fuenteTexto`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `idDeFuenteCuenta`, `ingresosRealesDelMes`, `Libro`, `load`, `medirAnchoTexto`, `medirPatrimonioParaHistorial`, `mesActual`, `mesKey`, `mostrarSi`, `movimientosSinClase`, `nivelAntiguedadMovimiento`, `nombreCuenta`, `opcionesCuenta`, `parseMoney`, `parsePct`, `patrimonioFormulaTexto`, `pedirPinAntesDe`, `pintarAvatarPersona`, `Plata`, `poblarCatSelect`, `poblarFuente`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `Refresh`, `refresh`, `registrarSonda`, `renderCuentasInicio`, `Reversibles`, `saldoCuentas`, `save`, `setMoneyInput`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
+**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_buildFuentesOpts`, `_clasePorCuenta`, `_claseValida`, `_closeDialog`, `_colorSeguro`, `_cuentasArr`, `_ensureSpotify`, `_esEntradaEspejoNoIngreso`, `_esGastoVarNoReal`, `_fechaSafe`, `_fuenteHuerfana`, `_libroPata`, `_listaFuentes`, `_luminancia`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_refreshNucleo`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `_toastTexto`, `ajustarSaldoCuenta`, `aplicarMigraciones`, `asegurarEfectivo`, `avisarMovimientoBloqueado`, `avisarNoSePuede`, `botonEliminarFila`, `cajitasDeCuenta`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `claseEfectivaMovimiento`, `colorCuenta`, `colorLegible`, `conEstadoAislado`, `confirmarBorrarMovimientoViejo`, `confirmarEliminar`, `crearMovimientoApertura`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `debounceSave`, `descontarFuente`, `diaCreacionMov`, `dialogo`, `Dinero`, `emptyInline`, `emptyState`, `entradasIngresoReal`, `escHtml`, `esCuentaAhorro`, `esCuentaFija`, `esFuenteCuenta`, `filaMovimiento`, `fmt`, `fmtInput`, `fmtNoCents`, `fmtSaldoSelector`, `Fuente`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteHtml`, `fuenteLabel`, `fuenteTexto`, `gastosMes`, `getCatsFijo`, `getCatsVar`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getIngresosFijosMes`, `getSaldoFuente`, `hoy`, `idDeFuenteCuenta`, `ingresosRealesDelMes`, `Libro`, `load`, `medirAnchoTexto`, `medirPatrimonioParaHistorial`, `mesActual`, `mesKey`, `mostrarSi`, `movimientosSinClase`, `nivelAntiguedadMovimiento`, `nombreCuenta`, `opcionesCuenta`, `parseMoney`, `parsePct`, `patrimonioFormulaTexto`, `pedirPinAntesDe`, `pintarAvatarPersona`, `Plata`, `poblarCatSelect`, `poblarFuente`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `Refresh`, `refresh`, `registrarSonda`, `renderCuentasInicio`, `Reversibles`, `saldoCuentas`, `save`, `saveAndRefresh`, `setMoneyInput`, `snapshotPatrimonio`, `sumarFuente`, `toast`, `uid`
 
 **Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `CLASES_MOV`, `CuentaPantallas`, `FUENTE_CUENTA_PREFIJO`, `ICONO_VACIO_CUENTAS`, `MAX`, `MC`, `ME_DEBEN_ABRE`, `MIGRACIONES`, `S`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`, `TIPOS_CUENTA`
 
@@ -144,6 +146,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInst`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
+
+### `js/core/eventos-base.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `_bindInputsAS`, `_initEventListeners`
 
 ### `js/core/events.js`
 
@@ -179,7 +187,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** —
+**Funciones:** `mostrarAlertaFuente`
 
 ### `js/core/fuentes-filtro.js`
 
@@ -217,6 +225,12 @@ Carga: de entrada (defer)
 
 **Funciones:** —
 
+### `js/core/modulos-activos.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `applyModulos`
+
 ### `js/core/money-input.js`
 
 Carga: de entrada (defer)
@@ -228,6 +242,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_cuentaOpsPosteriores`, `_eliminarMovimientoImpl`, `_movExiste`, `_rerenderCuentaActiva`, `abrirDetalleMov`, `eliminarMovimiento`, `toggleExtraordinario`
+
+### `js/core/navegacion.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `_hideScreenLoading`, `_showScreenLoading`, `closeSheet`, `openSheet`, `showScreen`
 
 ### `js/core/notificaciones-push.js`
 
@@ -306,12 +326,6 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** —
-
-### `js/core/sheet-stack.js`
-
-Carga: de entrada (defer)
-
-**Funciones:** `_bindInputsAS`, `_hideScreenLoading`, `_initEventListeners`, `_showScreenLoading`, `applyModulos`, `closeSheet`, `markDirty`, `mostrarAlertaFuente`, `openSheet`, `saveAndRefresh`, `showScreen`
 
 ### `js/core/split.js`
 
@@ -553,7 +567,7 @@ Ninguno.
 | `_autoGrupoIdMov` | `js/modules/prestado.js` |
 | `_balancePromedioReciente` | `js/modules/inicio.js` |
 | `_bienPoblar` | `js/modules/gastos.js` |
-| `_bindInputsAS` | `js/core/sheet-stack.js` |
+| `_bindInputsAS` | `js/core/eventos-base.js` |
 | `_borrarSpHistorial` | `js/modules/spotify.js` |
 | `_buildFuentesOpts` | `js/core/core-state.js` |
 | `_cajitaDetDelete` | `js/modules/nu.js` |
@@ -674,13 +688,13 @@ Ninguno.
 | `_gruposAbiertos` | `js/modules/prestado.js` |
 | `_guardarEditarPersonaGlobal` | `js/modules/personas.js` |
 | `_gvDiaLabel` | `js/modules/gastos.js` |
-| `_hideScreenLoading` | `js/core/sheet-stack.js` |
+| `_hideScreenLoading` | `js/core/navegacion.js` |
 | `_historialTasas` | `js/core/nu-calc.js` |
 | `_htmlEscapeValue` | `js/core/html-tag.js` |
 | `_htmlHistorialPorGrupos` | `js/modules/prestado.js` |
 | `_htmlMesDot` | `js/modules/mesada.js` |
 | `_initA` | `js/modules/alcancia.js` |
-| `_initEventListeners` | `js/core/sheet-stack.js` |
+| `_initEventListeners` | `js/core/eventos-base.js` |
 | `_initGrupoSelector` | `js/modules/prestado.js` |
 | `_initMovGrupoSelector` | `js/modules/prestado.js` |
 | `_injectMasItem` | `js/modules/plata_comprometida.js` |
@@ -840,7 +854,7 @@ Ninguno.
 | `_setBtnTransferir` | `js/modules/cuentas.js` |
 | `_setSaldoOfuscado` | `js/modules/alcancia.js` |
 | `_showCuentasPanel` | `js/modules/cuentas.js` |
-| `_showScreenLoading` | `js/core/sheet-stack.js` |
+| `_showScreenLoading` | `js/core/navegacion.js` |
 | `_situacion` | `js/modules/inicio.js` |
 | `_spEditPicker` | `js/modules/spotify.js` |
 | `_spEnsureTC` | `js/modules/spotify.js` |
@@ -1101,7 +1115,7 @@ Ninguno.
 | `alternarAhorroNC` | `js/modules/cuentas.js` |
 | `alternarOrdenCuentas` | `js/modules/cuentas.js` |
 | `aplicarMigraciones` | `js/core/core-state.js` |
-| `applyModulos` | `js/core/sheet-stack.js` |
+| `applyModulos` | `js/core/modulos-activos.js` |
 | `archivarCuenta` | `js/modules/cuentas.js` |
 | `asegurarEfectivo` | `js/core/core-state.js` |
 | `avisarMovimientoBloqueado` | `js/core/core-state.js` |
@@ -1146,7 +1160,7 @@ Ninguno.
 | `claseEfectivaMovimiento` | `js/core/core-state.js` |
 | `CLASES_MOV` | `js/core/core-state.js` |
 | `clickMesDot` | `js/modules/mesada.js` |
-| `closeSheet` | `js/core/sheet-stack.js` |
+| `closeSheet` | `js/core/navegacion.js` |
 | `closeSwipeSheet` | `js/modules/alcancia.js` |
 | `COBRO_MES_RE` | `js/core/cobros.js` |
 | `cobroAvisoMes` | `js/core/cobros.js` |
@@ -1359,7 +1373,6 @@ Ninguno.
 | `marcarColorSeleccionado` | `js/core/color-picker.js` |
 | `marcarMesadaComoPendiente` | `js/modules/mesada.js` |
 | `marcarPagoSpotify` | `js/modules/spotify.js` |
-| `markDirty` | `js/core/sheet-stack.js` |
 | `materializarIntereses` | `js/modules/nu.js` |
 | `MAX` | `js/core/core-state.js` |
 | `MC` | `js/core/core-state.js` |
@@ -1391,7 +1404,7 @@ Ninguno.
 | `mesadaTieneCuentaAfectada` | `js/modules/mesada.js` |
 | `mesKey` | `js/core/core-state.js` |
 | `MIGRACIONES` | `js/core/core-state.js` |
-| `mostrarAlertaFuente` | `js/core/sheet-stack.js` |
+| `mostrarAlertaFuente` | `js/core/formularios-ui.js` |
 | `mostrarAvisoNuevaVersion` | `js/core/sw-registro.js` |
 | `mostrarSi` | `js/core/core-state.js` |
 | `moverCuenta` | `js/modules/cuentas.js` |
@@ -1403,7 +1416,7 @@ Ninguno.
 | `onChangeMov_enc_cuenta` | `js/modules/prestado.js` |
 | `onChangeMov_enc_sel` | `js/modules/prestado.js` |
 | `opcionesCuenta` | `js/core/core-state.js` |
-| `openSheet` | `js/core/sheet-stack.js` |
+| `openSheet` | `js/core/navegacion.js` |
 | `openSheet_adMenu` | `js/modules/cuentas.js` |
 | `openSheet_pagarSpotify` | `js/modules/spotify.js` |
 | `ordenarCuentas` | `js/modules/cuentas.js` |
@@ -1494,7 +1507,7 @@ Ninguno.
 | `Salud` | `js/core/salud.js` |
 | `SALUD_MAX_CONSEJOS` | `js/modules/inicio.js` |
 | `save` | `js/core/core-state.js` |
-| `saveAndRefresh` | `js/core/sheet-stack.js` |
+| `saveAndRefresh` | `js/core/core-state.js` |
 | `SCHEMA_BASE` | `js/core/core-state.js` |
 | `SCHEMA_VERSION_ACTUAL` | `js/core/core-state.js` |
 | `selColorNC` | `js/modules/cuentas.js` |
@@ -1503,7 +1516,7 @@ Ninguno.
 | `selTipoNC` | `js/modules/cuentas.js` |
 | `setMesFiltro` | `js/modules/gastos.js` |
 | `setMoneyInput` | `js/core/core-state.js` |
-| `showScreen` | `js/core/sheet-stack.js` |
+| `showScreen` | `js/core/navegacion.js` |
 | `snapshotPatrimonio` | `js/core/core-state.js` |
 | `SP_EMPATE_PERIODOS` | `js/modules/spotify.js` |
 | `SP_PERIODO_DIAS` | `js/modules/spotify.js` |

@@ -1088,7 +1088,7 @@ if(ptcFuente)ptcFuente.addEventListener('change',ptcActualizarPreview);
 const ptcMonto=document.getElementById('ptc_monto');
 if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
 
-// Mostrar el label TC en el gasto variable al seleccionarlo: mostrarAlertaFuente() (sheet-stack.js) pregunta al evento
+// Mostrar el label TC en el gasto variable al seleccionarlo: mostrarAlertaFuente() (navegacion.js) pregunta al evento
 // 'fuente-alerta' (js/core/ui.js) y, si un gancho devuelve true, no pinta su aviso normal.
 Ui.en('fuente-alerta', function(prefix){
   const sel=document.getElementById(prefix+'_fuente')||document.getElementById(prefix+'fuente');
@@ -1107,3 +1107,6 @@ Ui.en('fuente-alerta', function(prefix){
   return true;
 },{key:'tarjetas-alerta-fuente'});
 
+
+// Sin esta rama, la primera vez que el grupo lazy termina de cargar la pantalla quedaba visible pero vacía.
+Ui.pantalla('tarjetas', () => { if (typeof renderTCScreen === 'function') renderTCScreen(); }, { key: 'tarjetas-render' });

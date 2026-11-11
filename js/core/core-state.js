@@ -954,7 +954,7 @@ function save(){
   }
   // Cuota mensual por año — guardada en S.mesadas[parent].cuotas[anio]
   // Cuotas de Mesada y costo de Spotify: los inputs escriben directo en S (ver
-  // _bindInputsAS() en sheet-stack.js); save() ya no lee nada del DOM.
+  // _bindInputsAS() en navegacion.js); save() ya no lee nada del DOM.
   if(typeof _ensureMesadas==='function')_ensureMesadas();
   // Las cajitas ya no tienen inputs en el DOM (nombre, saldo y CDT se editan por sheets que
   // escriben directo en S): save() solo normaliza lo que vive en S.
@@ -2072,7 +2072,7 @@ function _refreshNucleo(){
   // OPTIMIZACIÓN TBT (2026-08-15/17, ver auditoria-tecnica.md #12): estas
   // llamadas re-renderizaban su pantalla completa en CADA refresh() — sin
   // importar si el usuario la estaba viendo. Ya se re-renderizan al ENTRAR
-  // a su pantalla (showScreen(), ver sheet-stack.js) — Cuentas y Gastos
+  // a su pantalla (showScreen(), ver navegacion.js) — Cuentas y Gastos
   // recibieron sus hooks recién el 2026-08-17 (renderCajitas/
   // renderSelectorCuentas/renderMesFiltros/renderGastosFijos, confirmado
   // contra cuentas.js/gastos.js reales que son funciones puras de render),
@@ -2151,3 +2151,9 @@ function _refreshNucleo(){
 // crearSplitWidget(), definido justo arriba en este mismo bloque —
 // mismo criterio que Spotify: cargar donde la dependencia más
 // exigente ya esté satisfecha.
+
+// Guarda y repinta: lo que casi todo handler de escritura termina llamando.
+function saveAndRefresh() {
+  save();
+  refresh();
+}

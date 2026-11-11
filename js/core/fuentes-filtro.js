@@ -32,7 +32,7 @@
    nunca al cargar. No modifica opcionesCuenta/poblarFuente: los
    consume (vía fuentesCustom) o poda el <select> ya poblado (patrón:
    poblarFuente(id) seguido de FuentesFiltro.podar(id, ...), ver openSheet
-   en sheet-stack.js).
+   en navegacion.js).
    ═══════════════════════════════════════════════════════════════ */
 const FuentesFiltro = (() => {
   // Mínimos por flujo. Se comparan en centavos (los saldos son floats).

@@ -89,15 +89,15 @@ test('hookGlobal y hook-global.js ya no existen', () => {
   assert.ok(!/hook-global\.js/.test(leer('index.html').replace(/<!--[\s\S]*?-->/g, '')));
 });
 
-test('index.html carga ui.js antes de core-state.js, sheet-stack.js y los módulos', () => {
+test('index.html carga ui.js antes de core-state.js, navegacion.js y los módulos', () => {
   const orden = [...leer('index.html').matchAll(/<script[^>]+src="(js\/[^"]+)"/g)].map(m => m[1]);
   const i = orden.indexOf('js/core/ui.js');
   assert.ok(i >= 0);
-  for (const f of ['js/core/core-state.js', 'js/core/sheet-stack.js']) assert.ok(orden.indexOf(f) > i, f);
+  for (const f of ['js/core/core-state.js', 'js/core/navegacion.js']) assert.ok(orden.indexOf(f) > i, f);
 });
 
-test('nadie reasigna openSheet/showScreen desde fuera de sheet-stack.js', () => {
-  const malos = ARCHIVOS.filter(f => !f.endsWith('sheet-stack.js')).filter(f => {
+test('nadie reasigna openSheet/showScreen desde fuera de navegacion.js', () => {
+  const malos = ARCHIVOS.filter(f => !f.endsWith('navegacion.js')).filter(f => {
     const src = leer(f).replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');
     return /(^|[^\w$.])(openSheet|showScreen)\s*=\s*(?:async\s+)?function/m.test(src);
   });

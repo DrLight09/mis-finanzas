@@ -80,7 +80,7 @@ describe('guardas M10', () => {
     assert.deepEqual(malos, []);
   });
   test('el núcleo no conoce los ids de los formularios (sp_n, gv_desc, gf_n…)', () => {
-    for (const f of ['js/core/sheet-stack.js', 'js/core/core-state.js']) {
+    for (const f of ['js/core/navegacion.js', 'js/core/eventos-base.js', 'js/core/core-state.js']) {
       const src = leer(f).replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
       assert.ok(!/['"](gv_desc|gv_monto|gf_n|gf_m|sp_m)['"]/.test(src), f);
     }

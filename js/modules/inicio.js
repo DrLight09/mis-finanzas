@@ -238,7 +238,7 @@ function _pintarAtencion(){
     // para sacarlo: se iban acumulando uno por cada refresh(), y con un
     // número par acumulado, un click disparaba todos y se cancelaban entre
     // sí (abre-cierra-abre-cierra), sin efecto visible — bug real, detectado
-    // en producción, no relacionado con la extracción de sheet-stack.js.
+    // en producción, no relacionado con la extracción de navegacion.js.
     // No alcanza con guardar el handler una sola vez (ej. patrón
     // sheet._personaHook de otros módulos): `items` es una variable local
     // de este renderAttencion(), y el handler la usa en el badge al hacer

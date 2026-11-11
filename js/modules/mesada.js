@@ -942,3 +942,5 @@ Events.registerAll('mesada', {
   marcarPendiente: marcarMesadaComoPendiente,
   deshacerPendiente: deshacerPendienteMesada,
 });
+
+Ui.pantalla('mesada', () => { if (typeof renderMesada === 'function') renderMesada(); }, { key: 'mesada-render' });

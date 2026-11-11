@@ -73,7 +73,7 @@
      personas.md §8); si no existe todavía, cada dominio nuevo cae al
      nombre crudo que ya guarda su propio registro (`d.nombre`,
      `enc.nombre`), escapado igual con `escHtml`.
-   - `showScreen` — núcleo eager (sheet-stack.js); usada solo para volver
+   - `showScreen` — núcleo eager (navegacion.js); usada solo para volver
      a "Más" al cerrar la historia. Con guard typeof: si no existe, el
      botón cerrar simplemente no navega (no rompe nada).
    - `fmt`, `escHtml`, `hoy` — núcleo eager.
@@ -4295,3 +4295,5 @@ window._wrappedInternals = {
 };
 
 })();
+
+Ui.pantalla('wrapped', () => { if (typeof renderWrapped === 'function') renderWrapped(); }, { key: 'wrapped-render' });

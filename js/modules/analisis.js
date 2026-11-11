@@ -952,3 +952,5 @@ if (_btnGuardarIngresoFijo) _btnGuardarIngresoFijo.addEventListener('click', gua
   ['cbSplitToggle','click',()=>splitToggle('cb')],
   ['btn-add-split-row-cb','click',()=>splitAgregarRow('cb')],
 ].forEach(([id,evt,fn])=>{const el=document.getElementById(id);if(el)el.addEventListener(evt,fn);});
+
+Ui.pantalla('analisis', () => { if (typeof renderAnalisis === 'function') renderAnalisis(); }, { key: 'analisis-render' });

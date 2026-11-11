@@ -288,7 +288,7 @@ describe('calcC-calcCDT', () => {
 
   // calcC/calcCDT viven en js/core/nu-calc.js (núcleo, carga de entrada); cuentas.js sigue cargándose
   // por sus funciones de UI/mutación (materializarIntereses, etc.). cuentas.js referencia funciones de UI de otros archivos core que no
-  // están en este harness (openSheet/toast/dialogo — sheet-stack.js /
+  // están en este harness (openSheet/toast/dialogo — navegacion.js /
   // events.js) a nivel de módulo. permissive:true las deja caer a no-op.
   // Ver tests/support/load-app.js para el porqué y el riesgo de esto.
   //

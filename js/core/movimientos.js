@@ -764,3 +764,5 @@ Reversibles.registrar({ tipo: 'gasto', proteccion(g) {
   return { fecha: g.fecha, ops: Math.max(...conFuente.map(s => _cuentaOpsPosteriores(s.fuente, g.fecha, g.id))), modulo: 'gastos',
     nombre: conFuente.length > 1 ? `${conFuente.length} cuentas` : fuenteLabel(conFuente[0].fuente), monto: g.monto || 0, direccion: 'sube' };
 } });
+
+Ui.hoja('registrar-movimiento', () => { poblarFuente('mov_fuente'); poblarFuente('mov_destino'); }, { key: 'movimientos-fuentes' });

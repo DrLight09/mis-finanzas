@@ -357,11 +357,23 @@ function renderRespaldos(){
   }
   el.innerHTML=html`<div class="cfg-resp-estado${est.error==='permisos'?' cfg-resp-aviso':''}">${linea}</div>
     <div id="cfg-respaldos-lista"></div>
-    <button type="button" class="btn cfg-resp-ver" ${raw(Events.attr('config:verRespaldos'))}>Ver respaldos</button>`;
+    <button type="button" id="cfg-resp-ver-btn" class="btn cfg-resp-ver" aria-expanded="false" ${raw(Events.attr('config:verRespaldos'))}>Ver respaldos</button>`;
+  _respaldosVisibles=false; // el render deja la lista vacía y cerrada
+}
+// El mismo botón abre y cierra la lista: «Ver respaldos» ⇄ «Ocultar respaldos».
+let _respaldosVisibles=false;
+function _respBotonVer(abierto){
+  _respaldosVisibles=abierto;
+  const b=document.getElementById('cfg-resp-ver-btn');
+  if(!b)return;
+  b.textContent=abierto?'Ocultar respaldos':'Ver respaldos';
+  b.setAttribute('aria-expanded',abierto?'true':'false');
 }
 async function verRespaldos(){
   const api=window._fbRespaldos, cont=document.getElementById('cfg-respaldos-lista');
   if(!api||!cont)return;
+  if(_respaldosVisibles){cont.innerHTML='';_respBotonVer(false);return;}
+  _respBotonVer(true);
   cont.innerHTML=html`<div class="cfg-resp-estado">Cargando respaldos…</div>`;
   let r;
   try{r=await api.listar();}catch(e){r={filas:[],errorNube:String((e&&e.message)||e)};}

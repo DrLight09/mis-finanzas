@@ -394,6 +394,26 @@ describe('respaldos — pantalla de Configuración', () => {
     assert.match(h, /respaldo-previo-2026-11-09-153000/);
   });
 
+  test('el botón alterna «Ver respaldos» ⇄ «Ocultar respaldos»: el segundo clic oculta la lista y no vuelve a cargarla', async () => {
+    let cargas = 0;
+    const p = pantalla({ filas: [fila('respaldo-2026-11-09')] });
+    const orig = p.ctx.window._fbRespaldos.listar;
+    p.ctx.window._fbRespaldos.listar = async () => { cargas++; return orig(); };
+    p.ctx.renderRespaldos();
+    const doc = p.dom.document;
+    const btn = () => doc.getElementById('cfg-resp-ver-btn');
+    assert.match(doc.getElementById('cfg-respaldos').innerHTML, /id="cfg-resp-ver-btn"[^>]*aria-expanded="false"[^>]*>Ver respaldos</);
+    await p.ctx.verRespaldos();
+    assert.equal(btn().textContent, 'Ocultar respaldos');
+    assert.match(doc.getElementById('cfg-respaldos-lista').innerHTML, /cfg-resp-fila/);
+    await p.ctx.verRespaldos();
+    assert.equal(doc.getElementById('cfg-respaldos-lista').innerHTML, '');
+    assert.equal(btn().textContent, 'Ver respaldos');
+    assert.equal(cargas, 1, 'ocultar no vuelve a pedir la lista');
+    await p.ctx.verRespaldos();
+    assert.equal(cargas, 2); assert.match(doc.getElementById('cfg-respaldos-lista').innerHTML, /cfg-resp-fila/);
+  });
+
   test('lista vacía y lista con la nube caída: mensajes claros', async () => {
     let p = pantalla();
     p.ctx.renderRespaldos(); await p.ctx.verRespaldos();

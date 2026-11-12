@@ -66,7 +66,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 31 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
-| `js/modules/configuracion.js` | lazy — grupo `config` | 19 | 0 |
+| `js/modules/configuracion.js` | lazy — grupo `config` | 20 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 85 | 2 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 85 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
@@ -458,7 +458,7 @@ Carga: lazy — grupo `analisis`
 
 Carga: lazy — grupo `config`
 
-**Funciones:** `_reemplazarDatos`, `_respDescripcion`, `_respFechaLarga`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verRespaldos`
+**Funciones:** `_reemplazarDatos`, `_respBotonVer`, `_respDescripcion`, `_respFechaLarga`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verRespaldos`
 
 ### `js/modules/cuentas.js`
 
@@ -890,6 +890,7 @@ Ninguno.
 | `_resetSheetNuevaCuenta` | `js/modules/cuentas.js` |
 | `_resolverGrupoIdMov` | `js/modules/prestado.js` |
 | `_resolverGrupoIdSel` | `js/modules/prestado.js` |
+| `_respBotonVer` | `js/modules/configuracion.js` |
 | `_respDescripcion` | `js/modules/configuracion.js` |
 | `_respFechaLarga` | `js/modules/configuracion.js` |
 | `_revertirDestinoAbono` | `js/modules/prestado.js` |

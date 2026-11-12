@@ -1071,7 +1071,7 @@ test('P1. calcEstadoSituacion marca «serio» solo en presión/crisis; la franja
   assert.equal(app({}).calcEstadoSituacion(), null, 'sin datos no hay estado');
 });
 
-test('Análisis: gastos sin ingresos anotados → balance neutro («—», sin rojo) y ventana corta de patrimonio sin juicio ni causa', () => {
+test('Análisis: gastos sin ingresos anotados → balance neutro (ícono «sin dato», sin rojo) y ventana corta de patrimonio sin juicio ni causa', () => {
   const hoyStr = new Date().toISOString().slice(0, 10);
   const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('cobros.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), MOD('analisis.js')], { permissive: true });
   Object.assign(ctx.S, {
@@ -1087,7 +1087,7 @@ test('Análisis: gastos sin ingresos anotados → balance neutro («—», sin r
   const hero = dom.el('analisis-balance-hero');
   assert.match(String(hero.className), /an-hero-neu/, 'sin ingresos registrados no hay déficit: tono neutro');
   const h = String(hero.innerHTML);
-  assert.doesNotMatch(h, /c-red/); assert.match(h, /—/); assert.doesNotMatch(h, /−|-\$/);
+  assert.doesNotMatch(h, /c-red/); assert.match(h, /class="sin-dato"/); assert.doesNotMatch(h, /−|-\$/);
   assert.match(h, /Registra tus ingresos para ver el balance del mes\./);
   assert.doesNotMatch(h, /historial suficiente/, 'un solo mensaje corto');
   const pat = String(dom.el('an-patrimonio-chart').innerHTML);

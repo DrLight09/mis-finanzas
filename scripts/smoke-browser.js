@@ -124,6 +124,8 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   // ── Fase 4: estados vacíos (mejora 1) — un único botón de acción por estado vacío, sin «svg» visible, y todo vuelve con datos ──
   const fallos4 = [];
   const q = sel => w.document.querySelector(sel);
+  // Texto visible de un elemento; el ícono «sin dato» (SVG .sin-dato) cuenta como «—».
+  const tx = el => (el.querySelector && el.querySelector('.sin-dato') ? '—' : el.textContent.trim());
   const viz = el => !!el && el.style.display !== 'none';
   const nBtn = el => el.querySelectorAll('.empty-state-btn').length;
   const sinSvg = el => !/svg/i.test(el.textContent);
@@ -197,7 +199,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
       ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing},cobros:[{id:'c6',mesCubre:mesActual(),monto:${ing},fecha:mesActual()+'-01'},{id:'c6a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c6b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}]}]` : '[]'};` +
          (gas ? `S.gastosVar=[{id:'g6',desc:'Compra',monto:${gas},fecha:hoy(),cat:'Comida',fuente:'cuenta:efectivo',clase:'gasto'}];` : '') + `renderAnalisis()`);
       const h = q('#analisis-balance-hero');
-      return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: h.querySelector('.an-hero-monto').textContent.trim(), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: q('#an-ingresos').textContent.trim() };
+      return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: tx(h.querySelector('.an-hero-monto')), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: tx(q('#an-ingresos')) };
     };
     let r6 = esc6(0, 0);
     c4(r6.cls === 'an-hero-neu' && /Aún no hay ingresos ni gastos que cuenten para este mes/.test(r6.msg), 'Balance sin ingresos ni gastos: neutro con «Aún no hay ingresos ni gastos que cuenten para este mes.»');
@@ -217,19 +219,19 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     const h3 = q('#analisis-balance-hero');
     c4(h3.className.includes('an-hero-neu') && h3.querySelector('.an-hero-monto').textContent.trim() === '+$80.000' && q('#an-ingresos').textContent.trim() === '$80.000', 'Balance: una mesada cobrada este mes que cubre otro mes cuenta como ingreso de este mes (+$80.000; sin historial, en tono neutro)');
     ev(`S.mesadas={papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}}; renderAnalisis()`);
-    c4(q('#analisis-balance-hero').className.includes('an-hero-neu') && q('#an-ingresos').textContent.trim() === '—', 'Balance: sin mesada vuelve a neutro');
+    c4(q('#analisis-balance-hero').className.includes('an-hero-neu') && tx(q('#an-ingresos')) === '—', 'Balance: sin mesada vuelve a neutro');
     // 5b / 5c · historial de patrimonio: sin base no hay porcentaje; el título cuenta días y el eje va por fecha
     const fh = `const dia=n=>{const x=new Date();x.setDate(x.getDate()-n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};`;
     ev(fh + `S.patrimonioHistorial=[{fecha:dia(11),valor:0,valorVisible:0},{fecha:dia(10),valor:80000,valorVisible:80000},{fecha:dia(0),valor:80000,valorVisible:80000}]; renderAnalisis()`);
     const pat = q('#an-patrimonio-chart');
     const pts = JSON.parse(pat.querySelector('#_pat-overlay').dataset.pts);
-    c4(pat.querySelector('.an-pat-pct').textContent.trim() === '—' && !/\+0\.0%/.test(pat.textContent), 'Historial de patrimonio: primer punto en 0 → porcentaje «—», no «+0.0%»');
+    c4(tx(pat.querySelector('.an-pat-pct')) === '—' && !/\+0\.0%/.test(pat.textContent), 'Historial de patrimonio: primer punto en 0 → porcentaje «—», no «+0.0%»');
     c4(/Últimos 12 días/.test(pat.querySelector('.an-pat-tit').textContent), 'Historial de patrimonio: «Últimos N días» cuenta días de la ventana (3 registros en 12 días → 12), no registros');
     c4(pts.length === 3 && pts[1].px < 40 && pts[2].px > 300, 'Historial de patrimonio: el eje reparte por fecha (el 2.º punto, a 1 día del 1.º, queda pegado al inicio; no a la mitad)');
     // 2 · Proyección: con menos de 30 días no hay cifras a 3/6/12 meses
     ev(fh + `S.cuentas=[{id:'nequi',tipo:'billetera',nombre:'Nequi',saldo:500000},{id:'efectivo',tipo:'efectivo',nombre:'Efectivo',saldo:0}]; S.patrimonioHistorial=[{fecha:dia(9),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
     const pr = q('#proyeccion-card');
-    c4(/llevas 9 de 30 días/.test(pr.textContent) && !pr.querySelector('.inicio-proy-card') && /—/.test(pr.textContent), 'Proyección: con 9 días de historial no muestra 3/6/12 meses y dice cuánto falta (llevas 9 de 30)');
+    c4(/llevas 9 de 30 días/.test(pr.textContent) && !pr.querySelector('.inicio-proy-card') && !!pr.querySelector('.sin-dato'), 'Proyección: con 9 días de historial no muestra 3/6/12 meses y dice cuánto falta (llevas 9 de 30)');
     ev(fh + `S.patrimonioHistorial=[{fecha:dia(35),valor:100000},{fecha:dia(0),valor:500000}]; renderProyeccion()`);
     c4(pr.querySelectorAll('.inicio-proy-card').length === 3 && !/PRELIMINAR/.test(pr.textContent), 'Proyección: con 35 días sí muestra las 3 cifras, sin chip PRELIMINAR');
 

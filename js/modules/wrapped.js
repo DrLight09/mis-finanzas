@@ -437,11 +437,11 @@ function _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK){
   };
 }
 
-// Entradas que cuentan como ingreso real: la definición única de core-state.js
+// Entradas que cuentan como ingreso real: la definición única de el núcleo (js/core/estado.js y hermanos)
 // (entradasIngresoReal — la misma de Inicio y Análisis). Recibe el estado porque Wrapped
 // trabaja sobre el `S` que le pasan, no necesariamente el global.
 function _wrappedEntradasIngreso(S){
-  // Sin core-state.js cargado (tests/demos aisladas) se mantiene el comportamiento anterior sin filtro.
+  // Sin el núcleo (js/core/estado.js y hermanos) cargado (tests/demos aisladas) se mantiene el comportamiento anterior sin filtro.
   return typeof entradasIngresoReal === 'function'
     ? entradasIngresoReal(S)
     : ((S && S.movimientos) || []).filter(m => m && m.tipo==='entrada');
@@ -554,7 +554,7 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
 
    La app no tiene ningún campo de "cuándo empezaste a usarme de verdad"
    (a diferencia de, por ejemplo, `creadoEn` por persona en
-   core-state.js) — no hay forma de preguntarle directamente. Lo que sí
+   el núcleo (js/core/estado.js y hermanos)) — no hay forma de preguntarle directamente. Lo que sí
    se puede inferir de los propios datos: el principio real del historial
    es la RACHA de meses activos que termina en `mesMax` (el mes más
    reciente). Se camina hacia atrás desde ahí y se corta apenas aparecen
@@ -3031,7 +3031,7 @@ function _wrappedPeriodoEnNumeros(S, anioK, s, prestadoAnio, serieMensual){
   ];
 }
 function _wrappedRecordsHtml(registros, fmt2){
-  const filas = registros.map(r => `<div class="wrapped-record"><div class="wrapped-record-l">${r.l}</div><div class="wrapped-record-v">${r.v===null?'—':(r.fmt==='money'?fmt2(r.v):escHtml(String(r.v)))}</div></div>`).join('');
+  const filas = registros.map(r => `<div class="wrapped-record"><div class="wrapped-record-l">${r.l}</div><div class="wrapped-record-v">${r.v===null?SIN_DATO:(r.fmt==='money'?fmt2(r.v):escHtml(String(r.v)))}</div></div>`).join('');
   return `<div class="wrapped-records-grid">${filas}</div>`;
 }
 

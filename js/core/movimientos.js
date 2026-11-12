@@ -71,7 +71,7 @@
    — todos ya cargados antes de este archivo en index.html.
    ========================================================================== */
 
-// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (el núcleo (js/core/estado.js y hermanos)) ─────────────────────────────────────────────────────────────────────────────────
 // _ogMov(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogMov = Libro.origen('movimientos');
 
@@ -456,7 +456,7 @@ function abrirDetalleMov(el){
 // Cantidad de movimientos manuales (S.movimientos: salida_manual/ingreso/
 // apertura/entrada) o transferencias (S.transferencias) posteriores que
 // tocaron la misma cuenta — criterio de "operaciones posteriores" de la
-// protección por antigüedad (ver core-state.js#nivelAntiguedadMovimiento y
+// protección por antigüedad (ver el núcleo (js/core/estado.js y hermanos)#nivelAntiguedadMovimiento y
 // docs/proteccion-antiguedad-movimientos.md §4). No cuenta movimientos de
 // módulos con su propio historial (Mesada, Spotify, etc.) ni de Alcancía/
 // CDT/Plata Comprometida, que llevan su propio registro aparte.
@@ -586,7 +586,7 @@ async function _eliminarMovimientoImpl(btn) {
   }
   if (_movExiste(movTipoEl, movId) === false) { _rerenderCuentaActiva(); return; }
 
-  // Lo que cambie el patrimonio al revertir se quita también de las instantáneas del historial (core-state.js).
+  // Lo que cambie el patrimonio al revertir se quita también de las instantáneas del historial (el núcleo (js/core/estado.js y hermanos)).
   const _histAntes = medirPatrimonioParaHistorial();
   const _histItem = movObj || (S.transferencias || []).find(t => t.id === movId) || { id: movId, fecha: fechaItem };
   let _histApertura = null;
@@ -704,7 +704,7 @@ async function _eliminarMovimientoImpl(btn) {
 // delegación en eliminarMovDeudor() (préstamo/abono).
 function _rerenderCuentaActiva() {
   // cuentaActual vive en cuentas.js (grupo lazy): guard typeof, igual que refresh() en
-  // core-state.js. Vale para cualquier cuenta abierta ('cuenta:ID').
+  // el núcleo (js/core/estado.js y hermanos). Vale para cualquier cuenta abierta ('cuenta:ID').
   if (typeof renderDetalleCuenta !== 'function') return;
   if (typeof cuentaActual !== 'undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
 }
@@ -724,7 +724,7 @@ function toggleExtraordinario(id) {
 Events.on('core:toggleExtraordinario', toggleExtraordinario);
 
 
-/* ---- Reversibles: protección por antigüedad de cada tipo de movimiento (ver core-state.js) ---- */
+/* ---- Reversibles: protección por antigüedad de cada tipo de movimiento (ver el núcleo (js/core/estado.js y hermanos)) ---- */
 Reversibles.registrar({ tipo: 'mesada', proteccion(t) {
   if (!t || !_mesadaTieneCuentaAfectada(t.info)) return null;
   const fuentes = _mesadaFuentesDe(t.info);

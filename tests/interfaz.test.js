@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // tests/interfaz.test.js — Interfaz: estilos sin inline, innerHTML escapado, Refresh y filtros de Gastos.
 // Un archivo por sección de la app. Cada bloque `describe` es lo que antes era un archivo suelto (estilos.test.js, innerhtml.test.js, refresh.test.js, gastos-filtros.test.js).
 // Corre con:  node --test tests/interfaz.test.js   (o todo: npm test)
@@ -29,7 +31,7 @@ const CONVERTIDOS = [
   // sueltos de 1-6 estilos
   { f: 'js/modules/mesada.js', prefijos: ['badge-xs'], permitidos: [] },
   { f: 'js/core/wrapped-gate.js', prefijos: ['wrapped-gate-'], permitidos: [] },
-  { f: 'js/core/core-state.js', prefijos: ['ico-inline'], permitidos: [] },
+  { f: 'js/core/cuentas-fuentes.js', prefijos: ['ico-inline'], permitidos: [] },
   { f: 'js/core/pin-bio.js', prefijos: ['pin-fila', 'btn-flex1', 'btn-block', 'btn-peligro'], permitidos: [] },
   { f: 'js/core/gastos-fijos-progress.js', prefijos: ['fijos-progress'], permitidos: [] },
   // feed de actividad: solo quedan el fondo del ícono y el color del monto, que salen de cada movimiento
@@ -321,14 +323,14 @@ test('innerHTML con interpolación sin html``: solo los casos revisados', () => 
   for (const f of archivos(RAIZ)) {
     const rel = path.relative(RAIZ, f).split(path.sep).join('/');
     const n = fs.readFileSync(f, 'utf8').split('\n').filter(l => /innerHTML\s*\+?=\s*`[^`]*\$\{/.test(l) && !/html`/.test(l)).length;
-    if (n) hallados[rel.replace(/^core\/core-state/, 'core-state')] = n;
+    if (n) hallados[rel] = n;
   }
   assert.deepEqual(hallados, REVISADOS);
 });
 });
 
 _describe('refresh', () => {
-// tests/refresh.test.js — Refresh (js/core/core-state.js): registro de partes de refresh() en vez de una cadena de parches.
+// tests/refresh.test.js — Refresh (js/core/refresh.js): registro de partes de refresh() en vez de una cadena de parches.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');

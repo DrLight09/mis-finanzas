@@ -7,7 +7,7 @@
    propia tasa (cuenta.tasaEA y cuenta.historialTasas) y sus cajitas apuntan a
    ella con cajita.cuentaId. (El archivo conserva su nombre histórico.)
    Sin DOM, sin UI: solo depende de `S`, hoy(), _fechaSafe() y
-   _saldoEncargosEnCuenta() (core-state.js).
+   _saldoEncargosEnCuenta() (el núcleo (js/core/estado.js y hermanos)).
 
    Por qué vive en el núcleo: calcPatrimonioTotal(), snapshotPatrimonio(),
    la salud financiera, Encargos, Inicio y Cuentas necesitan estos números
@@ -17,7 +17,7 @@
    se guardaba antes de que cargara Cuentas. Con el cálculo siempre
    disponible esos guards ya no existen.
 
-   Carga de entrada (<script defer>) justo después de core-state.js.
+   Carga de entrada (<script defer>) justo después de el núcleo (js/core/estado.js y hermanos).
    Lo que muta datos (materializarIntereses, registrarTasaNuHistorial)
    sigue en cuentas.js: acá solo se calcula.
    ═══════════════════════════════════════════════════════════════ */
@@ -104,7 +104,7 @@ function _tasaVigenteEnFecha(fechaStr,cuentaId){
 }
 
 function _diasEntreFechas(a,b){
-  // Ver _fechaSafe() en core-state.js: new Date(str+'T00:00:00') da Invalid
+  // Ver _fechaSafe() en el núcleo (js/core/estado.js y hermanos): new Date(str+'T00:00:00') da Invalid
   // Date si a/b no tienen mes/día de 2 dígitos, propagando NaN en silencio
   // a calcC() y todo lo que dependa de esta función.
   return Fecha.diasEntre(a,b);
@@ -166,7 +166,7 @@ function calcC(c,hastaStr){
   // interés por mes (ver rendimientoCajitaPorMes). Sin argumento todo funciona exactamente como siempre.
   // Interés diario compuesto sobre el saldo total físico en la cajita (propio + lo que haya
   // de encargos guardado ahí — Nu no distingue de quién es la plata al pagar interés; esos
-  // intereses son del dueño de la cajita, ver nota en core-state.js). c.saldo guarda solo la
+  // intereses son del dueño de la cajita, ver nota en el núcleo (js/core/estado.js y hermanos)). c.saldo guarda solo la
   // porción propia; el saldo de encargos se reconstruye aparte con _saldoEncargosEnCajita().
   //
   // IMPORTANTE: el cálculo se hace POR TRAMOS, partiendo tanto en cada cambio de tasa EA

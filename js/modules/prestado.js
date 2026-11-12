@@ -181,7 +181,7 @@ function _deudaCuentasDe(m) {
 }
 // Cantidad de movimientos posteriores de la misma deuda que tocaron alguna de
 // las mismas cuentas — criterio de "operaciones posteriores" de la
-// protección por antigüedad (ver core-state.js#nivelAntiguedadMovimiento y
+// protección por antigüedad (ver el núcleo (js/core/estado.js y hermanos)#nivelAntiguedadMovimiento y
 // docs/proteccion-antiguedad-movimientos.md §4).
 function _deudaOpsPosteriores(d, m) {
   if (!m.fecha) return 0;
@@ -232,7 +232,7 @@ function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
     toast(`El saldo de ${d.nombre} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
   }
 }
-// ── Libro (core-state.js): origen de cada cambio de saldo ────────────────────────────────────────────────
+// ── Libro (el núcleo (js/core/estado.js y hermanos)): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _og(ref): al aplicar un movimiento, cada sumar/descontarFuente deja en el libro { modulo:'prestado', ref:<id del movimiento> }.
 // _enReversion(ref, fn): al revertir, todo lo que fn() mueva queda como tipo 'reversion' con el id del movimiento revertido.
 const _og = Libro.origen('prestado');
@@ -372,7 +372,7 @@ const _UI_LISTA = {
     el: 'deudoresList', abrir: 'prestado:abrirDeudor',
     // Con persona vinculada, el avatar abre su perfil; si no, el detalle.
     avatarAccion: d => d.personaId ? ['prestado:abrirPerfilDeudor', d.id] : ['prestado:abrirDeudor', d.id],
-    // Estado vacío (emptyState de core-state.js): mismo molde en las dos listas; cambian el icono,
+    // Estado vacío (emptyState de el núcleo (js/core/estado.js y hermanos)): mismo molde en las dos listas; cambian el icono,
     // el título y la descripción, que dicen quién le debe a quién. Los dos botones abren el mismo
     // selector de personas, por eso los dos se llaman «Agregar persona».
     btnPie: 'btn-nueva-persona', titulo: 'titulo-deudores', btnAccion: 'prestado:abrirSheetNuevaPersona',
@@ -858,7 +858,7 @@ function initMovSheet(tipo) {
   //    (confirmarPrestamoTC): valida cupo, pide la descripción de la compra, crea el
   //    cargo enlazado en S.tcMovimientos (tipo 'cargo_prestamo') y marca _viaTC. Por
   //    este camino simple tc.deuda subía (descontarFuente) pero sin ese cargo
-  //    enlazado, y calcDeudaAjenaDeTarjeta() (core-state.js) no lo veía como deuda
+  //    enlazado, y calcDeudaAjenaDeTarjeta() (el núcleo (js/core/estado.js y hermanos)) no lo veía como deuda
   //    ajena → contaba como deuda PROPIA. Decisión 2026-09-19: no unir los sheets.
   // Los modos divididos de ambos campos ya excluían las TC (getFuentesSinTC).
   poblarFuente('mov_fuente', false, false);

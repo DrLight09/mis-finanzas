@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // M5 — Fecha: una sola forma de trabajar con fechas. Las pruebas de huso horario corren en procesos hijos con TZ distinta
 // (el huso se fija al arrancar Node): el bug que se vigila solo aparece al este de UTC o con la hora del equipo distinta a Colombia.
 const { describe, test } = require('node:test');
@@ -90,12 +92,12 @@ describe('fecha-api', () => {
     assert.equal(F.nombreMes(13), '');
     assert.deepEqual([...F.MESES_CORTOS], ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']);
   });
-  test('core-state delega: hoy(), mesActual(), _fechaSafe() y MC salen de Fecha', () => {
+  test('el núcleo delega: hoy(), mesActual(), _fechaSafe() y MC salen de Fecha', () => {
     const app = loadApp([path.join(raiz, 'js', 'core', 'core-state.js')], { permissive: true });
     assert.equal(app.hoy(), app.Fecha.hoy());
     assert.equal(app.mesActual(), app.Fecha.mes());
     assert.equal(app.Fecha.iso(app._fechaSafe('2026-9-26')), '2026-09-26');
-    assert.ok(/const MC\s*=\s*Fecha\.MESES_CORTOS/.test(fs.readFileSync(path.join(raiz, 'js/core/core-state.js'), 'utf8')), 'MC es un alias de la lista única');
+    assert.ok(/const MC\s*=\s*Fecha\.MESES_CORTOS/.test(leerEstado()), 'MC es un alias de la lista única');
   });
 });
 
@@ -189,9 +191,9 @@ describe('fecha-sin-formulas-sueltas', () => {
   test('nextMonthFixed ya no existe (era spSumarDias(f, 30·k) con otro nombre)', () => {
     assert.ok(!fs.readFileSync(path.join(raiz, 'js/modules/spotify.js'), 'utf8').includes('function nextMonthFixed'));
   });
-  test('index.html carga fecha.js ANTES de core-state.js', () => {
+  test('index.html carga fecha.js ANTES del núcleo (estado.js)', () => {
     const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
-    const a = html.indexOf('js/core/fecha.js'), b = html.indexOf('js/core/core-state.js" defer');
+    const a = html.indexOf('js/core/fecha.js'), b = html.indexOf('js/core/estado.js" defer');
     assert.ok(a > 0 && b > 0 && a < b);
   });
 });

@@ -14,7 +14,7 @@ Inicio es la pantalla que se ve al abrir la app: un resumen agregado de patrimon
 
 | Elemento (id) | Contenido |
 |---|---|
-| `#heroTotal` | Patrimonio total visible (excluye la alcancía oculta, ver `guia-estilo-sheets.md#alcancía`). Sale de `calcPatrimonioDesglose().visible` (`core-state.js`), la misma cuenta del historial, la Proyección y Salud: resta tarjetas, «Yo debo» y plata ajena | El color y el mensaje de abajo cambian con la situación (ver `#hero-estado`).
+| `#heroTotal` | Patrimonio total visible (excluye la alcancía oculta, ver `guia-estilo-sheets.md#alcancía`). Sale de `calcPatrimonioDesglose().visible` (`el núcleo (js/core/estado.js y hermanos)`), la misma cuenta del historial, la Proyección y Salud: resta tarjetas, «Yo debo» y plata ajena | El color y el mensaje de abajo cambian con la situación (ver `#hero-estado`).
 | `#hero-formula` | Texto bajo el monto: «Cuentas + CDTs + Prestado» y, solo si existen, « − Deuda TC − Yo debo − Plata ajena» (`patrimonioFormulaTexto()`) |
 | `#hero-patrimonio-label` | "Patrimonio total" o "Patrimonio visible" (cambia si hay alcancía activa) |
 | `#hero-alcancia-indicator` | Pill ámbar "+$?? en alcancía oculta" — visible solo si `S.alcancia.saldoRegistrado > 0` |
@@ -42,7 +42,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 **`_checkGastoAlto()`** — compara el gasto del mes contra el **ingreso de referencia** (el mayor entre lo ingresado este mes y el ingreso típico; el mismo de la Salud), no contra lo disponible (que ya descuenta ese gasto y con disponible ≤ 0 no avisaba nada). `UMBRALES.gastoAlto.fraccionDelIngreso` = 0,8. Se engancha a `refresh()` mediante `hookGlobal`. Usa clases (`ix-hero-alerta-*`), no estilos inline.
 
-**`_renderDispNetoTC()`** — pinta `#s-disp-neto-tc` con `window._dispActualHoy` (el mismo `disp` que `refresh()`, en `core-state.js`, acaba de usar para pintar `#s-disp` — no se recalcula acá, ver `CHANGELOG.md#inicio` 2026-09-20) menos la deuda TOTAL de las tarjetas de crédito (con piso en 0 por tarjeta, para que un saldo a favor no reste del total), sin descontar lo confirmado como ajeno — la app no puede saber si esa parte ajena ya te la devolvieron por fuera de un pago a la tarjeta, así que asume el peor caso. Vacía el texto si no hay nada que restar. Se engancha a `refresh()` en el mismo monkey-patch que `_checkGastoAlto()`, DESPUÉS de que `refresh()` original corra (para que `window._dispActualHoy` ya esté actualizado).
+**`_renderDispNetoTC()`** — pinta `#s-disp-neto-tc` con `window._dispActualHoy` (el mismo `disp` que `refresh()`, en `el núcleo (js/core/estado.js y hermanos)`, acaba de usar para pintar `#s-disp` — no se recalcula acá, ver `CHANGELOG.md#inicio` 2026-09-20) menos la deuda TOTAL de las tarjetas de crédito (con piso en 0 por tarjeta, para que un saldo a favor no reste del total), sin descontar lo confirmado como ajeno — la app no puede saber si esa parte ajena ya te la devolvieron por fuera de un pago a la tarjeta, así que asume el peor caso. Vacía el texto si no hay nada que restar. Se engancha a `refresh()` en el mismo monkey-patch que `_checkGastoAlto()`, DESPUÉS de que `refresh()` original corra (para que `window._dispActualHoy` ya esté actualizado).
 
 **IIFE de reposicionamiento** — mueve `#s-attn-section` justo debajo del `.hero` de Inicio al cargar el módulo (antes vivía más abajo en el DOM estático).
 
@@ -53,7 +53,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 | `refresh()` | Orquestador central compartido por las 13 pantallas — no es lógica de Inicio, aunque escribe varios de sus elementos (`#heroTotal`, `#s-disp`, etc.) |
 | `_renderMejoras()` / `_hookRefreshMejoras()` | Además de llamar a `renderHealthScore()`/`renderProyeccion()`, dispara `renderPresupuestos()` (módulo de Análisis) — infraestructura compartida entre dos módulos |
 | Selectores de cuenta (`#nuTotalDisp`, `#sel-nequi-saldo`, etc.) | Se actualizan dentro de `refresh()` junto con los de Inicio porque comparten las mismas variables calculadas (`nu`, `nequi`, `ef`), pero pertenecen a la pantalla Cuentas, no a Inicio |
-| `window._dispActualHoy` | Variable global que `refresh()` (`core-state.js`) expone con el mismo `disp` que pinta en `#s-disp`, para que `_renderDispNetoTC()` la reste en vez de recalcular "disponible" por su cuenta (ver `CHANGELOG.md#inicio`, 2026-09-20) |
+| `window._dispActualHoy` | Variable global que `refresh()` (`el núcleo (js/core/estado.js y hermanos)`) expone con el mismo `disp` que pinta en `#s-disp`, para que `_renderDispNetoTC()` la reste en vez de recalcular "disponible" por su cuenta (ver `CHANGELOG.md#inicio`, 2026-09-20) |
 
 ## 5. Seguridad — hallazgos de esta migración
 

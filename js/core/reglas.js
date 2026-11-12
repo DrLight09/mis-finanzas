@@ -94,7 +94,7 @@ const Reglas = (() => {
      ================================================================ */
   const A = ['atencion'], AP = ['atencion', 'push'];
 
-  // Gastos fijos con día que aún no se pagaron, calculados SOLO con `S` (el push corre en Node sin Periodo/core-state). Misma definición que
+  // Gastos fijos con día que aún no se pagaron, calculados SOLO con `S` (el push corre en Node sin Periodo/núcleo). Misma definición que
   // Periodo.gastosFijosProgramados (un test los compara): clave de pago «<id>_AAAA-MM», día recortado al último día del mes.
   function _gastosFijosProgramadosDeS(S, hoy) {
     const [hy, hm] = hoy.split('-').map(Number), out = [];

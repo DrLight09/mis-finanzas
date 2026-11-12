@@ -17,7 +17,7 @@
         → lo quita; devuelve true si lo encontró y lo quitó.
 
    Estas funciones NO tocan saldos: el efecto sobre el saldo sigue siendo
-   sumarFuente()/descontarFuente() de core-state.js. Solo escriben/borran el
+   sumarFuente()/descontarFuente() de el núcleo (js/core/estado.js y hermanos). Solo escriben/borran el
    registro del historial.
 
    TODAS las cuentas guardan su historial en una sola lista, S.movimientos, con la cuenta en `fuente`:
@@ -31,7 +31,7 @@
    excluye del ingreso sin depender del texto ni del prefijo de _origenSeccion. Las
    banderas de "sí es ingreso" de `extra` tienen prioridad sobre `_esEspejo`.
 
-   Carga de entrada (<script defer>), después de core-state.js: usa uid(),
+   Carga de entrada (<script defer>), después de el núcleo (js/core/estado.js y hermanos): usa uid(),
    getCuentaDeFuente() y S. Por ser núcleo, lo pueden usar módulos lazy
    (prestado, mesada, alcancia, encargos) sin depender del orden de carga.
    ═══════════════════════════════════════════════════════════════ */

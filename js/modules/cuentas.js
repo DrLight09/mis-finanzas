@@ -16,7 +16,7 @@
    global. Regla de dependencia (UN solo sentido): este archivo es la capa
    genérica de cuentas y NO nombra nada de nu.js; Nu se apoya en lo que
    exportamos acá (ver la cabecera de nu.js) y se le presenta a esta capa
-   registrándose en CuentaPantallas (core-state.js). Cada archivo carga solo
+   registrándose en CuentaPantallas (el núcleo (js/core/estado.js y hermanos)). Cada archivo carga solo
    y el orden no importa (lo comprueba tests/cuentas.test.js).
 
    Ver docs/cuentas.md (objetivo, reglas y modelo de datos) y docs/nu.md.
@@ -36,12 +36,12 @@
    ─────────────────────────────────────────────────────────────── */
 /* ---- CUENTAS SELECTOR ---- */
 // Fuente de la cuenta abierta en el detalle: 'cuenta:ID' ('' si no hay ninguna). Una sola variable para todas las
-// cuentas; la leen core-state.js, navegacion.js, movimientos.js y encargos.js (siempre con guard typeof: este archivo es lazy).
+// cuentas; la leen el núcleo (js/core/estado.js y hermanos), navegacion.js, movimientos.js y encargos.js (siempre con guard typeof: este archivo es lazy).
 let cuentaActual = '';
 
 // Abre el detalle de una cuenta. `fuente` es 'cuenta:ID'. Las cuentas de ahorro tienen su propia pantalla (cajitas, tasa, CDTs:
 // nu.js la registra en CuentaPantallas.ahorro); todas las demás comparten #cuentas-detalle-simple.
-// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (el núcleo (js/core/estado.js y hermanos)) ─────────────────────────────────────────────────────────────────────────────────
 // _ogCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogCta = Libro.origen('cuentas');
 
@@ -168,7 +168,7 @@ function _renderDetalleSimple(fuente) {
    ─────────────────────────────────────────────────────────────── */
 /* ---- CUENTAS PERSONALIZADAS ---- */
 // CATÁLOGO DE CUENTAS: cada entrada es a la vez el ícono y el PRESET de una cuenta (nombre, color y `tipo` sugeridos: ver TIPOS_CUENTA
-// en core-state.js). Elegir «Nu» crea una cuenta de ahorro; «Nequi» una billetera; «Efectivo» una de efectivo. Un banco nuevo se
+// en el núcleo (js/core/estado.js y hermanos)). Elegir «Nu» crea una cuenta de ahorro; «Nequi» una billetera; «Efectivo» una de efectivo. Un banco nuevo se
 // agrega acá con una línea; «Otra» deja todo libre. Ninguna cuenta viene creada: el usuario parte de este catálogo.
 const ICONOS_CUENTA = [
   { id:'nequi',    label:'Nequi',       color:'#ff4da6', tipo:'billetera', svg:`<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20.5 23.3" width="20" height="13"><path d="M19.7 0h-3.4c-.5 0-.8.4-.8.8v13.5c0 .3-.4.4-.5.1L7.1.4C7 .2 6.7 0 6.5 0H.8C.4 0 0 .4 0 .8v21.7c0 .5.4.8.8.8h3.4c.5 0 .8-.4.8-.8v-14c0-.3.4-.4.5-.1L13.6 23c.1.2.4.4.6.4h5.4c.5 0 .8-.4.8-.8V.8c0-.5-.4-.8-.8-.8Z" fill="currentColor"/></svg>` },
@@ -330,8 +330,8 @@ async function crearCuenta(){
    fijas. Descriptor: { fuente ('cuenta:ID'), id, tipo, nombre, color (hex), rgb (bordes/fondos "r,g,b"), estilo ('tarjeta'),
    etiqueta (solo tarjeta), etiquetaDetalle (rótulo del saldo en el detalle), cuentaKey (clave de filtros de movimientos: la fuente),
    esAhorro / pantallaPropia (su detalle lo pinta CuentaPantallas.ahorro, registrado por nu.js), archivada, iconoHtml(size), saldo() }.
-   Agregar una clase de cuenta nueva es agregarla a TIPOS_CUENTA (core-state.js) y, si necesita pantalla propia, registrarla en
-   CuentaPantallas. El formato del saldo del selector vive en fmtSaldoSelector() (core-state.js) y el estilo en .cuenta-card /
+   Agregar una clase de cuenta nueva es agregarla a TIPOS_CUENTA (el núcleo (js/core/estado.js y hermanos)) y, si necesita pantalla propia, registrarla en
+   CuentaPantallas. El formato del saldo del selector vive en fmtSaldoSelector() (el núcleo (js/core/estado.js y hermanos)) y el estilo en .cuenta-card /
    .cuenta-hero (styles.css). */
 function _descriptorDeCuenta(c){
   const hex=colorCuenta(c);
@@ -836,7 +836,7 @@ function getMovimientosCuenta(tipo) {
   });
 
   // Entradas del LIBRO sin fila de módulo (intereses de las cuentas de ahorro, ajustes del chequeo rápido, CDT): sin ellas el historial no sumaba el saldo de la cuenta y esa plata "aparecía de la nada".
-  // Van como filas automáticas (_secundario: con candado, sin botón de eliminar). Ver Libro.entradasVisibles (core-state.js).
+  // Van como filas automáticas (_secundario: con candado, sin botón de eliminar). Ver Libro.entradasVisibles (el núcleo (js/core/estado.js y hermanos)).
   Libro.entradasVisibles().forEach(l => {
     if (!coincide(l.cuenta)) return;
     const etiqueta = l.tipo === 'rendimiento' ? 'Intereses' : l.tipo === 'cdt' ? 'CDT' : l.tipo === 'apertura' ? 'Saldo inicial' : 'Ajuste';
@@ -1155,7 +1155,7 @@ function confirmarAgregarDinero(){
   if(!esApertura&&!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v){toast('Ingresa un monto válido','err');return;}
   if(!adFuente)return;
-  // Los intereses de una cajita se materializan solos al sumar (sumarFuente, core-state.js).
+  // Los intereses de una cajita se materializan solos al sumar (sumarFuente, el núcleo (js/core/estado.js y hermanos)).
   const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura,nota,document.getElementById('adEsExtra')?.checked||false);
   save();
   closeSheet('agregar-dinero');

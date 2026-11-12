@@ -65,7 +65,7 @@ S.catsVar  = ['Comida', 'Transporte', /* ... predeterminadas + propias */]
 S.catsFijo = ['Arriendo', /* ... predeterminadas + propias */]
 ```
 
-- `modulos` — un booleano por módulo. El `S` por defecto (`core-state.js`) nace con solo `{ mesada: true, spotify: true }`: `corregirSaldo` **no existe hasta que el usuario toca ese interruptor por primera vez**. El fallback de `toggleModulo()` (crear los tres en `true` si `S.modulos` faltara del todo) casi nunca se ejecuta. Lo leen `applyModulos()` (visibilidad) y `wrapped.js` (solo cuenta Mesada si `modulos.mesada`).
+- `modulos` — un booleano por módulo. El `S` por defecto (`el núcleo (js/core/estado.js y hermanos)`) nace con solo `{ mesada: true, spotify: true }`: `corregirSaldo` **no existe hasta que el usuario toca ese interruptor por primera vez**. El fallback de `toggleModulo()` (crear los tres en `true` si `S.modulos` faltara del todo) casi nunca se ejecuta. Lo leen `applyModulos()` (visibilidad) y `wrapped.js` (solo cuenta Mesada si `modulos.mesada`).
 - `catsVar` / `catsFijo` — nacen **vacías**; vacía significa "usar las predeterminadas" (`getCatsVar()` / `getCatsFijo()` devuelven entonces una copia de la constante). Al agregar la primera categoría propia se guarda la lista **completa** (predeterminadas y propias mezcladas). Qué es predeterminada se decide comparando contra las constantes, no con un flag en el dato.
 
 **Fuera de `S` (lo que este módulo toca):**
@@ -134,7 +134,7 @@ Cambia el checkbox → S.modulos[nombre] = estado del checkbox → save() → ap
 
 ### Migraciones y la clase de los movimientos
 
-Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual que al cargar desde la nube. Hoy `MIGRACIONES` está vacío: la app nació limpia en el esquema 9 (2026-10-18) y **no migra datos de versiones anteriores**. Un backup de un esquema menor se rechaza al importar (`_validarEstructuraJSON`: "esta versión de la app empieza de cero"), uno de una versión más nueva también (hay que actualizar la app), y quien trae datos de la nube de un esquema menor los ve marcados (`S._esquemaAnterior`) y empieza de cero (Configuración → Borrar todo). El mecanismo queda para el próximo cambio de forma de los datos (ver `libro-de-movimientos.md` §4 y §6). La `clase` de cada movimiento ya no se estampa con ninguna migración: la escribe el módulo que lo crea.
+Al importar un backup se ejecuta `aplicarMigraciones()` (`el núcleo (js/core/estado.js y hermanos)`), igual que al cargar desde la nube. Hoy `MIGRACIONES` está vacío: la app nació limpia en el esquema 9 (2026-10-18) y **no migra datos de versiones anteriores**. Un backup de un esquema menor se rechaza al importar (`_validarEstructuraJSON`: "esta versión de la app empieza de cero"), uno de una versión más nueva también (hay que actualizar la app), y quien trae datos de la nube de un esquema menor los ve marcados (`S._esquemaAnterior`) y empieza de cero (Configuración → Borrar todo). El mecanismo queda para el próximo cambio de forma de los datos (ver `libro-de-movimientos.md` §4 y §6). La `clase` de cada movimiento ya no se estampa con ninguna migración: la escribe el módulo que lo crea.
 
 ## 6. Casos especiales
 
@@ -212,7 +212,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`core-state.js`), igual
 |---|---|---|
 | `_fbSaveToCloud`, `_fbSignOut`, `_abrirEliminarCuenta`, `_fbDeleteAccount`, `_importing`, `_lastSavedAt` | `firebase-sync.js` | Sí |
 | `Events.registerAll` / `Events.attr` | `events.js` | Sí (`attr` escapa los argumentos; `Events` solo despacha `click`) |
-| `getCatsVar` / `getCatsFijo` / `CATS_*_DEFAULT`, `save`, `toast`, `dialogo`, `refresh`, `fuenteLabel`, `escHtml`, `S.modulos` por defecto | `core-state.js` | Sí |
+| `getCatsVar` / `getCatsFijo` / `CATS_*_DEFAULT`, `save`, `toast`, `dialogo`, `refresh`, `fuenteLabel`, `escHtml`, `S.modulos` por defecto | `el núcleo (js/core/estado.js y hermanos)` | Sí |
 | `html\`\`` / `raw()` | `html-tag.js` | Sí |
 | `applyModulos` | `modulos-activos.js`; `showScreen` | `navegacion.js` | Sí |
 | Handler de `notificaciones:activar` | `notificaciones-push.js` | Sí (el backend del aviso está en `notificaciones-push.md`) |

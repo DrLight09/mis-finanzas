@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // tests/cuentas.test.js — Cuentas y Nu: historial de cada cuenta, interés de cajitas y CDT, chequeo rápido, Restar dinero.
 // Un archivo por sección de la app. Cada bloque `describe` es lo que antes era un archivo suelto.
 // Corre con:  node --test tests/cuentas.test.js   (o todo: npm test)
@@ -2128,7 +2130,7 @@ describe('cuentas-nu-archivos', () => {
     const usadas = usadasDe(sinComentarios(leer('js/modules/cuentas.js')), declaradas(leer('js/modules/nu.js')));
     assert.deepEqual(usadas, [], 'cuentas.js nombra cosas de nu.js: muévelas a nu.js o pásalas por CuentaPantallas');
     assert.match(leer('js/modules/nu.js'), /CuentaPantallas\.ahorro\s*=/);
-    assert.match(leer('js/core/core-state.js'), /const CuentaPantallas\s*=\s*\{\s*\}/);
+    assert.match(leerEstado(), /const CuentaPantallas\s*=\s*\{\s*\}/);
   });
 
   test('lo que Nu toma de cuentas.js es esta lista (si cambia, se decide a propósito y se actualiza la cabecera de nu.js)', () => {

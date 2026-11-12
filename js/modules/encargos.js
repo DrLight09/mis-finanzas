@@ -43,10 +43,10 @@
    CHANGELOG.md#encargos.
    ═══════════════════════════════════════════════════════════════ */
 
-// ── Libro (core-state.js): origen de cada cambio de saldo ────────────────────────────────────────────────
+// ── Libro (el núcleo (js/core/estado.js y hermanos)): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _ogEnc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'encargos', ref:<id del movimiento del encargo> }.
 // Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace). `opts.exacto` ya no existe: el saldo
-// nunca se recorta en 0 (ver descontarFuente en core-state.js).
+// nunca se recorta en 0 (ver descontarFuente en el núcleo (js/core/estado.js y hermanos)).
 const _ogEnc = Libro.origen('encargos');
 
 function editarEncargoActual() {
@@ -1367,7 +1367,7 @@ function abrirMovEncargo(tipo) {
     // Entrada: mostrar fuentes reales (sin TC — no se puede guardar plata ajena en una TC)
     const fuentes = getFuentesSinTC();
     // FIX (2026-08-15): f.val/f.label sin escapar — mismo patrón que ya se
-    // corrigió en opcionesCuenta() (core-state.js), pero esta es una
+    // corrigió en opcionesCuenta() (el núcleo (js/core/estado.js y hermanos)), pero esta es una
     // segunda implementación separada que nunca pasaba por escHtml(). Nombres
     // de cuenta personalizada son texto libre del usuario. Ver CHANGELOG.md.
     sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
@@ -2816,7 +2816,7 @@ function abrirNuevoEncargo() {
     // "select tag was parsed within another select tag"): f.val/f.label sin
     // escapar acá — mismo patrón que las otras 3 ocurrencias de este bug en
     // este archivo (líneas ~1175/1184/1186) y que opcionesCuenta() en
-    // core-state.js. Nombres de cuenta personalizada son texto libre del
+    // el núcleo (js/core/estado.js y hermanos). Nombres de cuenta personalizada son texto libre del
     // usuario — con caracteres como <, >, & sin escapar dentro del
     // innerHTML de un <select>, el parser del navegador puede comportarse
     // de forma impredecible. Ver CHANGELOG.md.

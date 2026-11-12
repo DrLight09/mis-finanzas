@@ -9,7 +9,7 @@
 // carga como `type="module" async`, sin garantía de orden frente a ningún
 // <script defer>. Ver CHANGELOG.md#infraestructura--seguridad.
 import { waitFor } from './wait-for-module.js';
-// El hook a refresh() ya no es un wrap de window.refresh: se registra con Refresh.registrar() (js/core/core-state.js), esperando a que exista.
+// El hook a refresh() ya no es un wrap de window.refresh: se registra con Refresh.registrar() (js/core/ (estado.js, cuentas-fuentes.js…)), esperando a que exista.
 
 /* ================================================================
    PIN + BIOMETRÍA — Sistema de bloqueo con PIN de 4 dígitos y
@@ -303,7 +303,7 @@ import { waitFor } from './wait-for-module.js';
   // ── Confirmar una acción destructiva con el PIN ──────────────────
   // Devuelve una promesa: true si se escribió el PIN correcto; false si se canceló (botón o Escape). Con PIN incorrecto la
   // pantalla se sacude y se puede reintentar o cancelar: la acción solo sigue con true. Sin PIN activo devuelve true
-  // enseguida (todo se comporta como antes). Las acciones lo llaman vía pedirPinAntesDe() (core-state.js).
+  // enseguida (todo se comporta como antes). Las acciones lo llaman vía pedirPinAntesDe() (el núcleo (js/core/estado.js y hermanos)).
   window._pinVerificar = function(motivo) {
     return new Promise(res => {
       if(!_getPin()) { res(true); return; }
@@ -595,7 +595,7 @@ import { waitFor } from './wait-for-module.js';
 
   // Hook en refresh para re-renderizar botones cuando se abre Config. _renderBtn()/_renderBioBtn() son idempotentes (solo pintan según el
   // estado actual de PIN/biometría): se llama también una vez ya, sin esperar al próximo refresh() real.
-  // pin-bio.js es un módulo ES async y puede correr antes que core-state.js (clásico, defer): se espera a que exista Refresh.
+  // pin-bio.js es un módulo ES async y puede correr antes que el núcleo (js/core/estado.js y hermanos) (clásico, defer): se espera a que exista Refresh.
   waitFor(() => window.Refresh, () => window.Refresh.registrar('pin-bio-boton', _renderBtn));
   _renderBtn();
 })();

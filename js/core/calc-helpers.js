@@ -17,7 +17,7 @@
    También aloja `Deudas` (capa de acceso a "Me deben"/"Yo debo" y sus saldos).
 
    Este archivo carga de entrada (<script defer>, sin passar por
-   Loader), justo después de core-state.js — ver orden de <script>
+   Loader), justo después de el núcleo (js/core/estado.js y hermanos) — ver orden de <script>
    en index.html. mesada.js y tarjetas_credito.js YA NO definen estas
    funciones: las usan como globales definidas acá. Por eso este
    archivo tiene que estar cargado ANTES que ellos (irrelevante en la
@@ -100,7 +100,7 @@ function tcCupoDisponible(tc){
 
    Vive acá (carga de entrada) y no en prestado.js (lazy) porque el patrimonio,
    "Necesita atención" y Personas la consultan sin esperar al módulo — antes
-   core-state.js caía a 0 con guards typeof y tuvo que bloquear snapshots
+   el núcleo (js/core/estado.js y hermanos) caía a 0 con guards typeof y tuvo que bloquear snapshots
    mientras prestado.js no cargaba (ver _patrimonioDependenciasListas). */
 const Deudas = (() => {
   const COLECCION = { favor: 'deudores', contra: 'misDeudas' };

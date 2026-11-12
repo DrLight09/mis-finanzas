@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // M1/M3 — ciclo de vida de la interfaz: registro Ui + guarda contra el patrón «const _orig = X; X = function(){…}».
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -89,11 +91,11 @@ test('hookGlobal y hook-global.js ya no existen', () => {
   assert.ok(!/hook-global\.js/.test(leer('index.html').replace(/<!--[\s\S]*?-->/g, '')));
 });
 
-test('index.html carga ui.js antes de core-state.js, navegacion.js y los módulos', () => {
+test('index.html carga ui.js antes del núcleo (estado.js), navegacion.js y los módulos', () => {
   const orden = [...leer('index.html').matchAll(/<script[^>]+src="(js\/[^"]+)"/g)].map(m => m[1]);
   const i = orden.indexOf('js/core/ui.js');
   assert.ok(i >= 0);
-  for (const f of ['js/core/core-state.js', 'js/core/navegacion.js']) assert.ok(orden.indexOf(f) > i, f);
+  for (const f of ['js/core/estado.js', 'js/core/navegacion.js']) assert.ok(orden.indexOf(f) > i, f);
 });
 
 test('nadie reasigna openSheet/showScreen desde fuera de navegacion.js', () => {

@@ -35,7 +35,7 @@ const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { fallos
   console.log('1) Al arrancar NO están cargados');
   ok(tipo('Huella') === 'undefined' && tipo('Cierre') === 'undefined', 'ni Huella ni Cierre existen tras arrancar la página');
   ok(!/huella\.js|cierre\.js/.test(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8')), 'y index.html ya no tiene sus <script>');
-  ok(tipo('registrarSonda') === 'function', 'pero registrarSonda (la cola, en core-state.js) sí existe');
+  ok(tipo('registrarSonda') === 'function', 'pero registrarSonda (la cola, en el núcleo (js/core/estado.js y hermanos)) sí existe');
 
   console.log('2) Los módulos con sonda se precargan primero: sus sondas esperan en cola');
   for (const g of ['tarjetas', 'encargos', 'alcancia', 'wrapped']) await Loader.ensure(g);

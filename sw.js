@@ -2,7 +2,7 @@
 const VERSION = 'mis-finanzas-v122'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
 // Huella del contenido desplegable: la sella `node scripts/sellar-sw.js` (y `npm test` falla si quedó vieja). Así, aunque se olvide
 // subir VERSION, la caché cambia de nombre en cuanto cambia cualquier archivo y no se sirven los .js anteriores.
-const BUILD = '15cd5cb88daa'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
+const BUILD = '21e05900244d'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
 const CACHE = VERSION + '-' + BUILD;
 // Caché que SÍ sobrevive entre versiones: fuentes y SDK de Firebase (de otro origen, no forman parte de la versión de la app).
 const CACHE_EXT = 'mis-finanzas-ext';
@@ -35,9 +35,11 @@ const PRECACHE = [
   "js/core/cierre.js",
   "js/core/cobros.js",
   "js/core/color-picker.js",
-  "js/core/core-state.js",
   "js/core/cuenta-efectos.js",
+  "js/core/cuentas-fuentes.js",
+  "js/core/dialogos.js",
   "js/core/diferencial.js",
+  "js/core/estado.js",
   "js/core/eventos-base.js",
   "js/core/events.js",
   "js/core/fecha.js",
@@ -49,6 +51,7 @@ const PRECACHE = [
   "js/core/gastos-fijos-progress.js",
   "js/core/html-tag.js",
   "js/core/huella.js",
+  "js/core/ingresos.js",
   "js/core/lazy-loader.js",
   "js/core/mas-menu.js",
   "js/core/modulos-activos.js",
@@ -57,11 +60,14 @@ const PRECACHE = [
   "js/core/navegacion.js",
   "js/core/notificaciones-push.js",
   "js/core/nu-calc.js",
+  "js/core/patrimonio.js",
   "js/core/payload-codec.js",
   "js/core/periodo.js",
+  "js/core/persistencia.js",
   "js/core/personas-init.js",
   "js/core/pin-bio.js",
   "js/core/plan-deudas.js",
+  "js/core/refresh.js",
   "js/core/reglas.js",
   "js/core/reordenable.js",
   "js/core/respaldos.js",
@@ -72,6 +78,7 @@ const PRECACHE = [
   "js/core/sw-registro.js",
   "js/core/ui.js",
   "js/core/umbrales.js",
+  "js/core/utilidades-ui.js",
   "js/core/wait-for-module.js",
   "js/core/wait-for.js",
   "js/core/wrapped-gate.js",

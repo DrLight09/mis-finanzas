@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // tests/nucleo.test.js — Núcleo y cálculos: patrimonio, salud financiera, Periodo (ingresos/gastos del mes), migraciones, ingreso real y clase de los movimientos.
 // Un archivo por sección de la app. Cada bloque `describe` es lo que antes era un archivo suelto.
 // Corre con:  node --test tests/nucleo.test.js   (o todo: npm test)
@@ -1793,8 +1795,8 @@ describe('money-input (formateo al escribir en los campos de plata)', () => {
 
   test('parseMoney() lee lo que deja el formateo (y fmtInput lo produce igual)', () => {
     const { w, entrar, el } = entorno();
-    w.eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'core-state.js'), 'utf8').match(/function parseMoney[\s\S]*?\n}\n/)[0]);
-    w.eval(fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'core-state.js'), 'utf8').match(/function fmtInput[\s\S]*?\n}\n/)[0]);
+    w.eval(leerEstado().match(/function parseMoney[\s\S]*?\n}\n/)[0]);
+    w.eval(leerEstado().match(/function fmtInput[\s\S]*?\n}\n/)[0]);
     entrar('1500000,5', 9); assert.equal(w.parseMoney(el.value), 1500000.5);
     entrar('500000', 6); assert.equal(w.parseMoney(el.value), 500000);
     assert.equal(w.fmtInput(500000), '500.000');
@@ -1804,7 +1806,7 @@ describe('money-input (formateo al escribir en los campos de plata)', () => {
 
   test('setMoneyInput() precarga con separador de miles (por elemento o por id) y limpia con 0/vacío', () => {
     const { w, el } = entorno();
-    const src = fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'core-state.js'), 'utf8');
+    const src = leerEstado();
     w.eval(src.match(/function fmtInput[\s\S]*?\n}\n/)[0]);
     w.eval(src.match(/function setMoneyInput[\s\S]*?\n}\n/)[0]);
     w.setMoneyInput(el, 80000); assert.equal(el.value, '80.000');
@@ -1843,7 +1845,7 @@ describe('pin-confirmar-acciones-destructivas', () => {
   const leer = (...p) => fs.readFileSync(path.join(RAIZ, ...p), 'utf8');
   // pin-bio.js es un módulo ES (import de waitFor/hookGlobal): se evalúa sin los imports, con stubs.
   const codigoPin = 'const waitFor = () => {}; const hookGlobal = () => {};\n' + leer('js', 'core', 'pin-bio.js').replace(/^import .*$/gm, '');
-  const pedir = leer('js', 'core', 'core-state.js').match(/async function pedirPinAntesDe[\s\S]*?\n}\n/)[0];
+  const pedir = leerEstado().match(/async function pedirPinAntesDe[\s\S]*?\n}\n/)[0];
 
   function entorno({ pin = '1234', dialogoOk = true } = {}) {
     const dom = new JSDOM(leer('index.html'), { runScripts: 'outside-only', url: 'http://localhost/' });
@@ -2003,7 +2005,7 @@ describe('fila-movimiento', () => {
     const recorrer = d => fs.readdirSync(d, { withFileTypes: true }).forEach(e => {
       const f = path.join(d, e.name);
       if (e.isDirectory()) return recorrer(f);
-      if (!f.endsWith('.js') || f.endsWith('core-state.js')) return;
+      if (!f.endsWith('.js') || esParte(f)) return;
       if (fs.readFileSync(f, 'utf8').includes('class="gasto-item-top"')) sueltos.push(path.relative(dir, f));
     });
     recorrer(dir);
@@ -2154,16 +2156,15 @@ describe('patrimonio — fuente única (hero, historial, Proyección y Salud lee
       ...fs.readdirSync(CORE_DIR).map((f) => path.join(CORE_DIR, f)),
       ...fs.readdirSync(MODULES_DIR).map((f) => path.join(MODULES_DIR, f)),
     ].filter((f) => f.endsWith('.js'));
-    const coreState = path.join(CORE_DIR, 'core-state.js');
     for (const f of archivos) {
-      if (f === coreState) continue;
+      if (esParte(f)) continue;
       const code = sinComentarios(fs.readFileSync(f, 'utf8'));
       assert.ok(!/calcPatrimonioTotal\s*\(/.test(code), path.basename(f) + ' llama calcPatrimonioTotal(): usa calcPatrimonioVisible() o calcPatrimonioDesglose()');
     }
     // Quien muestra o guarda el patrimonio visible no resta la alcancía por su cuenta.
     const inicio = sinComentarios(fs.readFileSync(path.join(MODULES_DIR, 'inicio.js'), 'utf8'));
     assert.ok(!/saldoRegistrado/.test(inicio), 'inicio.js no debe tocar la alcancía: calcPatrimonioVisible() ya la excluye');
-    const core = sinComentarios(fs.readFileSync(coreState, 'utf8'));
+    const core = sinComentarios(leerEstado());
     const snap = core.slice(core.indexOf('function snapshotPatrimonio'), core.indexOf('function snapshotPatrimonio') + 2500);
     assert.ok(snap.includes('calcPatrimonioDesglose()') && !/saldoRegistrado/.test(snap), 'snapshotPatrimonio usa el desglose');
     const refreshSrc = core.slice(core.indexOf('function refresh()'), core.indexOf('function refresh()') + 9000);

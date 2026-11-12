@@ -55,7 +55,7 @@ const UMBRALES = (() => {
     },
     // Aviso de gasto del mes en el hero (_checkGastoAlto, inicio.js): fracción del ingreso de referencia que ya gastaste
     gastoAlto: { fraccionDelIngreso: 0.8 },
-    // Hero de Inicio (calcEstadoHero, core-state.js): a partir de qué peso de «Me deben» dentro de tu patrimonio se avisa
+    // Hero de Inicio (calcEstadoHero, el núcleo (js/core/estado.js y hermanos)): a partir de qué peso de «Me deben» dentro de tu patrimonio se avisa
     hero: { meDebenFraccion: 0.25 },
     // Plan de salida de deudas (plan-deudas.js)
     deudas: { metaMeses: 24 }, // si la deuda no baja a tu ritmo, cuánto liberar al mes para quedar libre en este plazo

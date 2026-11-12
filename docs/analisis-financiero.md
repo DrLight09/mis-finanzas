@@ -138,7 +138,7 @@ Recorren `S.gastosVar` (mismo criterio de gasto real que en §2, vía `_esGastoV
 
 > **La respuesta está guardada en el movimiento (desde 2026-10-09):** cada uno lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita por el módulo que lo crea. Los dos helpers de abajo solo leen `clase` (vía `claseEfectivaMovimiento()`): **no hay reglas de respaldo** que la deduzcan de etiquetas, descripciones o banderas (se retiraron el 2026-10-13: la app nace limpia y `tests/nucleo.test.js`, bloque `clase-cobertura`, exige que todo escritor la ponga al crear el movimiento). Un movimiento sin `clase` no cuenta como ingreso ni se excluye como gasto, y `save()` avisa de los que llegan sin ella (`movimientosSinClase`). Para un módulo nuevo basta escribir `clase` al crear el movimiento; los criterios que siguen explican **qué clase recibe** cada caso. Ver `libro-de-movimientos.md` (regla 7: el libro no clasifica).
 
-Ambos viven en `js/core/core-state.js`, no en `analisis.js` — por eso los puede usar cualquier pantalla sin cargar el módulo de Análisis. Todos los bloques de esta pantalla que suman ingresos o gastos (§2, §4, §7, §9) usan dos helpers centralizados, no un filtro propio cada uno:
+Ambos viven en `js/core/ (estado.js, cuentas-fuentes.js…)`, no en `analisis.js` — por eso los puede usar cualquier pantalla sin cargar el módulo de Análisis. Todos los bloques de esta pantalla que suman ingresos o gastos (§2, §4, §7, §9) usan dos helpers centralizados, no un filtro propio cada uno:
 
 - **`_esEntradaEspejoNoIngreso(m)`** — devuelve `true` cuando la `clase` guardada del movimiento no es `ingreso` (sin respaldo por descripción ni por banderas). Qué movimientos `tipo:'entrada'` de `S.movimientos` reciben `clase: 'ingreso'` y cuáles quedan como espejo de plata que ya se contó en otro lado (reposición de plata comprometida, intercambio/traspaso de Encargos, Mesada, Prestado) lo decide el módulo que los crea. **Excepción:** lo que lleva `_esExtraIngreso` sí es ingreso real, aunque tenga `_origenSeccion` de Prestado o `_encMovId` de Encargos: el extra/propina de un pago de deuda guardado en una cuenta el traspaso "Me lo regalaron" de un encargo el margen de "Ya la usé" (`yoMeQuedo`), y todo margen que escribe el motor de diferencial (`_esDiferencialEncargo`: salida de encargo, compra con TC, Préstamo con TC).
 - **`_esGastoVarNoReal(g)`** — devuelve `true` si el gasto de `S.gastosVar` tiene una `clase` distinta de `gasto` (sin `clase` cuenta como real). Cada módulo le pone esa clase al crearlo; quedan fuera pagos de gasto fijo, pagos de TC (cancelación de deuda, no gasto nuevo), alcancía (sigue siendo plata propia) y extras de préstamo gastados de inmediato (`_esExtraPrestamo`, plata que nunca se contó como ingreso).
@@ -159,7 +159,7 @@ Estos dos bloques **no viven en `screen-analisis`**, sino en Inicio, pero se cal
 
 ## 10. Patrimonio total: `calcPatrimonioTotal()`
 
-**Ubicación:** el módulo de esta pantalla es [`js/modules/analisis.js`](../js/modules/analisis.js) (`renderAnalisis()`, ingresos fijos, presupuestos). `calcPatrimonioTotal()` y `snapshotPatrimonio()` viven en `js/core/core-state.js`, no en este módulo: `save()` las llama en cada guardado, no solo al entrar a esta pantalla. El cálculo de Nu que usa (`calcC`, `calcCDT`, `nuTotal`) está en `js/core/nu-calc.js`. `renderHealthScore()`/`renderProyeccion()` viven en `js/modules/inicio.js`.
+**Ubicación:** el módulo de esta pantalla es [`js/modules/analisis.js`](../js/modules/analisis.js) (`renderAnalisis()`, ingresos fijos, presupuestos). `calcPatrimonioTotal()` y `snapshotPatrimonio()` viven en `js/core/ (estado.js, cuentas-fuentes.js…)`, no en este módulo: `save()` las llama en cada guardado, no solo al entrar a esta pantalla. El cálculo de Nu que usa (`calcC`, `calcCDT`, `nuTotal`) está en `js/core/nu-calc.js`. `renderHealthScore()`/`renderProyeccion()` viven en `js/modules/inicio.js`.
 
 
 Es la base de todo lo anterior (historial, tendencia, proyección, salud financiera, hero de Inicio) y **la única definición de patrimonio de la app**. El cálculo vive en `calcPatrimonioDesglose()` (mismo archivo), que devuelve cada componente (`cajitas`, `cdts`, `nequi`, `efectivo`, `custom`, `meDeben`, `alcancia`, `deudaTC`, `yoDebo`, `ajeno`) más `activos`, `pasivos`, `total` y `visible` (sin Alcancía). Las demás funciones son envoltorios:
@@ -167,12 +167,12 @@ Es la base de todo lo anterior (historial, tendencia, proyección, salud financi
 | Función | Qué devuelve | Quién la usa |
 |---|---|---|
 | `calcPatrimonioDesglose()` | todos los componentes y los totales | quien necesite el detalle |
-| `calcPatrimonioTotal()` | `total` (con Alcancía) | solo `core-state.js` |
+| `calcPatrimonioTotal()` | `total` (con Alcancía) | solo `el núcleo (js/core/estado.js y hermanos)` |
 | `calcPatrimonioVisible()` | `visible` (sin Alcancía) | hero (vía el desglose), Proyección, Salud |
 | `medirPatrimonioParaHistorial()` / `snapshotPatrimonio()` | `{val, vis}` y el punto `valor`/`valorVisible` del historial | historial y gráfica |
 | `calcLiquidez()` | liquidez neta (ver Salud financiera) | Salud financiera |
 
-**Regla:** ningún otro archivo suma cuentas ni resta deudas a mano, ni resta la alcancía por su cuenta. Una prueba (`tests/nucleo.test.js` → «patrimonio — fuente única») recorre `js/` y falla si alguien llama `calcPatrimonioTotal()` fuera de `core-state.js` o si el hero, el snapshot o Inicio vuelven a tener su propia fórmula. Si cambia una regla (una deuda nueva, otra cuenta), se cambia en ese bloque y todo queda igual.
+**Regla:** ningún otro archivo suma cuentas ni resta deudas a mano, ni resta la alcancía por su cuenta. Una prueba (`tests/nucleo.test.js` → «patrimonio — fuente única») recorre `js/` y falla si alguien llama `calcPatrimonioTotal()` fuera de `el núcleo (js/core/estado.js y hermanos)` o si el hero, el snapshot o Inicio vuelven a tener su propia fórmula. Si cambia una regla (una deuda nueva, otra cuenta), se cambia en ese bloque y todo queda igual.
 
 **Deudas sin fecha.** Entre amigos casi nunca hay fecha de pago, y eso no cambia el patrimonio: «Me deben» es un activo y «Yo debo» es un pasivo, ambos completos, aunque no se sepa cuándo se cobran o se pagan. La fecha incierta solo afecta la **liquidez** (Salud financiera): lo que te deben no cuenta hasta que llega; lo que debes sí se descuenta completo.
 

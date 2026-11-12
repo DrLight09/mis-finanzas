@@ -28,7 +28,7 @@
      · Su monto es el que se PAGÓ (pago.monto); solo si falta cae al monto actual del gasto fijo. Nunca depende de si el
        gasto fijo todavía existe.
      · Gasto variable real = S.gastosVar del mes que no sea _esGastoVarNoReal().
-     · Ingreso del mes = mesada + ingresos fijos cobrados + entradas reales (entradasIngresoReal, core-state.js).
+     · Ingreso del mes = mesada + ingresos fijos cobrados + entradas reales (entradasIngresoReal, el núcleo (js/core/estado.js y hermanos)).
      · La Mesada cuenta en el mes de la FECHA en que te pagaron (cada abono de un pendiente, en la suya); su clave
        S.mesadas[padre].pagos['YYYY-<mes 0-11>'] es solo el mes que cubre. Pago sin monto: la cuota del año; sin fecha:
        el mes que cubre.
@@ -45,8 +45,8 @@
 
    Todas las funciones reciben `estado` opcional (por defecto S): Wrapped trabaja
    sobre el estado que le pasan, no necesariamente el global.
-   Sin DOM. Carga de entrada (<script defer>) justo después de core-state.js; solo
-   usa mesKey/_esGastoVarNoReal/entradasIngresoReal (core-state.js) al ser llamado.
+   Sin DOM. Carga de entrada (<script defer>) justo después de el núcleo (js/core/estado.js y hermanos); solo
+   usa mesKey/_esGastoVarNoReal/entradasIngresoReal (el núcleo (js/core/estado.js y hermanos)) al ser llamado.
    ═══════════════════════════════════════════════════════════════ */
 const Periodo = (() => {
   const _st = e => e || S;

@@ -71,7 +71,7 @@
 
 const MESADA_PADRES = ['papa', 'mama'];
 
-// ── Libro (core-state.js) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (el núcleo (js/core/estado.js y hermanos)) ─────────────────────────────────────────────────────────────────────────────────
 // _ogMes(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'mesada', ref:<id del movimiento espejo del abono> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogMes = Libro.origen('mesada');
 
@@ -561,7 +561,7 @@ function renderMesada() {
   }
 
   _msEl('ms-total').textContent = fmt(r.totalAnio);
-  _msEl('ms-count').textContent = r.pagadosAnio + '/' + (r.esperadosAnio || '—');
+  _msEl('ms-count').textContent = r.pagadosAnio + '/' + (r.esperadosAnio || 0);
 }
 
 const _MES_DOT_CLASE = { pendiente: 'mes-dot on mes-dot-pend', pagado: 'mes-dot on', perdido: 'mes-dot perdido', vacio: 'mes-dot' };
@@ -782,7 +782,7 @@ function abrirDetalleMesada(parent, key, nombre) {
   _msEl('mdContent').innerHTML = html`
     <div class="card card-sm ms-card-mb">
       <div class="row ms-fila"><span class="ms-lbl">Monto</span><span class="row-amount c-green">${fmt(info.monto)}</span></div>
-      <div class="row ms-fila"><span class="ms-lbl">Fecha</span><span class="ms-mono">${info.fecha || '—'}</span></div>
+      <div class="row ms-fila"><span class="ms-lbl">Fecha</span><span class="ms-mono">${info.fecha || raw(SIN_DATO)}</span></div>
       ${raw(origenEncargoHtml)}${raw(destinoHtml)}
       ${info.nota ? html`<div class="ms-nota">${info.nota}</div>` : ''}
     </div>

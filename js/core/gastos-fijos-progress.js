@@ -1,7 +1,7 @@
 // Barra de progreso de "gastos fijos pagados este mes" en panel-fijo —
 // extraído de index.html. Depende de S (bloque S/save, carga antes).
 //
-// Se engancha a refresh() con Refresh.registrar() (core-state.js), no envolviendo la global.
+// Se engancha a refresh() con Refresh.registrar() (el núcleo (js/core/estado.js y hermanos)), no envolviendo la global.
 // Ver auditoria-tecnica.md #2/#4.
 
 // ── 4. GASTOS FIJOS PROGRESS BAR ─────────────────────────────────────────────
@@ -40,7 +40,7 @@
       pagados === total ? 'Sin pagos pendientes' : `${total-pagados} pendiente${total-pagados!==1?'s':''}`;
   }
 
-  // Hook into refresh — ver Refresh en js/core/core-state.js
+  // Hook into refresh — ver Refresh en js/core/ (estado.js, cuentas-fuentes.js…)
   Refresh.registrar('gastos-fijos-progress', updateFijosProgress);
   setTimeout(updateFijosProgress, 200);
 })();

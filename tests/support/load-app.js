@@ -90,6 +90,8 @@ function loadApp(appFiles, options = {}) {
   const pre = NUCLEO.filter(n => !appFiles.some(f => f.endsWith('/' + n) || f.endsWith('\\' + n)))
     .map(n => require('path').join(__dirname, '..', '..', 'js', 'core', n));
   appFiles = [...pre, ...appFiles];
+  // core-state.js ya no es un archivo: se expande a sus partes, en el orden de index.html (ver nucleo-estado.js).
+  appFiles = appFiles.flatMap(f => /(^|[\\/])core-state\.js$/.test(f) ? require('./nucleo-estado').RUTAS : [f]);
 
   for (const file of appFiles) {
     const code = fs.readFileSync(file, 'utf8');

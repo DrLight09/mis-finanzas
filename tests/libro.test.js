@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // tests/libro.test.js — Libro de movimientos: puerta única de saldos, origen/reversión, módulos que la usan y la guardia estática (nadie escribe `.saldo`; toda llamada con `origen`).
 // Un archivo por sección de la app. Cada bloque `describe` es lo que antes era un archivo suelto.
 // Corre con:  node --test tests/libro.test.js   (o todo: npm test)
@@ -209,7 +211,7 @@ describe('libro-modulos', () => {
 
 describe('puerta-unica', () => {
   // Guardia estática del libro de movimientos (libro-de-movimientos.md §3, reglas 2 y 3):
-  //   · nadie escribe `c.saldo` fuera de la puerta única (sumarFuente / descontarFuente / ajustarSaldoCuenta en core-state.js);
+  //   · nadie escribe `c.saldo` fuera de la puerta única (sumarFuente / descontarFuente / ajustarSaldoCuenta en cuentas-fuentes.js);
   //   · toda llamada a sumarFuente / descontarFuente lleva `origen` (directo, vía _og…(), o con un `opts` ya armado).
   // Un módulo nuevo que se salte cualquiera de las dos rompe este test en vez de dejar una entrada 'sin-origen' o un
   // descuadre que solo avisaría `save()` una vez por sesión.
@@ -254,9 +256,9 @@ describe('puerta-unica', () => {
     const fuera = [];
     archivos(RAIZ).forEach(f => {
       let src = sinComentarios(fs.readFileSync(f, 'utf8'));
-      if (path.basename(f) === 'core-state.js') { // la puerta única misma
+      if (path.basename(f) === 'cuentas-fuentes.js') { // la puerta única misma
         const a = src.indexOf('function ajustarSaldoCuenta'), b = src.indexOf('function _listaFuentes');
-        assert.ok(a > 0 && b > a, 'no se encontró el bloque de la puerta única en core-state.js');
+        assert.ok(a > 0 && b > a, 'no se encontró el bloque de la puerta única en cuentas-fuentes.js');
         src = src.slice(0, a) + src.slice(a, b).replace(/[^\n]/g, ' ') + src.slice(b);
       }
       const re = /\.saldo\s*(?:\+|-|\*|\/)?=(?!=)/g;

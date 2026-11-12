@@ -18,7 +18,7 @@ El libro responde "¿cuánta plata hay en cada cuenta y por qué?". No responde 
 | **Cuenta con saldo** | `'nequi'`, `'efectivo'`, `'custom:<id>'`, `'cajita:<id>'`. Las tarjetas de crédito y la alcancía **no** son cuentas del libro (ver §7). |
 | **Origen** | `{ modulo, ref?, rev? }`: qué módulo causó la entrada y, cuando existe, el id del registro de ese módulo (un movimiento de deuda, un gasto, un abono de mesada…). |
 | **Reversión** | Una entrada nueva que deshace una anterior: mismo `ref`, `rev: true`, `tipo: 'reversion'`. Nunca se borran entradas. |
-| **Puerta única** | `sumarFuente`, `descontarFuente` y `ajustarSaldoCuenta` (`core-state.js`): la única forma de cambiar un saldo. Cada una deja su entrada. |
+| **Puerta única** | `sumarFuente`, `descontarFuente` y `ajustarSaldoCuenta` (`el núcleo (js/core/estado.js y hermanos)`): la única forma de cambiar un saldo. Cada una deja su entrada. |
 | **Historial único** | `S.movimientos` guarda el historial de **todas** las cuentas; `fuente` dice a cuál pertenece. Ninguna cuenta tiene lista propia. |
 
 ## 3. Reglas que nunca se rompen
@@ -88,7 +88,7 @@ S.libro = [{
 - **Saldo guardado + verificación**, en lugar de calcularlo siempre: la lectura es instantánea y cualquier código que cambie un saldo sin pasar por el libro se detecta al guardar. Derivarlo en cada refresh habría escondido el error.
 - **Revertir añade, no borra.** Deja rastro auditable de qué se deshizo y por qué módulo.
 - **Una sola lista de historial.** Evita que una pantalla o un cálculo se olvide de una lista (el origen de varios descuadres silenciosos) y que cada módulo tenga que saber en cuál escribir.
-- **El libro vive en el núcleo (`core-state.js`)**, no en un archivo aparte: la puerta única que lo usa está ahí y tiene que funcionar en cualquier pantalla y en cualquier test que cargue el núcleo.
+- **El libro vive en el núcleo (`el núcleo (js/core/estado.js y hermanos)`)**, no en un archivo aparte: la puerta única que lo usa está ahí y tiene que funcionar en cualquier pantalla y en cualquier test que cargue el núcleo.
 - **Sin migraciones: la app nació limpia en el esquema 9 (2026-10-18).** No quedan datos de usuario que migrar, así que las migraciones de las versiones 8 (tasa única de Nu) y 9 (Spotify en `S.spotify`) se plegaron en el modelo actual en vez de arrastrarse como código que transforma formas anteriores. El mecanismo (`MIGRACIONES`, vacío) se usará para el próximo cambio de forma de los datos.
 - **No existe una función única "mover plata + espejo".** Se evaluó (`Libro.mover`): hay solo 9 pares saldo+espejo (Préstamos 6, Mesada 1, Spotify 1, y la definición) frente a 86 llamadas de saldo que van con los registros propios de cada módulo (gastos, encargos, tarjetas, alcancía). Unificar 9 pares no justifica una puerta nueva; la puerta única ya es `sumarFuente`/`descontarFuente`.
 - **La clasificación es un campo (`clase`), no un libro de partida doble.** Ingreso, gasto, neutro y ajuste se escriben en el movimiento al crearlo y `Periodo` los lee; así desaparecieron la cascada de ~12 condiciones sobre ~30 etiquetas y los fallbacks por texto de la descripción. Se descartó la partida doble (cada hecho como asiento Debe/Haber): obligaba a reescribir cómo registra cada módulo (Préstamos solo ya es ~3.000 líneas) y a reinterpretar todo el historial, y solo compensaría si hicieran falta reportes por cuenta contable. `clase` equivale al tipo de la cuenta contraparte, así que la puerta sigue abierta. El libro actual (patas de caja) cubre lo que la partida doble daba para saldos: reversión por asiento y saldo explicable. Pendiente conocido y deliberado: los movimientos de Encargos (plata de terceros) llevan `neutro`; solo importaría una clase propia (`tercero`) si algún día se hace contabilidad por cuenta.
@@ -98,7 +98,7 @@ S.libro = [{
 
 | Qué | Dónde |
 |---|---|
-| El libro (`Libro`: `registrar`, `conOrigen`, `verificar`, `entradasVisibles`, `saldo`), la puerta única (`sumarFuente`, `descontarFuente`, `ajustarSaldoCuenta`, `_libroPata`), la verificación en `save()`, y la versión del esquema (`SCHEMA_BASE`, `MIGRACIONES`, `aplicarMigraciones`) | `js/core/core-state.js` |
+| El libro (`Libro`: `registrar`, `conOrigen`, `verificar`, `entradasVisibles`, `saldo`), la puerta única (`sumarFuente`, `descontarFuente`, `ajustarSaldoCuenta`, `_libroPata`), la verificación en `save()`, y la versión del esquema (`SCHEMA_BASE`, `MIGRACIONES`, `aplicarMigraciones`) | `js/core/ (estado.js, cuentas-fuentes.js…)` |
 | Espejo en el historial (`registrarMovEspejo`, `borrarMovEspejo`): siempre en `S.movimientos` con `fuente` | `js/core/cuenta-efectos.js` |
 | Historial de una cuenta con las entradas del libro sin fila | `getMovimientosCuenta` en `js/modules/cuentas.js` |
 | Borrado desde el feed o el historial de una cuenta | `eliminarMovimiento` en `js/core/movimientos.js` |

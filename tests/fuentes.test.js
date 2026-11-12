@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // M4 — fuentes de dinero: un solo parseo del código (Fuente), etiquetas con contrato explícito (texto / HTML) y un solo constructor de <option>.
 const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -70,16 +72,16 @@ describe('opcionesCuenta es el único constructor de <option>s de cuentas', () =
   test('nadie fuera de core-state.js llama al constructor privado ni reintroduce el nombre viejo', () => {
     const malos = JS.filter(f => /buildFuentesOptsHtml/.test(sinComentarios(leer(f))));
     assert.deepEqual(malos, []);
-    const privados = JS.filter(f => !f.endsWith('core-state.js') && /_buildFuentesOpts\s*\(/.test(sinComentarios(leer(f))));
+    const privados = JS.filter(f => !esParte(f) && /_buildFuentesOpts\s*\(/.test(sinComentarios(leer(f))));
     assert.deepEqual(privados, []);
   });
 });
 
 describe('guardas: el prefijo del código se interpreta solo en Fuente', () => {
-  test("ningún archivo (salvo core-state.js) usa startsWith('tc:' | 'cajita:' | 'cuenta:')", () => {
-    const malos = JS.filter(f => !f.endsWith('core-state.js') && /startsWith\(['"](tc|cajita|cuenta):['"]\)/.test(sinComentarios(leer(f))));
+  test("ningún archivo (salvo el núcleo (cuentas-fuentes.js)) usa startsWith('tc:' | 'cajita:' | 'cuenta:')", () => {
+    const malos = JS.filter(f => !esParte(f) && /startsWith\(['"](tc|cajita|cuenta):['"]\)/.test(sinComentarios(leer(f))));
     assert.deepEqual(malos, []);
-    const enCore = (sinComentarios(leer('js/core/core-state.js')).match(/startsWith\(['"](tc|cajita|cuenta):['"]\)/g) || []);
+    const enCore = (sinComentarios(leerEstado()).match(/startsWith\(['"](tc|cajita|cuenta):['"]\)/g) || []);
     assert.deepEqual(enCore, []);
   });
   test('los envoltorios de etiqueta (_fuenteLabelHtml, _fuenteTexto, _cpFuenteLabel, fuenteLabel2) ya no existen', () => {

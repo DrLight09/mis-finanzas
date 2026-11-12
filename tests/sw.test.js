@@ -65,7 +65,7 @@ describe('PRECACHE', () => {
     assert.ok(m, 'sw.js debe tener el bloque PRECACHE');
     const enSw = JSON.parse(m[1]);
     assert.deepEqual(enSw, listaPrecache(raiz), 'PRECACHE desactualizado: corre node scripts/sellar-sw.js');
-    for (const f of ['./', 'index.html', 'css/styles.css', 'js/core/core-state.js', 'js/core/sw-registro.js', 'js/modules/spotify.js', 'manifest.webmanifest']) assert.ok(enSw.includes(f), f);
+    for (const f of ['./', 'index.html', 'css/styles.css', 'js/core/estado.js', 'js/core/sw-registro.js', 'js/modules/spotify.js', 'manifest.webmanifest']) assert.ok(enSw.includes(f), f);
     assert.ok(!enSw.includes('sw.js'));
   });
   test('todo <script src> de index.html está en el precaché (offline completo)', () => {

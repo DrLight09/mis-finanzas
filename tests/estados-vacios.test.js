@@ -1,4 +1,6 @@
 'use strict';
+const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
+
 // Piezas de pantalla únicas: confirmar eliminación (confirmarEliminar / avisarNoSePuede) y estados vacíos (emptyState / emptyInline).
 const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -93,10 +95,10 @@ describe('estados-vacios-unicos', () => {
     assert.equal(app.emptyInline('Sin <b>datos</b> & más'), '<div class="empty-inline">Sin &lt;b&gt;datos&lt;/b&gt; &amp; más</div>');
     assert.match(app.emptyInline('x', { centro: true, grande: true, clase: 'card' }), /^<div class="empty-inline empty-inline-centro empty-inline-grande card">/);
   });
-  test('los módulos no arman su propio estado vacío: nada de class="…-vacio" / «empty-state» fuera de core-state.js', () => {
+  test('los módulos no arman su propio estado vacío: nada de class="…-vacio" / «empty-state» fuera de las partes del núcleo (estado/utilidades-ui…)', () => {
     const malos = [];
     for (const f of archivosJs(path.join(raiz, 'js'))) {
-      if (path.basename(f) === 'core-state.js') continue;
+      if (esParte(f)) continue;
       const t = fs.readFileSync(f, 'utf8');
       // Los comentarios no cuentan.
       const sinCom = t.replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '');

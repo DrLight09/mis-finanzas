@@ -62,7 +62,7 @@ let sppSplitMode=false;
 // (parte cierra deuda de un ciclo viejo, el resto es del ciclo nuevo — ver
 // confirmarSpDestino), cada registro necesita su propia porción del split para
 // que borrar uno solo revierta solo esa porción de cada cuenta, no el total.
-// ── Libro (core-state.js): origen de cada cambio de saldo ────────────────────────────────────────────────
+// ── Libro (el núcleo (js/core/estado.js y hermanos)): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _ogSp(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'spotify', ref:<id del registro de spotifyHistorial,
 // o del pago> }. Con rev=true es una reversión (tipo 'reversion'). `opts.exacto` ya no existe: el saldo no se recorta en 0.
 const _ogSp = Libro.origen('spotify');
@@ -611,7 +611,7 @@ function renderSpStats(){
       <div class="stat-label">Margen proyectado</div>
       <div class="sp-stat-base">
         <div class="stat-value ${cV(margen)}">${margen>=0?'+':''}${fmt(Math.abs(margen))}</div>
-        <div class="sp-stat-nota2">cobras ${fmt(ingresoEstimado)} en cuotas · el plan cuesta ${costo>0?fmt(costo):'—'}</div>
+        <div class="sp-stat-nota2">cobras ${fmt(ingresoEstimado)} en cuotas · el plan cuesta ${costo>0?fmt(costo):SIN_DATO}</div>
       </div>
       <div class="sp-stat-hint">proyección con tu configuración actual, no con tu frecuencia real de pago — registra un pago a Spotify para ver el promedio real por ciclo</div>
     </div>`;

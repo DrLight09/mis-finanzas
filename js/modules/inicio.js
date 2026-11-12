@@ -587,7 +587,7 @@ function renderProyeccion(){
   // formateador global decide mostrar decimales.
   const fmt = x=>Dinero.fmt(x,{decimales:0});
   // ── Patrimonio VISIBLE (sin alcancía) ─────────────────────────────────
-  // Una sola definición en core-state.js (calcPatrimonioVisible): la misma del hero y de `valorVisible` en el historial, que es
+  // Una sola definición en el núcleo (js/core/estado.js y hermanos) (calcPatrimonioVisible): la misma del hero y de `valorVisible` en el historial, que es
   // de donde sale la tendencia. Esta card muestra un número puntual en cada render; con el total crudo, depositar en la alcancía
   // haría saltar 3m/6m/12m por el monto exacto del depósito y delataría la sorpresa. Cuando se destape, esa plata entra a una
   // cuenta real y el patrimonio visible sube solo.
@@ -734,7 +734,7 @@ function renderProyeccion(){
   el.innerHTML = historialInsuficiente ? `
     <div class="inicio-proy-fila">
       <span class="inicio-proy-etiqueta">Tendencia mensual<span class="inicio-proy-info"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="8"/><line x1="12" y1="12" x2="12" y2="16"/></svg></span></span>
-      <span class="inicio-proy-valor inicio-proy-valor-nulo">—</span>
+      <span class="inicio-proy-valor inicio-proy-valor-nulo">${SIN_DATO}</span>
     </div>
     <div class="inicio-proy-aviso">
       <div class="inicio-proy-aviso-txt">Tendencia en construcción: llevas ${Math.min(diasReales, MIN_DIAS_PARA_TENDENCIA)} de ${MIN_DIAS_PARA_TENDENCIA} días de historial.<br>Vuelve en unos días para ver tendencias y proyecciones.</div>
@@ -898,7 +898,7 @@ function _renderDispNetoTC() {
   // separado) — eso ya causó dos veces que Neto quedara desalineado de
   // Disponible por pequeñas diferencias entre este cálculo y el real. Se
   // usa directamente window._dispActualHoy, el MISMO número que refresh()
-  // (core-state.js) acaba de usar para pintar #s-disp — por definición no
+  // (el núcleo (js/core/estado.js y hermanos)) acaba de usar para pintar #s-disp — por definición no
   // se pueden desalinear. refresh() corre _refreshNucleo() (que
   // setea window._dispActualHoy) ANTES de llamar a esta función, así que
   // siempre llega actualizado.
@@ -908,10 +908,10 @@ function _renderDispNetoTC() {
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
 }
 
-// Hook _checkGastoAlto/_renderDispNetoTC en refresh. refresh() se define en core-state.js, que
+// Hook _checkGastoAlto/_renderDispNetoTC en refresh. refresh() se define en el núcleo (js/core/estado.js y hermanos), que
 // carga antes que este módulo; calcC/ahorroTotal (nu-calc.js) también son núcleo de entrada, así que
 // no hace falta ningún reintento ni guard por carga lazy.
-// Se registran con Refresh (core-state.js) y corren después de _refreshNucleo(), que es quien deja listo window._dispActualHoy.
+// Se registran con Refresh (el núcleo (js/core/estado.js y hermanos)) y corren después de _refreshNucleo(), que es quien deja listo window._dispActualHoy.
 Refresh.registrar('inicio-gasto-alto', _checkGastoAlto);
 Refresh.registrar('inicio-neto-tc', _renderDispNetoTC);
 

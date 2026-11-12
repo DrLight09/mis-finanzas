@@ -21,7 +21,7 @@ Los sheets y pantallas **no llevan `style="…"` en el HTML ni en los strings de
 
 ### Filas de historial: `filaMovimiento()`
 
-Las filas de movimientos de Tarjetas, Encargos, Gastos y Cuentas se arman con `filaMovimiento({…})` y su botón de borrar con `botonEliminarFila(accion, args, titulo)` (ambos en `core-state.js`); no se escribe a mano `.gasto-item-top`. El borde o color de una variante se pide con una clase en `clase` (`tc-item-b-*`, `enc-item-b-*`), nunca con estilo en línea. Los atributos `data-mov-*` van en `attrs`. Una prueba (`tests/nucleo.test.js`, bloque `fila-movimiento`) falla si un módulo vuelve a repetir el esqueleto.
+Las filas de movimientos de Tarjetas, Encargos, Gastos y Cuentas se arman con `filaMovimiento({…})` y su botón de borrar con `botonEliminarFila(accion, args, titulo)` (ambos en `el núcleo (js/core/estado.js y hermanos)`); no se escribe a mano `.gasto-item-top`. El borde o color de una variante se pide con una clase en `clase` (`tc-item-b-*`, `enc-item-b-*`), nunca con estilo en línea. Los atributos `data-mov-*` van en `attrs`. Una prueba (`tests/nucleo.test.js`, bloque `fila-movimiento`) falla si un módulo vuelve a repetir el esqueleto.
 
 ## 1. Regla general de orden
 
@@ -107,7 +107,7 @@ No usar "Sumar"/"Restar", "Entró plata"/"Salió plata" en Cuentas. **Encargos**
 
 **El mensaje del toast es TEXTO** (2026-11-10): `toast(\`Cuenta "${nombre}" creada\`)` — **no** uses `escHtml()` ahí (se vería `&amp;`); se pinta con `textContent`. Para marcado deliberado (un ícono, un `<br>`) pasa `html\`…\`` o `raw(…)`: `toast(html\`Listo <i class="fa-solid fa-check"></i>\`)`. `tests/toast.test.js` falla si vuelve un `escHtml()` dentro de `toast(`. Los validadores (`Plata.validarSalida().motivo`, etc.) devuelven texto plano; si lo pintas con `innerHTML`, escápalo (o usa `textContent`).
 
-**Tipos de toast** (`toast(msg, tipo)` en `core-state.js`; los estilos `.toast-<tipo>` están en el CSS crítico de `index.html`):
+**Tipos de toast** (`toast(msg, tipo)` en `el núcleo (js/core/estado.js y hermanos)`; los estilos `.toast-<tipo>` están en el CSS crítico de `index.html`):
 
 | Tipo | Color / ícono | Cuándo |
 |---|---|---|

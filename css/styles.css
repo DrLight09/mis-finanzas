@@ -2400,3 +2400,6 @@ button.inicio-pilar-accion{cursor:pointer;}
 .reord-arrastrando{background-color:var(--bg2);position:relative;z-index:30;transition:none;will-change:transform;box-shadow:0 14px 32px rgba(0,0,0,.55),0 0 0 1.5px rgba(var(--cuenta-rgb),.7);}
 .reord-encaja{position:relative;z-index:30;}
 @media (prefers-reduced-motion:reduce){.reord-mueve{transition:none;}}
+
+/* «Sin dato»: ícono en lugar del guion largo; no seleccionable, color atenuado. */
+.sin-dato{display:inline-block;vertical-align:middle;opacity:.55;user-select:none;-webkit-user-select:none;pointer-events:none;}

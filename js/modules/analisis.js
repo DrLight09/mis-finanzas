@@ -14,7 +14,7 @@
    Comprometida, Alcancía y Configuración.
 
    Lo que NO vive acá a propósito (núcleo compartido):
-     - calcPatrimonioTotal() / snapshotPatrimonio() están en js/core/core-state.js:
+     - calcPatrimonioTotal() / snapshotPatrimonio() están en js/core/ (estado.js, cuentas-fuentes.js…):
        las llama save() en CADA guardado, no solo al entrar a Análisis, para
        alimentar el historial que después se grafica acá.
      - renderHealthScore()/renderProyeccion() están en js/modules/inicio.js.
@@ -99,7 +99,7 @@ function renderAnalisis(){
       :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
     let mensaje, monto;
     if(sinMovs){ mensaje='Aún no hay ingresos ni gastos que cuenten para este mes.'; monto=fmt(0); }
-    else if(sinIngresos){ mensaje='Registra tus ingresos para ver el balance del mes.'; monto='—'; }
+    else if(sinIngresos){ mensaje='Registra tus ingresos para ver el balance del mes.'; monto=raw(SIN_DATO); }
     else if(_cero){ mensaje='Por ahora has gastado todo lo que has recibido este mes.'; monto=fmt(0); }
     else if(balance>0){ mensaje=sinBase?'Por ahora has gastado menos de lo que has recibido este mes.':'Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }
     else { mensaje='Por ahora has gastado más de lo que has recibido este mes.'; monto=fmt(balance); }
@@ -120,7 +120,7 @@ function renderAnalisis(){
   const elGas=document.getElementById('an-gastos');
   const elFij=document.getElementById('an-fijos');
   const elVar=document.getElementById('an-variables');
-  if(elIng) elIng.textContent=_hayIngresos?fmt(ingresosEstimados):'—';
+  if(elIng){ if(_hayIngresos) elIng.textContent=fmt(ingresosEstimados); else elIng.innerHTML=SIN_DATO; }
   if(elGas) elGas.textContent=fmt(gastosTotalMes);
   if(elFij) elFij.textContent=fmt(gfTotal);
   if(elVar) elVar.textContent=fmt(gvTotal);
@@ -269,9 +269,9 @@ function renderAnalisis(){
       elAhorrado.textContent=(esPos?'+':'')+fmt(balance);
       elAhorrado.style.color=tonoAhorro;
     } else {
-      elTasaAhorro.textContent='—';
+      elTasaAhorro.innerHTML=SIN_DATO;
       elTasaAhorro.style.color='var(--text3)';
-      elAhorrado.textContent='—';
+      elAhorrado.innerHTML=SIN_DATO;
       elAhorrado.style.color='var(--text3)';
     }
   }
@@ -390,7 +390,7 @@ function renderAnalisis(){
       // «+50 %» en verde con el patrimonio todavía en deuda. Se muestra «—» y, si el valor final sigue bajo cero, «En números rojos».
       const diffPct = primeroReal>0 ? diffTotal/primeroReal*100 : null;
       const enRojos = ultimoReal<0;
-      const diffPctTxt = _corta ? '—' : enRojos ? 'En números rojos' : diffPct===null ? '—' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
+      const diffPctTxt = (_corta || (!enRojos && diffPct===null)) ? SIN_DATO : enRojos ? 'En números rojos' : (sinCambio||diffPct<0?'':'+')+diffPct.toFixed(1)+'%';
       const diffClasePct = (enRojos&&!_corta) ? 'c-red' : diffClasePat;
       const _mesesVent=Math.max(1,Math.min(12,Math.round(_diasVentana/30)));
       const _flujoVent=Periodo.resumenFlujo(_mesesVent,mes);

@@ -4,7 +4,7 @@
 // (Loader). Esta es la ÚNICA pieza que conoce el ciclo; lo que cada hoja o pantalla hace al abrirse lo registra su módulo dueño:
 //   · Ui.hoja(id, fn, {fase})     al abrir la hoja `id`;
 //   · Ui.pantalla(nombre, fn)     cuando showScreen(nombre) terminó (re-pintar la lista, resetear un detalle…).
-// Ver js/core/ui.js. Carga como <script> clásico, después de core-state.js y antes de los módulos que llaman openSheet/showScreen.
+// Ver js/core/ui.js. Carga como <script> clásico, después de el núcleo (js/core/estado.js y hermanos) y antes de los módulos que llaman openSheet/showScreen.
 
 /* ── Sheet stack manager ────────────────────────────────────────────────────
    Permite apilar sheets: cuando se abre uno sobre otro, el anterior se

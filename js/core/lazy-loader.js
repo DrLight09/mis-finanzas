@@ -101,7 +101,7 @@ const Loader = (function () {
     // archivo (ver su header): el wiring de botones que esperaba
     // 'DOMContentLoaded' se corrigió a top-level (mismo fix que
     // actividad_reciente.js), y tcNormalizarTarjetas()/renderTCDashboard()
-    // (llamadas desde refresh()/save() en el núcleo (js/core/estado.js y hermanos), no desde acá) ya
+    // (llamadas desde refresh()/save() en js/core/refresh.js, no desde acá) ya
     // tienen guard typeof — confirmado con el archivo real, ver
     // auditoria-tecnica.md. Su wrapper de abrirDetalleMov (Events.registerAll
     // más abajo en el archivo) ya resolvía el nombre en tiempo de click, no
@@ -141,8 +141,8 @@ const Loader = (function () {
     // cuentas: REACTIVADO como lazy (2026-08-13, segundo intento). El primer
     // intento se revirtió por 3 ReferenceError encadenados al arrancar
     // (ahorroTotal/getTasaCuenta llamados sin guard
-    // desde el núcleo (js/core/estado.js y hermanos) y firebase-sync.js). Se recibieron y auditaron
-    // los archivos núcleo (el núcleo (js/core/estado.js y hermanos), firebase-sync.js, pin-bio.js, gastos-fijos-progress.js, …):
+    // desdel núcleo y firebase-sync.js). Se recibieron y auditaron
+    // los archivos núcleo (el núcleo, firebase-sync.js, pin-bio.js, gastos-fijos-progress.js, …):
     // los tres puntos del error, más calcC/calcCDT/materializarIntereses/
     // registrarTasaHistorial/verificarVencimientosCDT (todo lo demás que
     // cuentas.js expone y que estos archivos llegan a tocar), ya tienen
@@ -162,7 +162,7 @@ const Loader = (function () {
     // diferencia de Mesada/Tarjetas, que sí tenían callers externos con
     // guard typeof que auditar), y sus únicas dependencias de datos
     // (_esGastoVarNoReal, _esEntradaEspejoNoIngreso) viven en archivos
-    // núcleo eager (calc-helpers.js/el núcleo (js/core/estado.js y hermanos)), no en otro módulo
+    // núcleo eager (calc-helpers.js y el núcleo), no en otro módulo
     // lazy — así que no hace falta Loader.ensure() encadenado como sí
     // necesita spotify.js con tarjetas_credito.js. La única lectura
     // cross-módulo (racha de Alcancía) es opcional y con guard typeof —
@@ -176,7 +176,7 @@ const Loader = (function () {
     // Grupo SOLO bajo demanda (2026-10-31): huella de invariantes y cierre de períodos (~34 KB, ~12 KB comprimidos). Se usa al abrir
     // Configuración (medidor «Tamaño de tus datos») y desde la consola. A diferencia del resto, ensureAll() NO lo precarga (ver
     // SOLO_BAJO_DEMANDA). Orden: huella.js antes que cierre.js. Las sondas de los módulos (tarjetas, encargos, alcancía, Wrapped) llegan
-    // antes y esperan en cola (registrarSonda, el núcleo (js/core/estado.js y hermanos)); huella.js la vacía al cargarse.
+    // antes y esperan en cola (registrarSonda, js/core/persistencia.js); huella.js la vacía al cargarse.
     cierre: ['js/core/huella.js', 'js/core/cierre.js'],
   };
 
@@ -220,7 +220,7 @@ const Loader = (function () {
   // sus propias pantallas — cuentas.js (calcC, calcCDT, calcRendimientoCDTsMes,
   // ahorroTotal) y prestado.js (getDeudorSaldoPatrimonio, totalMisDeudasPendiente,
   // totalPrestadoPendiente):
-  //   - snapshotPatrimonio() (el núcleo (js/core/estado.js y hermanos), corre en cada save()) no graba el
+  //   - snapshotPatrimonio() (js/core/patrimonio.js, corre en cada save()) no graba el
   //     punto del historial de patrimonio hasta que calcC, calcCDT,
   //     getDeudorSaldoPatrimonio y totalMisDeudasPendiente existan
   //     (_patrimonioDependenciasListas): sin la precarga, una sesión donde el

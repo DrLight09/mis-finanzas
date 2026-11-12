@@ -1,7 +1,7 @@
 // js/core/refresh.js
 //
 // Refresh: repintado de la app: Refresh.registrar/refresh(), el repintado de Inicio (_refreshNucleo, renderCuentasInicio) y saveAndRefresh.
-// Parte del antiguo el núcleo (js/core/estado.js y hermanos) (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
+// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 

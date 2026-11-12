@@ -100,14 +100,14 @@ Botón "+ Cargo especial" dentro del detalle de la tarjeta (`abrirDetalleTCSheet
 - **"Cargo especial" reutiliza `tc.compras` en vez de un array propio (`tc.ajustes` o similar):** se consideró un array separado, pero el 90% de la infraestructura necesaria (historial unificado en `abrirDetalleTCSheet`, borrado con protección por antigüedad, gasto espejo, `tcRecalcular`) ya existe para compras — duplicarla para una variante que solo cambia "¿valida cupo?" y "¿qué badge muestra?" hubiera sido código repetido sin necesidad. Se prefirió un flag (`_esCargoEspecial`) sobre el mismo modelo, mismo criterio que ya usa `_esFavor`/`_desdeCP` para "esta compra es deuda ajena".
 ## 8. Referencia de implementación
 
-**Nota:** `getTCById`, `tcCupoUsadoPct` y `tcCupoDisponible` se sacaron de este archivo a `js/core/calc-helpers.js` (Inicio las necesita sin cargar el módulo completo); `calcDeudaAjenaDeTarjeta` y `calcDeudaTcPropia` viven en `js/core/ (estado.js, cuentas-fuentes.js…)`. Ambos siguen siendo globales que este módulo consume, no define.
+**Nota:** `getTCById`, `tcCupoUsadoPct` y `tcCupoDisponible` se sacaron de este archivo a `js/core/calc-helpers.js` (Inicio las necesita sin cargar el módulo completo); `calcDeudaAjenaDeTarjeta` y `calcDeudaTcPropia` viven en `js/core/patrimonio.js`. Ambos siguen siendo globales que este módulo consume, no define.
 
 | Función | Qué hace |
 |---|---|
 | `getTCById(id)` / `tcCupoUsadoPct(tc)` / `tcCupoDisponible(tc)` (en `js/core/calc-helpers.js`, no acá — ver nota abajo) | Buscar una tarjeta por id / % de cupo usado / cupo restante |
 | `tcDeudaTotal()` | Suma la deuda de todas las tarjetas |
-| `calcDeudaAjenaDeTarjeta(tc)` / `calcDeudaTcPropiaDeTarjeta(tc)` / `calcDeudaTcPropia()` (los tres en `js/core/ (estado.js, cuentas-fuentes.js…)`, no acá) | Deuda ajena y propia de una tarjeta puntual, y propia agregada de todas — la agregada la usan Inicio, Préstamos y Wrapped |
-| `calcSaldoInicialPendiente(tc)` (en `js/core/ (estado.js, cuentas-fuentes.js…)`) | Cuánto queda del saldo inicial sin pagar todavía — un pago cancela primero esto, luego lo ajeno, luego lo propio (ver §3) |
+| `calcDeudaAjenaDeTarjeta(tc)` / `calcDeudaTcPropiaDeTarjeta(tc)` / `calcDeudaTcPropia()` (los tres en `js/core/patrimonio.js`, no acá) | Deuda ajena y propia de una tarjeta puntual, y propia agregada de todas — la agregada la usan Inicio, Préstamos y Wrapped |
+| `calcSaldoInicialPendiente(tc)` (en `js/core/patrimonio.js`) | Cuánto queda del saldo inicial sin pagar todavía — un pago cancela primero esto, luego lo ajeno, luego lo propio (ver §3) |
 | `tcEstadoInfo(estado)` | Info de badge/label para `TC_ESTADOS` |
 | `tcRecalcular(tc)` | Única función que escribe `tc.deuda`, desde saldo inicial + compras + cargos − pagos |
 | `tcNormalizarTarjetas()` | Migración/auto-sanación, se llama en cada `refresh()`; recalcula deuda de todas las tarjetas |

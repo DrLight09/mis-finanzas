@@ -43,10 +43,10 @@
    CHANGELOG.md#encargos.
    ═══════════════════════════════════════════════════════════════ */
 
-// ── Libro (el núcleo (js/core/estado.js y hermanos)): origen de cada cambio de saldo ────────────────────────────────────────────────
+// ── Libro (js/core/cuentas-fuentes.js): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _ogEnc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'encargos', ref:<id del movimiento del encargo> }.
 // Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace). `opts.exacto` ya no existe: el saldo
-// nunca se recorta en 0 (ver descontarFuente en el núcleo (js/core/estado.js y hermanos)).
+// nunca se recorta en 0 (ver descontarFuente en js/core/cuentas-fuentes.js).
 const _ogEnc = Libro.origen('encargos');
 
 function editarEncargoActual() {
@@ -292,7 +292,6 @@ registrarSonda('encargos', st => {
 
 function renderEncargosList() {
   _pintarEncargosList();
-  _encListaPerfiles();   // avatar con color de persona + clic al perfil (sección Personas, más abajo)
 }
 function _pintarEncargosList() {
   const el = document.getElementById('encargosList');
@@ -314,10 +313,16 @@ function _pintarEncargosList() {
     const comprometido = encargoComprometido(enc);
     const libre = encargoLibre(enc);
     const ini = iniciales(enc.nombre);
+    const per = enc.personaId ? getPersona(enc.personaId) : null;
+    // Avatar con el color de la persona y clic al perfil: todo en el HTML de la fila (antes se parchaba el DOM después de pintar).
+    const colorPer = per && /^#[0-9a-fA-F]{6}$/.test(per.color || '') ? per.color : '#60b0f0';
+    const avatar = per
+      ? html`<div class="avatar enc-av-det enc-av-perfil" title="Ver perfil" ${raw(Events.attr('personas:abrirPerfil', per.id))} style="color:${colorPer};background:${colorPer}1a;border-color:${colorPer}33;">${ini}</div>`
+      : html`<div class="avatar enc-av-det">${ini}</div>`;
     return html`<div class="card card-sm enc-card-click" data-encargo-id="${enc.id}" ${raw(Events.attr('encargos:abrirDetalle', enc.id))}>
       <div class="row">
         <div class="enc-pers-cab">
-          <div class="avatar enc-av-det">${ini}</div>
+          ${avatar}
           <div>
             <div class="row-name">${enc.nombre}</div>
             <div class="row-sub">${(enc.movimientos||[]).length} movimiento${(enc.movimientos||[]).length!==1?'s':''} · ${enc.nota||'Encargo'}</div>
@@ -1367,7 +1372,7 @@ function abrirMovEncargo(tipo) {
     // Entrada: mostrar fuentes reales (sin TC — no se puede guardar plata ajena en una TC)
     const fuentes = getFuentesSinTC();
     // FIX (2026-08-15): f.val/f.label sin escapar — mismo patrón que ya se
-    // corrigió en opcionesCuenta() (el núcleo (js/core/estado.js y hermanos)), pero esta es una
+    // corrigió en opcionesCuenta() (js/core/cuentas-fuentes.js), pero esta es una
     // segunda implementación separada que nunca pasaba por escHtml(). Nombres
     // de cuenta personalizada son texto libre del usuario. Ver CHANGELOG.md.
     sel.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
@@ -2816,7 +2821,7 @@ function abrirNuevoEncargo() {
     // "select tag was parsed within another select tag"): f.val/f.label sin
     // escapar acá — mismo patrón que las otras 3 ocurrencias de este bug en
     // este archivo (líneas ~1175/1184/1186) y que opcionesCuenta() en
-    // el núcleo (js/core/estado.js y hermanos). Nombres de cuenta personalizada son texto libre del
+    // el núcleo. Nombres de cuenta personalizada son texto libre del
     // usuario — con caracteres como <, >, & sin escapar dentro del
     // innerHTML de un <select>, el parser del navegador puede comportarse
     // de forma impredecible. Ver CHANGELOG.md.
@@ -3329,31 +3334,6 @@ Ui.hoja('nuevo-encargo', function() { _encPicker().limpiar(); }, { key: 'encargo
 /* ═══════════════════════════════════════════════════════════════
    BOTÓN DE PERFIL EN LISTA DE ENCARGOS Y DEUDORES
    ═══════════════════════════════════════════════════════════════ */
-
-// Agregar botón "perfil" al avatar del encargo en la lista (lo llama renderEncargosList() tras pintar)
-function _encListaPerfiles() {
-  // Agregar mini botón perfil en cada card de encargo
-  const lista = document.getElementById('encargosList');
-  if (!lista) return;
-  (S.encargos || []).forEach(enc => {
-    if (!enc.personaId) return;
-    const card = lista.querySelector(`[data-encargo-id="${enc.id}"]`);
-    if (!card) return;
-    const av = card.querySelector('.avatar');
-    if (av && !av._perfilHook) {
-      av._perfilHook = true;
-      av.title = 'Ver perfil';
-      av.style.cursor = 'pointer';
-      av.addEventListener('click', e => {
-        e.stopPropagation();
-        abrirPerfilPersona(enc.personaId);
-      });
-      // Aplicar color de persona
-      const p = getPersona(enc.personaId);
-      if (p) pintarAvatarPersona(av, p, { alphaFondo: '1a', alphaBorde: '33', conIniciales: false });
-    }
-  });
-}
 
 // Agregar botón de perfil al header del detalle de encargo (lo llama abrirEncargoDetalle() tras pintar)
 function _encDetallePersona(enc) {

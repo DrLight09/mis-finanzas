@@ -14,7 +14,7 @@
    Comprometida, Alcancía y Configuración.
 
    Lo que NO vive acá a propósito (núcleo compartido):
-     - calcPatrimonioTotal() / snapshotPatrimonio() están en js/core/ (estado.js, cuentas-fuentes.js…):
+     - calcPatrimonioTotal() / snapshotPatrimonio() están en js/core/patrimonio.js:
        las llama save() en CADA guardado, no solo al entrar a Análisis, para
        alimentar el historial que después se grafica acá.
      - renderHealthScore()/renderProyeccion() están en js/modules/inicio.js.

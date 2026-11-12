@@ -27,7 +27,7 @@
    selector y otra vez al confirmar.
 
    Núcleo, carga de entrada (<script defer>) justo después de
-   calc-helpers.js — usa getSaldoFuente/getFuentesSinTC (el núcleo (js/core/estado.js y hermanos))
+   calc-helpers.js — usa getSaldoFuente/getFuentesSinTC (js/core/cuentas-fuentes.js)
    y tcCupoDisponible/getTCById (calc-helpers.js) SOLO al ser llamado,
    nunca al cargar. No modifica opcionesCuenta/poblarFuente: los
    consume (vía fuentesCustom) o poda el <select> ya poblado (patrón:

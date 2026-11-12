@@ -62,7 +62,7 @@ let sppSplitMode=false;
 // (parte cierra deuda de un ciclo viejo, el resto es del ciclo nuevo — ver
 // confirmarSpDestino), cada registro necesita su propia porción del split para
 // que borrar uno solo revierta solo esa porción de cada cuenta, no el total.
-// ── Libro (el núcleo (js/core/estado.js y hermanos)): origen de cada cambio de saldo ────────────────────────────────────────────────
+// ── Libro (js/core/cuentas-fuentes.js): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _ogSp(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'spotify', ref:<id del registro de spotifyHistorial,
 // o del pago> }. Con rev=true es una reversión (tipo 'reversion'). `opts.exacto` ya no existe: el saldo no se recorta en 0.
 const _ogSp = Libro.origen('spotify');
@@ -648,7 +648,7 @@ function renderSpStats(){
   } else {
     html+=`<div class="stat">
       <div class="stat-label">Ganancia acumulada</div>
-      <div class="stat-value sp-t-muted">\u2014</div>
+      <div class="stat-value sp-t-muted">${SIN_DATO}</div>
       <div class="sp-stat-hint">sin cobros aún</div>
     </div>`;
   }

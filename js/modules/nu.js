@@ -23,7 +23,7 @@
    _setBtnTransferir, _MIN_RETIRO, getMovimientosCuenta, renderMovsCuenta, abrirAgregarDinero, abrirRestarDinero,
    abrirTransferir, actualizarBotonRetirar, actualizarBotonesTransferir, registrarEntradaConApertura, registrarSalida,
    _aperturaToggleUI — únicamente cuando una función corre. cuentas.js no nombra nada de este archivo: la clase 'ahorro' se le
-   presenta registrándose en CuentaPantallas (el núcleo (js/core/estado.js y hermanos)) al cargar. La prueba 'cuentas-nu-archivos' (tests/cuentas.test.js)
+   presenta registrándose en CuentaPantallas (js/core/cuentas-fuentes.js) al cargar. La prueba 'cuentas-nu-archivos' (tests/cuentas.test.js)
    vigila las dos cosas.
 
    Ver docs/nu.md (objetivo, reglas y modelo de datos) y docs/cuentas.md.
@@ -979,7 +979,7 @@ function renderCajitas(){
 }
 
 /* ══ PANTALLA DE LA CUENTA DE AHORRO (detalle de la cuenta) ══
-   Lo que cuentas.js le pide a una cuenta con pantalla propia (ver CuentaPantallas en el núcleo (js/core/estado.js y hermanos)). */
+   Lo que cuentas.js le pide a una cuenta con pantalla propia (ver CuentaPantallas en js/core/cuentas-fuentes.js). */
 function renderDetalleAhorro(){
   // Color, título y rótulo salen del descriptor de la cuenta, igual que el detalle simple: el color llega por
   // --cuenta / --cuenta-rgb sobre #cuentas-detalle-nu y los estilos .cuenta-hero / .cuenta-action-btn lo usan.

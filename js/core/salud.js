@@ -296,7 +296,7 @@ const Salud = (() => {
   // haciendo que "tieneAlgo" pase de false a true, o cambiando qué tip
   // aparece) y mantiene el mismo principio en toda la app: mientras esté
   // tapada, es como si esa plata no existiera para nada visible al usuario.
-  // Patrimonio VISIBLE (sin alcancía): una sola definición en el núcleo (js/core/estado.js y hermanos) (calcPatrimonioVisible), la misma del hero, el historial
+  // Patrimonio VISIBLE (sin alcancía): una sola definición en js/core/patrimonio.js (calcPatrimonioVisible), la misma del hero, el historial
   // y la Proyección. Resta TODAS las deudas (tarjetas, «Yo debo», plata ajena), así que ya no hay que corregirlo aquí.
 
 
@@ -308,11 +308,11 @@ const Salud = (() => {
   // (que mide flujo de caja real para los ratios de deuda/gasto).
   // Se expone aparte para que la app "sepa" que ese rendimiento existe.
 
-  // ── Liquidez real: una sola definición en el núcleo (js/core/estado.js y hermanos) (calcLiquidez) ─────
+  // ── Liquidez real: una sola definición en js/core/patrimonio.js (calcLiquidez) ─────
   // Suma lo que se puede usar ya (cajitas, Nequi, Efectivo, cuentas propias) y resta lo que no es tuyo o ya debes: la tarjeta
   // propia, lo que debes a personas (aunque no haya fecha de pago: entre amigos casi nunca la hay, y es plata que te pueden
   // pedir en cualquier momento) y la plata ajena que guardas. NO suma los CDTs (bloqueados) ni lo que te deben (sin fecha
-  // cierta no es plata disponible). Ver el bloque «PATRIMONIO Y LIQUIDEZ» de el núcleo (js/core/estado.js y hermanos).
+  // cierta no es plata disponible). Ver el bloque «PATRIMONIO Y LIQUIDEZ» del núcleo.
   const liquidoReal = liq.neta;
   const cdtVal = liq.cdts;
   // patrimonio total sí incluye CDTs para otros cálculos

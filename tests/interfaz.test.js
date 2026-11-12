@@ -54,7 +54,7 @@ const CONVERTIDOS = [
   // tarjetas: solo quedan los anchos de barra (porcentaje calculado) y el cursor del fragmento de atributos _tcAttrs (se inserta en etiquetas ajenas, no puede llevar class)
   { f: 'js/modules/tarjetas_credito.js', prefijos: ['tc-', 'badge-xs'], permitidos: [/^width:\$\{/, 'cursor:pointer;'] },
   // encargos: quedan el display:none del avatar del selector de persona (JS lo conmuta) y el cursor del fragmento de atributos _encAttrs (se inserta en etiquetas ajenas)
-  { f: 'js/modules/encargos.js', prefijos: ['enc-'], permitidos: ['display:none;', 'cursor:pointer;'] },
+  { f: 'js/modules/encargos.js', prefijos: ['enc-'], permitidos: ['display:none;', 'cursor:pointer;', /^color:\$\{/] },
   // personas: quedan solo valores calculados — el ancho de las barras de progreso, el color elegido por el usuario para cada avatar (color/fondo/borde con ${color}) y el fondo de cada muestra de la paleta
   { f: 'js/modules/personas.js', prefijos: ['pe-'], permitidos: [/^width:\$\{/, /^(color|background):\$\{/] },
   // plata comprometida: quedan 11 display:none que JS conmuta (selects ocultos, bloques de origen/destino, ingreso libre y recordatorios), el estilo inicial de #cp-balance-preview

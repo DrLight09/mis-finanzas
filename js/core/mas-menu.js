@@ -1,7 +1,7 @@
 // "MÁS MENU": abrir/cerrar el menú de más opciones, navegación desde sus
 // items, y wrap de applyModulos para mostrar/ocultar Spotify/Mesada en el
 // menú según el estado de esos módulos — extraído de index.html. Depende
-// de applyModulos (definido en el bloque sheet-stack/nav, que carga antes)
+// de applyModulos (definido en modulos-activos.js, que carga antes)
 // y de showScreen/refresh (llamados en runtime, con guard typeof donde
 // corresponde). Ver auditoria-tecnica.md #2/#4.
 

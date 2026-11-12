@@ -2226,7 +2226,7 @@ describe('dinero y fechas — una sola función para formatear pesos y otra para
     assert.equal(_fechaSafe('2099-1-5', 12).getHours(), 12);
     assert.equal(_fechaSafe('2026-11-04T09:30:00', 12).getDate(), 4, 'ignora la hora guardada');
     assert.ok(isNaN(_fechaSafe('')) && isNaN(_fechaSafe('x-y-z')) && isNaN(_fechaSafe(null, 12)));
-    assert.equal(_fechaSafe('2026-12-31', 12).toISOString().slice(0, 10), '2026-12-31', 'sin saltar de día al pasar a ISO');
+    assert.equal(app().Fecha.iso(_fechaSafe('2026-12-31', 12)), '2026-12-31', 'sin saltar de día al pasar a ISO (local, no UTC)');
   });
 
   test('guarda: ningún js/ lee una fecha con new Date(x+"T00:00:00") — se usa _fechaSafe (tolera fechas sin ceros y no depende del parser)', () => {

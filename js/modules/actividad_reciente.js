@@ -181,7 +181,7 @@
     // Excluimos movimientos internos generados automáticamente por encargos (_encMovId,
     // "Margen de encargo", "Margen encargo") para evitar duplicados con _normEncargos.
     // EXCEPCIÓN (2026-09-29): las entradas que son ingreso REAL para Análisis/Salud sí se muestran
-    // (mismo criterio que _esEntradaEspejoNoIngreso en el núcleo (js/core/estado.js y hermanos)): margen/regalo de un encargo
+    // (mismo criterio que _esEntradaEspejoNoIngreso en js/core/ingresos.js): margen/regalo de un encargo
     // (_esExtraIngreso / _esDiferencialEncargo) y el "Dinero extra encontrado en alcancía" del
     // destape. Antes el saldo subía sin ninguna fila en Actividad reciente. Ojo: _normEncargos
     // solo lee enc.movimientos, y estas filas viven en S.movimientos, así que no hay duplicado.

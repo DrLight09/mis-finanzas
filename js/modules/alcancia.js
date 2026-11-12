@@ -24,7 +24,7 @@
 const _ALC_KEY = 0x4D;
 // Ícono (SVG inline) que reemplaza al texto "••••" cuando el monto de un depósito está oculto.
 const _ALC_ICONO_OCULTO = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="alc-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg>';
-// ── Libro (el núcleo (js/core/estado.js y hermanos)) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogAlc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'alcancia', ref:<id del depósito> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogAlc = Libro.origen('alcancia');
 
@@ -1061,7 +1061,7 @@ window.alcanciaConfirmarDestapar = function(){
 
   // ── Resetear saldoRegistrado: ya se transfirió arriba a la cuenta destino
   // vía _sumarASaldo(). Si se deja el valor viejo, calcPatrimonioTotal()
-  // (el núcleo (js/core/estado.js y hermanos)) lo sigue sumando SIEMPRE (tapada o destapada, por
+  // (el núcleo) lo sigue sumando SIEMPRE (tapada o destapada, por
   // diseño — es plata real), y como la alcancía queda en estado
   // `_destapada` sin reiniciar hasta que el usuario elija "Iniciar nueva
   // alcancía", ese monto queda contado DOS veces (una en la cuenta destino,

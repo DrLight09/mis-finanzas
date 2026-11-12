@@ -335,7 +335,7 @@ function _injectSheet(){
 
       <div id="cp-recibir-desc-card" class="cp-rev-ing">
         <div class="cp-rev-cap">Ingreso</div>
-        <div class="cp-rev-nom" id="cp-recibir-desc">—</div>
+        <div class="cp-rev-nom" id="cp-recibir-desc"></div>
         <div class="cp-rev-monto" id="cp-recibir-monto">$0</div>
       </div>
 
@@ -831,7 +831,7 @@ function _cpdTipoChange(){
   }
 };
 
-// Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde opcionesCuenta() (el núcleo (js/core/estado.js y hermanos): cajitas de cuentas de ahorro activas +
+// Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde opcionesCuenta() (js/core/cuentas-fuentes.js: cajitas de cuentas de ahorro activas +
 // cuentas activas con saldo), así no aparecen cuentas archivadas ni la cuenta de ahorro en sí (no tiene saldo propio) y la lista se
 // refresca si cambian las cuentas. Conserva la opción elegida si sigue existiendo.
 function _cpdRepoblarFuentes(sel){
@@ -1986,7 +1986,7 @@ function _cpInit(){
     if(target) setTimeout(_cpRenderLista, 100);
   });
 
-  // Integrar con refresh global para mantener stats actualizados (Refresh.registrar, el núcleo (js/core/estado.js y hermanos)).
+  // Integrar con refresh global para mantener stats actualizados (Refresh.registrar, js/core/refresh.js).
   //
   Refresh.registrar('comprometida-lista', function(){ _cpRenderLista(); }, { pantalla: 'comprometida' }); // solo con la pantalla activa
 

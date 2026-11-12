@@ -50,7 +50,7 @@
       solos sin re-escapar, sin necesitar `.join('')` ni `raw()`).
    2. `f.val` (value del <option> de cuentas) NO se envolvió en
       raw() pese a parecerse al caso de `ing.id` en analisis.js:
-      sin `el núcleo (js/core/estado.js y hermanos)`/`getFuentes()` a la vista no hay forma de
+      sin `js/core/cuentas-fuentes.js`/`getFuentes()` a la vista no hay forma de
       confirmar que `val` sea siempre un id fijo y no texto de una
       cuenta personalizada — se escapa por defecto hasta confirmar
       lo contrario. Una simulación jsdom con un `val` malicioso
@@ -92,7 +92,7 @@ let gvSplitMode = false;
 
 // Solo cuentas con saldo >= $1,00 (FuentesFiltro, js/core/fuentes-filtro.js): de una cuenta
 // vacía no puede salir plata. Sin TC en modo dividido (ver comentario de arriba).
-// ── Libro (el núcleo (js/core/estado.js y hermanos)) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogGv(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'gastos', ref:<id del gasto> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogGv = Libro.origen('gastos');
 
@@ -205,7 +205,7 @@ function _gfPoblar(g) {
   if (g && g.cat) document.getElementById('gf_c').value = g.cat;
 }
 
-/* ---- BIENES (una moto, un computador): activos no líquidos, aparte del patrimonio financiero (ver calcBienes en el núcleo (js/core/estado.js y hermanos)) ---- */
+/* ---- BIENES (una moto, un computador): activos no líquidos, aparte del patrimonio financiero (ver calcBienes en js/core/patrimonio.js) ---- */
 let _bienEditId = null;     // id del bien que se edita (null = uno nuevo)
 let _bienOrigenId = null;   // id del gasto del que nace («Registrar como bien»)
 
@@ -708,7 +708,7 @@ function abrirPagarGastoFijo(id) {
   // Poblar fuentes
   const sel = document.getElementById('pgf-fuente');
   // Solo cuentas con saldo >= $1,00 y TC con cupo (FuentesFiltro, js/core/fuentes-filtro.js).
-  // FuentesFiltro.optsHtml filtra por saldo/cupo y arma las <option> con opcionesCuenta (el núcleo (js/core/estado.js y hermanos)),
+  // FuentesFiltro.optsHtml filtra por saldo/cupo y arma las <option> con opcionesCuenta (js/core/cuentas-fuentes.js),
   // que escapa label y val: este sheet ya no reimplementa el selector a mano.
   sel.innerHTML = FuentesFiltro.optsHtml(getFuentes(), { ...FuentesFiltro.PRESET.SALIDA, placeholder: 'Seleccionar cuenta', sinOpcionesTexto: FuentesFiltro.MSG_SIN_SALDO });
   document.getElementById('pgf-saldo-info').textContent = '';

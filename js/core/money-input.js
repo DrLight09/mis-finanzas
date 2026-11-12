@@ -5,7 +5,7 @@
 // Los dos comparten el mismo motor (_montoFormatear): el texto del campo ES el valor (sin buffer
 // oculto), así que el cursor se puede mover y se puede escribir, borrar o pegar en medio del número
 // sin que salte al final. El punto es solo visual: al leer, parseMoney()/parseMiles() lo quitan.
-// Depende de parseMoney() (el núcleo (js/core/estado.js y hermanos)) — variables globales compartidas entre scripts clásicos,
+// Depende de parseMoney() (js/core/persistencia.js) — variables globales compartidas entre scripts clásicos,
 // no imports; por eso este archivo debe seguir cargando como <script> normal (sin type="module").
 // Ver auditoria-tecnica.md #2/#4 y CHANGELOG.md#infraestructura--seguridad.
 

@@ -20,7 +20,7 @@
      nunca un "no hubo diferencias" (un módulo sin cargar no puede hacer pasar la verificación en silencio).
    · Una sonda que lanza excepción queda en `errores` y la comparación NO es ok.
    · Las sondas usan las funciones reales de la app, que leen el S global. Por eso `calcular(estado)` las corre dentro de
-     conEstadoAislado (el núcleo (js/core/estado.js y hermanos)): la copia hace de S, nada se guarda y no existe una segunda versión de ninguna regla.
+     conEstadoAislado (js/core/persistencia.js): la copia hace de S, nada se guarda y no existe una segunda versión de ninguna regla.
 
    API (todo síncrono salvo completa):
      Huella.registrar(nombre, fn)                    — fn(estado) → objeto plano; vuelve a registrar = reemplaza
@@ -30,7 +30,7 @@
      Huella.completa(estado?)                        — async: carga módulos diferidos y calcula con SONDAS_BASE requeridas
      Huella.digest(huella)                           — resumen corto estable (para registros y mensajes)
    Sin DOM. Se carga BAJO DEMANDA (Loader, grupo 'cierre', junto con cierre.js): solo al abrir Configuración o al usarla. Los módulos registran
-   sus sondas con registrarSonda (el núcleo (js/core/estado.js y hermanos)), que las deja en cola si este archivo aún no existe; al cargarse, aquí se vacía la cola.
+   sus sondas con registrarSonda (js/core/persistencia.js), que las deja en cola si este archivo aún no existe; al cargarse, aquí se vacía la cola.
    ═══════════════════════════════════════════════════════════════ */
 const Huella = (() => {
   const VERSION = 1;
@@ -163,7 +163,7 @@ const Huella = (() => {
   // El patrimonio con su desglose (una sola definición: calcPatrimonioDesglose).
   registrar('patrimonio', () => calcPatrimonioDesglose());
 
-  // Sondas que los módulos dejaron en cola (registrarSonda, el núcleo (js/core/estado.js y hermanos)) antes de que este archivo existiera.
+  // Sondas que los módulos dejaron en cola (registrarSonda, js/core/persistencia.js) antes de que este archivo existiera.
   if (typeof window !== 'undefined') {
     (window._sondasPendientes || []).forEach(([nombre, fn]) => registrar(nombre, fn));
     window._sondasPendientes = [];

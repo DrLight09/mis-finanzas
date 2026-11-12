@@ -399,7 +399,7 @@ async function restaurarRespaldo(id){
 /* ---- EXPORTAR CSV (gastos) ---- */
 function exportarCSV(){
   const rows = [['Fecha','Descripción','Categoría','Monto','Tipo','Cuenta']];
-  // Mismo criterio de "gasto real" que el resto de la app (el núcleo (js/core/estado.js y hermanos) + periodo.js): los pagos
+  // Mismo criterio de "gasto real" que el resto de la app (el núcleo + periodo.js): los pagos
   // de gasto fijo salen como filas "Fijo" (con el monto realmente pagado), no también como variables.
   (S.gastosVar||[]).filter(g=>!_esGastoVarNoReal(g)).sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')).forEach(g=>{
     rows.push([g.fecha||'',g.desc||'',g.cat||'',-(g.monto||0),'Variable',fuenteLabel?fuenteLabel(g.fuente):(g.fuente||'')]);

@@ -1,7 +1,7 @@
 // js/core/persistencia.js
 //
 // Carga, guardado y formatos de entrada: fmtInput/setMoneyInput/parseMoney/parsePct, clase efectiva de movimientos, migraciones de esquema, load() y save().
-// Parte del antiguo el núcleo (js/core/estado.js y hermanos) (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
+// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 

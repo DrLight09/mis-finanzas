@@ -3,7 +3,7 @@
 // Ciclo de vida de la interfaz: UN registro para enterarse de «se abrió la hoja X», «se mostró la pantalla Y» o «cambiaron los
 // módulos», en vez de que cada módulo reasigne `openSheet = function(){…}` o envuelva la global con hookGlobal() (eliminado).
 //
-// Mismo modelo que Refresh (el núcleo (js/core/estado.js y hermanos)):
+// Mismo modelo que Refresh (js/core/refresh.js):
 //   · cada gancho se registra con una `key` única; registrar otra vez la misma key REEMPLAZA el gancho anterior (un módulo lazy que
 //     se carga dos veces, o un test que recarga el archivo, no duplica nada);
 //   · cada gancho corre en su propio try/catch con log: uno que falle no silencia a los demás ni rompe la navegación;

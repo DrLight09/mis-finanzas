@@ -299,7 +299,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
 
   window._fbSaveToCloud = function(opts) {
     if(opts && opts.forzar) _forzarProximo = true;
-    // Estado aislado (conEstadoAislado, el núcleo (js/core/estado.js y hermanos)): un estado de prueba jamás se escribe en la nube.
+    // Estado aislado (conEstadoAislado, js/core/persistencia.js): un estado de prueba jamás se escribe en la nube.
     if(window._estadoAislado) return Promise.resolve({ok:false, reason:'isolated'});
     // PROTECCIÓN CRÍTICA: nunca guardar si los datos no se han cargado
     // desde Firestore. Evita sobreescribir la nube con datos vacíos
@@ -315,9 +315,9 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   };
 
   // FIX (2026-09-19): guardado inmediato al salir de la app. Un cambio esperaba
-  // hasta ~0,8 s (debounceSave, el núcleo (js/core/estado.js y hermanos)) + 1,5 s (el debounce de acá)
+  // hasta ~0,8 s (debounceSave, js/core/utilidades-ui.js) + 1,5 s (el debounce de acá)
   // antes de empezar a escribir; el único guardado de emergencia era
-  // `beforeunload` (el núcleo (js/core/estado.js y hermanos)), que en celulares casi nunca se dispara al
+  // `beforeunload` (el núcleo), que en celulares casi nunca se dispara al
   // cambiar de app o cerrarla. `visibilitychange` (pasa a 'hidden') y
   // `pagehide` sí son confiables. Solo acelera un guardado que YA iba a
   // ocurrir: no escribe nada si este dispositivo no modificó nada, y respeta
@@ -763,7 +763,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     // Solo mostrar resumen si había un mes anterior registrado y es diferente al actual
     if(!ultimoMesVisto || ultimoMesVisto === mesHoy) return;
     // Calcular datos del mes que acaba de cerrar
-    const fmt = window.fmt; // núcleo (el núcleo (js/core/estado.js y hermanos)): si hay window.S, fmt ya existe
+    const fmt = window.fmt; // núcleo (el núcleo): si hay window.S, fmt ya existe
     const S = window.S;
     const mesK = ultimoMesVisto;
     const totalGastos = Periodo.gastosDelMes(mesK).total;

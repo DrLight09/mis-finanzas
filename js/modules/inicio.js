@@ -587,7 +587,7 @@ function renderProyeccion(){
   // formateador global decide mostrar decimales.
   const fmt = x=>Dinero.fmt(x,{decimales:0});
   // ── Patrimonio VISIBLE (sin alcancía) ─────────────────────────────────
-  // Una sola definición en el núcleo (js/core/estado.js y hermanos) (calcPatrimonioVisible): la misma del hero y de `valorVisible` en el historial, que es
+  // Una sola definición en js/core/patrimonio.js (calcPatrimonioVisible): la misma del hero y de `valorVisible` en el historial, que es
   // de donde sale la tendencia. Esta card muestra un número puntual en cada render; con el total crudo, depositar en la alcancía
   // haría saltar 3m/6m/12m por el monto exacto del depósito y delataría la sorpresa. Cuando se destape, esa plata entra a una
   // cuenta real y el patrimonio visible sube solo.
@@ -898,7 +898,7 @@ function _renderDispNetoTC() {
   // separado) — eso ya causó dos veces que Neto quedara desalineado de
   // Disponible por pequeñas diferencias entre este cálculo y el real. Se
   // usa directamente window._dispActualHoy, el MISMO número que refresh()
-  // (el núcleo (js/core/estado.js y hermanos)) acaba de usar para pintar #s-disp — por definición no
+  // (el núcleo) acaba de usar para pintar #s-disp — por definición no
   // se pueden desalinear. refresh() corre _refreshNucleo() (que
   // setea window._dispActualHoy) ANTES de llamar a esta función, así que
   // siempre llega actualizado.
@@ -908,10 +908,10 @@ function _renderDispNetoTC() {
   el.style.color = neto < 0 ? 'var(--red)' : 'var(--text3)';
 }
 
-// Hook _checkGastoAlto/_renderDispNetoTC en refresh. refresh() se define en el núcleo (js/core/estado.js y hermanos), que
+// Hook _checkGastoAlto/_renderDispNetoTC en refresh. refresh() se define en js/core/refresh.js, que
 // carga antes que este módulo; calcC/ahorroTotal (nu-calc.js) también son núcleo de entrada, así que
 // no hace falta ningún reintento ni guard por carga lazy.
-// Se registran con Refresh (el núcleo (js/core/estado.js y hermanos)) y corren después de _refreshNucleo(), que es quien deja listo window._dispActualHoy.
+// Se registran con Refresh (js/core/refresh.js) y corren después de _refreshNucleo(), que es quien deja listo window._dispActualHoy.
 Refresh.registrar('inicio-gasto-alto', _checkGastoAlto);
 Refresh.registrar('inicio-neto-tc', _renderDispNetoTC);
 

@@ -1,7 +1,7 @@
 // js/core/estado.js
 //
 // Estado global y utilidades base: S (el estado), categorías por defecto, Dinero/fmt, uid, hoy, escHtml, mesKey, avatares. Carga PRIMERO entre las partes del núcleo: todo lo demás asume que S/fmt/uid existen.
-// Parte del antiguo el núcleo (js/core/estado.js y hermanos) (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
+// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 

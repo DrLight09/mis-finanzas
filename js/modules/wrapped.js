@@ -437,11 +437,11 @@ function _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK){
   };
 }
 
-// Entradas que cuentan como ingreso real: la definición única de el núcleo (js/core/estado.js y hermanos)
+// Entradas que cuentan como ingreso real: la definición única del núcleo
 // (entradasIngresoReal — la misma de Inicio y Análisis). Recibe el estado porque Wrapped
 // trabaja sobre el `S` que le pasan, no necesariamente el global.
 function _wrappedEntradasIngreso(S){
-  // Sin el núcleo (js/core/estado.js y hermanos) cargado (tests/demos aisladas) se mantiene el comportamiento anterior sin filtro.
+  // Sin el núcleo cargado (tests/demos aisladas) se mantiene el comportamiento anterior sin filtro.
   return typeof entradasIngresoReal === 'function'
     ? entradasIngresoReal(S)
     : ((S && S.movimientos) || []).filter(m => m && m.tipo==='entrada');
@@ -554,7 +554,7 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
 
    La app no tiene ningún campo de "cuándo empezaste a usarme de verdad"
    (a diferencia de, por ejemplo, `creadoEn` por persona en
-   el núcleo (js/core/estado.js y hermanos)) — no hay forma de preguntarle directamente. Lo que sí
+   el núcleo) — no hay forma de preguntarle directamente. Lo que sí
    se puede inferir de los propios datos: el principio real del historial
    es la RACHA de meses activos que termina en `mesMax` (el mes más
    reciente). Se camina hacia atrás desde ahí y se corta apenas aparecen

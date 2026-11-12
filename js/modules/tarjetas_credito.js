@@ -60,7 +60,7 @@
    'DOMContentLoaded' se corrigió a top-level (mismo bug/mismo fix que
    ya se aplicó en actividad_reciente.js) — ver más abajo.
 
-   RESUELTO (2026-08-02, ronda posterior): con el núcleo (js/core/estado.js y hermanos) real en
+   RESUELTO (2026-08-02, ronda posterior): con el núcleo real en
    mano se confirmó que tcNormalizarTarjetas() SÍ tiene guard typeof en
    refresh() (aunque tcNormalizarTarjetas no es una de las 12 render*
    originalmente mapeadas) y que renderTCDashboard() — que no lo tenía —
@@ -118,10 +118,10 @@ const TC_MOTIVOS_CARGO = {
 
 // Cantidad de compras/pagos posteriores (no eliminados) de la misma tarjeta
 // — criterio de "operaciones posteriores" de la protección por antigüedad
-// (ver el núcleo (js/core/estado.js y hermanos)#nivelAntiguedadMovimiento y
+// (ver js/core/dialogos.js#nivelAntiguedadMovimiento y
 // docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
 // Spotify, se cuenta contra la cuenta/tarjeta afectada en su lugar).
-// ── Libro (el núcleo (js/core/estado.js y hermanos)) ─────────────────────────────────────────────────────────────────────────────────
+// ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
 // _ogTc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'tarjetas', ref:<id del pago de la tarjeta> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
 const _ogTc = Libro.origen('tarjetas');
 

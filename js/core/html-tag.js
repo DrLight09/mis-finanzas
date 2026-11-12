@@ -9,7 +9,7 @@
 // texto libre nuevo o se lo envuelva en una función auxiliar nueva
 // (spNombreDe, fuenteLabel... ya pasó con las dos; por eso hoy hay fuenteTexto/fuenteHtml explícitas).
 //
-// Este archivo no reemplaza escHtml() (sigue existiendo en el núcleo (js/core/estado.js y hermanos),
+// Este archivo no reemplaza escHtml() (sigue existiendo en js/core/estado.js,
 // se sigue usando igual en sitios que arman un string suelto, no un
 // template completo). Agrega un segundo primitivo, html``, para construir
 // markup: escapa automáticamente TODO valor interpolado, salvo que se pida
@@ -37,9 +37,9 @@
 // ya por otro motivo.
 //
 // Carga como <script> clásico (no type="module"), mismo criterio que
-// el núcleo (js/core/estado.js y hermanos)/navegacion.js: sus globales (html, raw) deben quedar
+// el núcleo/navegacion.js: sus globales (html, raw) deben quedar
 // disponibles como variables léxicas para el resto de los <script>
-// clásicos del documento. Depende de escHtml(), definida en el núcleo (js/core/estado.js y hermanos)
+// clásicos del documento. Depende de escHtml(), definida en js/core/estado.js
 // — debe cargar después de ese archivo.
 
 function raw(value) {

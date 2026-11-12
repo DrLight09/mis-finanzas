@@ -52,7 +52,7 @@
    en wrapped.js, pero una decisión aparte: acá se decide si el módulo
    EXISTE; allá, qué tan detallado se ve.
 
-   Depende solo de `hoy()` (el núcleo (js/core/estado.js y hermanos), con guard typeof + fallback a
+   Depende solo de `hoy()` (el núcleo, con guard typeof + fallback a
    `new Date()`, mismo patrón que `_wrappedHoy` en wrapped.js) y de
    `showScreen`/`toast` (núcleo eager) para el botón del banner. No toca
    `S` ni Firestore en ningún punto — lo único que persiste es un par de

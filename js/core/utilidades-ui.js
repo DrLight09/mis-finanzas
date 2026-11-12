@@ -1,7 +1,7 @@
 // js/core/utilidades-ui.js
 //
 // Utilidades de interfaz compartidas: Reversibles, debounceSave, estados vacíos, filaMovimiento, pedirPinAntesDe, mostrarSi y los guards de carga lazy de cuentas.js.
-// Parte del antiguo el núcleo (js/core/estado.js y hermanos) (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
+// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
@@ -117,7 +117,7 @@ function emptyInline(texto, opts){
    que pasa el módulo en `clase` (tc-item-b-*, enc-item-b-*): nunca estilos en línea.
    Opciones: clase, attrs (atributos ya escapados, p. ej. data-mov-*), nombre, nombreClase, nombreExtra (html),
    sub, subClase, monto + montoClase (o montoHtml para un monto propio), acciones (html), antesMeta (html),
-   meta (contenido de .gasto-item-meta; sin él no se dibuja), metaClase, despues (html). Va en el núcleo (js/core/estado.js y hermanos),
+   meta (contenido de .gasto-item-meta; sin él no se dibuja), metaClase, despues (html). Va en el núcleo,
    igual que emptyState(): html/raw se resuelven al llamar. */
 function botonEliminarFila(accion, args, titulo) {
   return html`<button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr(accion, ...(args || [])))} title="${titulo || 'Eliminar'}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`;

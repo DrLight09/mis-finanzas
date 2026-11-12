@@ -5,7 +5,7 @@
 // distinta a la de Colombia) el día se corre ±1 sin error ni aviso. Las fechas de calendario se construyen con componentes locales
 // (año, mes, día) y se restan contando días de calendario, no milisegundos (por eso un cambio de hora de verano no mueve el resultado).
 //
-// Puro y sin DOM: depende solo de `Date`. Carga como <script> clásico ANTES de el núcleo (js/core/estado.js y hermanos) (que delega aquí hoy(), mesActual(),
+// Puro y sin DOM: depende solo de `Date`. Carga como <script> clásico ANTES de js/core/ingresos.js (que delega aquí hoy(), mesActual(),
 // mesKey() y _fechaSafe()). Se expone también en `window.Fecha` para los módulos ES (firebase-sync.js, pin-bio.js).
 //
 //   Fecha.hoy()                  → '2026-11-10'

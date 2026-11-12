@@ -214,7 +214,7 @@ Las dos listas se dibujan con un solo render, `_renderListaDeudas(dir)`; lo que 
 
 ## 5b. Tolerancias
 
-Dos constantes únicas, `Deudas.TOL` ($1: suma de partes contra total, saldo "≈ 0", guardia de integridad) y `Deudas.TOL_FINO` ($0,50: comparar un monto contra un saldo o tope, auto-detección de pago completo). No usar números sueltos. Por eso los avisos de saldo de un pago de "Yo debo" (`_planMovMiDeuda`: "En X solo hay $N" / "Cupo insuficiente en X") siguen siendo propios y no usan `validarSalidaFuente()` de `el núcleo (js/core/estado.js y hermanos)` (que compara estricto y redacta distinto, para Gastos y Spotify): aquí la tolerancia es `Deudas.TOL_FINO` a propósito.
+Dos constantes únicas, `Deudas.TOL` ($1: suma de partes contra total, saldo "≈ 0", guardia de integridad) y `Deudas.TOL_FINO` ($0,50: comparar un monto contra un saldo o tope, auto-detección de pago completo). No usar números sueltos. Por eso los avisos de saldo de un pago de "Yo debo" (`_planMovMiDeuda`: "En X solo hay $N" / "Cupo insuficiente en X") siguen siendo propios y no usan `validarSalidaFuente()` de `el núcleo` (que compara estricto y redacta distinto, para Gastos y Spotify): aquí la tolerancia es `Deudas.TOL_FINO` a propósito.
 
 ---
 

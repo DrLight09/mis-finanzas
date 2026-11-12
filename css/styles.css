@@ -637,7 +637,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 [style*="min-height"]:empty{min-height:0 !important;}
 
 /* gv_fuente_hint / gv_fuente_saldo (sheet "Registrar gasto"): a diferencia del
-   resto de hints, mostrarAlertaFuente() (js/core/sheet-stack.js) alterna
+   resto de hints, mostrarAlertaFuente() (js/core/formularios-ui.js) alterna
    visibility en vez de vaciar el textContent, así que la regla :empty de arriba
    no aplica — el div queda con su texto siempre presente, solo invisible, y
    ocupa su alto de línea + margin-top igual. Se colapsa a 0 explícitamente
@@ -2403,3 +2403,6 @@ button.inicio-pilar-accion{cursor:pointer;}
 
 /* «Sin dato»: ícono en lugar del guion largo; no seleccionable, color atenuado. */
 .sin-dato{display:inline-block;vertical-align:middle;opacity:.55;user-select:none;-webkit-user-select:none;pointer-events:none;}
+
+/* Avatar del encargo en la lista: clic al perfil de la persona. */
+.enc-av-perfil{cursor:pointer;}

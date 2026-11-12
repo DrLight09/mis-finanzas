@@ -867,9 +867,9 @@
         </div>
 
         <!-- PLATA COMPROMETIDA (docs/auditoria-tecnica.md #4 — estaticada para
-             poder cargar js/modules/plata_comprometida.js de forma lazy, mismo
+             poder cargar js/modules/plata-comprometida.js de forma lazy, mismo
              patrón que Alcancía. El HTML de acá es una copia exacta del
-             template que _injectScreen() en plata_comprometida.js generaba en
+             template que _injectScreen() en plata-comprometida.js generaba en
              tiempo de ejecución — su propio guard (`document.getElementById
              ('screen-comprometida')`) ahora hace que esa función sea un no-op,
              igual que ya pasa con Alcancía. Ver CHANGELOG.md#arranque. ) -->
@@ -4835,22 +4835,22 @@
 <!-- encargos.js: ver js/core/lazy-loader.js (Loader.GROUPS.encargos) -->
 <!--
 
-// Módulo Tarjetas de Crédito migrado a js/modules/tarjetas_credito.js —
-// ver docs/tarjetas_credito.md. Cuando se migró (antes de que
+// Módulo Tarjetas de Crédito migrado a js/modules/tarjetas-credito.js —
+// ver docs/tarjetas-credito.md. Cuando se migró (antes de que
 // abrirDetalleMov()/eliminarMovimiento() se extrajeran a
 // js/core/movimientos.js el 2026-07-26) no tenía dependencia real de
-// orden de carga. ESO YA NO ES CIERTO: tarjetas_credito.js referencia
+// orden de carga. ESO YA NO ES CIERTO: tarjetas-credito.js referencia
 // abrirDetalleMov directo en su Events.registerAll('tarjetas', {...}),
 // y ya no importa que cargue antes o después de js/core/movimientos.js
 // (línea de abajo) — el wrapper agregado el 2026-08-03 en
-// tarjetas_credito.js resuelve el nombre recién al hacer click, no al
+// tarjetas-credito.js resuelve el nombre recién al hacer click, no al
 // cargar (mismo tipo de wrapper que tuvo leerArchivoImport en
 // configuracion.js hasta 2026-08-30, cuando se sacó al fusionar
 // import-validado.js — ver CHANGELOG.md#configuración; ya no sirve como
 // ejemplo vigente de ese patrón, solo como precedente histórico).
 
 // (2026-08-02, ronda de resolver de raíz el acoplamiento spotify↔
-// tarjetas_credito) Sexto grupo lazy: ver js/core/lazy-loader.js
+// tarjetas-credito) Sexto grupo lazy: ver js/core/lazy-loader.js
 // (Loader.GROUPS.tarjetas). #screen-tarjetas y #mas-tarjetas ya eran
 // HTML estático, así que no hubo que copiar/inyectar nada. spotify.js
 // (_spEnsureTC) y js/core/movimientos.js ya esperan Loader.ensure(
@@ -4860,7 +4860,7 @@
 // js/core/lazy-loader.js la primera vez que alguien entra a Tarjetas
 // de Crédito.
 -->
-<!-- tarjetas_credito.js: ver js/core/lazy-loader.js (Loader.GROUPS.tarjetas) -->
+<!-- tarjetas-credito.js: ver js/core/lazy-loader.js (Loader.GROUPS.tarjetas) -->
 <script src="js/core/movimientos.js" defer></script>
 <!--
 // abrirDetalleMov()/eliminarMovimiento() y su registro Events.on('core:...')
@@ -5140,7 +5140,7 @@
     </div>
 
 <!-- js/core/nav.js retirado (2026-09-10): su única función, navTo(),
-     tenía un solo caller real (tarjetas_credito.js, botón "Ver todo"),
+     tenía un solo caller real (tarjetas-credito.js, botón "Ver todo"),
      que además duplicaba a mano parte de la lógica de showScreen()
      (navegacion.js) sin la integración con lazy-loader.js/préstamos que
      showScreen() sí tiene. Se cambió ese caller a
@@ -5148,7 +5148,7 @@
      mas-menu.js — y con eso navTo()/nav.js quedaron sin ningún caller
      conocido. Ver CHANGELOG.md#infraestructura--seguridad. -->
 <!-- ===== FEED "ACTIVIDAD RECIENTE" =====
-     Migrado a js/modules/actividad_reciente.js. Único acceso: el botón
+     Migrado a js/modules/actividad-reciente.js. Único acceso: el botón
      dentro de Configuración (#cfg-historial-row) — no hay entrada en el
      menú "Más" ni en el nav inferior.
 
@@ -5161,10 +5161,10 @@
      este archivo llega a cargar tarde — se agregó un cuarto trigger
      sin condición de evento al final del archivo. Ver
      CHANGELOG.md#arranque. ===== -->
-<!-- actividad_reciente.js: ver js/core/lazy-loader.js (Loader.GROUPS.historial) -->
+<!-- actividad-reciente.js: ver js/core/lazy-loader.js (Loader.GROUPS.historial) -->
 
     <!-- ══════════════════════════════════════════════════════════════════
-     MÓDULO: PLATA COMPROMETIDA — migrado a js/modules/plata_comprometida.js
+     MÓDULO: PLATA COMPROMETIDA — migrado a js/modules/plata-comprometida.js
      (ver docs/plata-comprometida.md). Un solo archivo alcanzó: no depende
      de nada definido más abajo en este documento (usa S.deudores directo
      para "Me devuelven", no funciones de Personas) — mismo caso que
@@ -5173,7 +5173,7 @@
      Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4): no se
      confirmó ningún otro archivo que llame a sus funciones (nadie
      depende de que esté cargado de entrada), y sus propias dependencias
-     (prestado.js, tarjetas_credito.js, cuentas.js, inicio.js) ya están
+     (prestado.js, tarjetas-credito.js, cuentas.js, inicio.js) ya están
      forzadas a cargar de entrada de todos modos por el dashboard de
      Inicio — ver la nota grande al respecto en CHANGELOG.md#arranque.
      Se saca de acá el <script>; ahora lo descarga js/core/lazy-loader.js
@@ -5185,7 +5185,7 @@
      siguen en el archivo, sin cambios, pero ahora son no-op gracias a
      sus propios guards por id).
 ══════════════════════════════════════════════════════════════════ -->
-<!-- plata_comprometida.js: ver js/core/lazy-loader.js (Loader.GROUPS.comprometida) -->
+<!-- plata-comprometida.js: ver js/core/lazy-loader.js (Loader.GROUPS.comprometida) -->
 
     <!-- SISTEMA DE PERSONAS — libreta central vinculada: Encargos, Préstamos y Spotify comparten la
      misma identidad (js/modules/personas.js; su integración vive dentro de cada módulo). -->
@@ -5263,7 +5263,7 @@
          Migrado a js/modules/inicio.js — ver auditoria-tecnica.md, punto 3
          (arquitectura monolítica). Se carga al final, después de todos los
          demás módulos, porque renderAttencion() usa funciones definidas en
-         mesada.js, spotify.js, prestado.js y tarjetas_credito.js
+         mesada.js, spotify.js, prestado.js y tarjetas-credito.js
          (getMesadaData, spNombreDe, spPersonaPagadaVigente, tcCupoUsadoPct).
          No define ningún data-action nuevo: screen-inicio no tiene onclick
          inline propios, solo elementos de solo lectura (ver nota en el

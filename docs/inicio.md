@@ -63,4 +63,4 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 ## 6. Dependencias de carga
 
-`js/modules/inicio.js` debe cargarse **después** de: `js/core/events.js`, `mesada.js`, `spotify.js`, `prestado.js` y `tarjetas_credito.js` — `renderAttencion()` usa `getMesadaData()`, `spNombreDe()`, `spPersonaPagadaVigente()` y `tcCupoUsadoPct()`, definidas en esos módulos. Por eso su `<script src>` va al final de `index.html`, después de `alcancia.js`.
+`js/modules/inicio.js` debe cargarse **después** de: `js/core/events.js`, `mesada.js`, `spotify.js`, `prestado.js` y `tarjetas-credito.js` — `renderAttencion()` usa `getMesadaData()`, `spNombreDe()`, `spPersonaPagadaVigente()` y `tcCupoUsadoPct()`, definidas en esos módulos. Por eso su `<script src>` va al final de `index.html`, después de `alcancia.js`.

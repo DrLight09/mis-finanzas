@@ -12,7 +12,7 @@
      al confirmar.
    - Una tarjeta de crédito solo se ofrece si tiene cupo disponible
      (mínimo del flujo). El cupo es obligatorio al crear/editar una TC
-     (ver guardarTC en tarjetas_credito.js), así que una TC sin cupo
+     (ver guardarTC en tarjetas-credito.js), así que una TC sin cupo
      configurado se considera SIN cupo disponible (datos anteriores a
      esta regla).
    - Valores que no son una cuenta (''/"Sin especificar", 'ganancia',

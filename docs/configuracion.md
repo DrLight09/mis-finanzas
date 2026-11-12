@@ -204,7 +204,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`js/core/persistencia.j
 
 **Cableado directo (`addEventListener`):** `[data-modulo]` (change), `#btn-exportar-json`, `#btn-importar-json`, `#btn-exportar-csv`, `#btn-borrar-todo`, `#importFileInput` (change), y Enter en `#nueva-cat-var` / `#nueva-cat-fijo`.
 
-**Ids del HTML (`#screen-config` en `index.html`):** `cfg-mesada`, `cfg-spotify`, `cfg-corregirSaldo`, `cats-var-list`, `cats-fijo-list`, `nueva-cat-var`, `nueva-cat-fijo`, `pin-config-container`, `bio-config-container`, `fb-user-avatar` / `fb-user-name` / `fb-user-email` (los llena `firebase-init.js`), `fb-sync-dot` / `fb-sync-text` (los actualiza `firebase-sync.js`), `wrapped-promo` (lo muestra `wrapped-gate.js`), `cfg-personas-sub` (`personas.js`), `cfg-historial-sub` (`actividad_reciente.js`), `cfg-notificaciones-row` (`data-action="notificaciones:activar"`).
+**Ids del HTML (`#screen-config` en `index.html`):** `cfg-mesada`, `cfg-spotify`, `cfg-corregirSaldo`, `cats-var-list`, `cats-fijo-list`, `nueva-cat-var`, `nueva-cat-fijo`, `pin-config-container`, `bio-config-container`, `fb-user-avatar` / `fb-user-name` / `fb-user-email` (los llena `firebase-init.js`), `fb-sync-dot` / `fb-sync-text` (los actualiza `firebase-sync.js`), `wrapped-promo` (lo muestra `wrapped-gate.js`), `cfg-personas-sub` (`personas.js`), `cfg-historial-sub` (`actividad-reciente.js`), `cfg-notificaciones-row` (`data-action="notificaciones:activar"`).
 
 **Dependencias de otros archivos**
 

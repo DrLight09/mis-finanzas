@@ -309,7 +309,7 @@ describe('plata-comprometida', () => {
   // Un archivo previo reemplaza ese registro para capturar los handlers (así es como la app misma los usa).
   const CAPTURA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cp-')), 'captura.js');
   fs.writeFileSync(CAPTURA, "Events.registerAll = function(ns, mapa){ (window.__reg = window.__reg || {})[ns] = mapa; };");
-  const ARCHIVOS = [CAPTURA, core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('plata_comprometida.js')];
+  const ARCHIVOS = [CAPTURA, core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('nu.js'), modulo('cuentas.js'), modulo('plata-comprometida.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function entorno(item, { sobranteCuenta = 'cuenta:nequi', extraCuentas = [] } = {}) {

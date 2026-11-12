@@ -20,7 +20,7 @@
    - iniciales() se queda en bootstrap.js porque también la usa el sistema
      de Personas. getCajitaNombre() vive en js/core/nu-calc.js.
    - _normEncargos(S) (normalización para el feed unificado de movimientos)
-     vive en js/modules/actividad_reciente.js, junto a las de los demás módulos.
+     vive en js/modules/actividad-reciente.js, junto a las de los demás módulos.
    - La integración con el Sistema de Personas (selector en "Nuevo encargo",
      hook que exige personaId, botones de perfil en lista/detalle) vive al
      final de este mismo archivo (fusionada el 2026-08-03). Usa getPersona/

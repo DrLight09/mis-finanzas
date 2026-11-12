@@ -63,7 +63,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/wait-for-module.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/pin-bio.js` | 0 | 0 |
 | `js/core/wait-for.js` | de entrada (defer) | 1 | 0 |
 | `js/core/wrapped-gate.js` | de entrada (defer) | 9 | 2 |
-| `js/modules/actividad_reciente.js` | lazy — grupo `historial` | 0 | 0 |
+| `js/modules/actividad-reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 31 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 20 | 0 |
@@ -74,10 +74,10 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 56 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 23 | 1 |
-| `js/modules/plata_comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
+| `js/modules/plata-comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 116 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 42 | 2 |
-| `js/modules/tarjetas_credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
+| `js/modules/tarjetas-credito.js` | lazy — grupo `tarjetas` | 31 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 117 | 3 |
 
 ## 2. Qué declara cada archivo
@@ -434,7 +434,7 @@ Carga: de entrada (defer)
 
 **Asigna a `window`:** `_wrappedAbrir`, `_wrappedAnioObjetivo`, `_wrappedDisponible`, `_wrappedUmbrales`, `_wrappedVentanaInfo`
 
-### `js/modules/actividad_reciente.js`
+### `js/modules/actividad-reciente.js`
 
 Carga: lazy — grupo `historial`
 
@@ -510,7 +510,7 @@ Carga: de entrada (defer)
 
 **Globales:** `PERSONA_COLORES`
 
-### `js/modules/plata_comprometida.js`
+### `js/modules/plata-comprometida.js`
 
 Carga: lazy — grupo `comprometida`
 
@@ -534,7 +534,7 @@ Carga: lazy — grupo `spotify`
 
 **Globales:** `SP_EMPATE_PERIODOS`, `SP_PERIODO_DIAS`
 
-### `js/modules/tarjetas_credito.js`
+### `js/modules/tarjetas-credito.js`
 
 Carga: lazy — grupo `tarjetas`
 
@@ -648,36 +648,36 @@ Ninguno.
 | `_confirmarMovimientoConGuard` | `js/modules/prestado.js` |
 | `_confirmarMovimientoInterno` | `js/modules/prestado.js` |
 | `_confirmarUsarParte` | `js/modules/encargos.js` |
-| `_cpAbrirEditar` | `js/modules/plata_comprometida.js` |
-| `_cpAbrirNuevo` | `js/modules/plata_comprometida.js` |
-| `_cpAbrirRecibir` | `js/modules/plata_comprometida.js` |
-| `_cpAgregarDestino` | `js/modules/plata_comprometida.js` |
-| `_cpCancelSheet` | `js/modules/plata_comprometida.js` |
-| `_cpConfirmarRecibir` | `js/modules/plata_comprometida.js` |
-| `_cpData` | `js/modules/plata_comprometida.js` |
-| `_cpdConfirmar` | `js/modules/plata_comprometida.js` |
-| `_cpDiasHastaStr` | `js/modules/plata_comprometida.js` |
-| `_cpdPoblarGastoSelectores` | `js/modules/plata_comprometida.js` |
-| `_cpdRepoblarFuentes` | `js/modules/plata_comprometida.js` |
-| `_cpdSetGastoOrigen` | `js/modules/plata_comprometida.js` |
-| `_cpdSetTipo` | `js/modules/plata_comprometida.js` |
-| `_cpdSetYaPague` | `js/modules/plata_comprometida.js` |
-| `_cpdSetYaSaque` | `js/modules/plata_comprometida.js` |
-| `_cpdTipoChange` | `js/modules/plata_comprometida.js` |
-| `_cpEliminar` | `js/modules/plata_comprometida.js` |
-| `_cpGuardar` | `js/modules/plata_comprometida.js` |
-| `_cpGuardarMarcados` | `js/modules/plata_comprometida.js` |
-| `_cpInit` | `js/modules/plata_comprometida.js` |
-| `_cpInitSwipe` | `js/modules/plata_comprometida.js` |
-| `_cpMarcarPagos` | `js/modules/plata_comprometida.js` |
-| `_cpPoblarCuentas` | `js/modules/plata_comprometida.js` |
-| `_cpPoblarPersonas` | `js/modules/plata_comprometida.js` |
-| `_cpPoblarTC` | `js/modules/plata_comprometida.js` |
-| `_cpQuitarDestino` | `js/modules/plata_comprometida.js` |
-| `_cpRenderDestinosTmp` | `js/modules/plata_comprometida.js` |
-| `_cpRenderLista` | `js/modules/plata_comprometida.js` |
-| `_cpRenderMarcarList` | `js/modules/plata_comprometida.js` |
-| `_cpToggleMarcar` | `js/modules/plata_comprometida.js` |
+| `_cpAbrirEditar` | `js/modules/plata-comprometida.js` |
+| `_cpAbrirNuevo` | `js/modules/plata-comprometida.js` |
+| `_cpAbrirRecibir` | `js/modules/plata-comprometida.js` |
+| `_cpAgregarDestino` | `js/modules/plata-comprometida.js` |
+| `_cpCancelSheet` | `js/modules/plata-comprometida.js` |
+| `_cpConfirmarRecibir` | `js/modules/plata-comprometida.js` |
+| `_cpData` | `js/modules/plata-comprometida.js` |
+| `_cpdConfirmar` | `js/modules/plata-comprometida.js` |
+| `_cpDiasHastaStr` | `js/modules/plata-comprometida.js` |
+| `_cpdPoblarGastoSelectores` | `js/modules/plata-comprometida.js` |
+| `_cpdRepoblarFuentes` | `js/modules/plata-comprometida.js` |
+| `_cpdSetGastoOrigen` | `js/modules/plata-comprometida.js` |
+| `_cpdSetTipo` | `js/modules/plata-comprometida.js` |
+| `_cpdSetYaPague` | `js/modules/plata-comprometida.js` |
+| `_cpdSetYaSaque` | `js/modules/plata-comprometida.js` |
+| `_cpdTipoChange` | `js/modules/plata-comprometida.js` |
+| `_cpEliminar` | `js/modules/plata-comprometida.js` |
+| `_cpGuardar` | `js/modules/plata-comprometida.js` |
+| `_cpGuardarMarcados` | `js/modules/plata-comprometida.js` |
+| `_cpInit` | `js/modules/plata-comprometida.js` |
+| `_cpInitSwipe` | `js/modules/plata-comprometida.js` |
+| `_cpMarcarPagos` | `js/modules/plata-comprometida.js` |
+| `_cpPoblarCuentas` | `js/modules/plata-comprometida.js` |
+| `_cpPoblarPersonas` | `js/modules/plata-comprometida.js` |
+| `_cpPoblarTC` | `js/modules/plata-comprometida.js` |
+| `_cpQuitarDestino` | `js/modules/plata-comprometida.js` |
+| `_cpRenderDestinosTmp` | `js/modules/plata-comprometida.js` |
+| `_cpRenderLista` | `js/modules/plata-comprometida.js` |
+| `_cpRenderMarcarList` | `js/modules/plata-comprometida.js` |
+| `_cpToggleMarcar` | `js/modules/plata-comprometida.js` |
 | `_crearEncargoPicker` | `js/modules/mesada.js` |
 | `_crearGrupoDeudor` | `js/modules/prestado.js` |
 | `_crearPersonaGlobal` | `js/modules/personas.js` |
@@ -757,9 +757,9 @@ Ninguno.
 | `_initEventListeners` | `js/core/eventos-base.js` |
 | `_initGrupoSelector` | `js/modules/prestado.js` |
 | `_initMovGrupoSelector` | `js/modules/prestado.js` |
-| `_injectMasItem` | `js/modules/plata_comprometida.js` |
-| `_injectScreen` | `js/modules/plata_comprometida.js` |
-| `_injectSheet` | `js/modules/plata_comprometida.js` |
+| `_injectMasItem` | `js/modules/plata-comprometida.js` |
+| `_injectScreen` | `js/modules/plata-comprometida.js` |
+| `_injectSheet` | `js/modules/plata-comprometida.js` |
 | `_intentarInyectarPersonaSheets` | `js/core/personas-init.js` |
 | `_interpretarLecturaChequeoNu` | `js/modules/nu.js` |
 | `_inyectarAlcanciaSheets` | `js/modules/alcancia.js` |
@@ -929,9 +929,9 @@ Ninguno.
 | `_syncSpExtraWrap` | `js/modules/spotify.js` |
 | `_tasaCDT` | `js/core/nu-calc.js` |
 | `_tasaVigenteEnFecha` | `js/core/nu-calc.js` |
-| `_tcEsCargoExterno` | `js/modules/tarjetas_credito.js` |
-| `_tcOpsPosteriores` | `js/modules/tarjetas_credito.js` |
-| `_tcPoblarSelectCajita` | `js/modules/tarjetas_credito.js` |
+| `_tcEsCargoExterno` | `js/modules/tarjetas-credito.js` |
+| `_tcOpsPosteriores` | `js/modules/tarjetas-credito.js` |
+| `_tcPoblarSelectCajita` | `js/modules/tarjetas-credito.js` |
 | `_textoRunway` | `js/modules/inicio.js` |
 | `_tituloCuentaHtml` | `js/modules/cuentas.js` |
 | `_toastTexto` | `js/core/dialogos.js` |
@@ -1084,24 +1084,24 @@ Ninguno.
 | `abonoSplitResumen` | `js/modules/prestado.js` |
 | `abrirAgregarDinero` | `js/modules/cuentas.js` |
 | `abrirArchivadas` | `js/modules/cuentas.js` |
-| `abrirCargoEspecialTC` | `js/modules/tarjetas_credito.js` |
+| `abrirCargoEspecialTC` | `js/modules/tarjetas-credito.js` |
 | `abrirChequeoNu` | `js/modules/nu.js` |
 | `abrirCobrarCDT` | `js/modules/nu.js` |
 | `abrirCobroIngresoFijo` | `js/modules/analisis.js` |
 | `abrirCompraConTC` | `js/modules/encargos.js` |
-| `abrirCompraTC` | `js/modules/tarjetas_credito.js` |
+| `abrirCompraTC` | `js/modules/tarjetas-credito.js` |
 | `abrirCrearCDT` | `js/modules/nu.js` |
 | `abrirCuenta` | `js/modules/cuentas.js` |
 | `abrirDetalleCajita` | `js/modules/nu.js` |
 | `abrirDetalleMesada` | `js/modules/mesada.js` |
 | `abrirDetalleMov` | `js/core/movimientos.js` |
-| `abrirDetalleTCSheet` | `js/modules/tarjetas_credito.js` |
+| `abrirDetalleTCSheet` | `js/modules/tarjetas-credito.js` |
 | `abrirDeudor` | `js/modules/prestado.js` |
 | `abrirEditarApertura` | `js/modules/cuentas.js` |
 | `abrirEditarBien` | `js/modules/gastos.js` |
 | `abrirEditarGastoFijo` | `js/modules/gastos.js` |
 | `abrirEditarPersonaGlobal` | `js/modules/personas.js` |
-| `abrirEditarTC` | `js/modules/tarjetas_credito.js` |
+| `abrirEditarTC` | `js/modules/tarjetas-credito.js` |
 | `abrirElegirFuenteSpotify` | `js/modules/spotify.js` |
 | `abrirEncargoDesdeCuenta` | `js/modules/encargos.js` |
 | `abrirEncargoDetalle` | `js/modules/encargos.js` |
@@ -1112,7 +1112,7 @@ Ninguno.
 | `abrirMovMiDeuda` | `js/modules/prestado.js` |
 | `abrirNuevaCuenta` | `js/modules/cuentas.js` |
 | `abrirNuevaParte` | `js/modules/encargos.js` |
-| `abrirNuevaTarjeta` | `js/modules/tarjetas_credito.js` |
+| `abrirNuevaTarjeta` | `js/modules/tarjetas-credito.js` |
 | `abrirNuevoEncargo` | `js/modules/encargos.js` |
 | `abrirNuevoGastoFijo` | `js/modules/gastos.js` |
 | `abrirNuevoGastoVar` | `js/modules/gastos.js` |
@@ -1120,7 +1120,7 @@ Ninguno.
 | `abrirOnboarding` | `js/modules/cuentas.js` |
 | `abrirPagarGastoFijo` | `js/modules/gastos.js` |
 | `abrirPagarSpotify` | `js/modules/spotify.js` |
-| `abrirPagarTC` | `js/modules/tarjetas_credito.js` |
+| `abrirPagarTC` | `js/modules/tarjetas-credito.js` |
 | `abrirPerfilPersona` | `js/modules/personas.js` |
 | `abrirPresupuestos` | `js/modules/analisis.js` |
 | `abrirRegistrarApertura` | `js/modules/cuentas.js` |
@@ -1239,11 +1239,11 @@ Ninguno.
 | `confirmarAgregarDineroMenu` | `js/modules/cuentas.js` |
 | `confirmarBorrarMovimientoViejo` | `js/core/dialogos.js` |
 | `confirmarCambioTasaNu` | `js/modules/nu.js` |
-| `confirmarCargoEspecialTC` | `js/modules/tarjetas_credito.js` |
+| `confirmarCargoEspecialTC` | `js/modules/tarjetas-credito.js` |
 | `confirmarCobrarCDT` | `js/modules/nu.js` |
 | `confirmarCobroIngresoFijo` | `js/modules/analisis.js` |
 | `confirmarCompraConTC` | `js/modules/encargos.js` |
-| `confirmarCompraTC` | `js/modules/tarjetas_credito.js` |
+| `confirmarCompraTC` | `js/modules/tarjetas-credito.js` |
 | `confirmarCrearCDT` | `js/modules/nu.js` |
 | `confirmarEditarApertura` | `js/modules/cuentas.js` |
 | `confirmarEliminar` | `js/core/dialogos.js` |
@@ -1255,7 +1255,7 @@ Ninguno.
 | `confirmarNuMovimiento` | `js/modules/nu.js` |
 | `confirmarPagarGastoFijo` | `js/modules/gastos.js` |
 | `confirmarPagarSpotify` | `js/modules/spotify.js` |
-| `confirmarPagarTC` | `js/modules/tarjetas_credito.js` |
+| `confirmarPagarTC` | `js/modules/tarjetas-credito.js` |
 | `confirmarPendienteMesada` | `js/modules/mesada.js` |
 | `confirmarPrestamoTC` | `js/modules/prestado.js` |
 | `confirmarRestarDinero` | `js/modules/cuentas.js` |
@@ -1323,7 +1323,7 @@ Ninguno.
 | `eliminarBien` | `js/modules/gastos.js` |
 | `eliminarCat` | `js/modules/configuracion.js` |
 | `eliminarCobroIngresoFijo` | `js/modules/analisis.js` |
-| `eliminarCompraTC` | `js/modules/tarjetas_credito.js` |
+| `eliminarCompraTC` | `js/modules/tarjetas-credito.js` |
 | `eliminarCuenta` | `js/modules/cuentas.js` |
 | `eliminarDeudorActual` | `js/modules/prestado.js` |
 | `eliminarEncargoActual` | `js/modules/encargos.js` |
@@ -1333,9 +1333,9 @@ Ninguno.
 | `eliminarMovDeudor` | `js/modules/prestado.js` |
 | `eliminarMovimiento` | `js/core/movimientos.js` |
 | `eliminarMovMiDeuda` | `js/modules/prestado.js` |
-| `eliminarPagoTC` | `js/modules/tarjetas_credito.js` |
+| `eliminarPagoTC` | `js/modules/tarjetas-credito.js` |
 | `eliminarParte` | `js/modules/encargos.js` |
-| `eliminarTC` | `js/modules/tarjetas_credito.js` |
+| `eliminarTC` | `js/modules/tarjetas-credito.js` |
 | `eliminarWrapped` | `js/modules/configuracion.js` |
 | `emptyInline` | `js/core/utilidades-ui.js` |
 | `emptyState` | `js/core/utilidades-ui.js` |
@@ -1411,7 +1411,7 @@ Ninguno.
 | `guardarIngresoFijo` | `js/modules/analisis.js` |
 | `guardarMetaCajita` | `js/modules/nu.js` |
 | `guardarParte` | `js/modules/encargos.js` |
-| `guardarTC` | `js/modules/tarjetas_credito.js` |
+| `guardarTC` | `js/modules/tarjetas-credito.js` |
 | `hexToRgb` | `js/modules/cuentas.js` |
 | `hoy` | `js/core/estado.js` |
 | `html` | `js/core/html-tag.js` |
@@ -1498,8 +1498,8 @@ Ninguno.
 | `poblarCatSelect` | `js/core/estado.js` |
 | `poblarChequeoNu` | `js/modules/nu.js` |
 | `poblarFuente` | `js/core/cuentas-fuentes.js` |
-| `ptcActualizarPreview` | `js/modules/tarjetas_credito.js` |
-| `ptcSetMonto` | `js/modules/tarjetas_credito.js` |
+| `ptcActualizarPreview` | `js/modules/tarjetas-credito.js` |
+| `ptcSetMonto` | `js/modules/tarjetas-credito.js` |
 | `purgarAperturaDelHistorial` | `js/core/patrimonio.js` |
 | `purgarEfectoEnHistorial` | `js/core/patrimonio.js` |
 | `quitarDeHistorial` | `js/core/patrimonio.js` |
@@ -1555,8 +1555,8 @@ Ninguno.
 | `renderSpotify` | `js/modules/spotify.js` |
 | `renderSpStats` | `js/modules/spotify.js` |
 | `renderTamanoDatos` | `js/modules/configuracion.js` |
-| `renderTCDashboard` | `js/modules/tarjetas_credito.js` |
-| `renderTCScreen` | `js/modules/tarjetas_credito.js` |
+| `renderTCDashboard` | `js/modules/tarjetas-credito.js` |
+| `renderTCScreen` | `js/modules/tarjetas-credito.js` |
 | `renderWrapped` | `js/modules/wrapped.js` (window.renderWrapped = …) |
 | `rendimientoCajitaPorMes` | `js/core/nu-calc.js` |
 | `Reordenable` | `js/core/reordenable.js` |
@@ -1607,21 +1607,21 @@ Ninguno.
 | `tasaATexto` | `js/core/nu-calc.js` |
 | `tasaDesdeTexto` | `js/core/nu-calc.js` |
 | `tasaSanear` | `js/core/nu-calc.js` |
-| `TC_ESTADOS` | `js/modules/tarjetas_credito.js` |
-| `TC_MOTIVOS_CARGO` | `js/modules/tarjetas_credito.js` |
-| `tcBuscarCompraPorIdOMatch` | `js/modules/tarjetas_credito.js` |
-| `tcCrearCompra` | `js/modules/tarjetas_credito.js` |
-| `tcCrearPago` | `js/modules/tarjetas_credito.js` |
+| `TC_ESTADOS` | `js/modules/tarjetas-credito.js` |
+| `TC_MOTIVOS_CARGO` | `js/modules/tarjetas-credito.js` |
+| `tcBuscarCompraPorIdOMatch` | `js/modules/tarjetas-credito.js` |
+| `tcCrearCompra` | `js/modules/tarjetas-credito.js` |
+| `tcCrearPago` | `js/modules/tarjetas-credito.js` |
 | `tcCupoDisponible` | `js/core/calc-helpers.js` |
 | `tcCupoUsadoPct` | `js/core/calc-helpers.js` |
-| `tcDeudaCalculada` | `js/modules/tarjetas_credito.js` |
-| `tcDeudaTotal` | `js/modules/tarjetas_credito.js` |
-| `tcEliminarCompraInterna` | `js/modules/tarjetas_credito.js` |
-| `tcEliminarPagoInterna` | `js/modules/tarjetas_credito.js` |
-| `tcEstadoInfo` | `js/modules/tarjetas_credito.js` |
-| `tcNormalizarTarjetas` | `js/modules/tarjetas_credito.js` |
-| `tcRecalcular` | `js/modules/tarjetas_credito.js` |
-| `tcSelColor` | `js/modules/tarjetas_credito.js` |
+| `tcDeudaCalculada` | `js/modules/tarjetas-credito.js` |
+| `tcDeudaTotal` | `js/modules/tarjetas-credito.js` |
+| `tcEliminarCompraInterna` | `js/modules/tarjetas-credito.js` |
+| `tcEliminarPagoInterna` | `js/modules/tarjetas-credito.js` |
+| `tcEstadoInfo` | `js/modules/tarjetas-credito.js` |
+| `tcNormalizarTarjetas` | `js/modules/tarjetas-credito.js` |
+| `tcRecalcular` | `js/modules/tarjetas-credito.js` |
+| `tcSelColor` | `js/modules/tarjetas-credito.js` |
 | `TIPOS_CUENTA` | `js/core/cuentas-fuentes.js` |
 | `toast` | `js/core/dialogos.js` |
 | `toggleAdApertura` | `js/modules/cuentas.js` |

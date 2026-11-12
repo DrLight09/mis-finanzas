@@ -89,17 +89,17 @@ A diferencia de `js/core/`, acá **"clásico"** siempre significa `<script defer
 | `gastos.js` | eager | Gastos variables, con o sin tarjeta de crédito, con split de fuentes. |
 | `personas.js` | eager | Sistema unificado de identidad (`S.personas`): colores, avatares, edición global compartida por Spotify/Encargos/Deudores/"Me deben". |
 | `cuentas.js` | lazy (`cuentas`) | Nequi, efectivo, cajitas, cuentas personalizadas; también Nu (tasa/interés) y CDT. |
-| `tarjetas_credito.js` | lazy (`tarjetas`) | Deuda de TC, pagos, fechas de corte, detalle de cada movimiento cargado. |
+| `tarjetas-credito.js` | lazy (`tarjetas`) | Deuda de TC, pagos, fechas de corte, detalle de cada movimiento cargado. |
 | `prestado.js` | lazy (`prestamos`) | Préstamos "Me deben"/"Yo debo", incluida su integración con Personas. |
 | `encargos.js` | lazy (`encargos`) | Dinero que un tercero encarga guardar, separado de cualquier interés propio que genere. |
 | `mesada.js` | lazy (`mesada`) | Mensualidad de papá y mamá, pagos parciales y deuda pendiente. |
 | `spotify.js` | lazy (`spotify`) | Suscripción compartida: cobro a integrantes, pago al servicio, ganancia/pérdida del administrador. |
 | `alcancia.js` | lazy (`alcancia`) | Ahorro tipo piggy-bank con desglose por origen del depósito. |
-| `plata_comprometida.js` | lazy (`comprometida`) | Dinero ya destinado a un gasto futuro, para no contarlo como libre en el patrimonio. |
+| `plata-comprometida.js` | lazy (`comprometida`) | Dinero ya destinado a un gasto futuro, para no contarlo como libre en el patrimonio. |
 | `analisis.js` | lazy (`analisis`) | Vista consolidada: balance del mes, patrimonio, proyección, categorías, presupuestos. |
 | `wrapped.js` | lazy (`wrapped`) | Resumen narrativo de mes/año. |
 | `configuracion.js` | lazy (`config`) | Ajustes, exportar CSV, import/export de backup JSON (incluye la validación de estructura del backup, `_validarEstructuraJSON`). |
-| `actividad_reciente.js` | lazy (`historial`) | Feed "Actividad reciente" — de solo lectura, como Inicio. |
+| `actividad-reciente.js` | lazy (`historial`) | Feed "Actividad reciente" — de solo lectura, como Inicio. |
 
 
 ## Otros archivos (raíz del proyecto)
@@ -166,4 +166,4 @@ Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida e
 | `auditoria-tecnica.md` | Hallazgos técnicos **pendientes** de seguridad, arquitectura o rendimiento — lo ya resuelto vive en `CHANGELOG.md#infraestructura--seguridad`. |
 | `CHANGELOG.md` | Historial de bugs corregidos y limpieza de código de todos los módulos, en un solo archivo compartido. |
 
-`configuracion.js` y `actividad_reciente.js` (pantallas de utilidad/infraestructura, no un dominio financiero propio) tienen su propio documento: [`configuracion.md`](./configuracion.md) y [`actividad-reciente.md`](./actividad-reciente.md).
+`configuracion.js` y `actividad-reciente.js` (pantallas de utilidad/infraestructura, no un dominio financiero propio) tienen su propio documento: [`configuracion.md`](./configuracion.md) y [`actividad-reciente.md`](./actividad-reciente.md).

@@ -167,7 +167,7 @@ function mostrarSi(el, visible) {
 // ── Guards de carga bajo demanda para cuentas.js (FIX 2026-08-13) ──────────
 
 /* ---- REFRESH: un registro en vez de una cadena de parches ----
-   Antes `window.refresh` se envolvía a mano en inicio.js, encargos.js, actividad_reciente.js y (con hookGlobal) en otros cuatro
+   Antes `window.refresh` se envolvía a mano en inicio.js, encargos.js, actividad-reciente.js y (con hookGlobal) en otros cuatro
    archivos: un error en un parche cortaba a los siguientes y el resultado dependía del orden de carga. Ahora cada módulo registra su
    parte con Refresh.registrar(id, fn, { pantalla, orden }) y refresh() las recorre en orden, cada una en su try/catch con log:
    una que falle no silencia a las demás.

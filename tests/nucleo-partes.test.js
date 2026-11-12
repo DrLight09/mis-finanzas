@@ -29,3 +29,17 @@ test('cada parte es JS válido y ninguna declara dos veces el mismo nombre top-l
     }
   }
 });
+
+test('scripts/conciliacion.js y scripts/equivalencia.js cargan el núcleo y corren con un respaldo mínimo', () => {
+  const { spawnSync } = require('node:child_process');
+  const os = require('node:os');
+  const tmp = path.join(os.tmpdir(), 'respaldo-minimo-' + process.pid + '.json');
+  fs.writeFileSync(tmp, JSON.stringify({ cuentas: [{ id: 'nequi', nombre: 'Nequi', tipo: 'billetera', saldo: 1000 }], movimientos: [], gastosVar: [] }));
+  try {
+    for (const s of ['conciliacion.js', 'equivalencia.js']) {
+      const r = spawnSync(process.execPath, [path.join(raiz, 'scripts', s), tmp, path.join(os.tmpdir(), 'salida-' + process.pid + '.json')], { encoding: 'utf8' });
+      assert.equal(r.status, 0, s + ': ' + (r.stderr || '').slice(0, 300));
+      assert.ok(!/Cannot find|ENOENT/.test(r.stderr || ''), s);
+    }
+  } finally { fs.rmSync(tmp, { force: true }); }
+});

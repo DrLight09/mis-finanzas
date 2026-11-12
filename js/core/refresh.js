@@ -148,7 +148,7 @@ function _refreshNucleo(){
   // Si hay una cuenta abierta, actualizar su detalle
   // FIX (auditoria-tecnica.md #5): las llamadas de este bloque no tenían
   // guard typeof — bloqueaban de raíz volver lazy cuentas/encargos/gastos/
-  // prestado/spotify/inicio/tarjetas_credito (ReferenceError en el primer
+  // prestado/spotify/inicio/tarjetas-credito (ReferenceError en el primer
   // refresh() tras cargar el módulo bajo demanda). Mismo patrón defensivo
   // ya usado para renderMesada/_refreshCajitaDet/renderTCScreen — no cambia
   // el comportamiento actual (todo sigue cargando de entrada).

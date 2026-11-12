@@ -24,7 +24,7 @@
 
    ── ESTE ARCHIVO SE CARGA MUY TEMPRANO ──────────────────────────
    Justo después de js/core/events.js y antes que mesada.js/
-   spotify.js/gastos.js/prestado.js/encargos.js/tarjetas_credito.js
+   spotify.js/gastos.js/prestado.js/encargos.js/tarjetas-credito.js
    — todos ellos llaman a diffRegistrarInstancia()/diffAplicar()/
    diffValidarIntercambios()/diffRenderHistorial() durante su propia inicialización o al
    confirmar sus sheets. Esos módulos NO se tocaron acá: siguen

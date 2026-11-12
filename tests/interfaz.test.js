@@ -35,7 +35,7 @@ const CONVERTIDOS = [
   { f: 'js/core/pin-bio.js', prefijos: ['pin-fila', 'btn-flex1', 'btn-block', 'btn-peligro'], permitidos: [] },
   { f: 'js/core/gastos-fijos-progress.js', prefijos: ['fijos-progress'], permitidos: [] },
   // feed de actividad: solo quedan el fondo del ícono y el color del monto, que salen de cada movimiento
-  { f: 'js/modules/actividad_reciente.js', prefijos: ['feed-'], permitidos: [/^(background|color):\$\{/] },
+  { f: 'js/modules/actividad-reciente.js', prefijos: ['feed-'], permitidos: [/^(background|color):\$\{/] },
   // cuentas: solo quedan valores calculados: tamaño/colores del ícono de cada cuenta (elegidos por el usuario), el fondo/color de cada
   // opción de la cuadrícula de íconos y las variables --cuenta/--cuenta-rgb de cada tarjeta del selector
   { f: 'js/modules/cuentas.js', prefijos: ['cuenta-', 'gasto-item-', 'gasto-nombre-fila', 'badge-xs', 'ico-inline', 'nc-icon-opt'],
@@ -52,14 +52,14 @@ const CONVERTIDOS = [
   // de JS que ya existían y no tienen regla. Colores por tipo/diferencia = clases alc-c-* y alc-dif-*
   { f: 'js/modules/alcancia.js', prefijos: ['alc-'], armadas: ['alc-c-', 'alc-dif-'], sinCss: ['alc-hist-chevron', 'alc-dep-monto'], permitidos: ['display:none;'] },
   // tarjetas: solo quedan los anchos de barra (porcentaje calculado) y el cursor del fragmento de atributos _tcAttrs (se inserta en etiquetas ajenas, no puede llevar class)
-  { f: 'js/modules/tarjetas_credito.js', prefijos: ['tc-', 'badge-xs'], permitidos: [/^width:\$\{/, 'cursor:pointer;'] },
+  { f: 'js/modules/tarjetas-credito.js', prefijos: ['tc-', 'badge-xs'], permitidos: [/^width:\$\{/, 'cursor:pointer;'] },
   // encargos: quedan el display:none del avatar del selector de persona (JS lo conmuta) y el cursor del fragmento de atributos _encAttrs (se inserta en etiquetas ajenas)
   { f: 'js/modules/encargos.js', prefijos: ['enc-'], permitidos: ['display:none;', 'cursor:pointer;', /^color:\$\{/] },
   // personas: quedan solo valores calculados — el ancho de las barras de progreso, el color elegido por el usuario para cada avatar (color/fondo/borde con ${color}) y el fondo de cada muestra de la paleta
   { f: 'js/modules/personas.js', prefijos: ['pe-'], permitidos: [/^width:\$\{/, /^(color|background):\$\{/] },
   // plata comprometida: quedan 11 display:none que JS conmuta (selects ocultos, bloques de origen/destino, ingreso libre y recordatorios), el estilo inicial de #cp-balance-preview
   // (el JS lo reemplaza o lo vacía con cssText; una clase no se vaciaría) y el ancho calculado de la barra de comprometido
-  { f: 'js/modules/plata_comprometida.js', prefijos: ['cp-'], armadas: ['cp-tbg-', 'cp-tc-', 'cp-c-'], permitidos: ['display:none;', "font-size:12px;font-family:'DM Mono',monospace;min-height:18px;padding:8px 0;", /^width:\$\{/] },
+  { f: 'js/modules/plata-comprometida.js', prefijos: ['cp-'], armadas: ['cp-tbg-', 'cp-tc-', 'cp-c-'], permitidos: ['display:none;', "font-size:12px;font-family:'DM Mono',monospace;min-height:18px;padding:8px 0;", /^width:\$\{/] },
   // index.html: quedan 110 style="". 98 son display:none que JS conmuta (style.display=''); 1 min-height y 1 avatar que JS vacía con ''; y el PRIMER PINTADO
   // (#fb-loading-screen, #fb-login-screen, #pin-screen, #toast-container: styles.css es async y eso se ve antes de que llegue; ver comentario del <head>)
   { f: 'index.html', prefijos: ['ix-'], permitidos: ['display:none;', 'display:flex;', 'display:flex', 'display:contents;', 'min-height:148px;', 'visibility:hidden;',
@@ -149,7 +149,7 @@ test('alcancia: las clases de color que arma el código (alc-c-X, alc-dif-X) exi
 });
 
 test('plata comprometida: las clases por tipo (cp-tbg-X, cp-tc-X) y los colores que arma el código existen en styles.css', () => {
-  const css = leer('css/styles.css'), src = leer('js/modules/plata_comprometida.js');
+  const css = leer('css/styles.css'), src = leer('js/modules/plata-comprometida.js');
   ['reposicion', 'gasto', 'abono_deuda', 'otro'].forEach(t => ['cp-tbg-', 'cp-tc-'].forEach(p => {
     assert.ok(new RegExp('\\.' + p + t + '(?![\\w-])').test(css), p + t);
     assert.ok(new RegExp("k:'" + t + "'").test(src), 'falta k:' + t + ' en _CP_TIPO_LABELS');
@@ -310,7 +310,7 @@ const path = require('node:path');
 
 const RAIZ = path.join(__dirname, '..', 'js');
 const REVISADOS = {
-  'modules/plata_comprometida.js': 4,
+  'modules/plata-comprometida.js': 4,
   'modules/inicio.js': 4,
   'modules/analisis.js': 2,
   'core/diferencial.js': 1,

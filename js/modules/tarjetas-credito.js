@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   js/modules/tarjetas_credito.js
+   js/modules/tarjetas-credito.js
 
    Módulo "Tarjetas de Crédito", extraído de index.html.
 
@@ -58,7 +58,7 @@
    Nota (2026-08-02) — intento de volver este módulo LAZY (docs/
    auditoria-tecnica.md #4): el wiring de botones que esperaba
    'DOMContentLoaded' se corrigió a top-level (mismo bug/mismo fix que
-   ya se aplicó en actividad_reciente.js) — ver más abajo.
+   ya se aplicó en actividad-reciente.js) — ver más abajo.
 
    RESUELTO (2026-08-02, ronda posterior): con el núcleo real en
    mano se confirmó que tcNormalizarTarjetas() SÍ tiene guard typeof en
@@ -1068,7 +1068,7 @@ Events.registerAll('tarjetas', {
 // módulo se vuelve lazy (carga bajo demanda, ver js/core/lazy-loader.js),
 // para cuando el archivo llega a existir ese evento ya disparó hace rato
 // y el listener nunca correría — mismo bug ya encontrado y corregido en
-// actividad_reciente.js (auditoria-tecnica.md #4, grupo "historial"). Se
+// actividad-reciente.js (auditoria-tecnica.md #4, grupo "historial"). Se
 // wirea directo, top-level, contra ids que ya existen en el DOM estático
 // de index.html — mismo patrón ya probado en mesada.js.
 const btnGuardarTC=document.getElementById('btn-guardar-tc');

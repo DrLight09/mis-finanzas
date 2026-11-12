@@ -1318,7 +1318,7 @@ describe('gastos-ida-y-vuelta', () => {
   const { createFakeDom } = require('./support/fake-dom');
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('tarjetas_credito.js'), core('split.js'), modulo('gastos.js')];
+  const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), modulo('tarjetas-credito.js'), core('split.js'), modulo('gastos.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
 
   function entorno(campos) {
@@ -1369,7 +1369,7 @@ describe('eliminar-movimiento', () => {
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
-    modulo('tarjetas_credito.js'), modulo('nu.js'), modulo('cuentas.js'), core('split.js'), modulo('gastos.js'), core('movimientos.js')];
+    modulo('tarjetas-credito.js'), modulo('nu.js'), modulo('cuentas.js'), core('split.js'), modulo('gastos.js'), core('movimientos.js')];
   const plano = x => JSON.parse(JSON.stringify(x));
   const HOY = '2026-10-13';
 

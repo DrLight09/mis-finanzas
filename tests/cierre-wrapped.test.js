@@ -248,7 +248,7 @@ describe('huella', () => {
     const path = require('node:path');
     const R = f => path.join(__dirname, '..', 'js', f);
     const base = ['core/core-state.js', 'core/cuenta-efectos.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js'];
-    const modulos = ['core/split.js', 'core/diferencial.js', 'modules/tarjetas_credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js'];
+    const modulos = ['core/split.js', 'core/diferencial.js', 'modules/tarjetas-credito.js', 'modules/encargos.js', 'modules/alcancia.js', 'modules/wrapped.js'];
     // 1) los módulos primero (como en la página: se precargan al arrancar), huella.js y cierre.js al final (grupo 'cierre')
     const v = loadApp(base.concat(modulos, ['core/huella.js', 'core/cierre.js']).map(R), { permissive: true });
     assert.deepEqual(plano(v.window._sondasPendientes), [], 'la cola quedó vacía al cargar huella.js');
@@ -259,7 +259,7 @@ describe('huella', () => {
     assert.deepEqual(plano(h.errores), {});
     assert.equal(Object.keys(h.sondas).length, BASE.length);
     // 3) antes de que exista huella.js, registrarSonda deja la sonda en cola (no revienta ni la pierde)
-    const antes = loadApp(base.concat(['modules/tarjetas_credito.js']).map(R), { permissive: true });
+    const antes = loadApp(base.concat(['modules/tarjetas-credito.js']).map(R), { permissive: true });
     assert.ok(plano(antes.window._sondasPendientes).length === 1, 'tarjetas dejó su sonda en cola');
     // 4) después de existir, registrarSonda registra directo
     v.registrarSonda('prueba-directa', () => ({ ok: 1 }));
@@ -641,7 +641,7 @@ describe('cierre — medidor en Configuración (renderTamanoDatos)', () => {
   const { loadApp } = require('./support/load-app');
   const R = f => path.join(RAIZ, 'js', f);
   function pantalla() {
-    const ctx = loadApp(['core/core-state.js', 'core/cuenta-efectos.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js', 'core/html-tag.js', 'core/huella.js', 'core/cierre.js', 'modules/tarjetas_credito.js', 'modules/configuracion.js'].map(R), { permissive: true });
+    const ctx = loadApp(['core/core-state.js', 'core/cuenta-efectos.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js', 'core/html-tag.js', 'core/huella.js', 'core/cierre.js', 'modules/tarjetas-credito.js', 'modules/configuracion.js'].map(R), { permissive: true });
     let n = 0; ctx.uid = () => 'y' + String(++n).padStart(5, '0');
     const el = { innerHTML: '' }, otros = ctx.document.getElementById;
     ctx.document.getElementById = id => (id === 'cfg-tamano' ? el : otros(id));

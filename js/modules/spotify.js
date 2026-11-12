@@ -15,9 +15,9 @@
 
    Pagar Spotify con una tarjeta de crédito (fuente 'tc:<id>') es un CARGO a la
    tarjeta, no un descuento de saldo — usa getTCById/tcCupoDisponible/tcRecalcular
-   de js/modules/tarjetas_credito.js, igual que Encargos/Préstamos (S.tcMovimientos
-   con tipo 'cargo_*'). No se asume que tarjetas_credito.js ya esté cargado (ver
-   auditoria-tecnica.md, acoplamiento spotify↔tarjetas_credito): los 3 puntos que
+   de js/modules/tarjetas-credito.js, igual que Encargos/Préstamos (S.tcMovimientos
+   con tipo 'cargo_*'). No se asume que tarjetas-credito.js ya esté cargado (ver
+   auditoria-tecnica.md, acoplamiento spotify↔tarjetas-credito): los 3 puntos que
    usan esas funciones pasan primero por _spEnsureTC(), que llama a
    Loader.ensure('tarjetas') si hace falta — ver ese helper, arriba de
    openSheet_pagarSpotify().
@@ -772,7 +772,7 @@ async function _borrarSpHistorial(i,h){
       const mov=(S.tcMovimientos||[]).find(m=>m.id===h._tcMovId&&!m.eliminado);
       if(mov){
         // mov.eliminado se marca siempre (es solo un dato) aunque la carga de
-        // tarjetas_credito.js falle o tarde — así el estado no queda a medias.
+        // tarjetas-credito.js falle o tarde — así el estado no queda a medias.
         // Solo tcRecalcular() (una función real del módulo) espera la carga.
         mov.eliminado=true;
         if(await _spEnsureTC()){
@@ -1208,11 +1208,11 @@ function confirmarSpResolverPendiente(){
   toast(h.pendiente>0?('Abono registrado — todavía debe '+fmt(h.pendiente)):'¡Pendiente saldado!','ok',3000);
 }
 
-// FIX (auditoria-tecnica.md — acoplamiento spotify↔tarjetas_credito): las 3
+// FIX (auditoria-tecnica.md — acoplamiento spotify↔tarjetas-credito): las 3
 // llamadas a getTCById/tcCupoDisponible/tcRecalcular de este archivo asumían
-// que tarjetas_credito.js ya estaba cargado porque hasta ahora cargaba eager.
+// que tarjetas-credito.js ya estaba cargado porque hasta ahora cargaba eager.
 // Este helper asegura la carga bajo demanda con Loader.ensure('tarjetas')
-// antes de usarlas — funciona igual si tarjetas_credito.js sigue cargando
+// antes de usarlas — funciona igual si tarjetas-credito.js sigue cargando
 // eager (typeof ya es 'function', Loader.ensure ni se llama) que si en el
 // futuro se vuelve un grupo lazy real. Si la descarga falla (sin conexión),
 // avisa con un toast en vez de dejar la acción muda.
@@ -1282,7 +1282,7 @@ async function actualizarSpPagarPreview(){
   const fuente=document.getElementById('spPagarFuente').value;
   // Pagar con tarjeta de crédito es un CARGO (sube la deuda de la tarjeta), no un
   // retiro de saldo de una cuenta/cajita — por eso se muestra aparte, igual que en
-  // ptcActualizarPreview() (tarjetas_credito.js) para el flujo inverso de "Pagar TC".
+  // ptcActualizarPreview() (tarjetas-credito.js) para el flujo inverso de "Pagar TC".
   if(fuente&&Fuente.esTC(fuente)){
     if(!(await _spEnsureTC())){ fuenteInfo.textContent=''; prev.textContent=''; return; }
     const tc=getTCById(fuente.slice(3));
@@ -1353,7 +1353,7 @@ async function confirmarPagarSpotify(){
       if(!(await _spEnsureTC())) return;
       // Pagar con tarjeta de crédito es un CARGO: sube la deuda de la tarjeta, no
       // descuenta el saldo de una cuenta/cajita. Mismo patrón que Encargos/Préstamos
-      // (ver tcRecalcular en tarjetas_credito.js, que suma S.tcMovimientos con
+      // (ver tcRecalcular en tarjetas-credito.js, que suma S.tcMovimientos con
       // tipo 'cargo_*'), en vez de descontarFuente().
       const tc=getTCById(fuente.slice(3));
       if(!tc){toast('Tarjeta no encontrada','err');return;}

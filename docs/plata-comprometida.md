@@ -1,6 +1,6 @@
 # Plata Comprometida
 
-Documentación de la sección **Plata Comprometida** de `mis-finanzas` (`index.html` → `js/modules/plata_comprometida.js`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué, cómo fluye la información, y qué decisiones de diseño se tomaron. Los detalles de implementación (funciones, ids de sheets) aparecen al final, como referencia rápida — no como el foco del documento.
+Documentación de la sección **Plata Comprometida** de `mis-finanzas` (`index.html` → `js/modules/plata-comprometida.js`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué, cómo fluye la información, y qué decisiones de diseño se tomaron. Los detalles de implementación (funciones, ids de sheets) aparecen al final, como referencia rápida — no como el foco del documento.
 
 El historial de bugs corregidos vive en [`CHANGELOG.md`](./CHANGELOG.md#plata-comprometida), no acá.
 
@@ -182,7 +182,7 @@ Las reversiones que restan saldo (reposición a cada destino, cajita usada para 
 
 ## 8. Referencia de implementación
 
-**Ubicación:** `js/modules/plata_comprometida.js`, carga lazy (`Loader.GROUPS.comprometida`, ver `js/core/lazy-loader.js`). El HTML estático de `#screen-comprometida` y `#mas-comprometida` vive en `index.html` (ver §7); el resto de los sheets se inyecta en tiempo de ejecución (`_injectSheet()`).
+**Ubicación:** `js/modules/plata-comprometida.js`, carga lazy (`Loader.GROUPS.comprometida`, ver `js/core/lazy-loader.js`). El HTML estático de `#screen-comprometida` y `#mas-comprometida` vive en `index.html` (ver §7); el resto de los sheets se inyecta en tiempo de ejecución (`_injectSheet()`).
 
 ### Sheets
 

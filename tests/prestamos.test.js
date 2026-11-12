@@ -25,7 +25,7 @@ describe('medeben', () => {
       path.join(CORE_DIR, 'cuenta-efectos.js'),
       path.join(CORE_DIR, 'calc-helpers.js'),
       path.join(CORE_DIR, 'split.js'), path.join(CORE_DIR, 'diferencial.js'), path.join(MODULES_DIR, 'prestado.js'),
-      path.join(MODULES_DIR, 'tarjetas_credito.js'),
+      path.join(MODULES_DIR, 'tarjetas-credito.js'),
     ], { permissive: true });
     Object.assign(ctx.S, {
       cuentas: [
@@ -434,7 +434,7 @@ describe('yodebo', () => {
       path.join(CORE_DIR, 'umbrales.js'), path.join(CORE_DIR, 'reglas.js'), path.join(CORE_DIR, 'salud.js'), path.join(CORE_DIR, 'plan-deudas.js'),
       path.join(MODULES_DIR, 'inicio.js'),
       path.join(CORE_DIR, 'split.js'), path.join(CORE_DIR, 'diferencial.js'), path.join(MODULES_DIR, 'prestado.js'),
-      path.join(MODULES_DIR, 'tarjetas_credito.js'),
+      path.join(MODULES_DIR, 'tarjetas-credito.js'),
     ], { permissive: true });
     Object.assign(ctx.S, {
       cuentas: [

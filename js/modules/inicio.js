@@ -21,7 +21,7 @@
      tocar Análisis, que está fuera del alcance de esta sesión.
 
    Requiere estar cargado DESPUÉS de: mesada.js, spotify.js,
-   prestado.js, tarjetas_credito.js, cuentas.js (usa spNombreDe,
+   prestado.js, tarjetas-credito.js, cuentas.js (usa spNombreDe,
    getMesadaData, tcCupoUsadoPct, etc. definidos ahí) y después de
    js/core/events.js.
 
@@ -31,7 +31,7 @@
    calcPatrimonioTotal/totalPrestadoPendiente/calcC/calcCDT en este
    mismo archivo. No cambia el comportamiento actual (todo sigue
    cargando de entrada); habilita que mesada/spotify/prestado/
-   tarjetas_credito puedan volverse lazy sin romper el dashboard.
+   tarjetas-credito puedan volverse lazy sin romper el dashboard.
    Ver auditoria-tecnica.md #4.
    ================================================================ */
 
@@ -850,7 +850,7 @@ function _checkGastoAlto() {
    DISPONIBLE NETO DE DEUDA DE TC (2026-09-20: rehecho — ver
    CHANGELOG.md#inicio)
    ================================================================
-   No toca tarjetas_credito.js ni le agrega fechas de corte/pago —
+   No toca tarjetas-credito.js ni le agrega fechas de corte/pago —
    esa es una decisión de diseño explícita de ese módulo (ver
    tarjetas-credito.md §7: "no simula un banco real"). Este bloque
    solo AGREGA una segunda lectura junto a "Disponible". Se resta la
@@ -921,7 +921,7 @@ _renderDispNetoTC();
 
 // Nota (2026-08-04): "Necesita atención" depende de getMesadaData/
 // _getCuotaAnio (mesada) y tcCupoUsadoPct (tarjetas de crédito), que
-// hasta acá vivían en mesada.js/tarjetas_credito.js — módulos lazy que
+// hasta acá vivían en mesada.js/tarjetas-credito.js — módulos lazy que
 // solo cargan cuando el usuario visita esas pantallas (ver
 // js/core/lazy-loader.js). Como Inicio es la pantalla de entrada,
 // esas funciones podían no existir todavía en el primer render y sus
@@ -930,7 +930,7 @@ _renderDispNetoTC();
 // Se resolvió de raíz: esas 3 funciones puras (solo dependen de `S`,
 // sin DOM/UI) se movieron a js/core/calc-helpers.js, que carga de
 // entrada — así están disponibles desde el arranque sin tener que
-// forzar la descarga de mesada.js/tarjetas_credito.js completos (44KB
+// forzar la descarga de mesada.js/tarjetas-credito.js completos (44KB
 // + 60KB) solo para leer un par de números. El guard typeof de abajo
 // se deja igual, como red de seguridad, pero en la práctica ya
 // debería cumplirse siempre.

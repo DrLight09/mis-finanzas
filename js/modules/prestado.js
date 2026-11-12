@@ -2365,7 +2365,7 @@ function confirmarPrestamoTC() {
   const montoTC = (real > 0) ? real : dijo;
   const margen  = dijo - montoTC; // >0 cuando dijiste más de lo que costó
 
-  // Validación de cupo — mismo patrón que tarjetas_credito.js:confirmarCompraTC.
+  // Validación de cupo — mismo patrón que tarjetas-credito.js:confirmarCompraTC.
   // A diferencia de un cargo bancario (interés/comisión), esto SÍ es una
   // compra que decidiste hacer con tu TC, así que sí debe respetar el cupo.
   // Se valida contra montoTC (lo que realmente carga la tarjeta), no contra

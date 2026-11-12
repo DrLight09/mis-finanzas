@@ -872,7 +872,7 @@ window.alcanciaConfirmarDeposito = function(){
     if(p.origen === 'cuenta'){
       // Cambio 2026-09-27: un depósito desde una cuenta real es un TRASLADO, no un
       // gasto — antes vivía en S.gastosVar con _esAlcancia:true, obligando a que
-      // _esGastoVarNoReal()/busqueda-global.js/actividad_reciente.js lo excluyeran
+      // _esGastoVarNoReal()/busqueda-global.js/actividad-reciente.js lo excluyeran
       // a mano en cada pantalla. Ahora se registra como transferencia (origen: la
       // cuenta, destino: 'alcancia'), igual que cualquier traslado entre cuentas
       // (ver docs/alcancia.md §4 y CHANGELOG.md#alcancia). El monto sigue oculto en

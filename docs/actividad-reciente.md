@@ -98,7 +98,7 @@ Carga lazy del módulo → render inmediato al final del archivo
 - **Transferencias.** Nunca aparecen (ni entre cuentas ni los depósitos a Alcancía con cuenta de origen). Es un hueco conocido, no un error.
 - **Abonos de deudores hechos con plata de un encargo o cuenta.** Se ven una sola vez, como "Abono de X", por la exclusión de `_esAbonoDeudor` en encargos.
 
-**Duplicados revisados** (contra `el núcleo`, `prestado.js`, `spotify.js` y `tarjetas_credito.js`):
+**Duplicados revisados** (contra `el núcleo`, `prestado.js`, `spotify.js` y `tarjetas-credito.js`):
 
 | Caso | Resultado |
 |---|---|
@@ -132,7 +132,7 @@ Carga lazy del módulo → render inmediato al final del archivo
 
 ## 8. Referencia de implementación
 
-**Funciones de `js/modules/actividad_reciente.js`** (todo dentro de un IIFE)
+**Funciones de `js/modules/actividad-reciente.js`** (todo dentro de un IIFE)
 
 | Función / símbolo | Qué hace |
 |---|---|

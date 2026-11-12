@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   js/modules/actividad_reciente.js
+   js/modules/actividad-reciente.js
 
    Módulo: Feed de actividad financiera ("Actividad reciente" /
    screen-historial). Migrado desde el <script> que compartía con
@@ -524,7 +524,7 @@
   // que disparó la carga. Sin esto, la pantalla se queda pegada en
   // "Cargando..." para siempre la primera vez. Se agrega un cuarto
   // trigger sin condición de evento — mismo criterio que usa
-  // _cpInit() en plata_comprometida.js ("Render inicial si hay
+  // _cpInit() en plata-comprometida.js ("Render inicial si hay
   // datos"). renderFeedActividad() ya lee `S` con fallback si no
   // existe todavía (ver comentario del encabezado), así que llamarla
   // acá es seguro incluso si por algún motivo se cargara antes de

@@ -2302,7 +2302,7 @@ function _wrappedCalcularComprometida(S, tipo, mesK, anioK){
 /* ─── TARJETAS DE CRÉDITO — Intereses cobrados ────────────────────────
    `S.tarjetasCredito[].compras[]` con `_esCargoEspecial:true` y
    `_motivoCargo:'interes'` son cargos que el BANCO impone (ver
-   `tarjetas_credito.js`, sección "Cargo especial"), no una compra tuya —
+   `tarjetas-credito.js`, sección "Cargo especial"), no una compra tuya —
    se filtran por `fecha` en el período, igual que cualquier otro dominio
    de §7ter. Deliberadamente NO se toca `tc.deuda` (saldo actual — puede
    venir de años anteriores) ni `.pagos[]`/compras normales (eso ya vive,
@@ -2340,7 +2340,7 @@ function _wrappedCalcularInteresesTC(S, tipo, mesK, anioK){
 /* ─── TARJETAS DE CRÉDITO — Comisiones cobradas (2026-09-15) ──────────────
    Mismo patrón EXACTO que `_wrappedCalcularInteresesTC` de arriba, pero
    filtrando `_motivoCargo === 'comision'` en vez de `'interes'` —
-   `tarjetas_credito.js` (`TC_MOTIVOS_CARGO`) distingue tres motivos de
+   `tarjetas-credito.js` (`TC_MOTIVOS_CARGO`) distingue tres motivos de
    cargo especial (interés, comisión, "otro"); hasta esta sesión Wrapped
    solo leía el primero. Se agrega comisión como candidato APARTE (no
    sumado al mismo total de intereses) porque el copy de intereses
@@ -2349,7 +2349,7 @@ function _wrappedCalcularInteresesTC(S, tipo, mesK, anioK){
    conceptos bajo una sola cifra sería honesto en el número pero deshonesto
    en el texto. Deliberadamente NO se agrega el tercer motivo, `'otro'`:
    es un cajón de sastre a propósito genérico en el propio
-   `tarjetas_credito.js` ("Otro cargo del banco") — sin saber qué fue
+   `tarjetas-credito.js` ("Otro cargo del banco") — sin saber qué fue
    realmente, cualquier frase que este módulo le pusiera encima sería
    inventada, y §3 prohíbe justamente eso (nunca forzar un insight sin una
    señal real y concreta detrás). */
@@ -3191,7 +3191,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   const spotifyAnio     = _wrappedCalcularSpotify(S, 'anio', null, anioK);
   const comprometidaAnio = _wrappedCalcularComprometida(S, 'anio', null, anioK);
   // Tarjetas de Crédito (2026-09-15) — nuevo dominio, agregado después de
-  // revisar `tarjetas_credito.js` a pedido del usuario. Deliberadamente
+  // revisar `tarjetas-credito.js` a pedido del usuario. Deliberadamente
   // acotado a los INTERESES cobrados en el período (`_esCargoEspecial &&
   // _motivoCargo==='interes'`), no a la deuda actual (`tc.deuda`, que
   // puede venir de antes — mismo motivo por el que Préstamos tampoco

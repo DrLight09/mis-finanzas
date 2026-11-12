@@ -4,7 +4,7 @@
    Funciones de cálculo puras (solo dependen de `S`/`MC`, sin DOM ni UI)
    que Inicio (inicio.js) necesita para "Necesita atención" y el
    health score, pero que conceptualmente "viven" en mesada.js y
-   tarjetas_credito.js — módulos que ahora son lazy (ver
+   tarjetas-credito.js — módulos que ahora son lazy (ver
    js/core/lazy-loader.js) y solo cargan cuando el usuario visita
    esas pantallas.
 
@@ -18,7 +18,7 @@
 
    Este archivo carga de entrada (<script defer>, sin passar por
    Loader), justo después del núcleo — ver orden de <script>
-   en index.html. mesada.js y tarjetas_credito.js YA NO definen estas
+   en index.html. mesada.js y tarjetas-credito.js YA NO definen estas
    funciones: las usan como globales definidas acá. Por eso este
    archivo tiene que estar cargado ANTES que ellos (irrelevante en la
    práctica ya que son lazy y cargan mucho después, pero se respeta
@@ -72,7 +72,7 @@ function mesadaOrigenDeMovEncargo(movId){
   return null;
 }
 
-/* ---- Tarjetas de crédito (antes en tarjetas_credito.js) ---- */
+/* ---- Tarjetas de crédito (antes en tarjetas-credito.js) ---- */
 function getTCById(id){ return (S.tarjetasCredito||[]).find(x=>x.id===id); }
 
 function tcCupoUsadoPct(tc){

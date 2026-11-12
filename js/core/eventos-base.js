@@ -64,7 +64,7 @@ function _initEventListeners() {
   // respectivamente — su propio wiring, igual que Mesada/Spotify/Gastos/
   // Cuentas. Nota de corrección: "ctc_*" es un flujo de Encargos (comprar
   // con plata de un encargo cargándola a una TC), no de Tarjetas de
-  // Crédito — tarjetas_credito.js no referencia ninguno de estos ids, así
+  // Crédito — tarjetas-credito.js no referencia ninguno de estos ids, así
   // que el grupo "entrelazado" nunca fue en realidad Encargos/TC/Préstamos,
   // sino solo Encargos/Préstamos.
 

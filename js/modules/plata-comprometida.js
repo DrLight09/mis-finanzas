@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   js/modules/plata_comprometida.js
+   js/modules/plata-comprometida.js
 
    Módulo "Plata comprometida" — ver docs/plata-comprometida.md para
    el modelo de datos y las reglas de negocio completas.
@@ -40,7 +40,7 @@
      en la sesión de TC (núcleo/otro módulo compartido, fuera de alcance).
 
    Integración a index.html: originalmente eager (confirmado 2026-07-23,
-   ver auditoria-tecnica.md) — el <script src="js/modules/plata_comprometida.js">
+   ver auditoria-tecnica.md) — el <script src="js/modules/plata-comprometida.js">
    estaba agregado justo después de <script src="js/core/events.js">, en
    el mismo lugar donde vivía el <script> inline original.
 

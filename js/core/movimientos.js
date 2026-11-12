@@ -549,7 +549,7 @@ async function _eliminarMovimientoImpl(btn) {
   // 'viejo'/'bloqueado' usa su propio diálogo en vez del genérico. Cubre
   // todos los tipos que maneja esta función: 'mesada', 'prestamo'/'abono' y
   // TC (dentro de 'gasto') tienen además su propio punto de entrada en su
-  // módulo (mesada.js, prestado.js, tarjetas_credito.js respectivamente, que
+  // módulo (mesada.js, prestado.js, tarjetas-credito.js respectivamente, que
   // aplican la misma protección por su cuenta); 'transferencia',
   // 'salida_manual', 'ingreso'/'apertura'/'entrada' y el 'gasto' genérico
   // (no-TC) solo se pueden borrar desde acá, así que es su único punto de
@@ -628,7 +628,7 @@ async function _eliminarMovimientoImpl(btn) {
         // Compra de TC: marcar como eliminada en tc.compras (nunca se borra
         // físicamente) y recalcular la deuda — NO usar sumarFuente aquí.
         // FIX: tcEliminarCompraInterna es una mutación real (revierte deuda),
-        // no un render — si tarjetas_credito.js no está cargado, hay que
+        // no un render — si tarjetas-credito.js no está cargado, hay que
         // esperarlo (Loader.ensure) y abortar todo el borrado si falla, en
         // vez de borrar el gasto y dejar la tarjeta con la deuda vieja.
         if (typeof tcEliminarCompraInterna!=='function') {

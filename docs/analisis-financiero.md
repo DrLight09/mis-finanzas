@@ -110,7 +110,7 @@ Esto es distinto del "Resumen del mes" y la "Comparación con el mes anterior" (
 
 ## 6. Top categorías este mes
 
-**ID:** `an-cats-mes`. Agrupa `gvMes` (gastos variables del mes, incluidos los retiros manuales bajo la categoría `Ajuste`) + gastos fijos pagados por categoría (`g.cat`), ordena de mayor a menor y muestra el top 5 con barra proporcional al máximo.
+**ID:** `an-cats-mes`. Agrupa `gastoVariableMes` (gastos variables del mes, incluidos los retiros manuales bajo la categoría `Ajuste`) + gastos fijos pagados por categoría (`g.cat`), ordena de mayor a menor y muestra el top 5 con barra proporcional al máximo.
 
 ## 7. Gastos por mes (últimos 12) y Ranking de meses
 

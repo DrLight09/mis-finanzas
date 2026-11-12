@@ -1,3 +1,11 @@
+## Mejora 12 (parte 2, piloto): `gv` / `gf` → `gastoVariable` / `gastoFijo` (2026-11-12, SW v124)
+
+- **Primer grupo de abreviaturas escrito completo,** hecho con una herramienta que renombra solo identificadores (parser de JavaScript), no textos: 27 nombres, 176 apariciones en 9 archivos (`gastos.js`, `periodo.js`, `refresh.js`, `analisis.js`, `inicio.js`, `huella.js`, `cuentas-fuentes.js`, `reglas.js` y `tests/nucleo.test.js`). Ejemplos: `gvTotal` → `gastoVariableTotal`, `gfTotal` → `gastoFijoTotal`, `gvMes` → `gastoVariableMes`, `_ogGv` → `_ogGastoVariable`, `gvSplit` → `gastoVariableSplit`, `actualizarGvImpacto` → `actualizarGastoVariableImpacto`, `gf` (variable local) → `gastoFijo`.
+- **No cambió ningún dato guardado ni la interfaz:** `Periodo.gastosDelMes()` y la sonda `periodos` de la huella devuelven ahora `gastoVariableTotal` / `gastoFijoTotal`, pero ninguna se guarda en `S`.
+- **Se dejó como estaba, a propósito:** los ids del HTML y sus claves en los tests (`gv_monto`, `gv_fuente`, `totalGVFilt`, `gfTotalCard`…), las clases CSS, el prefijo `gv` de `crearSplitWidget` (arma ids) y las claves `gv`/`gf` de la foto de `scripts/equivalencia.js` (para poder comparar con fotos ya guardadas; solo se renombraron sus lecturas de `Periodo`).
+- **Trinquete (`tests/fixtures/convenciones-base.json`):** `gv` y `gf` quedan en 0; ya no pueden volver. Además `scripts/convenciones.js` dejó de contar texto de los comentarios HTML de `index.html` como si fuera código.
+- **Docs:** `analisis-financiero.md`, `libro-de-movimientos.md` y `cierre-de-periodos.md` citan los nombres nuevos.
+
 ## Mejora 12 (parte 1): convención de nombres y archivos en `kebab-case` (2026-11-12, SW v123)
 
 - **Archivos renombrados** (único desorden de formato que había): `js/modules/actividad_reciente.js` → `actividad-reciente.js`, `plata_comprometida.js` → `plata-comprometida.js`, `tarjetas_credito.js` → `tarjetas-credito.js`. Se actualizaron `index.html`, `Loader.GROUPS`, `sw.js` (`PRECACHE`, sellado con `npm run sellar`), los tests, los comentarios de `js/` y `css/styles.css`, y los `.md` vivos; `docs/mapa-codigo.md` se regeneró. **`plata_comprometida` como clave de datos** (`config.proteccionAntiguedad`) **no se tocó**. Se corrigió de paso la referencia vieja de `index.html` a `docs/tarjetas_credito.md`.

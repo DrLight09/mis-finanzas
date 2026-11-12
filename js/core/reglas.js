@@ -101,12 +101,12 @@ const Reglas = (() => {
     const pagos = (S && S.pagosGastosFijos) || {};
     [0, 1].forEach(off => {
       const d = new Date(Date.UTC(hy, hm - 1 + off, 1)), mes = d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0');
-      (S.gastosFijos || []).forEach(gf => {
-        const dia = Number(gf.dia);
-        if (!Number.isInteger(dia) || dia < 1 || dia > 31 || pagos[gf.id + '_' + mes]) return;
+      (S.gastosFijos || []).forEach(gastoFijo => {
+        const dia = Number(gastoFijo.dia);
+        if (!Number.isInteger(dia) || dia < 1 || dia > 31 || pagos[gastoFijo.id + '_' + mes]) return;
         const real = Math.min(dia, new Date(d.getUTCFullYear(), d.getUTCMonth() + 1, 0).getDate());
         const fecha = mes + '-' + String(real).padStart(2, '0');
-        out.push({ id: gf.id, nombre: gf.nombre, monto: gf.monto || 0, dias: dias(hoy, fecha) });
+        out.push({ id: gastoFijo.id, nombre: gastoFijo.nombre, monto: gastoFijo.monto || 0, dias: dias(hoy, fecha) });
       });
     });
     return out.sort((a, b) => a.dias - b.dias);

@@ -74,7 +74,7 @@
 var _splitInstancias = _splitInstancias || {}; // `var`: cargarlo dos veces (tests con varios cargadores) no falla
 
 // Devuelve la API completa de la instancia: { toggle, addRow, data, reset, preview }. Cada módulo la guarda en una constante
-// (`const gvSplit = crearSplitWidget('gv', {...})`) y llama `gvSplit.toggle()` / `gvSplit.data()`, en vez de escribir (y registrar) 4–5
+// (`const gastoVariableSplit = crearSplitWidget('gv', {...})`) y llama `gastoVariableSplit.toggle()` / `gastoVariableSplit.data()`, en vez de escribir (y registrar) 4–5
 // envoltorios de una línea por instancia. Las instancias que aún tienen los envoltorios de siempre siguen funcionando igual: las funciones
 // `splitToggle(instId)` & co. no cambiaron.
 // `cfg.fuentes` (declarativo, A2): objeto —o función que lo devuelve, para lo que cambia con la pantalla— con las opciones de

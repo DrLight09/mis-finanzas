@@ -86,8 +86,8 @@ function _refreshNucleo(){
   // Gasto del mes: definición única en periodo.js (gastos fijos pagados con su monto pagado +
   // gastos variables reales, sin pagos de gasto fijo/TC/alcancía/extras de préstamo).
   const _gastosMesHoy=Periodo.gastosDelMes(mes);
-  const gfTotal=_gastosMesHoy.gfTotal;
-  const gvMes=_gastosMesHoy.gvTotal;
+  const gastoFijoTotal=_gastosMesHoy.gastoFijoTotal;
+  const gastoVariableMes=_gastosMesHoy.gastoVariableTotal;
 
   // Total intereses generados hoy en cajitas libres (base = saldo propio + encargos en la cajita)
   const interesesDe=cajitas=>cajitas.reduce((a,c)=>{
@@ -140,9 +140,9 @@ function _refreshNucleo(){
   document.getElementById('s-prest').textContent=fmtNoCents(prest);
   document.getElementById('s-cdt').textContent=fmtNoCents(cdts);
   const _cdtTile=document.getElementById('s-cdt-tile');if(_cdtTile)_cdtTile.style.display=cuentasAhorro({soloActivas:true}).length?'':'none';
-  document.getElementById('s-gf').textContent=fmtNoCents(gfTotal);
-  document.getElementById('s-gv').textContent=fmtNoCents(gvMes);
-  document.getElementById('s-gtotal').textContent=fmtNoCents(gfTotal+gvMes);
+  document.getElementById('s-gf').textContent=fmtNoCents(gastoFijoTotal);
+  document.getElementById('s-gv').textContent=fmtNoCents(gastoVariableMes);
+  document.getElementById('s-gtotal').textContent=fmtNoCents(gastoFijoTotal+gastoVariableMes);
   // El total de la cuenta de ahorro abierta y sus intereses de hoy los pinta su pantalla (nu.js, renderDetalleAhorro).
 
   // Si hay una cuenta abierta, actualizar su detalle

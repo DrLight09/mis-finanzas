@@ -65,8 +65,8 @@ function renderAnalisis(){
   // mida cuánto creció el patrimonio. Inicio/Salud financiera no lo piden: sus ratios miden flujo de caja operativo.
   const _bal=Periodo.balanceDelMes(mes,undefined,{conRendimientos:true});
   const gastosMesDet=_bal.gastos;
-  const gvTotal=gastosMesDet.gvTotal;
-  const gfTotal=gastosMesDet.gfTotal;
+  const gastoVariableTotal=gastosMesDet.gastoVariableTotal;
+  const gastoFijoTotal=gastosMesDet.gastoFijoTotal;
   const gastosTotalMes=gastosMesDet.total;
 
   // ── Ingresos del mes: mesada + ingresos fijos + entradas reales (periodo.js, regla única
@@ -122,8 +122,8 @@ function renderAnalisis(){
   const elVar=document.getElementById('an-variables');
   if(elIng){ if(_hayIngresos) elIng.textContent=fmt(ingresosEstimados); else elIng.innerHTML=SIN_DATO; }
   if(elGas) elGas.textContent=fmt(gastosTotalMes);
-  if(elFij) elFij.textContent=fmt(gfTotal);
-  if(elVar) elVar.textContent=fmt(gvTotal);
+  if(elFij) elFij.textContent=fmt(gastoFijoTotal);
+  if(elVar) elVar.textContent=fmt(gastoVariableTotal);
 
   // ── Top categorías este mes ────────────────────────────────────────────
   const catMap=Periodo.gastoPorCategoria(mes);

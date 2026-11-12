@@ -1,8 +1,8 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v123'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
+const VERSION = 'mis-finanzas-v124'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
 // Huella del contenido desplegable: la sella `node scripts/sellar-sw.js` (y `npm test` falla si quedó vieja). Así, aunque se olvide
 // subir VERSION, la caché cambia de nombre en cuanto cambia cualquier archivo y no se sirven los .js anteriores.
-const BUILD = '3688cbb4703d'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
+const BUILD = 'ebd215215872'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
 const CACHE = VERSION + '-' + BUILD;
 // Caché que SÍ sobrevive entre versiones: fuentes y SDK de Firebase (de otro origen, no forman parte de la versión de la app).
 const CACHE_EXT = 'mis-finanzas-ext';
@@ -26,7 +26,6 @@ const PRECACHE = [
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/icon-maskable-512.png",
-  "icons/icons.zip",
   "index.html",
   "js/core/arranque-ui.js",
   "js/core/async-css.js",
@@ -83,7 +82,6 @@ const PRECACHE = [
   "js/core/wait-for-module.js",
   "js/core/wait-for.js",
   "js/core/wrapped-gate.js",
-  "js/js.zip",
   "js/modules/actividad-reciente.js",
   "js/modules/alcancia.js",
   "js/modules/analisis.js",

@@ -30,7 +30,10 @@ function archivos() {
 // Quita comentarios y textos entre comillas; de index.html solo se miran los <script> sin src.
 function codigoDe(rel) {
   let s = fs.readFileSync(path.join(RAIZ, rel), 'utf8');
-  if (rel.endsWith('.html')) s = [...s.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
+  if (rel.endsWith('.html')) { // sin comentarios HTML (mencionan «<script>» en texto): solo los <script> inline reales
+    s = s.replace(/<!--[\s\S]*?-->/g, '');
+    s = [...s.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
+  }
   return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/(["'`])(?:\\.|(?!\1)[^\\\n])*\1/g, '""');
 }
 const trozos = n => n.replace(/^[_$]+/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').replace(/[_-]+/g, ' ').toLowerCase().split(' ').filter(Boolean);

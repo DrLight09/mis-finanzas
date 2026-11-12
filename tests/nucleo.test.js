@@ -524,8 +524,8 @@ describe('periodo', () => {
   test('gastos fijos — se cuentan con el monto PAGADO (editar el gasto fijo no reescribe el pasado)', () => {
     const ctx = app({ gastosFijos: [{ id: 'g1', nombre: 'Arriendo', monto: 900, cat: 'Hogar' }], pagosGastosFijos: { 'g1_2026-09': { fecha: '2026-09-02', monto: 800 } } });
     const g = P(ctx).gastosDelMes('2026-09');
-    assert.equal(g.gfTotal, 800);
-    assert.equal(P(ctx).gastosDelMes('2026-10').gfTotal, 0);
+    assert.equal(g.gastoFijoTotal, 800);
+    assert.equal(P(ctx).gastosDelMes('2026-10').gastoFijoTotal, 0);
   });
 
   test('Spotify — cada cuota cobrada cuenta como ingreso en SU fecha y el pago del plan como gasto: el balance es la caja real', () => {
@@ -574,22 +574,22 @@ describe('periodo', () => {
 
   test('gastos fijos — cuentan en el mes de la FECHA del pago, no en el mes que cubren (regla de caja)', () => {
     const ctx = app({ gastosFijos: [{ id: 'g1', nombre: 'Arriendo', monto: 800, cat: 'Hogar' }], pagosGastosFijos: { 'g1_2026-09': { fecha: '2026-10-03', monto: 800 }, 'g1_2026-08': { monto: 700 } } });
-    assert.equal(P(ctx).gastosDelMes('2026-09').gfTotal, 0, 'el arriendo de septiembre pagado en octubre no es gasto de septiembre');
-    assert.equal(P(ctx).gastosDelMes('2026-10').gfTotal, 800);
-    assert.equal(P(ctx).gastosDelMes('2026-08').gfTotal, 700, 'sin fecha, cae en el mes que cubre');
+    assert.equal(P(ctx).gastosDelMes('2026-09').gastoFijoTotal, 0, 'el arriendo de septiembre pagado en octubre no es gasto de septiembre');
+    assert.equal(P(ctx).gastosDelMes('2026-10').gastoFijoTotal, 800);
+    assert.equal(P(ctx).gastosDelMes('2026-08').gastoFijoTotal, 700, 'sin fecha, cae en el mes que cubre');
     const p = P(ctx).pagosFijos().find(x => x.fecha === '2026-10-03');
     assert.equal(p.mesCubre, '2026-09');
   });
 
   test('gastos fijos — un pago cuyo gasto fijo ya se eliminó SIGUE contando (con la categoría que guardó el pago)', () => {
     const ctx = app({ pagosGastosFijos: { 'borrado_2026-09': { fecha: '2026-09-05', monto: 100, cat: 'Ocio', nombre: 'Netflix' } } });
-    assert.equal(P(ctx).gastosDelMes('2026-09').gfTotal, 100);
+    assert.equal(P(ctx).gastosDelMes('2026-09').gastoFijoTotal, 100);
     assert.deepEqual(plano(P(ctx).gastoPorCategoria('2026-09')), { Ocio: 100 });
   });
 
   test('gastos fijos — un pago sin monto cuenta 0 (no se inventa el monto actual del gasto fijo)', () => {
     const ctx = app({ gastosFijos: [{ id: 'g1', monto: 300 }], pagosGastosFijos: { 'g1_2026-09': { fecha: '2026-09-10' } } });
-    assert.equal(P(ctx).gastosDelMes('2026-09').gfTotal, 0);
+    assert.equal(P(ctx).gastosDelMes('2026-09').gastoFijoTotal, 0);
   });
 
   test('gastos variables — los pagos de gasto fijo (ya contados como fijos) no se cuentan dos veces', () => {
@@ -598,7 +598,7 @@ describe('periodo', () => {
       gastosVar: [{ fecha: '2026-09-02', monto: 800, esPagoGastoFijo: true, clase: 'neutro' }, { fecha: '2026-09-03', monto: 50, cat: 'Comida', clase: 'gasto' }, { fecha: '2026-10-01', monto: 9, clase: 'gasto' }],
     });
     const g = P(ctx).gastosDelMes('2026-09');
-    assert.equal(g.gvTotal, 50);
+    assert.equal(g.gastoVariableTotal, 50);
     assert.equal(g.total, 850);
     assert.equal(g.items.length, 2);
   });
@@ -1103,7 +1103,7 @@ describe('clase-movimientos', () => {
         { id: 'r4', tipo: 'salida_manual', fuente: 'cuenta:nequi', monto: 9, fecha: '2026-09-30', desc: 'otro mes', clase: 'gasto' },
       ] });
     const g = ctx.Periodo.gastosDelMes('2026-10');
-    assert.equal(g.gvTotal, 41500, '1.000 gasto + 40.000 + 500 retiros; el espejo (neutro) no cuenta');
+    assert.equal(g.gastoVariableTotal, 41500, '1.000 gasto + 40.000 + 500 retiros; el espejo (neutro) no cuenta');
     assert.equal(g.total, 41500);
     assert.equal(ctx.Periodo.gastoPorCategoria('2026-10').Ajuste, 40500);
     assert.equal(ctx.Periodo.gastosPorMes()['2026-09'], 9);

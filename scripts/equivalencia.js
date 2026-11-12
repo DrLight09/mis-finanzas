@@ -54,7 +54,7 @@ function foto(rutaBackup) {
     for (let c = ord[0]; c <= ord[ord.length - 1]; c++) { // rango continuo: ningún mes intermedio se salta
       const mes = Math.floor(c / 12) + '-' + String(c % 12 + 1).padStart(2, '0');
       const i = ctx.Periodo.ingresosDelMes(mes), g = ctx.Periodo.gastosDelMes(mes);
-      out.meses[mes] = { ingresos: { mesada: i.mesada, fijos: i.fijos, entradas: i.entradas, total: i.total }, gastos: { gv: g.gvTotal, gf: g.gfTotal, total: g.total } };
+      out.meses[mes] = { ingresos: { mesada: i.mesada, fijos: i.fijos, entradas: i.entradas, total: i.total }, gastos: { gv: g.gastoVariableTotal, gf: g.gastoFijoTotal, total: g.total } };
     }
   }
   const sin = m => { if (m && typeof m === 'object' && !m.clase && !['salida'].includes(m.tipo)) out.sinClase++; };

@@ -182,8 +182,8 @@ const Libro = (() => {
     return out;
   }
 
-  // Fábrica del «origen» de las patas de saldo de un módulo: `const _ogGv = Libro.origen('gastos');` y después
-  // `_ogGv(ref)` → { origen:{ modulo:'gastos', ref } } al aplicar, `_ogGv(ref, true)` → { …, rev:true } al revertir (se pasa como
+  // Fábrica del «origen» de las patas de saldo de un módulo: `const _ogGastoVariable = Libro.origen('gastos');` y después
+  // `_ogGastoVariable(ref)` → { origen:{ modulo:'gastos', ref } } al aplicar, `_ogGastoVariable(ref, true)` → { …, rev:true } al revertir (se pasa como
   // `opts` de sumarFuente/descontarFuente). Antes cada módulo repetía su propia copia de esta función (11 `_og*` idénticas);
   // un módulo nuevo solo declara su nombre. `ref`/`rev` ausentes no dejan la clave en la entrada (nada de `rev: undefined`).
   function origen(modulo) {

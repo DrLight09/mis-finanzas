@@ -642,11 +642,11 @@ test('Gastos: la casilla «compra grande» sigue a la sugerencia del monto hasta
   const { ctx, el } = gastosApp({ cuentas: cuentas(20000000), ingresosFijos: ingresosEn(3000000, ultimosN(6)), ...gastosEn(1000000, ultimosN(3)) });
   const chk = el('gv_grande');
   el('gv_monto').value = '15.000.000,00';
-  ctx.actualizarGvImpacto();
+  ctx.actualizarGastoVariableImpacto();
   assert.equal(chk.checked, true, 'sugerida: es el 75 % de lo disponible');
   assert.match(el('gv-impacto').textContent, /Es el 75 %/);
   el('gv_monto').value = '60.000,00';
-  ctx.actualizarGvImpacto();
+  ctx.actualizarGastoVariableImpacto();
   assert.equal(chk.checked, false);
   assert.equal(el('gv-impacto').textContent, '');
 });
@@ -1508,7 +1508,7 @@ test('tieneBase: dos meses completos, o un mes con 30 días de uso; un «mes» d
 /* ================= Salud.puntaje: puro, corre en Node sin S ni DOM ================= */
 test('puntaje: sin S ni navegador; fondo sólido y sin deudas suma, deuda de TC alta resta', () => {
   const liq = (o = {}) => ({ neta: 6000000, conCDTs: 6000000, cdts: 0, meDeben: 0, yoDebo: 0, ajeno: 0, libre: 6000000, tcPropia: 0, ...o });
-  const base = { patrimonio: 6000000, gvMes: 0, gastosMes: 0, deudaTC: 0, ingresoRef: 3000000, liq: liq(), gastoRef: 1000000, ingresoTipico: 3000000, racha: { meses: 0 }, cdtsActivos: 0, catsCount: 3, comprasGrandes: [], fmt: n => '$' + n };
+  const base = { patrimonio: 6000000, gastoVariableMes: 0, gastosMes: 0, deudaTC: 0, ingresoRef: 3000000, liq: liq(), gastoRef: 1000000, ingresoTipico: 3000000, racha: { meses: 0 }, cdtsActivos: 0, catsCount: 3, comprasGrandes: [], fmt: n => '$' + n };
   const sano = Salud.puntaje(base);
   assert.ok(sano.score >= 80, 'fondo ≥ 6 meses, gasto sano y sin deudas: Excelente');
   assert.equal(sano.sinDatos, false);

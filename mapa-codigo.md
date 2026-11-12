@@ -478,7 +478,7 @@ Carga: lazy — grupo `encargos`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_bienPoblar`, `_gfPoblar`, `_gvDiaLabel`, `abrirEditarBien`, `abrirEditarGastoFijo`, `abrirNuevoGastoFijo`, `abrirNuevoGastoVar`, `abrirPagarGastoFijo`, `abrirSheetBien`, `actualizarGvImpacto`, `actualizarGvSplitPreview`, `addGastoFijo`, `addGastoVar`, `confirmarPagarGastoFijo`, `deleteGastoFijo`, `deleteGastoVar`, `eliminarBien`, `guardarBien`, `pgfActualizarSaldo`, `renderGastosFijos`, `renderGastosVar`, `renderMesFiltros`, `setMesFiltro`, `switchGastoTab`, `toggleCompraGrande`
+**Funciones:** `_bienPoblar`, `_gastoFijoPoblar`, `_gastoVariableDiaLabel`, `abrirEditarBien`, `abrirEditarGastoFijo`, `abrirNuevoGastoFijo`, `abrirNuevoGastoVar`, `abrirPagarGastoFijo`, `abrirSheetBien`, `actualizarGastoVariableImpacto`, `actualizarGastoVariableSplitPreview`, `addGastoFijo`, `addGastoVar`, `confirmarPagarGastoFijo`, `deleteGastoFijo`, `deleteGastoVar`, `eliminarBien`, `guardarBien`, `pgfActualizarSaldo`, `renderGastosFijos`, `renderGastosVar`, `renderMesFiltros`, `setMesFiltro`, `switchGastoTab`, `toggleCompraGrande`
 
 ### `js/modules/inicio.js`
 
@@ -735,6 +735,8 @@ Ninguno.
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteHuerfana` | `js/core/cuentas-fuentes.js` |
 | `_fuentesDeCuenta` | `js/modules/cuentas.js` |
+| `_gastoFijoPoblar` | `js/modules/gastos.js` |
+| `_gastoVariableDiaLabel` | `js/modules/gastos.js` |
 | `_getA` | `js/modules/alcancia.js` |
 | `_getCuotaAnio` | `js/core/calc-helpers.js` |
 | `_getEncargoSaldoEnCuenta` | `js/modules/encargos.js` |
@@ -744,10 +746,8 @@ Ninguno.
 | `_getMovsFilter` | `js/modules/cuentas.js` |
 | `_getOrCrearHistorico` | `js/modules/prestado.js` |
 | `_getSaldoOfuscado` | `js/modules/alcancia.js` |
-| `_gfPoblar` | `js/modules/gastos.js` |
 | `_gruposAbiertos` | `js/modules/prestado.js` |
 | `_guardarEditarPersonaGlobal` | `js/modules/personas.js` |
-| `_gvDiaLabel` | `js/modules/gastos.js` |
 | `_hideScreenLoading` | `js/core/navegacion.js` |
 | `_historialTasas` | `js/core/nu-calc.js` |
 | `_htmlEscapeValue` | `js/core/html-tag.js` |
@@ -1146,8 +1146,8 @@ Ninguno.
 | `actualizarBotonRetirar` | `js/modules/cuentas.js` |
 | `actualizarCbAvisoMes` | `js/modules/analisis.js` |
 | `actualizarCbPreview` | `js/modules/analisis.js` |
-| `actualizarGvImpacto` | `js/modules/gastos.js` |
-| `actualizarGvSplitPreview` | `js/modules/gastos.js` |
+| `actualizarGastoVariableImpacto` | `js/modules/gastos.js` |
+| `actualizarGastoVariableSplitPreview` | `js/modules/gastos.js` |
 | `actualizarMpAvisoMes` | `js/modules/mesada.js` |
 | `actualizarMppPreview` | `js/modules/mesada.js` |
 | `actualizarMpPreview` | `js/modules/mesada.js` |

@@ -338,7 +338,7 @@ function calcHealthScore(sit){
   const _desde90 = Fecha.sumarDias(hoy(), -90);
   const gastoRef = Periodo.gastoPromedioPrevio(mes, U.mesesReferencia).promedio;
   const e = {
-    patrimonio: calcPatrimonioVisible(), gvMes: _gMes.gvTotal, gastosMes: _gMes.total,
+    patrimonio: calcPatrimonioVisible(), gastoVariableMes: _gMes.gastoVariableTotal, gastosMes: _gMes.total,
     deudaTC: typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0,
     // Ingreso de REFERENCIA: el mayor entre lo de este mes y el típico de los últimos 3 meses con ingreso (ver Salud.puntaje).
     ingresoRef: Math.max(ingresosMes, Periodo.ingresoPromedioPrevio(mes, 3).promedio),

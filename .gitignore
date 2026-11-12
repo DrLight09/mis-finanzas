@@ -2,7 +2,7 @@
 /node_modules/
 
 # Documentos y archivos locales que no quiero subir
+*.zip
 /*.md
-/*.zip
 /subir.sh
 /laboratorio-cajitas-nu.htmlbash subir.sh

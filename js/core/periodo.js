@@ -206,7 +206,7 @@ const Periodo = (() => {
 
   /* ---- GASTOS ---- */
   // Todos los pagos de gastos fijos, normalizados: [{id, mes, mesCubre, monto, fecha, cat, nombre}].
-  // S.pagosGastosFijos es un mapa {"<gfId>_YYYY-MM": {fecha, fuente, monto}}; `mesCubre` sale de la clave y `mes` (el que
+  // S.pagosGastosFijos es un mapa {"<gastoFijoId>_YYYY-MM": {fecha, fuente, monto}}; `mesCubre` sale de la clave y `mes` (el que
   // cuenta) de la fecha del pago.
   function pagosFijos(estado) {
     const st = _st(estado);
@@ -216,14 +216,14 @@ const Periodo = (() => {
     const out = [];
     const sumar = (id, mes, p) => {
       if (!p || !mes) return;
-      const gf = gfs.find(x => x.id === id);
+      const gastoFijo = gfs.find(x => x.id === id);
       out.push({
         id, mesCubre: mes,
         mes: p.fecha ? mesKey(p.fecha) : mes, // regla de caja: cuenta en el mes de la fecha del pago
         monto: p.monto || 0,
         fecha: p.fecha || '',
-        cat: (gf && gf.cat) || p.cat || null,
-        nombre: (gf && gf.nombre) || p.nombre || ''
+        cat: (gastoFijo && gastoFijo.cat) || p.cat || null,
+        nombre: (gastoFijo && gastoFijo.nombre) || p.nombre || ''
       });
     };
     Object.keys(raw).forEach(k => {
@@ -292,18 +292,18 @@ const Periodo = (() => {
     (_st(estado).gastosVar || []).filter(g => mesKey(g.fecha) === mes && !_esGastoVarNoReal(g))
       .concat(retirosManuales(estado).filter(r => mesKey(r.fecha) === mes));
 
-  // { variables:[gastos], fijos:[pagos], gvTotal, gfTotal, total, items }
+  // { variables:[gastos], fijos:[pagos], gastoVariableTotal, gastoFijoTotal, total, items }
   // `items` junta ambos (cada uno con cat y monto) para agrupar por categoría.
   function gastosDelMes(mes, estado) {
     const variables = gastosVarRealesDelMes(mes, estado);
     const fijos = gastosFijosDelMes(mes, estado);
-    const gvTotal = variables.reduce((a, g) => a + (g.monto || 0), 0);
-    const gfTotal = fijos.reduce((a, p) => a + p.monto, 0);
+    const gastoVariableTotal = variables.reduce((a, g) => a + (g.monto || 0), 0);
+    const gastoFijoTotal = fijos.reduce((a, p) => a + p.monto, 0);
     const umbral = umbralCompraGrande(estado);
     const extraordinarios = variables.filter(g => esCompraGrande(g, umbral));
     const extraTotal = extraordinarios.reduce((a, g) => a + (g.monto || 0), 0);
     // total = TODO lo que salió (real). recurrenteTotal = lo mismo sin las compras grandes (el ritmo del mes).
-    return { variables, fijos, gvTotal, gfTotal, total: gvTotal + gfTotal, items: [...variables, ...fijos], extraordinarios, extraTotal, recurrenteTotal: gvTotal + gfTotal - extraTotal };
+    return { variables, fijos, gastoVariableTotal, gastoFijoTotal, total: gastoVariableTotal + gastoFijoTotal, items: [...variables, ...fijos], extraordinarios, extraTotal, recurrenteTotal: gastoVariableTotal + gastoFijoTotal - extraTotal };
   }
 
   // Compras grandes con fecha en (desde, hasta] — `desde` excluida, `hasta` incluida, ambas 'YYYY-MM-DD'. Para ajustar la pendiente
@@ -421,7 +421,7 @@ const Periodo = (() => {
       dias: Math.round((Date.UTC(y, m - 1, real) - Date.UTC(hy, hm - 1, hd)) / 86400000) };
   }
 
-  // Gastos fijos con día de vencimiento (`gf.dia`, entero 1–31, opcional) que todavía NO se han pagado en `mes`. El día se recorta al
+  // Gastos fijos con día de vencimiento (`gastoFijo.dia`, entero 1–31, opcional) que todavía NO se han pagado en `mes`. El día se recorta al
   // último día del mes (un «31» vence el 28 en febrero). `dias` = días desde `hoyStr` hasta el vencimiento: 0 = vence hoy, negativo = ya
   // venció. Un gasto fijo sin día no aparece aquí (la app no inventa un vencimiento: solo avisa de lo que el usuario dijo).
   // → [{ id, nombre, monto, cat, dia, fecha:'YYYY-MM-DD', dias }] ordenado por vencimiento.
@@ -429,10 +429,10 @@ const Periodo = (() => {
     const st = _st(estado);
     const pagados = new Set(pagosFijos(estado).filter(p => p.mesCubre === mes).map(p => p.id));
     const out = [];
-    (st.gastosFijos || []).forEach(gf => {
-      const f = diaDelMes(gf.dia, mes, hoyStr);
-      if (!f || pagados.has(gf.id)) return;
-      out.push({ id: gf.id, nombre: gf.nombre, monto: gf.monto || 0, cat: gf.cat, dia: f.dia, fecha: f.fecha, dias: f.dias });
+    (st.gastosFijos || []).forEach(gastoFijo => {
+      const f = diaDelMes(gastoFijo.dia, mes, hoyStr);
+      if (!f || pagados.has(gastoFijo.id)) return;
+      out.push({ id: gastoFijo.id, nombre: gastoFijo.nombre, monto: gastoFijo.monto || 0, cat: gastoFijo.cat, dia: f.dia, fecha: f.fecha, dias: f.dias });
     });
     return out.sort((a, b) => a.dias - b.dias);
   }
@@ -444,8 +444,8 @@ const Periodo = (() => {
     const st = _st(estado);
     const pagados = new Set(pagosFijos(estado).filter(p => p.mesCubre === mes).map(p => p.id));
     return (st.gastosFijos || [])
-      .filter(gf => !diaDelMes(gf.dia, mes, mes + '-01') && !pagados.has(gf.id))
-      .map(gf => ({ id: gf.id, nombre: gf.nombre, monto: gf.monto || 0, cat: gf.cat }));
+      .filter(gastoFijo => !diaDelMes(gastoFijo.dia, mes, mes + '-01') && !pagados.has(gastoFijo.id))
+      .map(gastoFijo => ({ id: gastoFijo.id, nombre: gastoFijo.nombre, monto: gastoFijo.monto || 0, cat: gastoFijo.cat }));
   }
 
   // Calendario de caja (puro): cómo evoluciona un saldo (tu plata disponible, neta de deudas) día a día con eventos CONOCIDOS de antemano.

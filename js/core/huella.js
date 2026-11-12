@@ -146,7 +146,7 @@ const Huella = (() => {
       const b = Periodo.balanceDelMes(mes, st);
       out[mes] = {
         mesada: b.ingresos.mesada, fijos: b.ingresos.fijos, spotify: b.ingresos.spotify, entradas: b.ingresos.entradas, ingresos: b.ingresos.total,
-        gvTotal: b.gastos.gvTotal, gfTotal: b.gastos.gfTotal, gastos: b.gastos.total, balance: b.balance,
+        gastoVariableTotal: b.gastos.gastoVariableTotal, gastoFijoTotal: b.gastos.gastoFijoTotal, gastos: b.gastos.total, balance: b.balance,
         porCategoria: Periodo.gastoPorCategoria(mes, st),
       };
     });

@@ -2320,10 +2320,11 @@ button.inicio-pilar-accion{cursor:pointer;}
 .cfg-resp-aviso{color:var(--amber);}
 .cfg-resp-lista{margin-bottom:8px;max-height:320px;overflow-y:auto;}
 .cfg-resp-fila{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--border);}
-.cfg-resp-info{min-width:0;}
+.cfg-resp-info{flex:1;min-width:0;}
 .cfg-resp-fecha{font-size:12px;color:var(--text);}
 .cfg-resp-meta{font-size:10px;color:var(--text3);margin-top:2px;}
-.cfg-resp-btn{flex:none;padding:7px 12px;font-size:11px;}
+.cfg-resp-btn{flex:none;width:auto;white-space:nowrap;padding:7px 14px;font-size:12px;border-color:var(--accent);color:var(--accent);} /* .btn trae width:100%: sin width:auto el botón se comía toda la fila y apretaba el texto */
+.cfg-resp-btn:active{background:rgba(200,240,96,.08);}
 .cfg-resp-ver{width:100%;padding:9px;font-size:12px;}
 /* Configuración: «Mis Wrapped» (renderMisWrapped en configuracion.js) */
 .cfg-wrapped-lista{padding:4px 15px;margin-bottom:12px;}

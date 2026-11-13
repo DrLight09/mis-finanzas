@@ -732,26 +732,26 @@ function abrirCrearCDT(cajitaId){
 // Reglas de los campos de un CDT (tasa, retención, fechas): UNA sola vez, para crear (confirmarCrearCDT) y
 // para editar (guardarCDT). Pura: no lee el DOM ni muestra avisos; recibe los textos del formulario.
 //  · tasa:   vacía → tasaDefecto; si no, un número > 0 (lo que lea parsePct).
-//  · rte:    vacía → rteDefecto; si no, número 0–100 con punto o coma (0 es válido; texto o negativo se rechaza).
+//  · tasaRetencion:    vacía → tasaRetencionDefecto; si no, número 0–100 con punto o coma (0 es válido; texto o negativo se rechaza).
 //  · inicio: vacío → inicioDefecto; no puede ser futuro.
 //  · vence:  obligatoria y posterior a la apertura.
-// Devuelve {ok:true, tasa, rte, inicio, vence} o {ok:false, mensaje}. `ahora` solo existe para poder probarla.
+// Devuelve {ok:true, tasa, tasaRetencion, inicio, vence} o {ok:false, mensaje}. `ahora` solo existe para poder probarla.
 function validarCamposCDT(o,ahora){
   const err=mensaje=>({ok:false,mensaje});
   const txt=v=>(v==null?'':String(v)).trim();
   const tasaRaw=txt(o.tasa);
   const tasa=tasaRaw===''?o.tasaDefecto:parsePct(tasaRaw);
   if(!(tasa>0))return err('La tasa (EA) debe ser un número mayor que 0');
-  const retencionRaw=txt(o.rte);
+  const retencionRaw=txt(o.tasaRetencion);
   if(retencionRaw!==''&&!/^\d+([.,]\d+)?$/.test(retencionRaw))return err('La retención (RTE) no es un número válido');
-  const tasaRetencion=retencionRaw===''?o.rteDefecto:parsePct(retencionRaw);
+  const tasaRetencion=retencionRaw===''?o.tasaRetencionDefecto:parsePct(retencionRaw);
   if(tasaRetencion>100)return err('La retención (RTE) no puede pasar de 100 %');
   const inicio=o.inicio||o.inicioDefecto;
   const vence=o.vence;
   if(_fechaSafe(inicio)>(ahora||new Date()))return err('La fecha de apertura no puede ser futura');
   if(!vence)return err('Debes definir la fecha de vencimiento');
   if(_fechaSafe(vence)<=_fechaSafe(inicio))return err('La fecha de vencimiento debe ser posterior a la apertura');
-  return{ok:true,tasa,rte: tasaRetencion,inicio,vence};
+  return{ok:true,tasa,tasaRetencion: tasaRetencion,inicio,vence};
 }
 
 function confirmarCrearCDT(){
@@ -761,12 +761,12 @@ function confirmarCrearCDT(){
   // Tasa, RTE y fechas: validarCamposCDT (mismas reglas que al editar). Vacío = tasa 9,25 y RTE 4 (valores por
   // defecto del formulario); la RTE 0 es válida.
   const v=validarCamposCDT({
-    tasa:document.getElementById('cdt_tasa').value, rte:document.getElementById('cdt_rte').value,
+    tasa:document.getElementById('cdt_tasa').value, tasaRetencion:document.getElementById('cdt_rte').value,
     inicio:document.getElementById('cdt_inicio').value, vence:document.getElementById('cdt_vence').value,
-    tasaDefecto:9.25, rteDefecto:4, inicioDefecto:hoy()
+    tasaDefecto:9.25, tasaRetencionDefecto:4, inicioDefecto:hoy()
   });
   if(!v.ok){toast(v.mensaje,'err');return;}
-  const {tasa,rte: tasaRetencion,inicio,vence}=v;
+  const {tasa,tasaRetencion: tasaRetencion,inicio,vence}=v;
   if(monto<50000){toast('El monto mínimo para un CDT es $50.000','err');return;}
   // Calcular saldo real incluyendo intereses sub-día (lo mismo que muestra el modal)
   const saldoReal=calcC(c).val;
@@ -783,7 +783,7 @@ function confirmarCrearCDT(){
   ajustarSaldoCuenta('cajita:'+c.id,c.saldo-montoFinal,{tipo:'cdt',desc:'Capital invertido en CDT',origen:{modulo:'cuentas'}});
   // Agregar CDT al array de CDTs de la cajita
   if(!c.cdts)c.cdts=[];
-  c.cdts.push({id:uid(),monto:montoFinal,tasa,rte: tasaRetencion,inicio,vence});
+  c.cdts.push({id:uid(),monto:montoFinal,tasa,tasaRetencion: tasaRetencion,inicio,vence});
   _cdtEditId=null;
   save();
   closeSheet('crear-cdt');
@@ -904,7 +904,7 @@ async function editarCDT(cajitaId,cdtId){
   document.getElementById('cdt_tasa').value=String(cdt.tasa).replace('.',',');
   document.getElementById('cdt_inicio').value=cdt.inicio||hoy();
   document.getElementById('cdt_vence').value=cdt.vence||'';
-  document.getElementById('cdt_rte').value=cdt.rte!=null?String(cdt.rte).replace('.',','):'4';
+  document.getElementById('cdt_rte').value=cdt.tasaRetencion!=null?String(cdt.tasaRetencion).replace('.',','):'4';
   document.getElementById('cdt_preview').textContent='';
   document.getElementById('cdt_tasa').dispatchEvent(new Event('input',{bubbles:true})); // preview con los valores actuales
   openSheet('crear-cdt');
@@ -919,13 +919,13 @@ function guardarCDT(cajitaId,cdtId){
   const cdt=(c.cdts||[]).find(x=>x.id===cdtId);
   if(!cdt){toast('Ese CDT ya no existe','err');return;}
   const v=validarCamposCDT({
-    tasa:document.getElementById('cdt_tasa').value, rte:document.getElementById('cdt_rte').value,
+    tasa:document.getElementById('cdt_tasa').value, tasaRetencion:document.getElementById('cdt_rte').value,
     inicio:document.getElementById('cdt_inicio').value, vence:document.getElementById('cdt_vence').value,
-    tasaDefecto:cdt.tasa, rteDefecto:cdt.rte!=null?cdt.rte:4, inicioDefecto:cdt.inicio||hoy() // vacío = conserva el valor actual
+    tasaDefecto:cdt.tasa, tasaRetencionDefecto:cdt.tasaRetencion!=null?cdt.tasaRetencion:4, inicioDefecto:cdt.inicio||hoy() // vacío = conserva el valor actual
   });
   if(!v.ok){toast(v.mensaje,'err');return;}
   cdt.tasa=v.tasa;
-  cdt.rte=v.rte;
+  cdt.tasaRetencion=v.tasaRetencion;
   cdt.inicio=v.inicio;
   cdt.vence=v.vence;
   _cdtEditId=null;
@@ -1214,7 +1214,7 @@ function abrirSubCDTs(){
           <div>
             <div class="nu-cdt-val">${fmt(cdtK.val)}</div>
             <div class="nu-meta-obj-etq">Capital: ${fmt(cdt.monto)} · +${fmt(cdtK.ganado)} netos · ${String(cdt.tasa).replace('.',',')}% EA</div>
-            ${cdtK.retencion>0.01?html`<div class="nu-cdt-rte">RTE ${cdt.rte!=null?cdt.rte:4}%: −${fmt(cdtK.retencion)}</div>`:''}
+            ${cdtK.retencion>0.01?html`<div class="nu-cdt-rte">RTE ${cdt.tasaRetencion!=null?cdt.tasaRetencion:4}%: −${fmt(cdtK.retencion)}</div>`:''}
           </div>
           ${dr!==null?html`<span class="badge ${vencido?'bg-red':'bg-purple'}">${vencido?'¡Venció!':dr+'d'}</span>`:''}
         </div>

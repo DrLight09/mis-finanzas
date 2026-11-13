@@ -1022,7 +1022,7 @@ function _cpdConfirmar(){
         if(tc && typeof tcCrearCompra === 'function'){
           const _compraTc = tcCrearCompra(tc, {desc, monto, fecha:hoy(),
             cat:'Plata comprometida', nota:'Favor — cubierto por ingreso comprometido',
-            _desdeCP:true, _esFavor:true});
+            _desdePlataComprometida:true, _esFavor:true});
           _tcCompraIdInicial = _compraTc.id;
           if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida — favor)', fmt(monto)+' sumado a la deuda', monto, 'gasto');
           if(typeof refresh === 'function') refresh();
@@ -1315,8 +1315,8 @@ function _plataComprometidaConfirmarRecibir(){
             }
             sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
-            // _esReposicionCP:true → excluido del análisis de tendencia (no es ingreso nuevo, es devolución)
-            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
+            // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (no es ingreso nuevo, es devolución)
+            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
             if(window.logCambio) logCambio('Reposición en '+fuenteTexto(cuenta), fmt(d.monto)+' de "'+item.desc+'"', d.monto, 'ingreso');
           }
         } else {
@@ -1330,8 +1330,8 @@ function _plataComprometidaConfirmarRecibir(){
             }
             sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
-            // _esReposicionCP:true → excluido del análisis de tendencia (devolución de plata que ya salió)
-            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
+            // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (devolución de plata que ya salió)
+            S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
             if(window.logCambio) logCambio('Reposición (ya adelantada) en '+fuenteTexto(cuenta), fmt(d.monto)+' repuesto', d.monto, 'ingreso');
           }
         }
@@ -1356,7 +1356,7 @@ function _plataComprometidaConfirmarRecibir(){
               const _compraTc=tcCrearCompra(tc,{
                 desc:d.desc, monto:d.monto, fecha,
                 cat:'Plata comprometida', nota:'Favor — cubierto por ingreso: '+item.desc,
-                _desdeCP:true, _esFavor:true
+                _desdePlataComprometida:true, _esFavor:true
               });
               d._tcCompraId=_compraTc.id;
               if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado (favor)', fmt(d.monto)+' sumado a la deuda — cubierto por "'+item.desc+'"', d.monto, 'gasto');
@@ -1371,8 +1371,8 @@ function _plataComprometidaConfirmarRecibir(){
               }
               sumarFuente(destCajita, d.monto, _ogPlataComprometida(d.id));
               if(!S.movimientos) S.movimientos = [];
-              // _esReposicionCP:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
-              S.movimientos.push({id:uid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
+              // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
+              S.movimientos.push({id:uid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
               if(window.logCambio) logCambio('Plata para pagar TC en '+fuenteTexto(destCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
             }
           }
@@ -1386,8 +1386,8 @@ function _plataComprometidaConfirmarRecibir(){
             }
             sumarFuente(d.gastoCajita, d.monto, _ogPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
-            // _esReposicionCP:true → excluido del análisis de tendencia (repone cajita, no es ingreso nuevo)
-            S.movimientos.push({id:uid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
+            // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (repone cajita, no es ingreso nuevo)
+            S.movimientos.push({id:uid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
             if(window.logCambio) logCambio('Repuesto gasto en '+fuenteTexto(d.gastoCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
           }
         }
@@ -1417,7 +1417,7 @@ function _plataComprometidaConfirmarRecibir(){
         item.sobrante = { cuenta: sobranteCuenta, monto: ganancia }; // para devolverlo si se elimina el ingreso
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:uid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha,
-          desc:'Ingreso libre: '+item.desc, clase:'ingreso', _esSobrante:true, _cpItemId:item.id});
+          desc:'Ingreso libre: '+item.desc, clase:'ingreso', _esSobrante:true, _plataComprometidaItemId:item.id});
         if(window.logCambio) logCambio(
           '<i class="fa-solid fa-sack-dollar cp-ico-r4"></i>¡Ingreso libre de "'+item.desc+'"!',
           fmt(ganancia)+' en '+fuenteTexto(sobranteCuenta),
@@ -1619,7 +1619,7 @@ function _plataComprometidaGuardarMarcados(){
         if(tc){
           const _compraTc=tcCrearCompra(tc,{desc:dNuevo.desc, monto:dNuevo.monto, fecha:hoy(),
             cat:'Plata comprometida', nota:'Favor — cubierto por ingreso comprometido',
-            _desdeCP:true, _esFavor:true});
+            _desdePlataComprometida:true, _esFavor:true});
           dNuevo._tcCompraId=_compraTc.id;
           if(window.logCambio) logCambio('Gasto cargado a '+tc.nombre+' (plata comprometida — favor)', fmt(dNuevo.monto)+' sumado a la deuda', dNuevo.monto, 'gasto');
         }
@@ -1743,15 +1743,15 @@ async function _plataComprometidaEliminar(id){
       // El ingreso ya se distribuyó: revertir todos los movimientos generados en _plataComprometidaConfirmarRecibir
       // 1) Revertir entradas en S.movimientos que fueron creadas por este ingreso comprometido
       //    Identificamos los movimientos por su desc que contiene el nombre del item.
-      //    Usamos la bandera _esReposicionCP para los de reposición,
+      //    Usamos la bandera _esReposicionPlataComprometida para los de reposición,
       //    y para los de "Ingreso libre" buscamos por desc exacta.
       if(S.movimientos){
         S.movimientos = S.movimientos.filter(m => {
           const desc = m.desc || '';
           // Lo que este ingreso creó al recibirse lleva su id (los textos de cada destino no siempre incluyen el del ingreso)
-          if(m._cpItemId && m._cpItemId === item.id) return false;
+          if(m._plataComprometidaItemId && m._plataComprometidaItemId === item.id) return false;
           // Reposiciones marcadas con el flag (nuevo formato)
-          if(m._esReposicionCP && desc.includes(item.desc)) return false;
+          if(m._esReposicionPlataComprometida && desc.includes(item.desc)) return false;
           // Ingreso libre: coincide desc e id generado desde este item
           if(m._esSobrante && desc.includes(item.desc)) return false;
           // Reposiciones antiguas (sin flag): buscar por desc exacta

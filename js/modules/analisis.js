@@ -57,8 +57,8 @@ function renderAnalisis(){
   // ── Gastos del mes actual ──────────────────────────────────────────────
   // Nota: no hace falta excluir "favores" pagados con plata comprometida aquí —
   // esos gastos nunca se guardan en S.gastosVar. Viven en tc.compras (con
-  // _esFavor/_desdeCP cuando se pagan con TC) o son solo una reposición de
-  // cajita marcada con _esReposicionCP en S.movimientos. Ver _esEntradaEspejoNoIngreso.
+  // _esFavor/_desdePlataComprometida cuando se pagan con TC) o son solo una reposición de
+  // cajita marcada con _esReposicionPlataComprometida en S.movimientos. Ver _esEntradaEspejoNoIngreso.
   // También excluir _esExtraPrestamo: es plata de un extra/propina que se gastó de inmediato
   // (nunca se registró como ingreso, así que contarla como gasto real infla el balance negativamente)
   // conRendimientos: en Análisis los intereses de Nu (cajitas y CDT) cuentan como ingreso del mes, para que el balance

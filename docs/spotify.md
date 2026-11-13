@@ -96,7 +96,7 @@ S.spotify.historial = [
   // varios períodos adelantados de una sola vez (ver §3). `monto` es el total
   // realmente movido a la cuenta destino, nunca la cuota de un solo período.
   {
-    id: "uid", spId: "id del integrante", tipo: "cobro",
+    id: "uid", spotifyId: "id del integrante", tipo: "cobro",
     nombre: "Juan",           // nombre ya resuelto al momento de registrar el cobro
     monto: 24000,             // total REALMENTE recibido hasta ahora (incluye abonos de pendienteHistorial, ver abajo)
     periodos: 3,              // cuántos períodos cubre este cobro (1 si fue un pago normal)
@@ -316,7 +316,7 @@ Las reversiones de saldo (cobro, abonos del pendiente y "Deshacer abono") usan `
 ## 6. Casos especiales
 
 - **Selector de personas compartido:** "Agregar integrante" y "Editar" usan el mismo componente que Encargos y Deudores, con el título adaptado ("¿Quién es?" en Spotify). Si el nombre buscado no existe, ofrece un botón de un toque para crear la persona directamente.
-- **Nombres únicos** (sin distinguir mayúsculas): evita confundir a dos personas homónimas en los avisos y en la búsqueda (los cobros se vinculan por `spId`, nunca por nombre). Si son dos personas distintas de verdad, hay que diferenciarlas ("Juan" y "Juan (primo)").
+- **Nombres únicos** (sin distinguir mayúsculas): evita confundir a dos personas homónimas en los avisos y en la búsqueda (los cobros se vinculan por `spotifyId`, nunca por nombre). Si son dos personas distintas de verdad, hay que diferenciarlas ("Juan" y "Juan (primo)").
 - **Corregir la fecha de ingreso sin perder pagos adelantados:** si alguien ya tiene `proximoPago` bien adelantado por pagos previos, corregir `fechaIngreso` desplaza `proximoPago` la misma cantidad de días — nunca la recalcula como `fechaIngreso nueva + 30 días`, que borraría ese avance.
 - **Integrante sin persona vinculada todavía** (registros creados antes de existir el sistema de personas): el campo "¿Quién es?" sigue siendo interactivo y permite vincularlo una única vez.
 - **Cerrar el selector de personas sin confirmar:** el sistema avisa explícitamente que no se aplicó ningún cambio, en vez de guardar en silencio el valor anterior.

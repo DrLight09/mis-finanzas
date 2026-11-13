@@ -734,7 +734,7 @@ function getMovimientosCuenta(tipo) {
         if (hermano) _otrasCuentas = [{ fuente: hermano.fuente, monto: hermano._intercambioSalida ? -hermano.monto : +hermano.monto }];
       }
       else if (esTransferencia) { _origen = 'Cuentas · Movimiento manual'; if (m._fuenteDestino) _otrasCuentas = [{ fuente: m._fuenteDestino, monto: esIntercambioSalida ? +m.monto : -m.monto }]; }
-      else if (m._esReposicionCP) { _origen = 'Plata comprometida'; }
+      else if (m._esReposicionPlataComprometida) { _origen = 'Plata comprometida'; }
       else if (m._encMovId || /encargo/i.test(m.desc || '')) { _origen = 'Encargos'; }
       else if (m._secundario && m._origenSeccion) { _origen = m._origenSeccion; }
       else { _origen = 'Cuentas · Movimiento manual'; }

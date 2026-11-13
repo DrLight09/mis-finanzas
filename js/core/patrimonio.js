@@ -79,7 +79,7 @@ function calcDeudaAjenaDeTarjeta(tc){
     if (m.eliminado || m.tcId !== tc.id) return;
     if (m.tipo === 'cargo_encargo' || m.tipo === 'cargo_prestamo') ajenaBruta += (m.monto||0);
   });
-  (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdeCP) ajenaBruta += (c.monto||0); });
+  (tc.compras||[]).forEach(c => { if (!c.eliminado && c._desdePlataComprometida) ajenaBruta += (c.monto||0); });
   const totalPagos = (tc.pagos||[]).filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
   const saldoInicialBruto = (tc.saldoInicial && !tc.saldoInicial.eliminado) ? (tc.saldoInicial.monto||0) : 0;
   // Los pagos ya "gastados" en drenar el saldo inicial no cuentan acá —

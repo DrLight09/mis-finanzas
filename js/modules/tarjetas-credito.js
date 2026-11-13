@@ -239,7 +239,7 @@ function tcCrearCompra(tc,datos){
     eliminado:false
   };
   if(datos._esFavor) compra._esFavor=true;
-  if(datos._desdeCP) compra._desdeCP=true;
+  if(datos._desdePlataComprometida) compra._desdePlataComprometida=true;
   if(datos._esCargoEspecial){ compra._esCargoEspecial=true; compra._motivoCargo=datos._motivoCargo||'otro'; }
   tc.compras.push(compra);
   tcRecalcular(tc);
@@ -928,12 +928,12 @@ function abrirDetalleTCSheet(tcId){
       }
       if(item._tipo==='compra'){
         const c=item;
-        const esFavor=c._esFavor||c._desdeCP;
+        const esFavor=c._esFavor||c._desdePlataComprometida;
         const esCargoEspecial=!!c._esCargoEspecial;
         const favorBadge=esFavor
           ? `<span class="tc-favor-badge"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>favor</span>`
           : '';
-        const _origenC=esCargoEspecial?'Cargo especial del banco':(c._desdeCP?'Plata comprometida':'Tarjeta de crédito');
+        const _origenC=esCargoEspecial?'Cargo especial del banco':(c._desdePlataComprometida?'Plata comprometida':'Tarjeta de crédito');
         const badgeLabel=esCargoEspecial?('Cargo especial · '+(TC_MOTIVOS_CARGO[c._motivoCargo]||'Otro')):(esFavor?'Favor cubierto':(c.cat||'Sin cat.'));
         const badgeClase=esCargoEspecial?'tc-badge-amber':(esFavor?'tc-badge-azul':'tc-badge-rojo');
         return filaMovimiento({

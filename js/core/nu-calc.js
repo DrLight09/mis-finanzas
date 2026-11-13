@@ -239,7 +239,7 @@ function rendimientoCajitaPorMes(c){
 // Nu calcula el CDT así:
 // 1. Rendimiento bruto = monto × ((1 + EA)^(dias/365) - 1)  [compuesto, base 365]
 // 2. Nu redondea el bruto al $0,50 más cercano: round(bruto × 2) / 2
-// 3. RTE = bruto_redondeado × rte%
+// 3. RTE = bruto_redondeado × tasaRetencion%
 // 4. Rendimiento neto = bruto_redondeado - RTE
 // 5. Total neto = monto + rendimiento neto
 // Verificado con dos CDTs reales: replica exactamente los valores de la app Nu.
@@ -267,7 +267,7 @@ function cdtVencido(cdt,ahora){
 function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
   const rate=_tasaCDT(cdt)/100;
-  const tasaRetencion=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente (default 4%)
+  const tasaRetencion=(cdt.tasaRetencion!=null?cdt.tasaRetencion:4)/100; // retención en fuente (default 4%)
   const desde=_fechaSafe(cdt.inicio);
   const hasta=cdt.vence?_fechaSafe(cdt.vence):new Date();
   const ahora=new Date();
@@ -288,7 +288,7 @@ function calcCDT(cdt){
 function _rendimientoCDTaDias(cdt,dias){
   if(dias<=0)return 0;
   const rate=_tasaCDT(cdt)/100;
-  const tasaRetencion=(cdt.rte!=null?cdt.rte:4)/100;
+  const tasaRetencion=(cdt.tasaRetencion!=null?cdt.tasaRetencion:4)/100;
   const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
   const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;
   const retencion=ganado_bruto*tasaRetencion;

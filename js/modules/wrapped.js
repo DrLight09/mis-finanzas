@@ -2656,8 +2656,8 @@ function _wrappedProtagonistas(S, tipo, mesK, anioK){
     if(n>0) sumar(d.personaId||d.nombre, d.nombre, d.personaId||null, n);
   });
   ((S.spotify||{}).historial||[]).forEach(h => {
-    if(h && h.tipo==='cobro' && h.spId && _wrappedEnRango(h.fecha, tipo, mesK, anioK)){
-      const spotify = ((S.spotify||{}).personas||[]).find(p => p.id === h.spId);
+    if(h && h.tipo==='cobro' && h.spotifyId && _wrappedEnRango(h.fecha, tipo, mesK, anioK)){
+      const spotify = ((S.spotify||{}).personas||[]).find(p => p.id === h.spotifyId);
       const nombre = spotify ? spotify.nombre : h.nombre;
       const personaId = spotify ? spotify.personaId : null;
       sumar(personaId||nombre, nombre, personaId||null, 1);

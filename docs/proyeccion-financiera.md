@@ -138,7 +138,7 @@ Afectan la proyección de dos maneras:
 - **Una compra:** aumenta `tc.deuda` → patrimonio baja.
 - **Un pago:** disminuye `tc.deuda` y descuenta la cuenta de pago → neto cero (ya se había restado al comprar).
 
-> La deuda TC que corresponde a encargos (`cargo_encargo`), plata comprometida (`_desdeCP`) y préstamos TC (`cargo_prestamo`) **no se resta del patrimonio** porque es ajena — `calcDeudaTcPropia()` la excluye.
+> La deuda TC que corresponde a encargos (`cargo_encargo`), plata comprometida (`_desdePlataComprometida`) y préstamos TC (`cargo_prestamo`) **no se resta del patrimonio** porque es ajena — `calcDeudaTcPropia()` la excluye.
 
 ### Encargos
 

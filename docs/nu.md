@@ -91,7 +91,7 @@ S.cajitas = [
     },
     cdts: [
       {
-        id: "uid", monto: 500000, tasa: 13.5, rte: 4,
+        id: "uid", monto: 500000, tasa: 13.5, tasaRetencion: 4,
         inicio: "2026-06-01", vence: "2026-09-01"
         // Eso es TODO el objeto. No existe `estado` ni `valorReal` en el
         // CDT — al cobrarlo (`confirmarCobrarCDT`), el valor real se
@@ -232,7 +232,7 @@ El primer chequeo de una cajita solo fija su punto de partida; la primera compar
 | `calcCDT(cdt)` / `calcRendimientoCDTMes(...)` | Proyección teórica de un CDT activo |
 | `abrirCrearCDT(cajitaId)` / `confirmarCrearCDT()` | Abrir un CDT nuevo. `confirmarCrearCDT()` exige saldo en la cajita y descuenta el monto |
 | `editarCDT(cajitaId, cdtId)` / `guardarCDT(cajitaId, cdtId)` | Editar un CDT existente en el mismo sheet. Solo cambia tasa, fechas y retención; el capital no se puede cambiar y el saldo de la cajita no se toca, así que no depende de tener saldo disponible |
-| `validarCamposCDT(campos, ahora?)` | Reglas de tasa, retención y fechas de un CDT, UNA sola vez para crear y editar. Pura (no lee el DOM ni avisa): recibe los textos del formulario y los valores por defecto, y devuelve `{ok, tasa, rte, inicio, vence}` o `{ok:false, mensaje}`. Vacío usa el valor por defecto (crear: tasa 9,25, RTE 4; editar: el valor actual del CDT); la tasa debe ser > 0, la RTE 0–100 (0 es válida), la apertura no puede ser futura y el vencimiento es obligatorio y posterior. El monto mínimo y el saldo de la cajita siguen en `confirmarCrearCDT()` porque solo aplican al crear |
+| `validarCamposCDT(campos, ahora?)` | Reglas de tasa, retención y fechas de un CDT, UNA sola vez para crear y editar. Pura (no lee el DOM ni avisa): recibe los textos del formulario y los valores por defecto, y devuelve `{ok, tasa, tasaRetencion, inicio, vence}` o `{ok:false, mensaje}`. Vacío usa el valor por defecto (crear: tasa 9,25, RTE 4; editar: el valor actual del CDT); la tasa debe ser > 0, la RTE 0–100 (0 es válida), la apertura no puede ser futura y el vencimiento es obligatorio y posterior. El monto mínimo y el saldo de la cajita siguen en `confirmarCrearCDT()` porque solo aplican al crear |
 | `confirmarSheetCDT()` | Único listener del botón del sheet "crear-cdt": llama a `guardarCDT()` si `_cdtEditId` tiene un id y a `confirmarCrearCDT()` si es `null` |
 | `_cdtModoSheet(editando)` | Pinta el sheet para crear o editar (título, texto, botón, capital de solo lectura, oculta "Disponible en cajita" e "Invertir todo" al editar). `abrirCrearCDT()` y `editarCDT()` lo llaman siempre al abrir, así que cancelar una edición no deja el sheet en modo edición |
 | `abrirCobrarCDT(cajitaId, cdtId)` / `confirmarCobrarCDT()` | Cobrar con el valor real (ver §3, §7) |

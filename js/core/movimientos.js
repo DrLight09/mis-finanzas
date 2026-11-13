@@ -32,7 +32,7 @@
        deja el registro zombie parado para siempre.
    (b) Relacional — el objeto SÍ se borra limpio de su propio array, pero
        tiene un campo que lo liga a un "dueño" en otro módulo (_encMovId,
-       spId, _viaEncargo, _tcId...) que no se entera del borrado y sigue
+       spotifyId, _viaEncargo, _tcId...) que no se entera del borrado y sigue
        mostrando el evento como vigente.
 
    Checklist al agregar un movimiento nuevo generado automáticamente:
@@ -250,9 +250,9 @@ function abrirDetalleMovimiento(el){
         }
         return null;
       })() : null;
-      const dijo  = rm._difDijo  || (encargoMovimientoRef?.movimiento?.monto) || 0;
-      const real  = rm._difReal  || 0;
-      const margenVal = rm._difMargen || (dijo - real) || 0;
+      const dijo  = rm._diferencialDijo  || (encargoMovimientoRef?.movimiento?.monto) || 0;
+      const real  = rm._diferencialReal  || 0;
+      const margenVal = rm._diferencialMargen || (dijo - real) || 0;
       const encargoNombre = encargoMovimientoRef?.encargo?.nombre || '';
       const tcUsada = encargoMovimientoRef?.movimiento?._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===encargoMovimientoRef.movimiento._tcId)||{}).nombre : '';
       const destino = encargoMovimientoRef?.movimiento?._destino ? fuenteLabel(encargoMovimientoRef.movimiento._destino) : '';

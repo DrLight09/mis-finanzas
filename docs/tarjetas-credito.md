@@ -40,7 +40,7 @@ Cada tarjeta vive en `S.tarjetasCredito[]`:
   saldoInicial: {id, monto, fecha, nota, eliminado} | null,  // deuda que ya existía antes de usar la app
   compras: [{
     id, desc, cat, fecha, monto, nota, eliminado,
-    _esFavor, _desdeCP,      // opcionales: marca que esta compra es deuda ajena
+    _esFavor, _desdePlataComprometida,      // opcionales: marca que esta compra es deuda ajena
     _esCargoEspecial, _motivoCargo   // opcionales: cargo del banco (interés/comisión), no validó cupo — ver §2/§3
   }],
   pagos: [{id, monto, fecha, fuente, nota, eliminado}],
@@ -97,7 +97,7 @@ Botón "+ Cargo especial" dentro del detalle de la tarjeta (`abrirDetalleTCSheet
 - **No simular un banco real (sin corte, sin extracto, sin pago mínimo):** el objetivo del módulo es saber cuánto se debe y si alcanza para pagarlo, no replicar el ciclo de facturación de un banco — eso agregaría complejidad (fechas de corte, intereses, pago mínimo) sin aportar a las preguntas que este módulo existe para responder.
 - **Widgets de cobertura usan deuda total, no deuda propia:** decisión corregida explícitamente (ver `CHANGELOG.md`) tras confundir "¿me alcanza para pagar?" (pregunta que el banco hace sobre el 100% de la deuda) con "¿cuánta plata es realmente mía?" (pregunta de patrimonio, donde sí importa separar lo propio de lo ajeno).
 - **`tcMovimientos` (cargos de Encargos/Préstamos) vive fuera de `tc.compras`:** en vez de forzar a Encargos/Préstamos a empujar registros directo al array de compras de la tarjeta (acoplando su formato interno a otro módulo), se creó un tipo de registro aparte que Tarjetas de crédito solo consume para calcular deuda ajena e historial. Mantiene la frontera clara: quien genera el cargo es dueño de esa entrada.
-- **"Cargo especial" reutiliza `tc.compras` en vez de un array propio (`tc.ajustes` o similar):** se consideró un array separado, pero el 90% de la infraestructura necesaria (historial unificado en `abrirDetalleTCSheet`, borrado con protección por antigüedad, gasto espejo, `tcRecalcular`) ya existe para compras — duplicarla para una variante que solo cambia "¿valida cupo?" y "¿qué badge muestra?" hubiera sido código repetido sin necesidad. Se prefirió un flag (`_esCargoEspecial`) sobre el mismo modelo, mismo criterio que ya usa `_esFavor`/`_desdeCP` para "esta compra es deuda ajena".
+- **"Cargo especial" reutiliza `tc.compras` en vez de un array propio (`tc.ajustes` o similar):** se consideró un array separado, pero el 90% de la infraestructura necesaria (historial unificado en `abrirDetalleTCSheet`, borrado con protección por antigüedad, gasto espejo, `tcRecalcular`) ya existe para compras — duplicarla para una variante que solo cambia "¿valida cupo?" y "¿qué badge muestra?" hubiera sido código repetido sin necesidad. Se prefirió un flag (`_esCargoEspecial`) sobre el mismo modelo, mismo criterio que ya usa `_esFavor`/`_desdePlataComprometida` para "esta compra es deuda ajena".
 ## 8. Referencia de implementación
 
 **Nota:** `getTCById`, `tcCupoUsadoPct` y `tcCupoDisponible` se sacaron de este archivo a `js/core/calc-helpers.js` (Inicio las necesita sin cargar el módulo completo); `calcDeudaAjenaDeTarjeta` y `calcDeudaTcPropia` viven en `js/core/patrimonio.js`. Ambos siguen siendo globales que este módulo consume, no define.

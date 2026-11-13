@@ -887,7 +887,7 @@ window.alcanciaConfirmarDeposito = function(){
         desc: descVal || 'Depósito en alcancía',
         nota: (unica ? 'Guardado en alcancía oculta' : 'Guardado en alcancía oculta (depósito dividido)') + (descVal ? ': ' + descVal : ''),
         _esAlcancia: true,
-        _alcTipo: unica ? 'yo-cuenta' : 'multi',
+        _alcanciaTipo: unica ? 'yo-cuenta' : 'multi',
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });

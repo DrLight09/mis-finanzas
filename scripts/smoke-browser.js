@@ -71,7 +71,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   const visibles = () => ev(`['selector','detalle-simple','detalle-nu','detalle-cajita','sub-meta','sub-cdts'].filter(i=>{const e=document.getElementById('cuentas-'+i);return e&&e.style.display!=='none'}).join(',')`);
   const hoy = new Date(), iso = n => { const d = new Date(hoy); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   ev(`S.cuentas=[{id:'nequi',tipo:'billetera',nombre:'Nequi',saldo:0},{id:'efectivo',tipo:'efectivo',nombre:'Efectivo',saldo:0},{id:'nu',tipo:'ahorro',nombre:'Nu',tasaEA:9.25}];
-      S.cajitas.push({id:'ca',cuentaId:'nu',nombre:'Mi cajita',saldo:100000,fecha:'${iso(-8)}',cdts:[{id:'cd1',monto:20000,tasa:9,rte:0,inicio:'${iso(-3)}',vence:'${iso(60)}',nombre:'CDT uno'}]});
+      S.cajitas.push({id:'ca',cuentaId:'nu',nombre:'Mi cajita',saldo:100000,fecha:'${iso(-8)}',cdts:[{id:'cd1',monto:20000,tasa:9,tasaRetencion:0,inicio:'${iso(-3)}',vence:'${iso(60)}',nombre:'CDT uno'}]});
       S.libro.push({id:'lca',fecha:'${iso(-8)}',cuenta:'cajita:ca',monto:100000,tipo:'apertura',origen:{modulo:'smoke'}});
       S.cuentas.find(c=>c.id==='nequi').saldo=50000; S.libro.push({id:'lnq',fecha:'${iso(-8)}',cuenta:'cuenta:nequi',monto:50000,tipo:'apertura',origen:{modulo:'smoke'}});`);
   const acc0 = new Set(acciones);
@@ -104,7 +104,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   ev(`abrirCuenta('cuenta:nequi'); renderDetalleCuenta('cuenta:nequi')`);
   // Escenario de Spotify con datos (S.spotify): pinta la pantalla y toca sus botones
   ev(`S.spotify.costo=17500; S.spotify.personas.push({id:'sp1',nombre:'Ana',monto:5000,pagado:false,proximoPago:'${iso(5)}',fechaIngreso:'${iso(-30)}',ultimoDestino:'',mesesAdelantados:1});
-      S.spotify.historial.push({id:'h1',tipo:'cobro',spId:'sp1',nombre:'Ana',fuente:'cuenta:nequi',fecha:'${iso(-2)}',monto:5000});`);
+      S.spotify.historial.push({id:'h1',tipo:'cobro',spotifyId:'sp1',nombre:'Ana',fuente:'cuenta:nequi',fecha:'${iso(-2)}',monto:5000});`);
   try { ev(`renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`); } catch (e) { fallos.push('Spotify: render lanzó ' + e.message); }
   chequea(/Ana/.test(ev(`document.getElementById('spotifyList').innerHTML`)), 'Spotify: la lista no muestra al integrante guardado en S.spotify.personas');
   const accSpotify = [...new Set([...w.document.querySelectorAll('#screen-spotify [data-action]')].map(e => e.dataset.action))];

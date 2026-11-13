@@ -148,7 +148,7 @@ const Periodo = (() => {
   const ingresosFijosDelMes = (mes, estado) => ingresosFijosEntradas(estado).reduce((a, e) => e.mes === mes ? a + e.monto : a, 0);
 
   // Plata que entra por Spotify (S.spotify.historial): cada cuota cobrada, cada abono de lo que quedó debiendo y los extras
-  // sin cuenta destino, en el mes de SU fecha. → [{ id, spId, nombre, tipo:'cuota'|'abono'|'extra', monto, fecha, mes }]
+  // sin cuenta destino, en el mes de SU fecha. → [{ id, spotifyId, nombre, tipo:'cuota'|'abono'|'extra', monto, fecha, mes }]
   //   · Un cobro con abonos guarda en `monto` la cuota + lo abonado (spotify.js suma el abono al registrar): se separa para que el
   //     principal cuente en la fecha del cobro y cada abono en la suya.
   //   · El extra con destino (extraFuente) ya cuenta como entrada real (movimiento espejo clase 'ingreso'): aquí no se repite.
@@ -158,7 +158,7 @@ const Periodo = (() => {
     const out = [];
     const push = (h, tipo, monto, fecha) => {
       if (!(monto > 0)) return;
-      out.push({ id: h.id, spId: h.spId || '', nombre: h.nombre || '', tipo, monto, fecha: fecha || '', mes: fecha ? mesKey(fecha) : '' });
+      out.push({ id: h.id, spotifyId: h.spotifyId || '', nombre: h.nombre || '', tipo, monto, fecha: fecha || '', mes: fecha ? mesKey(fecha) : '' });
     };
     hist.forEach(h => {
       if (!h || h.tipo !== 'cobro') return;

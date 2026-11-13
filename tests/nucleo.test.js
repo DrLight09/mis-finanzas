@@ -529,7 +529,7 @@ describe('periodo', () => {
   });
 
   test('Spotify — cada cuota cobrada cuenta como ingreso en SU fecha y el pago del plan como gasto: el balance es la caja real', () => {
-    const cobro = (id, fecha, monto) => ({ id, spId: id, tipo: 'cobro', nombre: id, monto, fecha, fuente: 'cuenta:nequi' });
+    const cobro = (id, fecha, monto) => ({ id, spotifyId: id, tipo: 'cobro', nombre: id, monto, fecha, fuente: 'cuenta:nequi' });
     const ctx = app({
       spotify: { historial: [cobro('a', '2026-10-28', 15000), cobro('b', '2026-10-28', 15000), cobro('c', '2026-10-28', 15000), { id: 'p', tipo: 'pago', monto: 50000, fecha: '2026-10-28' }] },
       gastosVar: [{ id: 'g', desc: 'Spotify Premium', monto: 50000, fecha: '2026-10-28', cat: 'Suscripciones', clase: 'gasto', _secundario: true, _origenSeccion: 'Spotify' }],
@@ -542,7 +542,7 @@ describe('periodo', () => {
   });
 
   test('Spotify — cobrar semanas antes de pagar: los meses sin pago no tienen gasto negativo y la suma da cobrado − pagado', () => {
-    const c = (id, fecha) => ({ id, spId: id, tipo: 'cobro', monto: 5100, fecha });
+    const c = (id, fecha) => ({ id, spotifyId: id, tipo: 'cobro', monto: 5100, fecha });
     const ctx = app({
       spotify: { historial: [c('a', '2026-08-07'), c('b', '2026-08-16'), c('c', '2026-09-08'), { id: 'p', tipo: 'pago', monto: 10000, fecha: '2026-09-15' }] },
       gastosVar: [{ id: 'g', desc: 'Spotify Premium', monto: 10000, fecha: '2026-09-15', cat: 'Suscripciones', clase: 'gasto' }],
@@ -556,9 +556,9 @@ describe('periodo', () => {
   test('Spotify — un abono de lo que quedó debiendo cuenta en SU fecha, no en la del cobro; el extra sin cuenta cuenta, con cuenta no se repite', () => {
     const ctx = app({
       spotify: { historial: [
-        { id: 'h1', spId: 'x', tipo: 'cobro', monto: 5100, fecha: '2026-09-28', pendiente: 0, pendienteHistorial: [{ id: 'ab', monto: 2100, fecha: '2026-10-03' }] },
-        { id: 'h2', spId: 'y', tipo: 'cobro', monto: 5100, fecha: '2026-10-05', extra: 400, extraFuente: '' },
-        { id: 'h3', spId: 'z', tipo: 'cobro', monto: 5100, fecha: '2026-10-06', extra: 700, extraFuente: 'cuenta:nequi', extraMovId: 'm1' },
+        { id: 'h1', spotifyId: 'x', tipo: 'cobro', monto: 5100, fecha: '2026-09-28', pendiente: 0, pendienteHistorial: [{ id: 'ab', monto: 2100, fecha: '2026-10-03' }] },
+        { id: 'h2', spotifyId: 'y', tipo: 'cobro', monto: 5100, fecha: '2026-10-05', extra: 400, extraFuente: '' },
+        { id: 'h3', spotifyId: 'z', tipo: 'cobro', monto: 5100, fecha: '2026-10-06', extra: 700, extraFuente: 'cuenta:nequi', extraMovId: 'm1' },
       ] },
       movimientos: [{ id: 'm1', tipo: 'entrada', clase: 'ingreso', fuente: 'cuenta:nequi', monto: 700, fecha: '2026-10-06', _esExtraIngreso: true, _secundario: true, _origenSeccion: 'Spotify' }],
     });
@@ -568,7 +568,7 @@ describe('periodo', () => {
   });
 
   test('Spotify — cuenta aunque el módulo esté apagado (el gasto del plan tampoco depende del interruptor)', () => {
-    const ctx = app({ modulos: { spotify: false }, spotify: { historial: [{ id: 'a', spId: 'a', tipo: 'cobro', monto: 5100, fecha: '2026-10-02' }] } });
+    const ctx = app({ modulos: { spotify: false }, spotify: { historial: [{ id: 'a', spotifyId: 'a', tipo: 'cobro', monto: 5100, fecha: '2026-10-02' }] } });
     assert.equal(P(ctx).spotifyDelMes('2026-10'), 5100);
   });
 
@@ -653,9 +653,47 @@ describe('migraciones', () => {
   const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  test('datos nuevos (sin schemaVersion) nacen en la versión actual (10)', () => {
+  test('datos nuevos (sin schemaVersion) nacen en la versión actual (11)', () => {
     const d = plano(app().aplicarMigraciones({ cuentas: [] }));
-    assert.equal(d.schemaVersion, 10);
+    assert.equal(d.schemaVersion, 11);
+  });
+
+  describe('migración v11: campos guardados con nombre completo', () => {
+    const CAMPOS = { rte: 'tasaRetencion', spId: 'spotifyId', _desdeCP: '_desdePlataComprometida', _esReposicionCP: '_esReposicionPlataComprometida',
+      _cpItemId: '_plataComprometidaItemId', _difDijo: '_diferencialDijo', _difReal: '_diferencialReal', _difMargen: '_diferencialMargen', _alcTipo: '_alcanciaTipo' };
+    const viejo = () => ({ schemaVersion: 10,
+      cajitas: [{ id: 'c1', cdts: [{ id: 'k1', monto: 1000, tasa: 9, rte: 4 }] }],
+      spotify: { personas: [], costo: 0, fuenteId: '', historial: [{ id: 'h1', tipo: 'cobro', spId: 'p1', monto: 5000 }] },
+      movimientos: [{ id: 'm1', _esReposicionCP: true, _cpItemId: 'i1', _difDijo: 700000, _difReal: 698000, _difMargen: 2000, _movId: 'se-queda' }],
+      tcMovimientos: [{ id: 't1', compras: [{ id: 'x', _desdeCP: true }] }],
+      alcancia: { movimientos: [{ id: 'a1', _alcTipo: 'regalo', movId: 'se-queda-tambien' }] } });
+    test('renombra cada campo donde viva (arreglos y objetos anidados) y sube la versión', () => {
+      const d = plano(app().aplicarMigraciones(viejo()));
+      assert.equal(d.schemaVersion, 11);
+      assert.equal(d.cajitas[0].cdts[0].tasaRetencion, 4);
+      assert.equal(d.spotify.historial[0].spotifyId, 'p1');
+      assert.deepEqual([d.movimientos[0]._esReposicionPlataComprometida, d.movimientos[0]._plataComprometidaItemId], [true, 'i1']);
+      assert.deepEqual([d.movimientos[0]._diferencialDijo, d.movimientos[0]._diferencialReal, d.movimientos[0]._diferencialMargen], [700000, 698000, 2000]);
+      assert.equal(d.tcMovimientos[0].compras[0]._desdePlataComprometida, true);
+      assert.equal(d.alcancia.movimientos[0]._alcanciaTipo, 'regalo');
+    });
+    test('no deja ninguna clave vieja en ninguna parte y no toca el resto', () => {
+      const d = plano(app().aplicarMigraciones(viejo()));
+      const texto = JSON.stringify(d);
+      for (const vieja of Object.keys(CAMPOS)) assert.ok(!new RegExp('"' + vieja + '"').test(texto), 'quedó «' + vieja + '»');
+      assert.equal(d.movimientos[0]._movId, 'se-queda', 'los campos que no se renombran quedan igual');
+      assert.equal(d.alcancia.movimientos[0].movId, 'se-queda-tambien');
+    });
+    test('es idempotente y no pisa un nombre nuevo que ya exista', () => {
+      const ctx = app();
+      const una = plano(ctx.aplicarMigraciones(viejo()));
+      assert.deepEqual(plano(ctx.aplicarMigraciones(plano(una))), una);
+      const choque = plano(ctx.aplicarMigraciones({ schemaVersion: 10, cajitas: [{ id: 'c', cdts: [{ id: 'k', rte: 4, tasaRetencion: 0 }] }] }));
+      assert.deepEqual(choque.cajitas[0].cdts[0], { id: 'k', tasaRetencion: 0 }, 'se conserva el nuevo y se descarta el viejo');
+    });
+    test('un backup del esquema 10 (el anterior) se lleva al esquema 11 al importarlo (la validación ya lo acepta: ver «backup-import»)', () => {
+      assert.equal(plano(app().aplicarMigraciones({ schemaVersion: 10, cuentas: [] })).schemaVersion, 11);
+    });
   });
 
   describe('estado de Spotify (S.spotify, esquema 9)', () => {
@@ -744,7 +782,7 @@ describe('backup-import', () => {
   });
   test('un backup exportado por esta versión se valida y no cambia al pasar por aplicarMigraciones', () => {
     const ctx = app();
-    const actual = { schemaVersion: 10, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
+    const actual = { schemaVersion: 11, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
     assert.deepEqual(plano(ctx._validarEstructuraJSON(actual)), []);
     assert.deepEqual(plano(ctx.aplicarMigraciones(plano(actual))), actual);
   });
@@ -892,7 +930,7 @@ describe('ingreso-real', () => {
       neutro('mesada', 1, { _origenSeccion: 'Mesada' }),
       neutro('prestado', 2, { _origenSeccion: 'Prestado · Me deben' }),
       neutro('espejo-nuevo', 3, { _esEspejo: true }),
-      neutro('repos', 4, { _esReposicionCP: true }),
+      neutro('repos', 4, { _esReposicionPlataComprometida: true }),
       neutro('repos-viejo', 5, { desc: 'Reposición: algo' }),
       neutro('tc', 6, { desc: 'Para pagar TC (Nu)' }),
       neutro('margen-viejo', 7, { desc: 'Margen de encargo' }),

@@ -70,7 +70,7 @@ describe('historial-cuenta', () => {
       { id: 'm06', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioSalida: true, _fuenteDestino: 'cuenta:efectivo' },
       { id: 'm07', tipo: 'transferencia', fuente: 'cuenta:efectivo', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioEntrada: true, _fuenteDestino: 'cuenta:nequi' },
       { id: 'm08', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 12, fecha: D(2), _fuenteDestino: 'cuenta:efectivo' },
-      { id: 'm09', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 50, fecha: D(2), _esReposicionCP: true, desc: 'Reposición: algo' },
+      { id: 'm09', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 50, fecha: D(2), _esReposicionPlataComprometida: true, desc: 'Reposición: algo' },
       { id: 'm10', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 60, fecha: D(2), desc: 'Margen de encargo' },
       { id: 'm11', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 8000, fecha: D(3), desc: 'Mesada papá', _secundario: true, _origenSeccion: 'Mesada' },
       { id: 'm12', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 99, fecha: D(3), _esAlcanciaIngreso: true, desc: 'alc' },
@@ -399,7 +399,7 @@ describe('calcC-calcCDT', () => {
 
   test('calcCDT — CDT vencido hoy mismo, sin fecha de vencimiento futura, calcula sobre los días transcurridos', () => {
     const ctx = freshApp();
-    const cdt = { monto: 5000000, tasa: 9.5, rte: 4, inicio: daysAgo(90) };
+    const cdt = { monto: 5000000, tasa: 9.5, tasaRetencion: 4, inicio: daysAgo(90) };
     const r = ctx.calcCDT(cdt);
     assert.equal(r.dias, 90);
     assert.ok(r.ganado > 0, 'debería haber ganado algo en 90 días');
@@ -409,7 +409,7 @@ describe('calcC-calcCDT', () => {
 
   test('calcCDT — el bruto se redondea a los $0,50 más cercanos antes de aplicar RTE (regla real de Nu)', () => {
     const ctx = freshApp();
-    const cdt = { monto: 3173456, tasa: 9.12, rte: 4, inicio: daysAgo(47) };
+    const cdt = { monto: 3173456, tasa: 9.12, tasaRetencion: 4, inicio: daysAgo(47) };
     const r = ctx.calcCDT(cdt);
     // El bruto redondeado siempre debe ser múltiplo de 0.5
     const esMultiploDeMedio = Math.abs((r.ganado_bruto * 2) - Math.round(r.ganado_bruto * 2)) < 1e-9;
@@ -493,14 +493,14 @@ describe('cdt-campos', () => {
   const plano = x => JSON.parse(JSON.stringify(x));
 
   const AHORA = new Date('2026-10-05T12:00:00');
-  const base = { tasa: '9,25', rte: '4,00', inicio: '2026-10-01', vence: '2027-01-01', tasaDefecto: 9.25, rteDefecto: 4, inicioDefecto: '2026-10-05' };
+  const base = { tasa: '9,25', tasaRetencion: '4,00', inicio: '2026-10-01', vence: '2027-01-01', tasaDefecto: 9.25, tasaRetencionDefecto: 4, inicioDefecto: '2026-10-05' };
 
   describe('validarCamposCDT', () => {
     const app = loadApp(ARCHIVOS, { permissive: true });
     const v = (campos) => plano(app.validarCamposCDT({ ...base, ...campos }, AHORA));
 
-    test('campos válidos: devuelve tasa, rte y fechas ya interpretadas', () => {
-      assert.deepEqual(v({}), { ok: true, tasa: 9.25, rte: 4, inicio: '2026-10-01', vence: '2027-01-01' });
+    test('campos válidos: devuelve tasa, tasaRetencion y fechas ya interpretadas', () => {
+      assert.deepEqual(v({}), { ok: true, tasa: 9.25, tasaRetencion: 4, inicio: '2026-10-01', vence: '2027-01-01' });
     });
     test('tasa vacía usa el valor por defecto; tasa 0, negativa o texto se rechaza (no se vuelve 9,25 en silencio)', () => {
       assert.equal(v({ tasa: '' }).tasa, 9.25);
@@ -512,15 +512,15 @@ describe('cdt-campos', () => {
       }
     });
     test('RTE: vacía usa el defecto, 0 se respeta, punto o coma valen', () => {
-      assert.equal(v({ rte: '' }).rte, 4);
-      assert.equal(v({ rte: '', rteDefecto: 7 }).rte, 7);
-      assert.equal(v({ rte: '0' }).rte, 0);
-      assert.equal(v({ rte: '3,5' }).rte, 3.5);
-      assert.equal(v({ rte: '3.5' }).rte, 3.5);
+      assert.equal(v({ tasaRetencion: '' }).tasaRetencion, 4);
+      assert.equal(v({ tasaRetencion: '', tasaRetencionDefecto: 7 }).tasaRetencion, 7);
+      assert.equal(v({ tasaRetencion: '0' }).tasaRetencion, 0);
+      assert.equal(v({ tasaRetencion: '3,5' }).tasaRetencion, 3.5);
+      assert.equal(v({ tasaRetencion: '3.5' }).tasaRetencion, 3.5);
     });
     test('RTE no numérica, negativa o mayor a 100 se rechaza', () => {
-      for (const tasaRetencion of ['abc', '-1', '4%', '4,5,6']) assert.match(v({ rte: tasaRetencion }).mensaje, /no es un número válido/, `rte ${tasaRetencion}`);
-      assert.match(v({ rte: '150' }).mensaje, /no puede pasar de 100/);
+      for (const tasaRetencion of ['abc', '-1', '4%', '4,5,6']) assert.match(v({ tasaRetencion: tasaRetencion }).mensaje, /no es un número válido/, `tasaRetencion ${tasaRetencion}`);
+      assert.match(v({ tasaRetencion: '150' }).mensaje, /no puede pasar de 100/);
     });
     test('apertura vacía usa el defecto; una apertura futura se rechaza', () => {
       assert.equal(v({ inicio: '' }).inicio, '2026-10-05');
@@ -547,7 +547,7 @@ describe('cdt-campos', () => {
       aplicar(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
         cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
         cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'A', saldo, fecha: app.hoy(),
-          cdts: [{ id: 'd1', monto: 1000000, tasa: 9.25, rte: 4, inicio: '2026-01-01', vence: '2027-01-01' }] }] });
+          cdts: [{ id: 'd1', monto: 1000000, tasa: 9.25, tasaRetencion: 4, inicio: '2026-01-01', vence: '2027-01-01' }] }] });
       const campos = domFalso(app);
       const toasts = [], cerrados = [];
       let guardados = 0;
@@ -595,7 +595,7 @@ describe('cdt-campos', () => {
     test('la RTE 0 se acepta al editar', async () => {
       const e = entorno({ saldo: 0 }); await abrirEdicion(e);
       e.campos.cdt_rte.value = '0'; e.app.confirmarSheetCDT();
-      assert.equal(e.cdt().rte, 0);
+      assert.equal(e.cdt().tasaRetencion, 0);
     });
     test('cancelar la edición y abrir "crear": el sheet vuelve a modo crear y no pisa el CDT anterior', async () => {
       const e = entorno({ saldo: 5000000 }); await abrirEdicion(e);
@@ -852,7 +852,7 @@ describe('nu-cdt', () => {
   });
 
   describe('confirmarCrearCDT — RTE', () => {
-    function entornoCDT({ rte: tasaRetencion, monto = '100.000,00', saldo = 1000000 }) {
+    function entornoCDT({ tasaRetencion: tasaRetencion, monto = '100.000,00', saldo = 1000000 }) {
       const app = loadApp(ARCHIVOS, { permissive: true });
       aplicar(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
         cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
@@ -874,41 +874,41 @@ describe('nu-cdt', () => {
       return { app, toasts, cerrados, guardados: () => guardados, cdts: () => app.S.cajitas[0].cdts || [] };
     }
     test('RTE "4,00" (el valor por defecto del formulario) → 4', () => {
-      const e = entornoCDT({ rte: '4,00' }); e.app.confirmarCrearCDT();
-      assert.equal(e.cdts().length, 1); assert.equal(e.cdts()[0].rte, 4);
+      const e = entornoCDT({ tasaRetencion: '4,00' }); e.app.confirmarCrearCDT();
+      assert.equal(e.cdts().length, 1); assert.equal(e.cdts()[0].tasaRetencion, 4);
     });
     test('RTE vacío → 4 (por defecto)', () => {
-      const e = entornoCDT({ rte: '' }); e.app.confirmarCrearCDT();
-      assert.equal(e.cdts().length, 1); assert.equal(e.cdts()[0].rte, 4);
+      const e = entornoCDT({ tasaRetencion: '' }); e.app.confirmarCrearCDT();
+      assert.equal(e.cdts().length, 1); assert.equal(e.cdts()[0].tasaRetencion, 4);
     });
     test('RTE 0 se respeta (antes la creación lo convertía en 4; la edición ya lo aceptaba)', () => {
       for (const tasaRetencion of ['0', '0,00']) {
-        const e = entornoCDT({ rte: tasaRetencion }); e.app.confirmarCrearCDT();
-        assert.equal(e.cdts().length, 1, `rte ${tasaRetencion}`); assert.equal(e.cdts()[0].rte, 0, `rte ${tasaRetencion}`);
+        const e = entornoCDT({ tasaRetencion: tasaRetencion }); e.app.confirmarCrearCDT();
+        assert.equal(e.cdts().length, 1, `tasaRetencion ${tasaRetencion}`); assert.equal(e.cdts()[0].tasaRetencion, 0, `tasaRetencion ${tasaRetencion}`);
       }
     });
     test('RTE con decimales y punto o coma', () => {
       for (const [tasaRetencion, esperado] of [['3,5', 3.5], ['3.5', 3.5], ['7', 7]]) {
-        const e = entornoCDT({ rte: tasaRetencion }); e.app.confirmarCrearCDT();
-        assert.equal(e.cdts()[0].rte, esperado, `rte ${tasaRetencion}`);
+        const e = entornoCDT({ tasaRetencion: tasaRetencion }); e.app.confirmarCrearCDT();
+        assert.equal(e.cdts()[0].tasaRetencion, esperado, `tasaRetencion ${tasaRetencion}`);
       }
     });
     test('RTE no numérico, negativo o > 100 se rechaza y no crea nada ni toca el saldo', () => {
       for (const tasaRetencion of ['abc', '-1', '4%', '150', '4,5,6']) {
-        const e = entornoCDT({ rte: tasaRetencion }); e.app.confirmarCrearCDT();
-        assert.equal(e.cdts().length, 0, `rte ${tasaRetencion}`);
-        assert.equal(e.guardados(), 0, `rte ${tasaRetencion}`);
-        assert.equal(Math.round(e.app.S.cajitas[0].saldo), 1000000, `rte ${tasaRetencion}`);
-        assert.equal(e.toasts.at(-1).tipo, 'err', `rte ${tasaRetencion}`);
+        const e = entornoCDT({ tasaRetencion: tasaRetencion }); e.app.confirmarCrearCDT();
+        assert.equal(e.cdts().length, 0, `tasaRetencion ${tasaRetencion}`);
+        assert.equal(e.guardados(), 0, `tasaRetencion ${tasaRetencion}`);
+        assert.equal(Math.round(e.app.S.cajitas[0].saldo), 1000000, `tasaRetencion ${tasaRetencion}`);
+        assert.equal(e.toasts.at(-1).tipo, 'err', `tasaRetencion ${tasaRetencion}`);
       }
     });
     test('un CDT válido descuenta el monto de la cajita', () => {
-      const e = entornoCDT({ rte: '4,00', monto: '100.000,00' }); e.app.confirmarCrearCDT();
+      const e = entornoCDT({ tasaRetencion: '4,00', monto: '100.000,00' }); e.app.confirmarCrearCDT();
       assert.equal(Math.round(e.app.S.cajitas[0].saldo), 900000);
       assert.equal(e.cdts()[0].monto, 100000);
     });
     test('monto mayor al saldo de la cajita se rechaza', () => {
-      const e = entornoCDT({ rte: '4,00', monto: '2.000.000,00' }); e.app.confirmarCrearCDT();
+      const e = entornoCDT({ tasaRetencion: '4,00', monto: '2.000.000,00' }); e.app.confirmarCrearCDT();
       assert.equal(e.cdts().length, 0);
       assert.match(e.toasts.at(-1).msg, /Saldo insuficiente/);
     });
@@ -1636,7 +1636,7 @@ describe('nu-tasa-global', () => {
     });
     test('un CDT conserva su tasa propia aunque cambie la global', () => {
       const a = app({ nuRate: 12 });
-      const cdt = { monto: 100000, tasa: 5, rte: 0, inicio: hace(73), vence: hace(-300) };
+      const cdt = { monto: 100000, tasa: 5, tasaRetencion: 0, inicio: hace(73), vence: hace(-300) };
       const esperado = Math.round(100000 * (Math.pow(1.05, 73 / 365) - 1) * 2) / 2;
       assert.equal(a.calcCDT(cdt).ganado_bruto, esperado);
       a.getCuenta('nu').tasaEA = 30;
@@ -2234,7 +2234,7 @@ describe('nu-cambio-de-tasa', () => {
     const hoy = app.hoy();
     const hace = n => { const d = new Date(hoy + 'T00:00:00'); d.setDate(d.getDate() - n); return d.toISOString().slice(0, 10); };
     app.S.cuentas = [{ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: 9.25, historialTasas: [{ fecha: hace(30), tasa: 9.25 }] }];
-    app.S.cajitas = [{ id: 'k1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: hace(20), cdts: [{ id: 'c1', monto: 500000, tasa: 11, fechaInicio: hace(10), dias: 90, rte: 7 }] }];
+    app.S.cajitas = [{ id: 'k1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: hace(20), cdts: [{ id: 'c1', monto: 500000, tasa: 11, fechaInicio: hace(10), dias: 90, tasaRetencion: 7 }] }];
     return { app, hoy, hace };
   }
   const foto = app => JSON.stringify({ val: app.calcC(app.S.cajitas[0]).val, cdt: app.calcCDT(app.S.cajitas[0].cdts[0]).val, saldo: app.S.cajitas[0].saldo, movimientos: (app.S.movimientos || []).length });

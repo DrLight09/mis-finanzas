@@ -21,7 +21,7 @@ Registra dinero que **todavía no llegó** pero que ya se sabe que va a entrar (
 - **Sobrante / "le sobra":** lo que queda del monto total después de sumar todos los destinos. Es la única parte del ingreso que se convierte en **ingreso libre real** al recibirse — todo lo demás ya tenía un destino planeado, no es ganancia nueva.
 - **Adelanto (`yaSaque`, solo en Reposición):** decisión explícita de que la plata ya salió de la cuenta *antes* de que llegue el ingreso que la va a reponer (ej. "ya saqué 50mil de la cajita para cubrir esto, cuando llegue el reembolso se repone"). Descuenta la cuenta en el momento de marcarlo, no cuando llega el ingreso.
 - **Ya pagado (`yaPague`, en Gasto y Otro):** igual que el adelanto pero para gastos — indica que el gasto ya se cubrió (con plata de una cajita ya guardada, o cargado a una TC) antes de que el ingreso llegue formalmente.
-- **Favor (gasto con TC):** cuando un destino tipo Gasto se cubre cargándolo a una tarjeta de crédito, esa deuda se marca `_esFavor`/`_desdeCP` — es deuda que vas a cubrir con la plata de este ingreso, no deuda propia real. El resto de la app (`calcDeudaTcPropia()`) la excluye de "cuánto debo realmente" — ver `analisis-financiero.md`/`salud-financiera.md`.
+- **Favor (gasto con TC):** cuando un destino tipo Gasto se cubre cargándolo a una tarjeta de crédito, esa deuda se marca `_esFavor`/`_desdePlataComprometida` — es deuda que vas a cubrir con la plata de este ingreso, no deuda propia real. El resto de la app (`calcDeudaTcPropia()`) la excluye de "cuánto debo realmente" — ver `analisis-financiero.md`/`salud-financiera.md`.
 - **Recibido:** el momento en que el ingreso deja de ser una promesa y se convierte en movimientos reales — cada destino ejecuta su efecto (reponer, pagar, abonar) y el sobrante entra como ingreso libre a la cuenta que se elija en ese momento.
 
 ## 3. Reglas que nunca deben romperse
@@ -86,7 +86,7 @@ Todo vive en `S.plataComprometida[]`:
 
 Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
-- Reposiciones de plata comprometida a una cajita (`_esReposicionCP`): `neutro` (reponer lo que ya tenías comprometido no es plata nueva).
+- Reposiciones de plata comprometida a una cajita (`_esReposicionPlataComprometida`): `neutro` (reponer lo que ya tenías comprometido no es plata nueva).
 - Ingreso libre (`_esSobrante`) y el ingreso de la cuenta personalizada de una ganancia: `ingreso`.
 - Los adelantos y pagos (`tipo: 'salida'`) no llevan `clase`: no son gasto del mes.
 

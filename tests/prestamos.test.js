@@ -127,7 +127,7 @@ describe('medeben', () => {
     assert.equal(ctx.S.ingresosExtra.length, 1);
     const ings = ctx.S.movimientos.filter((m) => m._esExtraIngreso);
     assert.equal(ings.length, 2, 'el extra guardado en una cuenta Y el gastado al instante son ingreso real (plata nueva)');
-    ings.forEach((ing) => assert.equal(ctx._esEntradaEspejoNoIngreso(ing), false));
+    ings.forEach((ingreso) => assert.equal(ctx._esEntradaEspejoNoIngreso(ingreso), false));
     assert.equal(ctx.entradasIngresoReal().reduce((a, m) => a + m.monto, 0), 6000, 'ingresos: 4.000 guardados + 2.000 gastados (los 1.000 regalados no entraron)');
     assert.equal(mov._extPartes.length, 4);
     revertir(ctx, mov);
@@ -501,9 +501,9 @@ describe('yodebo', () => {
     assert.equal(saldo(ctx, 'cuenta:efectivo'), 50000);
     assert.equal(saldo(ctx, 'cuenta:nequi'), 30000);
     assert.equal(ctx.calcPatrimonioTotal() - p0, 90000);
-    const ing = ctx.S.movimientos.find((m) => m._esPerdonRecibido);
-    assert.equal(ing.fuente, '');
-    assert.equal(ctx._esEntradaEspejoNoIngreso(ing), false, 'tiene que contar como ingreso, no como espejo');
+    const ingreso = ctx.S.movimientos.find((m) => m._esPerdonRecibido);
+    assert.equal(ingreso.fuente, '');
+    assert.equal(ctx._esEntradaEspejoNoIngreso(ingreso), false, 'tiene que contar como ingreso, no como espejo');
     assert.equal(mov._perdon, true);
     eliminar(ctx, mov);
     assert.equal(debe(ctx), 90000);
@@ -664,10 +664,10 @@ describe('yodebo', () => {
     assert.equal(debe(ctx), 50000);
     assert.equal(saldo(ctx, 'cuenta:efectivo'), 50000);
     assert.equal(ctx.calcPatrimonioTotal() - p0, 40000);
-    const ing = ctx.S.movimientos.find((m) => m._esPerdonRecibido);
-    assert.equal(ing.monto, 40000);
-    assert.match(ing.desc, /parte de la deuda/);
-    assert.equal(ing._prestadoDirectamente, true);
+    const ingreso = ctx.S.movimientos.find((m) => m._esPerdonRecibido);
+    assert.equal(ingreso.monto, 40000);
+    assert.match(ingreso.desc, /parte de la deuda/);
+    assert.equal(ingreso._prestadoDirectamente, true);
     // perdonar el resto
     const resto = ctx._aplicarMovMiDeuda(plan(ctx, { monto: 50000, perdon: true, cuentas: [] }));
     assert.equal(debe(ctx), 0);

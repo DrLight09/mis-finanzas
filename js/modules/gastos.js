@@ -108,7 +108,7 @@ const gastoVariableSplit = crearSplitWidget('gv', {
   onPreview: actualizarGastoVariableSplitPreview
 });
 
-// Preview del split de gasto — mismo estilo que actualizarSpPagarPreview
+// Preview del split de gasto — mismo estilo que actualizarSpotifyPagarPreview
 // en spotify.js (modo dividido: todo o nada, sin margen de "sin asignar").
 function actualizarGastoVariableSplitPreview() {
   const prev = document.getElementById('gvSplitPreview');

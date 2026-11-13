@@ -116,11 +116,11 @@ function renderAnalisis(){
   }
 
   // ── Stats ──────────────────────────────────────────────────────────────
-  const elIng=document.getElementById('an-ingresos');
+  const elIngreso=document.getElementById('an-ingresos');
   const elGas=document.getElementById('an-gastos');
   const elFij=document.getElementById('an-fijos');
   const elVar=document.getElementById('an-variables');
-  if(elIng){ if(_hayIngresos) elIng.textContent=fmt(ingresosEstimados); else elIng.innerHTML=SIN_DATO; }
+  if(elIngreso){ if(_hayIngresos) elIngreso.textContent=fmt(ingresosEstimados); else elIngreso.innerHTML=SIN_DATO; }
   if(elGas) elGas.textContent=fmt(gastosTotalMes);
   if(elFij) elFij.textContent=fmt(gastoFijoTotal);
   if(elVar) elVar.textContent=fmt(gastoVariableTotal);
@@ -158,17 +158,17 @@ function renderAnalisis(){
 
   // ── Gráfico de barras — últimos 12 meses ──────────────────────────────
   const flujo12=Periodo.resumenFlujo(12,mes);
-  const hoy12=flujo12.meses.map(x=>({k:x.mes,label:MESES_NOMBRE[parseInt(x.mes.split('-')[1])-1],total:x.gastos,ing:x.ingresos}));
-  const maxBar=Math.max(...hoy12.map(x=>Math.max(x.total,x.ing)),1);
+  const hoy12=flujo12.meses.map(x=>({k:x.mes,label:MESES_NOMBRE[parseInt(x.mes.split('-')[1])-1],total:x.gastos,ingreso:x.ingresos}));
+  const maxBar=Math.max(...hoy12.map(x=>Math.max(x.total,x.ingreso)),1);
   const barEl=document.getElementById('an-grafico-barras');
   const labEl=document.getElementById('an-grafico-labels');
   if(barEl&&labEl){
     // Gasto (barra principal) junto al ingreso (barra fina verde): un déficit sostenido se ve de un vistazo.
-    barEl.innerHTML=hoy12.map(({k,total,ing,label})=>{
+    barEl.innerHTML=hoy12.map(({k,total,ingreso,label})=>{
       const pct=Math.max(total>0?Math.round((total/maxBar)*100):0,2);
-      const pctI=Math.max(ing>0?Math.round((ing/maxBar)*100):0,2);
+      const pctI=Math.max(ingreso>0?Math.round((ingreso/maxBar)*100):0,2);
       const esMesActual=k===mes;
-      return`<div class="an-bar-par" data-bar-label="${label}" data-bar-val="${total}" data-bar-ing="${ing}" data-bar-mes="${k}"><div class="an-bar ${esMesActual?'an-bar-act':'an-bar-inact'}" style="height:${pct}%;min-height:${total>0?4:2}px;"></div><div class="an-bar an-bar-ing" style="height:${pctI}%;min-height:${ing>0?4:2}px;"></div></div>`;
+      return`<div class="an-bar-par" data-bar-label="${label}" data-bar-val="${total}" data-bar-ing="${ingreso}" data-bar-mes="${k}"><div class="an-bar ${esMesActual?'an-bar-act':'an-bar-inact'}" style="height:${pct}%;min-height:${total>0?4:2}px;"></div><div class="an-bar an-bar-ing" style="height:${pctI}%;min-height:${ingreso>0?4:2}px;"></div></div>`;
     }).join('');
     labEl.innerHTML=hoy12.map(({label,k})=>{
       const esMesActual=k===mes;
@@ -186,16 +186,16 @@ function renderAnalisis(){
       const fmt2 = fmt;
       const label = bar.dataset.barLabel || '';
       const val = parseFloat(bar.dataset.barVal) || 0;
-      const ingVal = parseFloat(bar.dataset.barIng) || 0;
+      const ingresoVal = parseFloat(bar.dataset.barIng) || 0;
       // Limpiar tooltip previo
       const old = document.getElementById('_bar-tt');
       if(old){ old.remove(); if(old._lastBar === bar){ return; } }
-      if(!val&&!ingVal) return;
+      if(!val&&!ingresoVal) return;
       const tt = document.createElement('div');
       tt.id = '_bar-tt';
       tt._lastBar = bar;
       tt.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);text-align:center;min-width:90px;';
-      tt.innerHTML = `<div class="an-tt-lbl">${label}</div><div class="an-tt-val ${val>0?'an-tt-val-pos':''}">Gasto ${fmt2(val)}</div><div class="an-tt-val">Ingreso ${fmt2(ingVal)}</div>`;
+      tt.innerHTML = `<div class="an-tt-lbl">${label}</div><div class="an-tt-val ${val>0?'an-tt-val-pos':''}">Gasto ${fmt2(val)}</div><div class="an-tt-val">Ingreso ${fmt2(ingresoVal)}</div>`;
       document.body.appendChild(tt);
       const rect = bar.getBoundingClientRect();
       const ttW = tt.offsetWidth || 110;
@@ -517,12 +517,12 @@ function renderSimulador(){
   const m=_situacion();
   if(!m||m.sinDatos||!(m.gastoTipico>0||m.ingresoTipico>0)){ el.innerHTML=''; return; }
   m.costoDeuda=(typeof _deudasPropias==='function'&&typeof PlanDeudas!=='undefined')?_deudasPropias().reduce((a,d)=>a+PlanDeudas.costoMensual(d.saldo,d.tasaEA),0):0;
-  const maxIng=Math.max(100000,Math.round((m.ingresoTipico||m.gastoTipico)*0.5/50000)*50000);
+  const maxIngreso=Math.max(100000,Math.round((m.ingresoTipico||m.gastoTipico)*0.5/50000)*50000);
   const maxPago=Math.max(0,Math.round(m.deudaPropia));
   const fila=(id,etq,min,max,paso,val)=>`<label class="an-sim-fila"><span class="an-sim-etq">${etq}</span><input type="range" class="an-sim-rng" id="${id}" min="${min}" max="${max}" step="${paso}" value="${val}"><span class="an-sim-val" id="${id}-v"></span></label>`;
   el.innerHTML=`<div class="sec-title">¿Y si…?</div><div class="card an-sim">
     ${fila('an-sim-gasto','Gastara menos',0,30,5,_anSim.gastoPct)}
-    ${fila('an-sim-ing','Ingresara más al mes',0,maxIng,10000,_anSim.ingresoExtra)}
+    ${fila('an-sim-ing','Ingresara más al mes',0,maxIngreso,10000,_anSim.ingresoExtra)}
     ${maxPago>0?fila('an-sim-pago','Pagara a mis deudas',0,maxPago,Math.max(1000,Math.round(maxPago/50/1000)*1000),Math.min(_anSim.pagoDeuda,maxPago)):''}
     <div class="an-sim-res" id="an-sim-res"></div>
     <div class="an-sim-nota">Estimación con tus promedios recientes; no guarda nada.</div></div>`;
@@ -589,34 +589,34 @@ function renderIngresosFijos(){
   // `.join()` lo coacciona a string vía su propio `toString()`, sin volver
   // a escapar nada — misma coerción implícita ya validada para innerHTML.
   const mes=mesActual();
-  el.innerHTML=lista.map(ing=>{
-    const desdeLabel=ing.desde?html`<span class="an-desde">desde ${ing.desde}${ing.dia?' · día '+ing.dia:''}</span>`:(ing.dia?html`<span class="an-desde">día ${ing.dia}</span>`:'');
+  el.innerHTML=lista.map(ingreso=>{
+    const desdeLabel=ingreso.desde?html`<span class="an-desde">desde ${ingreso.desde}${ingreso.dia?' · día '+ingreso.dia:''}</span>`:(ingreso.dia?html`<span class="an-desde">día ${ingreso.dia}</span>`:'');
     // Estado del mes en curso: un ingreso fijo solo suma cuando se registra su cobro.
-    const est=ingresoFijoEstadoMes(ing,mes);
+    const est=ingresoFijoEstadoMes(ingreso,mes);
     const estadoHtml=est.cobrado>0
       ?html`<span class="an-ing-estado an-ing-estado-ok">Cobrado este mes · ${fmt(est.cobrado)}</span>`
       :(est.esperado?html`<span class="an-ing-estado an-ing-estado-pend">Sin cobrar este mes</span>`:'');
-    const recientes=cobrosDeIngresoFijo(ing).slice().sort((x,y)=>String(y.fecha||'').localeCompare(String(x.fecha||''))).slice(0,3);
+    const recientes=cobrosDeIngresoFijo(ingreso).slice().sort((x,y)=>String(y.fecha||'').localeCompare(String(x.fecha||''))).slice(0,3);
     const cobrosHtml=recientes.length?html`<div class="an-cobros">${raw(recientes.map(c=>html`<div class="an-cobro-fila">
         <span class="an-cobro-txt">${c.fecha||''} · cubre ${cobroMesTexto(c.mesCubre)}${cobroFuentesDe(c).length?' · '+cobroFuentesDe(c).map(f=>fuenteLabel(f)).join(', '):''}</span>
         <span class="an-cobro-acc"><span class="an-cobro-monto">+${fmt(c.monto||0)}</span>
-          <button type="button" ${raw(Events.attr('analisis:eliminarCobro', ing.id, c.id))} class="an-btn-icono an-t-muted" title="Borrar este cobro" aria-label="Borrar este cobro">
+          <button type="button" ${raw(Events.attr('analisis:eliminarCobro', ingreso.id, c.id))} class="an-btn-icono an-t-muted" title="Borrar este cobro" aria-label="Borrar este cobro">
             <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button></span>
       </div>`).join(''))}</div>`:'';
     return html`<div class="an-ing-bloque">
       <div class="row an-ing-row">
         <div class="an-col-2">
-          <span class="an-nom-13">${ing.nombre||'Sin nombre'}</span>
+          <span class="an-nom-13">${ingreso.nombre||'Sin nombre'}</span>
           <span class="an-desde-fila">${raw(estadoHtml)}${desdeLabel}</span>
         </div>
         <div class="an-flex-10">
-          <span class="an-ing-monto">${fmt(ing.monto||0)}</span>
-          <button type="button" ${raw(Events.attr('analisis:cobrarIngresoFijo', ing.id))} class="btn-chip btn-chip-accent">Cobrar</button>
-          <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ing.id))} class="an-btn-icono an-t-muted" aria-label="Editar">
+          <span class="an-ing-monto">${fmt(ingreso.monto||0)}</span>
+          <button type="button" ${raw(Events.attr('analisis:cobrarIngresoFijo', ingreso.id))} class="btn-chip btn-chip-accent">Cobrar</button>
+          <button type="button" ${raw(Events.attr('analisis:editarIngresoFijo', ingreso.id))} class="an-btn-icono an-t-muted" aria-label="Editar">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>
-          <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ing.id))} class="an-btn-icono an-t-red" aria-label="Eliminar">
+          <button type="button" ${raw(Events.attr('analisis:eliminarIngresoFijo', ingreso.id))} class="an-btn-icono an-t-red" aria-label="Eliminar">
             <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
           </button>
         </div>
@@ -636,13 +636,13 @@ function abrirSheetIngresoFijo(id){
   // Mes actual como default para "desde"
   const mesHoy=mesActual();
   if(_ifEditId){
-    const ing=(S.ingresosFijos||[]).find(x=>x.id===_ifEditId);
-    if(!ing)return;
+    const ingreso=(S.ingresosFijos||[]).find(x=>x.id===_ifEditId);
+    if(!ingreso)return;
     if(titleEl)titleEl.textContent='Editar ingreso fijo';
-    if(nEl)nEl.value=ing.nombre||'';
-    if(mEl)mEl.value=fmtInput(ing.monto||0);
-    if(dEl)dEl.value=ing.desde||mesHoy;
-    if(diaEl)diaEl.value=ing.dia?String(ing.dia):'';
+    if(nEl)nEl.value=ingreso.nombre||'';
+    if(mEl)mEl.value=fmtInput(ingreso.monto||0);
+    if(dEl)dEl.value=ingreso.desde||mesHoy;
+    if(diaEl)diaEl.value=ingreso.dia?String(ingreso.dia):'';
   } else {
     if(titleEl)titleEl.textContent='Ingreso fijo mensual';
     if(nEl)nEl.value='';
@@ -656,11 +656,11 @@ function abrirSheetIngresoFijo(id){
 function editarIngresoFijo(id){ abrirSheetIngresoFijo(id); }
 
 async function eliminarIngresoFijo(id){
-  const ing=(S.ingresosFijos||[]).find(x=>x.id===id);
-  if(!ing)return;
-  const cobros=cobrosDeIngresoFijo(ing);
+  const ingreso=(S.ingresosFijos||[]).find(x=>x.id===id);
+  if(!ingreso)return;
+  const cobros=cobrosDeIngresoFijo(ingreso);
   const aviso=cobros.length?' Se quitarán también sus '+cobros.length+(cobros.length===1?' cobro registrado':' cobros registrados')+(cobros.some(c=>cobroFuentesDe(c).length)?' y la plata que entró a tus cuentas se descontará.':'.'):'';
-  const ok=await confirmarEliminar({titulo:'Eliminar ingreso',objeto:'"'+ing.nombre+'"',detalle:aviso,irreversible:false});
+  const ok=await confirmarEliminar({titulo:'Eliminar ingreso',objeto:'"'+ingreso.nombre+'"',detalle:aviso,irreversible:false});
   if(!ok)return;
   const _histAntes=medirPatrimonioParaHistorial();
   cobros.forEach(c=>{cobroRevertir(c);});
@@ -681,8 +681,8 @@ function guardarIngresoFijo(){
   if(dia!==null&&!(Number.isInteger(dia)&&dia>=1&&dia<=31)){toast('El día debe estar entre 1 y 31','err');return;}
   if(!S.ingresosFijos)S.ingresosFijos=[];
   if(_ifEditId){
-    const ing=S.ingresosFijos.find(x=>x.id===_ifEditId);
-    if(ing){ing.nombre=n;ing.monto=m;ing.desde=d||undefined;if(dia!==null)ing.dia=dia;else delete ing.dia;}
+    const ingreso=S.ingresosFijos.find(x=>x.id===_ifEditId);
+    if(ingreso){ingreso.nombre=n;ingreso.monto=m;ingreso.desde=d||undefined;if(dia!==null)ingreso.dia=dia;else delete ingreso.dia;}
   } else {
     const nuevo={id:uid(),nombre:n,monto:m,desde:d||undefined};
     if(dia!==null)nuevo.dia=dia;
@@ -738,11 +738,11 @@ function actualizarCbPreview(){
 }
 
 function abrirCobroIngresoFijo(id){
-  const ing=(S.ingresosFijos||[]).find(x=>x.id===id);
-  if(!ing)return;
+  const ingreso=(S.ingresosFijos||[]).find(x=>x.id===id);
+  if(!ingreso)return;
   _cbId=id;
-  document.getElementById('cbTitle').textContent='Cobro · '+(ing.nombre||'Ingreso fijo');
-  setMoneyInput('cbMonto',ing.monto||0);
+  document.getElementById('cbTitle').textContent='Cobro · '+(ingreso.nombre||'Ingreso fijo');
+  setMoneyInput('cbMonto',ingreso.monto||0);
   document.getElementById('cbMes').value=mesActual();
   document.getElementById('cbFecha').value=hoy(); // valor por defecto: quien registra el cobro de otro día cambia la fecha
   document.getElementById('cbNota').value='';
@@ -778,8 +778,8 @@ function confirmarCobroIngresoFijo(){
 }
 
 async function eliminarCobroIngresoFijo(id,cobroId){
-  const ing=(S.ingresosFijos||[]).find(x=>x.id===id);
-  const c=ing&&cobrosDeIngresoFijo(ing).find(x=>x.id===cobroId);
+  const ingreso=(S.ingresosFijos||[]).find(x=>x.id===id);
+  const c=ingreso&&cobrosDeIngresoFijo(ingreso).find(x=>x.id===cobroId);
   if(!c)return;
   // Protección por antigüedad (docs/proteccion-antiguedad-movimientos.md): solo si borrar mueve el saldo de alguna cuenta.
   const fuentes=cobroFuentesDe(c);
@@ -891,8 +891,8 @@ function renderPresupuestos(){
   const ritmoDe = (gasto, limite) => Periodo.ritmoPresupuesto(gasto, limite, hoy());
   // La suma de los presupuestos no debería superar lo que ingresas de forma típica.
   const sumaPresup = cats.reduce((a,c)=>a+(presup[c]>0?presup[c]:0),0);
-  const ingTip = Periodo.ingresoPromedioPrevio(mes, 3).promedio;
-  const avisoSuma = ingTip>0 && sumaPresup>ingTip ? html`<div class="an-presup-ritmo an-t-amber">Tus presupuestos suman ${fmt(sumaPresup)}, más de lo que ingresas en un mes típico (${fmt(ingTip)}).</div>` : '';
+  const ingresoTip = Periodo.ingresoPromedioPrevio(mes, 3).promedio;
+  const avisoSuma = ingresoTip>0 && sumaPresup>ingresoTip ? html`<div class="an-presup-ritmo an-t-amber">Tus presupuestos suman ${fmt(sumaPresup)}, más de lo que ingresas en un mes típico (${fmt(ingresoTip)}).</div>` : '';
   el.innerHTML = html`${cats.map(cat => {
     const limite = presup[cat];
     const gasto = gastoCat[cat]||0;

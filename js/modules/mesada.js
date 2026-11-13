@@ -519,7 +519,7 @@ function _crearEncargoPicker(p, f, onCambio) {
 
 const _msPickers = {
   mp:  _crearEncargoPicker('mp',  _msFlujos.mp,  () => actualizarMpPreview()),
-  mpp: _crearEncargoPicker('mpp', _msFlujos.mpp, () => actualizarMppPreview()),
+  mpp: _crearEncargoPicker('mpp', _msFlujos.mpp, () => actualizarMesadaPagoPendientePreview()),
 };
 
 /* ── Pantalla principal ──────────────────────────────────────────── */
@@ -843,11 +843,11 @@ function abrirResolverPendiente(parent, key) {
   _msEl('mppNota').value = '';
   _poblarDestinoMesada('mppDestino');
   _msPickers.mpp.abrir(parent);
-  actualizarMppPreview();
+  actualizarMesadaPagoPendientePreview();
   openSheet('mesada-pend');
 }
 
-function actualizarMppPreview() {
+function actualizarMesadaPagoPendientePreview() {
   const f = _msFlujos.mpp;
   const prev = _msEl('mppPreview');
   const info = getMesadaData(f.parent)[f.key];
@@ -922,8 +922,8 @@ function _msCablear() {
     ['mpFecha',                   'change', actualizarMpAvisoMes],
     ['mpDestino',                 'change', actualizarMpPreview],
     ['mpQuedaDebiendo',           'change', actualizarMpPreview],
-    ['mppMonto',                  'input',  actualizarMppPreview],
-    ['mppDestino',                'change', actualizarMppPreview],
+    ['mppMonto',                  'input',  actualizarMesadaPagoPendientePreview],
+    ['mppDestino',                'change', actualizarMesadaPagoPendientePreview],
     ['mpSplitToggle',             'click',  () => splitToggle('mp')],
     ['btn-add-split-row',         'click',  () => splitAgregarRow('mp')],
   ].forEach(([id, evt, fn]) => _msOn(id, evt, fn));

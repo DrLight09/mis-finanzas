@@ -61,19 +61,19 @@ function ingresoFijoPorId(id, estado) {
 }
 
 // Cobros de un ingreso fijo (siempre un arreglo).
-function cobrosDeIngresoFijo(ing) {
-  return ing && Array.isArray(ing.cobros) ? ing.cobros : [];
+function cobrosDeIngresoFijo(ingreso) {
+  return ingreso && Array.isArray(ingreso.cobros) ? ingreso.cobros : [];
 }
 
 // ¿Ese ingreso fijo ya se espera en el mes `mes` ('YYYY-MM')? Sin `desde`, siempre.
-function ingresoFijoEsperadoEn(ing, mes) {
-  return !!ing && (!ing.desde || ing.desde <= mes);
+function ingresoFijoEsperadoEn(ingreso, mes) {
+  return !!ingreso && (!ingreso.desde || ingreso.desde <= mes);
 }
 
 // Estado de un ingreso fijo respecto a un mes que CUBRE: { esperado, cobrado (suma), cobros:[...] }.
-function ingresoFijoEstadoMes(ing, mes) {
-  const cobros = cobrosDeIngresoFijo(ing).filter(c => c.mesCubre === mes);
-  return { esperado: ingresoFijoEsperadoEn(ing, mes), cobrado: cobros.reduce((a, c) => a + (c.monto || 0), 0), cobros };
+function ingresoFijoEstadoMes(ingreso, mes) {
+  const cobros = cobrosDeIngresoFijo(ingreso).filter(c => c.mesCubre === mes);
+  return { esperado: ingresoFijoEsperadoEn(ingreso, mes), cobrado: cobros.reduce((a, c) => a + (c.monto || 0), 0), cobros };
 }
 
 // 'YYYY-MM' → 'Oct 2026' (_mesNombreDeKey espera el índice de mes 0-11, como la clave de la Mesada).
@@ -91,8 +91,8 @@ function cobroFuentesDe(c) {
 
 // p = { id (del ingreso fijo), mesCubre, monto, fecha, nota, destino, splitMode, splits }
 function cobroRegistrar(p) {
-  const ing = ingresoFijoPorId(p && p.id);
-  if (!ing) return { ok: false, motivo: 'ingreso-inexistente' };
+  const ingreso = ingresoFijoPorId(p && p.id);
+  if (!ingreso) return { ok: false, motivo: 'ingreso-inexistente' };
   const monto = p.monto || 0;
   if (!(monto > 0)) return { ok: false, motivo: 'monto-invalido' };
   if (!COBRO_MES_RE.test(String(p.mesCubre || ''))) return { ok: false, motivo: 'mes-invalido' };
@@ -102,7 +102,7 @@ function cobroRegistrar(p) {
   if (splits && splits.reduce((a, s) => a + s.monto, 0) > monto + 1) return { ok: false, motivo: 'split-excede' };
 
   // 2) Aplicar.
-  const desc = (ing.nombre || 'Ingreso fijo') + ' — cobro de ' + cobroMesTexto(p.mesCubre);
+  const desc = (ingreso.nombre || 'Ingreso fijo') + ' — cobro de ' + cobroMesTexto(p.mesCubre);
   const cobro = { id: uid(), mesCubre: p.mesCubre, monto, fecha, nota: p.nota || '' };
   if (splits) {
     cobro.destino = '';
@@ -112,8 +112,8 @@ function cobroRegistrar(p) {
     cobro.destino = p.destino || '';
     if (cobro.destino) cobro._movSecId = _cobroEntrar(cobro.destino, monto, fecha, desc);
   }
-  if (!Array.isArray(ing.cobros)) ing.cobros = [];
-  ing.cobros.push(cobro);
+  if (!Array.isArray(ingreso.cobros)) ingreso.cobros = [];
+  ingreso.cobros.push(cobro);
   return { ok: true, cobro };
 }
 
@@ -126,18 +126,18 @@ function cobroRevertir(c) {
 
 // Borra un cobro: revierte la plata donde entró y lo quita del ingreso fijo.
 function cobroBorrar(id, cobroId) {
-  const ing = ingresoFijoPorId(id);
-  const c = ing && cobrosDeIngresoFijo(ing).find(x => x.id === cobroId);
+  const ingreso = ingresoFijoPorId(id);
+  const c = ingreso && cobrosDeIngresoFijo(ingreso).find(x => x.id === cobroId);
   if (!c) return false;
   cobroRevertir(c);
-  ing.cobros = ing.cobros.filter(x => x.id !== cobroId);
+  ingreso.cobros = ingreso.cobros.filter(x => x.id !== cobroId);
   return true;
 }
 
 // Revierte todos los cobros de un ingreso fijo (antes de eliminarlo: ninguna plata queda sumada sin su registro).
-function cobroRevertirTodos(ing) {
-  cobrosDeIngresoFijo(ing).forEach(cobroRevertir);
-  if (ing) ing.cobros = [];
+function cobroRevertirTodos(ingreso) {
+  cobrosDeIngresoFijo(ingreso).forEach(cobroRevertir);
+  if (ingreso) ingreso.cobros = [];
 }
 
 // La plata cuenta en el mes de la FECHA en que te pagaron, no en el mes que cubre. Si son distintos, este texto lo dice antes

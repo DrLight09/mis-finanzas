@@ -114,7 +114,7 @@ describe('libro', () => {
     ctx.S.cajitas[0].saldo = -5;
     const v = plano(ctx.Libro.verificar());
     assert.equal(v.ok, false);
-    assert.deepEqual(v.descuadres.map(f => [f.nombre, f.dif]).sort(), [['Madre', 40], ['Sobra (Nu)', -5]]);
+    assert.deepEqual(v.descuadres.map(f => [f.nombre, f.diferencial]).sort(), [['Madre', 40], ['Sobra (Nu)', -5]]);
   });
 
   test('verificar — ignora entradas de cuentas que ya no existen', () => {
@@ -192,7 +192,7 @@ describe('libro-modulos', () => {
     const app = cargar();
     app.sumarFuente('cuenta:nequi', 100);
     app.S.cuentas.find(c => c.id === 'nequi').saldo += 5;
-    assert.equal(plano(app.Libro.verificar()).descuadres[0].dif, 5);
+    assert.equal(plano(app.Libro.verificar()).descuadres[0].diferencial, 5);
   });
 
   test('Encargos — eliminar el saldo inicial NO toca el saldo de la cuenta ni el libro (es plata ajena, no está en c.saldo)', async () => {
@@ -321,11 +321,11 @@ describe('plata-comprometida', () => {
     const dom = createFakeDom({ 'cp-recibir-fecha': { value: '2026-10-13' }, 'cp-recibir-sobrante-cuenta': { value: sobranteCuenta } });
     app.document = dom.document;
     app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {};
-    const cp = app.__reg.cp;
+    const plataComprometida = app.__reg.cp;
     const og = (ref, rev) => ({ origen: { modulo: 'plata-comprometida', ref, ...(rev ? { rev: true } : {}) } });
     const saldo = id => app.getSaldoFuente(id);
     const neto = () => { const n = {}; app.S.libro.forEach(e => { n[e.cuenta] = (n[e.cuenta] || 0) + e.monto; }); return n; };
-    return { app, cp, og, saldo, neto };
+    return { app, cp: plataComprometida, og, saldo, neto };
   }
   const recibir = e => { e.cp.abrirRecibir('cp1'); e.cp.confirmarRecibir(); };
   const item = destinos => ({ id: 'cp1', desc: 'Arriendo', montoTotal: 100000, cuentaDestino: 'cuenta:nequi', recibido: false, destinos });
@@ -354,7 +354,7 @@ describe('plata-comprometida', () => {
 
   test('eliminar un ingreso recibido que tenía un adelanto devuelve también el adelanto', async () => {
     const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: true }]));
-    // el adelanto ya se había hecho antes de recibir (como lo deja _cpdConfirmar / _cpGuardarMarcados)
+    // el adelanto ya se había hecho antes de recibir (como lo deja _cpdConfirmar / _plataComprometidaGuardarMarcados)
     e.app.sumarFuente('cuenta:efectivo', -30000, e.og('d1'));
     e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
     recibir(e);

@@ -7,7 +7,7 @@
 
 
 /* ---- SNAPSHOT PATRIMONIO ---- */
-function _saldoCPAjeno(){
+function _saldoPlataComprometidaAjeno(){
   // Calcula cuánta plata comprometida ajena está físicamente en cuentas propias.
   // Son destinos de ingresos ya recibidos donde el dinero es de otra persona
   // (gastos de cuentas y cajitas pendientes de pagar, y plata para TC aún en cajita).
@@ -146,7 +146,7 @@ function calcPatrimonioDesglose(){
   const yoDebo=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
   // Restar plata comprometida ajena que está físicamente en cuentas propias
   // (igual que se restan encargos) — es plata de otras personas que administras
-  const ajeno=_saldoCPAjeno();
+  const ajeno=_saldoPlataComprometidaAjeno();
   const activos=cajitas+cdts+cuentas+meDeben+alcancia;
   const pasivos=deudaTC+yoDebo+ajeno;
   const total=cajitas+cdts+cuentas+meDeben+alcancia-deudaTC-yoDebo-ajeno;
@@ -283,8 +283,8 @@ function recalcularMontoBaseHistorial(){
     };
     (S.movimientos||[]).forEach(sumarApertura);
     // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
-    const _ajAlc=_ajusteAlcanciaPorFecha();
-    Object.keys(_ajAlc).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajAlc[f]; });
+    const _ajAlcancia=_ajusteAlcanciaPorFecha();
+    Object.keys(_ajAlcancia).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajAlcancia[f]; });
     // Deudas sin pata de caja (ver _movsDeudaSinCuenta): ajuste de base, no crecimiento. Vale hacia atrás: se recalcula en cada carga.
     const _ajDeu=_ajusteDeudasSinCuentaPorFecha();
     Object.keys(_ajDeu).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajDeu[f]; });

@@ -82,7 +82,7 @@ var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests
  *   descMargen: (movimiento) => string — prefijo de la descripción del ingreso del sobrante libre
  *   onToggle / onResumen: hooks opcionales para sheets con comportamiento extra (preview de saldos, etc.)
  */
-// Devuelve la API de la instancia (`const _dif_ctc = diffRegistrarInstancia('ctc', {...})` → `_dif_ctc.toggle()`, `_dif_ctc.resumen()`…):
+// Devuelve la API de la instancia (`const _diferencial_compraConTc = diffRegistrarInstancia('ctc', {...})` → `_diferencial_compraConTc.toggle()`, `_diferencial_compraConTc.resumen()`…):
 // los módulos ya no escriben un envoltorio de una línea por cada función y por cada instancia.
 function diffRegistrarInstancia(instId, cfg) {
   _diffInstancias[instId] = { cfg, partes: [], abierto: false };
@@ -398,7 +398,7 @@ function diffAplicar(instId, movimiento, linkId) {
   if (!S.movimientos) S.movimientos = [];
   // Origen de las patas de saldo de este margen (libro-de-movimientos.md §3.3): el módulo es 'diferencial' y el `ref` es
   // el movimiento que lo enlaza (linkId), el mismo con el que quien lo revierte pasa `rev: true`.
-  const _ogDif = { origen: { modulo: 'diferencial', ...(linkId ? { ref: linkId } : {}) } };
+  const _ogDiferencial = { origen: { modulo: 'diferencial', ...(linkId ? { ref: linkId } : {}) } };
 
   const sinAsignar = margen - asignadoNormal - asignadoIntercambio;
   const miCuentaSel = inst.cfg.permiteMiCuenta && inst.cfg.ids.miCuenta ? document.getElementById(inst.cfg.ids.miCuenta) : null;
@@ -433,7 +433,7 @@ function diffAplicar(instId, movimiento, linkId) {
     // (una sola si no usó "Dividir ÷"). Todas comparten _encMovId para poder revertirse juntas.
     const destinosMi = (filasMi && filasMi.length) ? filasMi : [{ fuente: miCuenta, monto: yoMeQuedo }];
     destinosMi.forEach(r => {
-      sumarFuente(r.fuente, r.monto, _ogDif);
+      sumarFuente(r.fuente, r.monto, _ogDiferencial);
       S.movimientos.push({
         id: uid(), tipo: 'entrada', fuente: r.fuente,
         ...(linkId ? { _encMovId: linkId } : {}),
@@ -471,7 +471,7 @@ function diffAplicar(instId, movimiento, linkId) {
     const nombreBenef = b.nombre || 'Persona';
 
     if (cuentaSalida) {
-      descontarFuente(cuentaSalida, b.monto, _ogDif);
+      descontarFuente(cuentaSalida, b.monto, _ogDiferencial);
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaSalida, _fuenteDestino: cuentaEntrada || '',
         ...(linkId ? { _encMovId: linkId } : {}),
@@ -484,7 +484,7 @@ function diffAplicar(instId, movimiento, linkId) {
       });
     }
     if (cuentaEntrada) {
-      sumarFuente(cuentaEntrada, b.monto, _ogDif);
+      sumarFuente(cuentaEntrada, b.monto, _ogDiferencial);
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaEntrada, _fuenteDestino: cuentaSalida || '',
         ...(linkId ? { _encMovId: linkId } : {}),

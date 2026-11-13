@@ -8,7 +8,7 @@
 /**
  * _buildFuentesOpts — constructor interno de <option>s de fuentes (privado: las pantallas usan opcionesCuenta, más abajo).
  * Reemplaza: getFuentesOptions, _diffFuentesOptsHtml, poblarFuente,
- *            _cpPoblarCuentas (y sirve de base para las variantes de encargos).
+ *            _plataComprometidaPoblarCuentas (y sirve de base para las variantes de encargos).
  *
  * @param {Object}  opts
  * @param {string}  [opts.selectedVal='']         Valor a pre-seleccionar.
@@ -218,8 +218,8 @@ const Libro = (() => {
   function verificar(estado) {
     const st = estado || S, cu = _cuentasDe(st), suma = {};
     _arr(st.libro).forEach(l => { if (l && cu[l.cuenta]) suma[l.cuenta] = (suma[l.cuenta] || 0) + (l.monto || 0); });
-    const filas = Object.keys(cu).map(k => ({ cuenta: k, nombre: cu[k].nombre, guardado: cu[k].saldo, libro: suma[k] || 0, dif: cu[k].saldo - (suma[k] || 0) }));
-    const descuadres = filas.filter(f => Math.abs(f.dif) >= TOL);
+    const filas = Object.keys(cu).map(k => ({ cuenta: k, nombre: cu[k].nombre, guardado: cu[k].saldo, libro: suma[k] || 0, diferencial: cu[k].saldo - (suma[k] || 0) }));
+    const descuadres = filas.filter(f => Math.abs(f.diferencial) >= TOL);
     return { ok: descuadres.length === 0, filas, descuadres };
   }
   const saldo = (cuenta, estado) => _arr((estado || S).libro).reduce((a, l) => (l && l.cuenta === cuenta ? a + (l.monto || 0) : a), 0);
@@ -359,10 +359,10 @@ const Plata=(()=>{
       if(!cuenta)return{ok:false,motivo:'La cuenta ya no existe'};
       if(esCuentaAhorro(cuenta))return{ok:false,motivo:nombreCuenta(cuenta)+' guarda su plata en cajitas: elige una cajita'};
     }else{
-      const caj=(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]);
-      if(!caj)return{ok:false,motivo:'La cajita ya no existe'};
-      if(caj.esCDT)return{ok:false,motivo:'Un CDT no se puede mover como cajita'};
-      cuenta=getCuenta(caj.cuentaId);
+      const cajita=(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]);
+      if(!cajita)return{ok:false,motivo:'La cajita ya no existe'};
+      if(cajita.esCDT)return{ok:false,motivo:'Un CDT no se puede mover como cajita'};
+      cuenta=getCuenta(cajita.cuentaId);
       if(!cuenta)return{ok:false,motivo:'La cuenta de esa cajita ya no existe'};
     }
     if(cuenta.archivada&&!o.permitirArchivada)return{ok:false,motivo:'"'+nombreCuenta(cuenta)+'" está archivada: reactívala o elige otra cuenta'};

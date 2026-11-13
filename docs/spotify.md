@@ -48,12 +48,12 @@ El módulo maneja dos escalas de tiempo que no deben confundirse:
 - **Eliminar un integrante exige confirmación explícita y nunca borra su historial de cobros anteriores.**
 - **Editar el nombre o la cuota de un integrante nunca modifica su próxima fecha de cobro**; solo un cambio real en la fecha de ingreso puede hacerlo, y ese cambio desplaza `proximoPago` la misma cantidad de días — nunca lo recalcula desde cero, para no perder períodos ya pagados por adelantado.
 - **La cuota del administrador usada para la ganancia de un ciclo ya pagado se guarda en el momento de ese pago**, y no se recalcula con la cantidad de integrantes de hoy.
-- **Una vez vinculado a una persona, ese vínculo no se puede cambiar desde Editar**; para reasignar el cupo hay que eliminar y agregar de nuevo. El nombre mostrado y guardado siempre se resuelve desde ese vínculo (`spNombreDe`), nunca desde una copia cruda que pueda desactualizarse.
+- **Una vez vinculado a una persona, ese vínculo no se puede cambiar desde Editar**; para reasignar el cupo hay que eliminar y agregar de nuevo. El nombre mostrado y guardado siempre se resuelve desde ese vínculo (`spotifyNombreDe`), nunca desde una copia cruda que pueda desactualizarse.
 - **Pagar de menos por un período no bloquea que ese período se cuente como cubierto.** El monto recibido puede editarse por debajo de lo esperado (períodos × cuota); si se marca explícitamente "quedó debiendo la diferencia", el registro de `S.spotify.historial` guarda esa deuda puntual (`pendiente`), pero `proximoPago` avanza igual — lo que queda pendiente es la plata, no el período. Si no se marca el toggle, el monto menor se registra tal cual, sin deuda.
 - **Cada abono de `pendienteHistorial` es un movimiento visible por derecho propio, nunca un dato fundido en silencio dentro del cobro que lo originó.** Tiene su propia fecha, su propia cuenta destino (que puede ser distinta a la del cobro original) y su propio `id` — aparece como su propia línea en el historial de Spotify y como su propia tarjeta en el historial de la cuenta que le corresponde, protegida contra borrado directo igual que cualquier otro movimiento de Spotify (ver §6).
 - **Un cobro de varios períodos no aporta todo su monto al ciclo donde entró la plata.** Solo el primer período cuenta ahí; cada período siguiente pertenece al ciclo que estaba abierto el día en que ESE período empieza (`proximoPagoAntes + 30·k`). Mientras no llegue esa fecha y no se haya pagado Spotify, es plata flotante y no suma a "Recaudado este ciclo".
 - **La atribución de períodos a ciclos siempre se deriva del historial, nunca se guarda.** No existe ningún campo "este período es del ciclo X": borrar un cobro o un pago a Spotify reacomoda los períodos solos.
-- **Empate (el período de una persona empieza el mismo día que se paga Spotify):** va al ciclo que se cierra, salvo que esa persona ya tenga 2 o más períodos cubiertos en él — entonces va al ciclo nuevo. El umbral es la constante `SP_EMPATE_PERIODOS`.
+- **Empate (el período de una persona empieza el mismo día que se paga Spotify):** va al ciclo que se cierra, salvo que esa persona ya tenga 2 o más períodos cubiertos en él — entonces va al ciclo nuevo. El umbral es la constante `SPOTIFY_EMPATE_PERIODOS`.
 - **El ciclo de un cobro se decide por la fecha real, no por el orden en que se anotó.** Un pago a Spotify (o un cobro) puede registrarse días después de haber ocurrido; al anotar el pago, los cobros ya registrados se reparten entre el ciclo que cierra y el nuevo según su fecha (ver §7ter).
 - **La plata de una persona que paga atrasado, después de que ya se cerró el ciclo que debía, pertenece a ese ciclo cerrado** y nunca infla "Recaudado este ciclo" del ciclo nuevo (ver §7ter).
 
@@ -76,7 +76,7 @@ S.spotify = {
 S.spotify.personas = [
   {
     id: "uid",
-    nombre: "Juan",            // nombre crudo; si hay personaId, se resuelve via spNombreDe() en su lugar
+    nombre: "Juan",            // nombre crudo; si hay personaId, se resuelve via spotifyNombreDe() en su lugar
     personaId: "uid|null",     // vínculo al sistema unificado de personas (S.personas)
     monto: 8000,               // cuota del integrante por período
     pagado: false,             // solo referencial — la fuente real de verdad son los movimientos (ver §3)
@@ -287,7 +287,7 @@ Se quita esa entrada de pendienteHistorial — el resto de la historia del cobro
 ### Eliminar un pago o cobro
 
 ```
-deleteSpHistorial (único punto de entrada válido)
+deleteSpotifyHistorial (único punto de entrada válido)
   ↓
 Si es un pago: protección por antigüedad — los muy viejos se bloquean y los viejos
   piden una confirmación específica (ver docs/proteccion-antiguedad-movimientos.md)
@@ -397,7 +397,7 @@ El módulo no sabe cuándo se vence Spotify: el administrador lo registra al pag
 |---|---|
 | antes de F | ciclo que se cierra |
 | después de F | ciclo nuevo (aunque se haya anotado antes que el pago) |
-| igual a F | ciclo que se cierra, salvo que esa persona ya tenga 2 o más períodos cubiertos en él (`SP_EMPATE_PERIODOS`) — entonces, el nuevo |
+| igual a F | ciclo que se cierra, salvo que esa persona ya tenga 2 o más períodos cubiertos en él (`SPOTIFY_EMPATE_PERIODOS`) — entonces, el nuevo |
 
 **Deuda al cerrar.** Quien no está vigente cuando se paga Spotify (su próximo cobro ya llegó) queda debiendo, al ciclo que se cierra, los períodos vencidos a la fecha F × su cuota. Esa foto se guarda en el pago (`_pendienteAlCerrar`). El período que empieza justo en F cuenta como deuda del ciclo que cierra, salvo que la persona ya tenga 2 o más períodos cubiertos (mismo empate de arriba).
 
@@ -409,10 +409,10 @@ El módulo no sabe cuándo se vence Spotify: el administrador lo registra al pag
 
 A veces la cuota es $5.100 y la persona entrega $5.500. Esos $400 **no son parte del cobro de Spotify**: nadie los debía, no cubren ningún período y no tienen relación con el costo del plan. Por eso:
 
-- `confirmarSpDestino()` ya no rechaza pagar de más: `extra = recibido − (períodos × cuota)` (con tolerancia de $1) y el cobro guarda `monto = períodos × cuota`.
+- `confirmarSpotifyDestino()` ya no rechaza pagar de más: `extra = recibido − (períodos × cuota)` (con tolerancia de $1) y el cobro guarda `monto = períodos × cuota`.
 - El extra tiene su propio destino, obligatorio y explícito (misma cuenta del cobro, otra, o "Sin especificar"). En modo dividido el split reparte solo la cuota.
 - La plata entra con `sumarFuente()` y deja un movimiento espejo (`registrarMovEspejo`, `_esExtraIngreso: true`, `_origenSeccion: 'Spotify'`): visible en el historial de la cuenta, protegido contra borrado directo, y contado como **ingreso real independiente** (Análisis, Salud financiera, Wrapped).
-- No toca ciclos: no entra a `spAsignarPeriodos`, a "Recaudado", a "Total cobrado", a la ganancia ni al promedio. Se ve en el historial (línea "+ extra") y en la tarjeta "Extras recibidos".
+- No toca ciclos: no entra a `spotifyAsignarPeriodos`, a "Recaudado", a "Total cobrado", a la ganancia ni al promedio. Se ve en el historial (línea "+ extra") y en la tarjeta "Extras recibidos".
 - Con "Sin especificar" el extra queda anotado en el cobro pero no mueve plata ni cuenta como ingreso.
 
 ---
@@ -443,17 +443,17 @@ El módulo no recibe tratamiento especial: un cobro sube el saldo real de la cue
 ## 10. Decisiones de diseño
 
 - **El botón nunca es la fuente de verdad, los movimientos sí** — evita que el estado visual se desincronice de la plata realmente movida (ver §3).
-- **Nombre resuelto vía `spNombreDe`, nunca leído crudo:** cuando un integrante está vinculado a una persona, su nombre real vive en `S.personas`, no en el campo `nombre` del propio registro (que puede quedar desactualizado, ej. si se corrige una falta de ortografía desde "Personas"). Un cobro nuevo guarda el nombre ya resuelto en ese momento; los cobros pasados conservan el nombre tal como estaba cuando se registraron, igual que cualquier dato de un historial financiero.
+- **Nombre resuelto vía `spotifyNombreDe`, nunca leído crudo:** cuando un integrante está vinculado a una persona, su nombre real vive en `S.personas`, no en el campo `nombre` del propio registro (que puede quedar desactualizado, ej. si se corrige una falta de ortografía desde "Personas"). Un cobro nuevo guarda el nombre ya resuelto en ese momento; los cobros pasados conservan el nombre tal como estaba cuando se registraron, igual que cualquier dato de un historial financiero.
 - **Vínculo a persona fijo una vez establecido:** permitir reemplazar directamente la persona vinculada era una fuente recurrente de inconsistencias (nombre desincronizado, dos integrantes apuntando a la misma persona). Bloquearlo elimina esa clase de problemas de raíz, a cambio de un flujo (eliminar y volver a agregar) que de todas formas ya se usa cuando alguien deja el plan y otra persona ocupa su lugar.
 - **Eliminar un integrante no borra su historial:** el historial financiero nunca se pierde (ver §3); quitar a alguien de la lista activa es una acción distinta a borrar la plata que ya se le cobró.
 - **Un cobro de varios períodos es un solo registro, no uno por período:** la plata entró a la cuenta en un solo movimiento, así que el historial de la cuenta debe mostrar uno solo (3 períodos de $5.000 = un ingreso de $15.000, no tres de $5.000). El detalle de cuántos períodos cubrió queda en `periodos` y en la nota. Además, las estadísticas que cuentan cobros (ej. "mayor cobro" en la ficha de la persona) reflejan pagos reales, no fragmentos.
-- **Los períodos prepagados se reparten entre ciclos por cálculo, no partiendo el registro:** se evaluó dividir el cobro de varios períodos en un registro por período al pagar Spotify, pero eso habría obligado a mantener sincronizados varios registros con una sola entrada de plata (movimiento en la cuenta, `proximoPagoAntes` compartido, borrado). Derivarlo del historial (`spAsignarPeriodos`) mantiene un solo registro y hace que eliminar un cobro o un pago a Spotify se reacomode solo.
+- **Los períodos prepagados se reparten entre ciclos por cálculo, no partiendo el registro:** se evaluó dividir el cobro de varios períodos en un registro por período al pagar Spotify, pero eso habría obligado a mantener sincronizados varios registros con una sola entrada de plata (movimiento en la cuenta, `proximoPagoAntes` compartido, borrado). Derivarlo del historial (`spotifyAsignarPeriodos`) mantiene un solo registro y hace que eliminar un cobro o un pago a Spotify se reacomode solo.
 - **Las dos fórmulas de ganancia se muestran juntas, no se elige una.** "En mano" y "Beneficio total" responden preguntas distintas (plata libre hoy vs. resultado completo del negocio); esconder una obligaba a recordar cuál estaba viendo. Se muestran lado a lado y se unifican en una sola cuando son idénticas (sin cuota del admin).
 - **El extra es un ingreso independiente, no un cobro de más:** meterlo dentro del cobro habría inflado "Recaudado", la ganancia y el promedio con plata que no corresponde a Spotify. Vive como movimiento espejo propio (mismo patrón que el extra de Prestado) y se borra junto con el cobro que lo originó.
-- **Empate: 2 períodos, no 1.** Cuando un período empieza el mismo día que se paga Spotify, esa plata financia el pago que cierra el ciclo, salvo que la persona ya haya aportado 2 períodos a ese ciclo. La regla vive en una sola constante (`SP_EMPATE_PERIODOS`) y la usan por igual los períodos prepagados, los cobros registrados el mismo día del pago y la deuda al cierre.
-- **"Saldo/Cupo insuficiente" al pagar Spotify lo valida el núcleo, no el módulo.** `confirmarPagarSpotify()` llama a `Plata.validarSalida` / `Plata.validarSalidas` (`el núcleo`) en el modo dividido, con TC y con cuenta, y muestra su `motivo` (ya escapado). Antes los tres avisos armaban el texto a mano y mostraban el nombre de la cuenta sin escapar en un `toast()` que pinta HTML. La TC sigue pasando por `_spEnsureTC()` y por el cargo `cargo_spotify`; la función solo decide si alcanza el cupo.
+- **Empate: 2 períodos, no 1.** Cuando un período empieza el mismo día que se paga Spotify, esa plata financia el pago que cierra el ciclo, salvo que la persona ya haya aportado 2 períodos a ese ciclo. La regla vive en una sola constante (`SPOTIFY_EMPATE_PERIODOS`) y la usan por igual los períodos prepagados, los cobros registrados el mismo día del pago y la deuda al cierre.
+- **"Saldo/Cupo insuficiente" al pagar Spotify lo valida el núcleo, no el módulo.** `confirmarPagarSpotify()` llama a `Plata.validarSalida` / `Plata.validarSalidas` (`el núcleo`) en el modo dividido, con TC y con cuenta, y muestra su `motivo` (ya escapado). Antes los tres avisos armaban el texto a mano y mostraban el nombre de la cuenta sin escapar en un `toast()` que pinta HTML. La TC sigue pasando por `_spotifyEnsureTC()` y por el cargo `cargo_spotify`; la función solo decide si alcanza el cupo.
 - **Las opciones de cuentas del pago salen de `FuentesFiltro.optsHtml()`** (`js/core/fuentes-filtro.js`), con `PRESET.SPOTIFY` (saldo mínimo $50): el select simple de "Pagar Spotify" y las filas del split de pago (`_spPagarSplitFuentesOpts`). En el split de pago la opción vacía ya no queda bloqueada (`disabled`), igual que en el split de Gastos. Los selects donde la plata ENTRA (destino del cobro, split de cobro, resolver pendiente) NO usan `optsHtml()` a propósito: filtraría por saldo y una cuenta vacía es un destino válido.
-- **«Pagar Spotify» no abre sin un costo del plan válido, y el aviso usa la misma condición.** `spCostoValido()` (`spotify.js`) es verdadera solo si `S.spotify.costo` es un número finito mayor que 0. `abrirPagarSpotify()` la comprueba antes de `openSheet('pagar-spotify')`: si falla, avisa («Configura el costo del plan para registrar pagos») y lleva el foco al campo `#spotifyCosto`. Con esa misma condición `renderSpotify()` muestra el aviso «Configura el costo del plan para empezar a registrar pagos.» con el botón «Configurar costo» (clase `.sp-costo-aviso`, sin estilos inline) y lo quita cuando el costo es válido (el campo guarda con `debounceSave`, que vuelve a pintar la pantalla). La validación vive en el abridor y no en `openSheet()` porque `openSheet()` no tiene forma de vetar: ejecuta los efectos del sheet y siempre lo abre; el botón es el único camino a este sheet.
+- **«Pagar Spotify» no abre sin un costo del plan válido, y el aviso usa la misma condición.** `spotifyCostoValido()` (`spotify.js`) es verdadera solo si `S.spotify.costo` es un número finito mayor que 0. `abrirPagarSpotify()` la comprueba antes de `openSheet('pagar-spotify')`: si falla, avisa («Configura el costo del plan para registrar pagos») y lleva el foco al campo `#spotifyCosto`. Con esa misma condición `renderSpotify()` muestra el aviso «Configura el costo del plan para empezar a registrar pagos.» con el botón «Configurar costo» (clase `.sp-costo-aviso`, sin estilos inline) y lo quita cuando el costo es válido (el campo guarda con `debounceSave`, que vuelve a pintar la pantalla). La validación vive en el abridor y no en `openSheet()` porque `openSheet()` no tiene forma de vetar: ejecuta los efectos del sheet y siempre lo abre; el botón es el único camino a este sheet.
 
 - **Todo el estado de Spotify en una sola llave (`S.spotify`), con DOS listas dentro, no una (2026-10-18).** `personas` es un estado que cambia (cuota, próximo pago, pagado/pendiente) y `historial` son hechos que solo se añaden o se revierten; mezclarlos obligaría a filtrar por `tipo` en cada lectura y repetiría el problema de las "tres formas del historial". Tampoco se mete el historial en `S.movimientos`: ahí van movimientos de dinero de una cuenta y Spotify guarda además a quién y qué períodos cubre (lo que sí toca una cuenta ya se refleja con espejo y libro). Una llave por sección es lo que ya hacen `alcancia` y `mesadas`. Alternativas descartadas: cuatro llaves con prefijo (un espacio de nombres escrito a mano) y una lista única de integrantes + registro. El esquema 9 nació con esta forma y sin migración: no hay datos anteriores que conservar.
 
@@ -463,7 +463,7 @@ El módulo no recibe tratamiento especial: un cobro sube el saldo real de la cue
 
 **Ubicación:** el módulo vive en un único archivo, [`js/modules/spotify.js`](../js/modules/spotify.js) — funciones base (personas del plan, cobros, pago, ganancia) junto con la integración con el sistema unificado de Personas (`openSheet`, `addSpotify`, `editarSpotify`, `guardarEditarSpotify`, `renderSpotify`, selector de personas).
 
-Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene `<script>` propio en `index.html`. Depende de `js/core/events.js` y de los globals del núcleo (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., definidos en `js/core/`). Dos helpers que el módulo usa viven en `js/core/calc-helpers.js` porque Inicio los necesita en el primer render: `spNombreDe` y `spPersonaPagadaVigente`.
+Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene `<script>` propio en `index.html`. Depende de `js/core/events.js` y de los globals del núcleo (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., definidos en `js/core/`). Dos helpers que el módulo usa viven en `js/core/calc-helpers.js` porque Inicio los necesita en el primer render: `spotifyNombreDe` y `spotifyPersonaPagadaVigente`.
 
 **Spotify no genera movimiento espejo propio en `S.movimientos`** (a diferencia de Mesada, que sí tiene `_mesadaEntrar`). El historial de cada cuenta se arma directamente desde `S.spotify.historial` en dos funciones de `cuentas.js`: `getMovimientosCuenta()` (Nequi/Efectivo/cajitas) y `_getMovimientosCuentaCustom()` (cuentas personalizadas). Esto es relevante para cualquier cambio futuro al modelo de datos de `S.spotify.historial` — cualquier campo nuevo que deba verse en el historial de una cuenta tiene que sintetizarse ahí, no alcanza con guardarlo en `S.spotify.historial`.
 
@@ -472,20 +472,20 @@ Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene
 | Función | Qué hace |
 |---|---|
 | `renderSpotify()` | Pinta toda la pantalla: lista de integrantes, estadísticas, banner de vencidos |
-| `spNombreDe(integrante)` | Resuelve el nombre mostrado: usa la persona vinculada si existe, si no cae al campo crudo (en `js/core/calc-helpers.js`) |
-| `spPersonaPagadaVigente(integrante)` | ¿Su próximo cobro sigue en el futuro? Es lo que decide "Pagó" (en `js/core/calc-helpers.js`) |
-| `confirmarSpDestino()` | Registra un cobro: valida, mueve la plata, avanza `proximoPago`, crea el registro (y el de "pago atrasado" si corresponde) |
+| `spotifyNombreDe(integrante)` | Resuelve el nombre mostrado: usa la persona vinculada si existe, si no cae al campo crudo (en `js/core/calc-helpers.js`) |
+| `spotifyPersonaPagadaVigente(integrante)` | ¿Su próximo cobro sigue en el futuro? Es lo que decide "Pagó" (en `js/core/calc-helpers.js`) |
+| `confirmarSpotifyDestino()` | Registra un cobro: valida, mueve la plata, avanza `proximoPago`, crea el registro (y el de "pago atrasado" si corresponde) |
 | `confirmarPagarSpotify()` | Registra el pago a Spotify: mueve la plata, crea el gasto, reparte los cobros entre ciclos y congela `_pendienteAlCerrar` |
-| `renderSpStats()` | Estadísticas de la sección (ganancia, promedio por ciclo, total cobrado) |
-| `deleteSpHistorial(id)` | Único punto válido para borrar un cobro o un pago; revierte plata, movimiento secundario y estado |
-| `resolverPendienteSpHistorial(i)` | Abre el sheet para registrar un abono contra la deuda puntual (`pendiente`) de un cobro específico |
-| `confirmarSpResolverPendiente()` | Aplica el abono: suma la plata al destino elegido y lo agrega a `pendienteHistorial` como movimiento propio (`id`, `_secundario`, `_origenSeccion`), reduce `pendiente` |
-| `deshacerAbonoPendienteSp(i, abIdx)` | Revierte un abono puntual (plata + `pendiente` + `pendienteHistorial`) sin borrar el resto del cobro |
-| `spTramosDeCobro(h)` | Divide un cobro en sus períodos (fecha de inicio y monto de cada uno). Registros viejos sin `periodos`/`proximoPagoAntes` son un solo tramo que nunca flota |
-| `spAsignarPeriodos(hist)` | Asigna cada período de cada cobro a un ciclo (por posición el primero, por fecha de inicio los demás, con la regla del empate) y marca los flotantes |
-| `spResumenCicloActual()` | `{recaudado, flotante}` del ciclo abierto; alimenta "Recaudado este ciclo" y el adelantado |
-| `spMontoAntesDe(h, fecha)` | Plata de un cobro que ya cubría períodos anteriores a `fecha`; usada en el desempate al pagar Spotify |
-| `spPeriodosVencidos(p, corte, estricto)` | Períodos vencidos de un integrante; con `estricto` no cuenta el que empieza justo el día de corte |
+| `renderSpotifyStats()` | Estadísticas de la sección (ganancia, promedio por ciclo, total cobrado) |
+| `deleteSpotifyHistorial(id)` | Único punto válido para borrar un cobro o un pago; revierte plata, movimiento secundario y estado |
+| `resolverPendienteSpotifyHistorial(i)` | Abre el sheet para registrar un abono contra la deuda puntual (`pendiente`) de un cobro específico |
+| `confirmarSpotifyResolverPendiente()` | Aplica el abono: suma la plata al destino elegido y lo agrega a `pendienteHistorial` como movimiento propio (`id`, `_secundario`, `_origenSeccion`), reduce `pendiente` |
+| `deshacerAbonoPendienteSpotify(i, abIdx)` | Revierte un abono puntual (plata + `pendiente` + `pendienteHistorial`) sin borrar el resto del cobro |
+| `spotifyTramosDeCobro(h)` | Divide un cobro en sus períodos (fecha de inicio y monto de cada uno). Registros viejos sin `periodos`/`proximoPagoAntes` son un solo tramo que nunca flota |
+| `spotifyAsignarPeriodos(hist)` | Asigna cada período de cada cobro a un ciclo (por posición el primero, por fecha de inicio los demás, con la regla del empate) y marca los flotantes |
+| `spotifyResumenCicloActual()` | `{recaudado, flotante}` del ciclo abierto; alimenta "Recaudado este ciclo" y el adelantado |
+| `spotifyMontoAntesDe(h, fecha)` | Plata de un cobro que ya cubría períodos anteriores a `fecha`; usada en el desempate al pagar Spotify |
+| `spotifyPeriodosVencidos(p, corte, estricto)` | Períodos vencidos de un integrante; con `estricto` no cuenta el que empieza justo el día de corte |
 
 ### Eventos (`data-action`)
 
@@ -497,9 +497,9 @@ Los botones/badges de la pantalla ya no usan `onclick` inline — usan `data-act
 | `spotify:marcarPago` | `marcarPagoSpotify` |
 | `spotify:editar` | `editarSpotify` |
 | `spotify:eliminar` | `deleteSpotify` |
-| `spotify:eliminarHistorial` | `deleteSpHistorial` |
-| `spotify:resolverPendiente` | `resolverPendienteSpHistorial` |
-| `spotify:deshacerAbonoPendiente` | `deshacerAbonoPendienteSp` |
+| `spotify:eliminarHistorial` | `deleteSpotifyHistorial` |
+| `spotify:resolverPendiente` | `resolverPendienteSpotifyHistorial` |
+| `spotify:deshacerAbonoPendiente` | `deshacerAbonoPendienteSpotify` |
 | `personas:pickerAbrir` | Abre el selector de personas desde el campo «¿Quién es?» (`PersonaPicker`, `data-picker="sp-persona"` / `"sp-edit-persona"`) |
 | `spotify:onClickEditPersonaBtn` | `_onClickSpEditPersonaBtn` |
 
@@ -509,4 +509,4 @@ Todas se registran en `spotify.js`: las de funciones base en el bloque "REGISTRO
 
 El gasto "Spotify Premium" y cada "Cobro Spotify (persona)" quedan marcados `_secundario: true, _origenSeccion: 'Spotify'`. En la vista de movimientos de cuentas y en Gastos aparecen con la etiqueta "Automático" y el ícono de eliminar bloqueado; si se intenta borrar igual, se avisa que debe hacerse desde Spotify.
 
-Cada abono de `pendienteHistorial` tiene la misma protección de forma independiente: `eliminarMovimiento()` (`js/core/movimientos.js`) busca su `_secundario` no solo en `S.spotify.historial` sino también dentro de `pendienteHistorial` de cada registro. Intentar borrar la tarjeta sintética de un abono desde el historial de una cuenta redirige a Spotify igual que el cobro original — desde ahí, `deshacerAbonoPendienteSp()` revierte ese abono puntual sin tocar el resto del cobro (equivalente al `deshacerPendienteMesada` de Mesada).
+Cada abono de `pendienteHistorial` tiene la misma protección de forma independiente: `eliminarMovimiento()` (`js/core/movimientos.js`) busca su `_secundario` no solo en `S.spotify.historial` sino también dentro de `pendienteHistorial` de cada registro. Intentar borrar la tarjeta sintética de un abono desde el historial de una cuenta redirige a Spotify igual que el cobro original — desde ahí, `deshacerAbonoPendienteSpotify()` revierte ese abono puntual sin tocar el resto del cobro (equivalente al `deshacerPendienteMesada` de Mesada).

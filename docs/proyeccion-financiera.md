@@ -111,11 +111,11 @@ Esta función es el corazón del módulo. La proyección hereda todo lo que ella
 |---|---|---|
 | Deuda total de tarjetas de crédito | `S.tarjetasCredito[].deuda` | Es plata que debo |
 | Lo que yo le debo a otras personas | `S.misDeudas` → `totalMisDeudasPendiente()` | Físicamente en mis cuentas pero no es mía |
-| Plata comprometida ajena en cuentas propias | `_saldoCPAjeno()` | Plata de otra persona que administro y aún no pagué |
+| Plata comprometida ajena en cuentas propias | `_saldoPlataComprometidaAjeno()` | Plata de otra persona que administro y aún no pagué |
 
 > **`calcC()`/`calcCDT()` y `Deudas`:** `calcC`, `calcCDT` viven en `js/core/nu-calc.js` y `Deudas` en `js/core/calc-helpers.js` (núcleo, carga de entrada), así que `calcPatrimonioTotal()` —que corre en cada `save()`— los llama directo (ya no hay envoltorios `_calcCSafe`/`_calcCDTSafe`). Aun así, `snapshotPatrimonio()` no guarda ningún punto si alguno todavía no cargó (`_patrimonioDependenciasListas()`: `calcC`, `calcCDT` y `Deudas` definidos): sin ese guard, un snapshot tomado antes de que carguen grabaría un patrimonio artificialmente bajo de forma permanente en el historial.
 
-> **Nota sobre `_saldoCPAjeno()`:** solo resta los destinos de plata comprometida que ya llegaron (`item.recibido = true`), son de tipo `gasto` con `gastoOrigen` cajita o TC, y todavía no se pagaron (`yaPague !== true`). Cuando se marca `yaPague`, la plata ya salió de la cuenta y deja de restarse.
+> **Nota sobre `_saldoPlataComprometidaAjeno()`:** solo resta los destinos de plata comprometida que ya llegaron (`item.recibido = true`), son de tipo `gasto` con `gastoOrigen` cajita o TC, y todavía no se pagaron (`yaPague !== true`). Cuando se marca `yaPague`, la plata ya salió de la cuenta y deja de restarse.
 
 ---
 
@@ -146,7 +146,7 @@ No son patrimonio propio, así que el saldo de un encargo nunca entra en `calcPa
 
 ### Plata comprometida
 
-La ajena que ya llegó y no se ha pagado se resta vía `_saldoCPAjeno()`; al pagarse, sale de la cuenta y deja de restarse (neto cero). La propia no tiene efecto especial: ya está en la cuenta y se refleja normalmente.
+La ajena que ya llegó y no se ha pagado se resta vía `_saldoPlataComprometidaAjeno()`; al pagarse, sale de la cuenta y deja de restarse (neto cero). La propia no tiene efecto especial: ya está en la cuenta y se refleja normalmente.
 
 ### Alcancía oculta
 
@@ -189,7 +189,7 @@ Cualquier flujo que suba el saldo de Nequi, Efectivo, cajita o cuenta personaliz
 | Compra con TC de encargo / plata comprometida | ❌ No | `calcDeudaTcPropia()` excluye esa deuda |
 | Encargo — depósito | ❌ No | El saldo del encargo no es patrimonio propio |
 | Encargo — margen/diferencial a cuenta propia | ✅ Sí — sube | El diferencial entra a una cuenta real |
-| Plata comprometida ajena — recibida y no pagada | ✅ Sí — resta | `_saldoCPAjeno()` la descuenta |
+| Plata comprometida ajena — recibida y no pagada | ✅ Sí — resta | `_saldoPlataComprometidaAjeno()` la descuenta |
 | Plata comprometida ajena — pagada | ❌ Neto cero | Sale de la cuenta, deja de restarse |
 | Alcancía — depósito desde cuenta | ❌ Neto cero | Traslado: la cuenta baja, `saldoRegistrado` sube |
 | Alcancía — depósito externo (regalo, efectivo) | ✅ Sí — sube | Ingreso real: `S.movimientos` tipo `'entrada'` |

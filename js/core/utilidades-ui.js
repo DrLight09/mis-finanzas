@@ -161,7 +161,7 @@ function mostrarSi(el, visible) {
 }
 
 // renderAttencion() migrada a js/modules/inicio.js — ver auditoria-tecnica.md.
-// De paso se corrigió un caso más de .innerHTML sin escapar (spNombreDe()
+// De paso se corrigió un caso más de .innerHTML sin escapar (spotifyNombreDe()
 // interpolado directo, mismo patrón ya visto 5 veces en otros módulos).
 
 // ── Guards de carga bajo demanda para cuentas.js (FIX 2026-08-13) ──────────

@@ -743,7 +743,7 @@ function getMovimientosCuenta(tipo) {
         tipo: tipoDisplay, fecha: m.fecha,
         desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? textoEntrada : esTransferencia ? 'Intercambio' : textoSalida),
         monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '',
-        _origen, _otrasCuentas, _secundario: !!m._secundario, _origenSeccion: m._origenSeccion || '', _alcOculto: false
+        _origen, _otrasCuentas, _secundario: !!m._secundario, _origenSeccion: m._origenSeccion || '', _alcanciaOculto: false
       });
     });
   };
@@ -751,21 +751,21 @@ function getMovimientosCuenta(tipo) {
   desdeMovimientos();
 
   // Gastos variables pagados desde esta cuenta. Los depósitos a la alcancía se muestran como fila
-  // visible con el monto oculto (`_alcOculto`).
+  // visible con el monto oculto (`_alcanciaOculto`).
   (S.gastosVar || []).forEach(g => {
     // Gasto dividido entre varias cuentas: `g.fuente` queda vacío (ver addGastoVar en gastos.js) y cada parte salió de su cuenta,
     // así que cada cuenta muestra SU parte (con las otras cuentas en el detalle). Antes no coincidía con ninguna y no se veía en ninguna.
     if (!g.fuente && g.splits && g.splits.length) {
-      g.splits.forEach(sp => {
-        if (!sp.fuente || !sp.monto || !coincide(sp.fuente)) return;
-        const otras = g.splits.filter(o => o !== sp && o.fuente).map(o => ({ fuente: o.fuente, monto: -o.monto }));
-        movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -sp.monto, cat: g.cat, fuente: sp.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: sp.fuente, _origen: 'Gastos', _otrasCuentas: otras.length ? otras : null, _secundario: false, _origenSeccion: '', _alcOculto: false });
+      g.splits.forEach(spotify => {
+        if (!spotify.fuente || !spotify.monto || !coincide(spotify.fuente)) return;
+        const otras = g.splits.filter(o => o !== spotify && o.fuente).map(o => ({ fuente: o.fuente, monto: -o.monto }));
+        movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -spotify.monto, cat: g.cat, fuente: spotify.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: spotify.fuente, _origen: 'Gastos', _otrasCuentas: otras.length ? otras : null, _secundario: false, _origenSeccion: '', _alcanciaOculto: false });
       });
       return;
     }
     if (!coincide(g.fuente)) return;
     const _origen = g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota || '') ? 'Encargos' : 'Gastos';
-    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '', _alcOculto: false });
+    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '', _alcanciaOculto: false });
   });
 
   // Préstamos dados desde esta cuenta (incluye los divididos entre varias cuentas).
@@ -799,7 +799,7 @@ function getMovimientosCuenta(tipo) {
   // cobro original, así que se filtra por su propio `destino`, no por `h.fuente`.
   (S.spotify.historial || []).forEach(h => {
     if (h.tipo === 'pago') return;
-    // h.monto acumula el cobro original + los abonos ya recibidos (confirmarSpResolverPendiente): hay que
+    // h.monto acumula el cobro original + los abonos ya recibidos (confirmarSpotifyResolverPendiente): hay que
     // restar los abonos para no contar la misma plata dos veces (una acá, otra en su propia fila).
     const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
     const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
@@ -816,18 +816,18 @@ function getMovimientosCuenta(tipo) {
   // como origen (ninguna cuenta real se llama 'alcancia'): fila visible, monto oculto, sin "otras
   // cuentas" (la alcancía no es una cuenta navegable). Ver docs/alcancia.md §3.
   (S.transferencias || []).forEach(t => {
-    const esAlc = t.destino === 'alcancia';
+    const esAlcancia = t.destino === 'alcancia';
     if (coincide(t.origen)) {
       movs.push({
-        tipo: esAlc ? 'alcancia' : 'transferencia',
+        tipo: esAlcancia ? 'alcancia' : 'transferencia',
         fecha: t.fecha,
-        desc: esAlc ? (t.desc || 'Depósito en alcancía') : 'Transferencia a ' + fuenteLabel(t.destino),
+        desc: esAlcancia ? (t.desc || 'Depósito en alcancía') : 'Transferencia a ' + fuenteLabel(t.destino),
         monto: -t.monto, nota: t.nota, fuente: t.origen,
         _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino,
-        _origen: esAlc ? 'Alcancía' : 'Cuentas · Transferencia',
-        _otrasCuentas: esAlc ? null : [{ fuente: t.destino, monto: +t.monto }],
-        _secundario: esAlc || !!t._secundario, _origenSeccion: esAlc ? 'Alcancía' : '',
-        _alcOculto: esAlc
+        _origen: esAlcancia ? 'Alcancía' : 'Cuentas · Transferencia',
+        _otrasCuentas: esAlcancia ? null : [{ fuente: t.destino, monto: +t.monto }],
+        _secundario: esAlcancia || !!t._secundario, _origenSeccion: esAlcancia ? 'Alcancía' : '',
+        _alcanciaOculto: esAlcancia
       });
     }
     if (coincide(t.destino)) {
@@ -844,7 +844,7 @@ function getMovimientosCuenta(tipo) {
       tipo: l.tipo === 'apertura' ? 'apertura' : l.monto > 0 ? 'ingreso' : tipoSalidaManual,
       fecha: l.fecha, desc: l.desc || etiqueta, monto: l.monto, fuente: l.cuenta, _idx: _idx++, _movId: l.id,
       _fuenteOrigen: l.cuenta, _fuenteDestino: '', _origen: 'Libro · ' + etiqueta, _otrasCuentas: null,
-      _secundario: true, _origenSeccion: etiqueta, _alcOculto: false
+      _secundario: true, _origenSeccion: etiqueta, _alcanciaOculto: false
     });
   });
 
@@ -1001,7 +1001,7 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
     const dataTipo = html`data-mov-tipo="${m.tipo}"`;
     const dataFuente = m._fuenteOrigen ? html`data-mov-fuente="${m._fuenteOrigen}"` : '';
     const dataDestino = m._fuenteDestino ? html`data-mov-destino="${m._fuenteDestino}"` : '';
-    const dataMonto = m._alcOculto ? '' : html`data-mov-monto="${Math.abs(m.monto)}"`; // fila de Alcancía: el monto no va ni al DOM
+    const dataMonto = m._alcanciaOculto ? '' : html`data-mov-monto="${Math.abs(m.monto)}"`; // fila de Alcancía: el monto no va ni al DOM
     const dataFuenteReal = m.fuente ? html`data-mov-fuente-real="${m.fuente}"` : '';
     const dataFecha = html`data-mov-fecha="${m.fecha}"`;
     const dataOrigen = m._origen ? html`data-mov-origen="${m._origen}"` : '';
@@ -1012,8 +1012,8 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
     // oculto (tampoco se escribe data-mov-monto) y no abre el detalle, que mostraría monto y
     // saldos antes/después. Sin botón eliminar (siempre _secundario). El Antes/Después de las
     // OTRAS filas no depende del DOM sino de getMovimientosCuenta(), que sí incluye estas filas.
-    const alcOculto = !!m._alcOculto;
-    const puedeVerDetalle = !!m.fuente && !alcOculto;
+    const alcanciaOculto = !!m._alcanciaOculto;
+    const puedeVerDetalle = !!m.fuente && !alcanciaOculto;
     return filaMovimiento({
       clase: puedeVerDetalle ? 'gasto-item-click' : '',
       attrs: html`${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" data-action="core:abrirDetalleMov"') : ''}`,
@@ -1022,13 +1022,13 @@ function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplici
       nombreExtra: esSecundarioHist ? html`<span class="cuenta-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : '',
       sub: m.fecha || '—',
       subClase: 'cuenta-mov-fecha',
-      montoHtml: alcOculto
+      montoHtml: alcanciaOculto
                 ? html`<div title="Monto oculto — se ve dentro de Alcancía" class="cuenta-monto-oculto"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="cuenta-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg></div>`
                 : html`<div class="cuenta-monto ${claseMonto}">${signo} ${fmt(Math.abs(m.monto))}</div>`,
       acciones: puedeEliminar ? html`<button type="button" class="btn-icon cuenta-btn-del" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" class="cuenta-mov-lock"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : '',
       meta: html`
-        ${alcOculto ? '' : html`<span class="badge badge-xs ${bgLabel}">${tipoLabel}</span>`}
-        ${(m._alcOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge badge-xs cuenta-badge-alc"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
+        ${alcanciaOculto ? '' : html`<span class="badge badge-xs ${bgLabel}">${tipoLabel}</span>`}
+        ${(m._alcanciaOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge badge-xs cuenta-badge-alc"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
         ${(()=>{ const cn=getCajitaNombre(m.fuente); return cn?html`<span class="badge badge-xs bg-nu">${cn}</span>`:''; })()}
         ${m.cat ? html`<span class="badge badge-xs bg-blue">${m.cat}</span>` : ''}
         ${m.nota ? html`<span class="cuenta-mov-nota">${m.nota}</span>` : ''}

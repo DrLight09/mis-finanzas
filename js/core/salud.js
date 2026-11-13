@@ -124,15 +124,15 @@ const Salud = (() => {
       let nivel, texto, valor = null;
       if (!(m.deudaPropia > 0)) { nivel = 'verde'; texto = 'Sin deudas propias'; }
       else {
-        const xIng = m.ingresoTipico > 0 ? m.deudaPropia / m.ingresoTipico : null;
+        const xIngreso = m.ingresoTipico > 0 ? m.deudaPropia / m.ingresoTipico : null;
         const xAct = m.activosLiquidos > 0 ? m.deudaPropia / m.activosLiquidos : Infinity;
-        const nIng = xIng == null ? null : xIng > P.deuda.ingresoRojo ? 'rojo' : xIng > P.deuda.ingresoAmbar ? 'ambar' : 'verde';
+        const nIngreso = xIngreso == null ? null : xIngreso > P.deuda.ingresoRojo ? 'rojo' : xIngreso > P.deuda.ingresoAmbar ? 'ambar' : 'verde';
         const nAct = xAct > P.deuda.activosRojo ? 'rojo' : xAct > P.deuda.activosAmbar ? 'ambar' : 'verde';
-        nivel = nIng == null ? nAct : peor(nIng, nAct);
-        valor = xIng;
-        texto = xIng == null
+        nivel = nIngreso == null ? nAct : peor(nIngreso, nAct);
+        valor = xIngreso;
+        texto = xIngreso == null
           ? 'Debes ' + _pct(xAct) + ' de tus activos líquidos'
-          : 'Debes ' + _x(xIng) + ' tu ingreso mensual' + (xAct !== Infinity ? ' y ' + _pct(xAct) + ' de tus activos líquidos' : ' y no tienes activos líquidos');
+          : 'Debes ' + _x(xIngreso) + ' tu ingreso mensual' + (xAct !== Infinity ? ' y ' + _pct(xAct) + ' de tus activos líquidos' : ' y no tienes activos líquidos');
       }
       out.push({ id: 'deuda', titulo: 'Deuda', nivel, valor, texto, ir: m.deudaPropia > 0 ? 'prestamos' : '' });
     }

@@ -107,7 +107,7 @@ const Cierre = (() => {
   } });
   registrarFuente({ clave: 'ingresosFijos', etiqueta: 'Cobros de ingresos fijos', raiz: ['ingresosFijos'], registros: st => {
     const out = [];
-    _lst(st.ingresosFijos).forEach(ing => _lst(ing && ing.cobros).forEach((c, i) => out.push(_R(c, c && c.fecha, 'cf:' + ing.id + i, 'ingreso:' + ing.id))));
+    _lst(st.ingresosFijos).forEach(ingreso => _lst(ingreso && ingreso.cobros).forEach((c, i) => out.push(_R(c, c && c.fecha, 'cf:' + ingreso.id + i, 'ingreso:' + ingreso.id))));
     return out;
   } });
   registrarFuente({ clave: 'cdts', etiqueta: 'CDTs de las cajitas', raiz: ['cajitas'], registros: st => {

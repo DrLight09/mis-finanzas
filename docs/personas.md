@@ -16,7 +16,7 @@ Da una identidad única a cada persona con la que hay relación financiera (fami
 
 **Persona con perfil vs. registro sin vincular:** una persona puede existir formalmente en `S.personas` (con nombre y color propios), o puede no existir todavía como tal — un deudor o una deuda creados antes de que existiera este sistema, o creados sin pasar por el selector de personas, quedan "sin perfil". La pantalla de Personas los sigue mostrando igual (para no esconder plata real), pero no tienen perfil consolidado hasta que se vinculan.
 
-**Vínculo (`personaId`):** cada módulo (Encargos, Deudores, Mis deudas, Spotify) guarda su propia copia del nombre además de una referencia opcional a `S.personas` vía `personaId`. El nombre mostrado siempre se resuelve preferentemente desde la persona vinculada (ver §7 de `spotify.md` para el caso ya documentado de `spNombreDe`); acá el mismo criterio aplica a `getPersonaNombre`.
+**Vínculo (`personaId`):** cada módulo (Encargos, Deudores, Mis deudas, Spotify) guarda su propia copia del nombre además de una referencia opcional a `S.personas` vía `personaId`. El nombre mostrado siempre se resuelve preferentemente desde la persona vinculada (ver §7 de `spotify.md` para el caso ya documentado de `spotifyNombreDe`); acá el mismo criterio aplica a `getPersonaNombre`.
 
 **Perfil consolidado:** al abrir una persona, el módulo no muestra solo su nombre — junta en una sola pantalla todo lo que hay de ella repartido en otros módulos (préstamos, encargos, Spotify, lo que se le debe), cada sección con sus propias estadísticas armadas a partir de los movimientos reales de ese módulo, no de un resumen guardado aparte.
 

@@ -107,7 +107,7 @@ function calcularSerieTasaImplicita(cuentaId){
   });
   const serie=[];
   fechas.forEach(fecha=>{
-    let sumaPond=0,sumaPesos=0,difPesos=0;
+    let sumaPond=0,sumaPesos=0,diferencialPesos=0;
     chequeos.filter(ch=>ch.fecha===fecha).forEach(ch=>{
       const prev=prevByCajita[ch.cajitaId];
       if(!prev){prevByCajita[ch.cajitaId]={balance:ch.saldoReal,fecha};return;}
@@ -126,12 +126,12 @@ function calcularSerieTasaImplicita(cuentaId){
           let esperado=prev.balance;
           _segmentosTasa(cuentaId,prev.fecha,fecha).forEach(seg=>{esperado*=Math.pow(1+seg.tasa/100,seg.dias/365);});
           sumaPond+=ea*prev.balance;sumaPesos+=prev.balance;
-          difPesos+=ch.saldoReal-esperado;
+          diferencialPesos+=ch.saldoReal-esperado;
         }
       }
       prevByCajita[ch.cajitaId]={balance:ch.saldoReal,fecha};
     });
-    if(sumaPesos>0)serie.push({fecha,ea:sumaPond/sumaPesos,difPesos});
+    if(sumaPesos>0)serie.push({fecha,ea:sumaPond/sumaPesos,diferencialPesos});
   });
   return serie;
 }
@@ -148,7 +148,7 @@ function verificarTasaAhorro(cuentaId){
   const tasaActual=_tasaVigenteEnFecha(hoy(),cuentaId);
   const C=_CFG_CHEQUEO;
   const desvio=p=>p.ea-tasaActual;
-  const esDesvio=p=>Math.abs(desvio(p))>C.umbralEA&&Math.abs(p.difPesos)>C.tolPesos;
+  const esDesvio=p=>Math.abs(desvio(p))>C.umbralEA&&Math.abs(p.diferencialPesos)>C.tolPesos;
   let racha=[];
   for(let i=serie.length-1;i>=0;i--){
     const p=serie[i];
@@ -249,9 +249,9 @@ async function guardarChequeoNu(){
     const c=(S.cajitas||[]).find(cc=>cc.id===l.cajitaId);
     if(!c)return;
     const {referencia}=_interpretarLecturaChequeoNu(c,l.val);
-    const dif=l.val-referencia;
-    if(Math.abs(dif)>Math.max(_CFG_CHEQUEO.avisoMinPesos,Math.abs(referencia)*_CFG_CHEQUEO.avisoPct)){
-      anomalias.push('• '+(c.nombre||'Cajita')+': anotaste '+fmt(l.val)+' y la app calculaba '+fmt(referencia)+' ('+(dif>0?'+':'−')+fmt(Math.abs(dif))+')');
+    const diferencial=l.val-referencia;
+    if(Math.abs(diferencial)>Math.max(_CFG_CHEQUEO.avisoMinPesos,Math.abs(referencia)*_CFG_CHEQUEO.avisoPct)){
+      anomalias.push('• '+(c.nombre||'Cajita')+': anotaste '+fmt(l.val)+' y la app calculaba '+fmt(referencia)+' ('+(diferencial>0?'+':'−')+fmt(Math.abs(diferencial))+')');
     }
   });
   if(anomalias.length){
@@ -626,7 +626,7 @@ function quitarMetaCajita(){
   toast('Meta eliminada','ok');
 }
 
-// Sección "Préstamo con origen dividido" (_sp_prest.toggle / _renderPrestSplit /
+// Sección "Préstamo con origen dividido" (_spotify_prest.toggle / _renderPrestSplit /
 // _updatePrestSplitResumen) migrada a js/modules/prestado.js — ver docs/prestado.md.
 
 function addCajita(){
@@ -742,16 +742,16 @@ function validarCamposCDT(o,ahora){
   const tasaRaw=txt(o.tasa);
   const tasa=tasaRaw===''?o.tasaDefecto:parsePct(tasaRaw);
   if(!(tasa>0))return err('La tasa (EA) debe ser un número mayor que 0');
-  const rteRaw=txt(o.rte);
-  if(rteRaw!==''&&!/^\d+([.,]\d+)?$/.test(rteRaw))return err('La retención (RTE) no es un número válido');
-  const rte=rteRaw===''?o.rteDefecto:parsePct(rteRaw);
-  if(rte>100)return err('La retención (RTE) no puede pasar de 100 %');
+  const retencionRaw=txt(o.rte);
+  if(retencionRaw!==''&&!/^\d+([.,]\d+)?$/.test(retencionRaw))return err('La retención (RTE) no es un número válido');
+  const tasaRetencion=retencionRaw===''?o.rteDefecto:parsePct(retencionRaw);
+  if(tasaRetencion>100)return err('La retención (RTE) no puede pasar de 100 %');
   const inicio=o.inicio||o.inicioDefecto;
   const vence=o.vence;
   if(_fechaSafe(inicio)>(ahora||new Date()))return err('La fecha de apertura no puede ser futura');
   if(!vence)return err('Debes definir la fecha de vencimiento');
   if(_fechaSafe(vence)<=_fechaSafe(inicio))return err('La fecha de vencimiento debe ser posterior a la apertura');
-  return{ok:true,tasa,rte,inicio,vence};
+  return{ok:true,tasa,rte: tasaRetencion,inicio,vence};
 }
 
 function confirmarCrearCDT(){
@@ -766,7 +766,7 @@ function confirmarCrearCDT(){
     tasaDefecto:9.25, rteDefecto:4, inicioDefecto:hoy()
   });
   if(!v.ok){toast(v.mensaje,'err');return;}
-  const {tasa,rte,inicio,vence}=v;
+  const {tasa,rte: tasaRetencion,inicio,vence}=v;
   if(monto<50000){toast('El monto mínimo para un CDT es $50.000','err');return;}
   // Calcular saldo real incluyendo intereses sub-día (lo mismo que muestra el modal)
   const saldoReal=calcC(c).val;
@@ -783,7 +783,7 @@ function confirmarCrearCDT(){
   ajustarSaldoCuenta('cajita:'+c.id,c.saldo-montoFinal,{tipo:'cdt',desc:'Capital invertido en CDT',origen:{modulo:'cuentas'}});
   // Agregar CDT al array de CDTs de la cajita
   if(!c.cdts)c.cdts=[];
-  c.cdts.push({id:uid(),monto:montoFinal,tasa,rte,inicio,vence});
+  c.cdts.push({id:uid(),monto:montoFinal,tasa,rte: tasaRetencion,inicio,vence});
   _cdtEditId=null;
   save();
   closeSheet('crear-cdt');
@@ -1056,8 +1056,8 @@ function _renderDetalleCajita(c){
   if(!c) return;
   // El color de una cajita es el de su cuenta: llega por --cuenta / --cuenta-rgb (como en los detalles de cuenta) a
   // .cuenta-hero, al título y al campo de nombre. Todas las rutas al detalle de cajita pasan por acá.
-  const _dNuCaj=_descriptorDeCuenta(cuentaDeCajita(c)||_ahorroActual()||{}), _pCaj=document.getElementById('cuentas-detalle-cajita');
-  if(_dNuCaj&&_pCaj){_pCaj.style.setProperty('--cuenta',_dNuCaj.color);_pCaj.style.setProperty('--cuenta-rgb',_dNuCaj.rgb);}
+  const _dNuCajita=_descriptorDeCuenta(cuentaDeCajita(c)||_ahorroActual()||{}), _pCajita=document.getElementById('cuentas-detalle-cajita');
+  if(_dNuCajita&&_pCajita){_pCajita.style.setProperty('--cuenta',_dNuCajita.color);_pCajita.style.setProperty('--cuenta-rgb',_dNuCajita.rgb);}
   const k=calcC(c);
   const tasaDisplay=getTasaCuenta(c.cuentaId);
   // Interés diario sobre la base completa (saldo propio + encargos en la cajita)
@@ -1375,9 +1375,9 @@ function _nuMovActualizarPreview() {
   const v = parseMoney(document.getElementById('nuMovMonto').value) || 0;
   if (!v) { prev.textContent = ''; return; }
   const cid = _nuMovCajitaSel.split(':')[1];
-  const caj = (S.cajitas || []).find(x => x.id === cid);
-  if (!caj) return;
-  const saldoActual = calcC(caj).val;
+  const cajita = (S.cajitas || []).find(x => x.id === cid);
+  if (!cajita) return;
+  const saldoActual = calcC(cajita).val;
   if (_nuMovTipo === 'entrada') {
     prev.textContent = fmt(saldoActual) + ' + ' + fmt(v) + ' = ' + fmt(saldoActual + v);
     prev.style.color = 'var(--accent)';
@@ -1403,8 +1403,8 @@ function confirmarNuMovimiento() {
   }
 
   const cid = _nuMovCajitaSel.split(':')[1];
-  const caj = (S.cajitas || []).find(x => x.id === cid);
-  if (!caj) { toast('Cajita no encontrada', 'err'); return; }
+  const cajita = (S.cajitas || []).find(x => x.id === cid);
+  if (!cajita) { toast('Cajita no encontrada', 'err'); return; }
 
   // Guarda de saldo (2026-10-05): misma razón que confirmarRestarDinero(). descontarFuente() recorta el
   // saldo en 0 pero registrarSalida() guarda el monto completo; sacar más de lo que hay dejaba el
@@ -1416,16 +1416,16 @@ function confirmarNuMovimiento() {
   }
 
   // Materializar intereses antes de tocar el saldo
-  if (typeof materializarIntereses === 'function') materializarIntereses(caj);
+  if (typeof materializarIntereses === 'function') materializarIntereses(cajita);
 
   if (_nuMovTipo === 'entrada') {
     const descFinal = registrarEntradaConApertura(_nuMovCajitaSel, v, fecha, desc, esApertura, nota);
-    if (window.logCambio) logCambio('Agregaste dinero en ' + (caj.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
-    toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' agregado a ') + (caj.nombre || 'cajita'), 'ok');
+    if (window.logCambio) logCambio('Agregaste dinero en ' + (cajita.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
+    toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' agregado a ') + (cajita.nombre || 'cajita'), 'ok');
   } else {
     registrarSalida(_nuMovCajitaSel, v, fecha, desc, nota);
-    if (window.logCambio) logCambio('Retiraste dinero de ' + (caj.nombre || 'cajita'), desc, v, 'gasto', cid);
-    toast('− ' + fmt(v) + ' de ' + (caj.nombre || 'cajita') + ' — ' + desc, 'salida');
+    if (window.logCambio) logCambio('Retiraste dinero de ' + (cajita.nombre || 'cajita'), desc, v, 'gasto', cid);
+    toast('− ' + fmt(v) + ' de ' + (cajita.nombre || 'cajita') + ' — ' + desc, 'salida');
   }
 
   save();
@@ -1536,20 +1536,20 @@ document.addEventListener('input',function(e){
   if(!['cdt_monto','cdt_tasa','cdt_vence','cdt_rte'].includes(e.target.id))return;
   const monto=parseMoney(document.getElementById('cdt_monto').value)||0;
   const tasa=parsePct(document.getElementById('cdt_tasa').value)||9.25;
-  const rteTxt=(document.getElementById('cdt_rte').value||'').trim();
-  const rte=(rteTxt===''?4:(parsePct(rteTxt)||0))/100; // vacío = 4 (por defecto); 0 es válido
+  const retencionTxt=(document.getElementById('cdt_rte').value||'').trim();
+  const tasaRetencion=(retencionTxt===''?4:(parsePct(retencionTxt)||0))/100; // vacío = 4 (por defecto); 0 es válido
   const vence=document.getElementById('cdt_vence').value;
   const prev=document.getElementById('cdt_preview');
   if(!prev)return;
   if(monto>=50000&&vence){
     const dias=Math.max(0,Fecha.diasEntre(hoy(),vence));
     const tasaDiaria=Math.pow(1+tasa/100,1/365)-1;
-    const tasaDiariaNet=tasaDiaria*(1-rte);
+    const tasaDiariaNet=tasaDiaria*(1-tasaRetencion);
     const valorFinal=monto*Math.pow(1+tasaDiariaNet,dias);
     const valorBruto=monto*Math.pow(1+tasaDiaria,dias);
     const ganado=valorFinal-monto;
     const retencionTotal=valorBruto-valorFinal;
-    prev.textContent=`En ${dias}d recibirás ~${fmt(valorFinal)} neto (+${fmt(ganado)} · RTE ${(rte*100).toFixed(0)}%: -${fmt(retencionTotal)})`;
+    prev.textContent=`En ${dias}d recibirás ~${fmt(valorFinal)} neto (+${fmt(ganado)} · RTE ${(tasaRetencion*100).toFixed(0)}%: -${fmt(retencionTotal)})`;
     prev.style.color='var(--accent)';
   } else if(monto>0&&monto<50000&&!_cdtEditId){
     prev.textContent='Mínimo $50.000 para el CDT';

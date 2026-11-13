@@ -143,15 +143,15 @@ describe('fecha-spotify-sin-corrimiento', () => {
     const ctx = loadApp(['core/core-state.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js', 'core/split.js', 'modules/spotify.js'].map(f => require('path').join(${JSON.stringify(path.join(raiz, 'js'))}, f)), { permissive: true });
     ctx.S.spotify = { personas: [], historial: [] };
     console.log(JSON.stringify({
-      a: ctx.spSumarDias('2026-10-31', 30),
-      b: ctx.spSumarDias('2026-01-08', 60),
-      venc: ctx.spPeriodosVencidos({ proximoPago: '2026-10-01' }, '2026-11-10'),
-      vencEstricto: ctx.spPeriodosVencidos({ proximoPago: '2026-10-11' }, '2026-11-10', true),
-      vencIgual: ctx.spPeriodosVencidos({ proximoPago: '2026-10-11' }, '2026-11-10', false),
-      invalida: ctx.spPeriodosVencidos({ proximoPago: 'no-fecha' }, '2026-11-10'),
+      a: ctx.spotifySumarDias('2026-10-31', 30),
+      b: ctx.spotifySumarDias('2026-01-08', 60),
+      venc: ctx.spotifyPeriodosVencidos({ proximoPago: '2026-10-01' }, '2026-11-10'),
+      vencEstricto: ctx.spotifyPeriodosVencidos({ proximoPago: '2026-10-11' }, '2026-11-10', true),
+      vencIgual: ctx.spotifyPeriodosVencidos({ proximoPago: '2026-10-11' }, '2026-11-10', false),
+      invalida: ctx.spotifyPeriodosVencidos({ proximoPago: 'no-fecha' }, '2026-11-10'),
     }));`;
   for (const tz of ['America/Bogota', 'Asia/Tokyo', 'Pacific/Auckland', 'America/Los_Angeles']) {
-    test(`TZ=${tz}: spSumarDias y spPeriodosVencidos dan lo mismo`, () => {
+    test(`TZ=${tz}: spotifySumarDias y spotifyPeriodosVencidos dan lo mismo`, () => {
       const r = JSON.parse(execFileSync(process.execPath, ['-e', guion], { env: { ...process.env, TZ: tz }, encoding: 'utf8' }));
       assert.equal(r.a, '2026-11-30');
       assert.equal(r.b, '2026-03-09');
@@ -188,7 +188,7 @@ describe('fecha-sin-formulas-sueltas', () => {
     const malos = hallazgos(/86400000|864e5/).filter(h => !permitidos.has(h.split(':')[0]));
     assert.deepEqual(malos, []);
   });
-  test('nextMonthFixed ya no existe (era spSumarDias(f, 30·k) con otro nombre)', () => {
+  test('nextMonthFixed ya no existe (era spotifySumarDias(f, 30·k) con otro nombre)', () => {
     assert.ok(!fs.readFileSync(path.join(raiz, 'js/modules/spotify.js'), 'utf8').includes('function nextMonthFixed'));
   });
   test('index.html carga fecha.js ANTES del núcleo (estado.js)', () => {

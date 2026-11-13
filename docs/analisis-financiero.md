@@ -180,7 +180,7 @@ Suma:
 
 ```
 nu (cajitas Nu) + CDTs + Nequi + Efectivo + prestado (Me deben) + cuentas personalizadas + alcancía
-− deuda TC total − Yo debo (S.misDeudas) − plata comprometida ajena (_saldoCPAjeno)
+− deuda TC total − Yo debo (S.misDeudas) − plata comprometida ajena (_saldoPlataComprometidaAjeno)
 ```
 
 Un saldo (Efectivo, Nequi, cuenta personalizada) puede quedar temporalmente negativo tras borrar un movimiento cuyo dinero ya se gastó (reversión sin piso en 0, 2026-09-30): el patrimonio lo suma tal cual, sin recortarlo, y vuelve al valor correcto al rehacer el movimiento.

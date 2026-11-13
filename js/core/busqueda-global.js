@@ -12,7 +12,7 @@
    de un módulo de dominio en el momento en que este script se parsea.
    Cada navegación a un módulo específico (abrirDeudor, abrirEncargoDetalle,
    abrirCuenta, abrirMiDeuda, abrirDetalleCajita, abrirPerfilPersona,
-   spNombreDe, spPersonaPagadaVigente) se resuelve en tiempo de click vía
+   spotifyNombreDe, spotifyPersonaPagadaVigente) se resuelve en tiempo de click vía
    `typeof X === 'function'`, igual que ya hacía en index.html — por eso
    no hizo falta partir el archivo en dos ni reordenar ningún <script src>
    existente: se carga en el mismo punto donde antes vivía el IIFE.
@@ -237,9 +237,9 @@
 
     // Spotify — personas del plan
     (S.spotify.personas||[]).forEach(p => {
-      const nombreActual = (typeof spNombreDe==='function') ? spNombreDe(p) : p.nombre;
+      const nombreActual = (typeof spotifyNombreDe==='function') ? spotifyNombreDe(p) : p.nombre;
       if((nombreActual||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
-        const estado = (typeof spPersonaPagadaVigente==='function') ? (spPersonaPagadaVigente(p)?'Al día':'Pendiente') : (p.pagado?'Al día':'Pendiente');
+        const estado = (typeof spotifyPersonaPagadaVigente==='function') ? (spotifyPersonaPagadaVigente(p)?'Al día':'Pendiente') : (p.pagado?'Al día':'Pendiente');
         resultados.push({ tipo:'Spotify', desc:nombreActual, meta:(window.fmt?window.fmt(p.monto||0):'')+' / mes · '+estado, color:'#1db954', navTipo:'spotify', navId:null });
       }
     });
@@ -258,18 +258,18 @@
     // Los movimientos del destape (`_esAlcancia` en S.movimientos) NO se ocultan: el total ya se reveló al destapar.
     (S.movimientos||[]).forEach(m => {
       if((m.desc||m.nota||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
-        const esAlcIngreso = !!m._esAlcanciaIngreso;
-        const fuente = (!esAlcIngreso && m.fuente) ? ' · '+fuenteTexto(m.fuente) : '';
-        const montoTxt = esAlcIngreso ? '' : (window.fmt?window.fmt(m.monto):'');
-        const restoMeta = esAlcIngreso ? ' · Ahorro · '+(m.fecha||'') : (m.fecha?' · '+m.fecha:'')+fuente;
+        const esAlcanciaIngreso = !!m._esAlcanciaIngreso;
+        const fuente = (!esAlcanciaIngreso && m.fuente) ? ' · '+fuenteTexto(m.fuente) : '';
+        const montoTxt = esAlcanciaIngreso ? '' : (window.fmt?window.fmt(m.monto):'');
+        const restoMeta = esAlcanciaIngreso ? ' · Ahorro · '+(m.fecha||'') : (m.fecha?' · '+m.fecha:'')+fuente;
         resultados.push({
-          tipo: esAlcIngreso ? 'Ahorro' : 'Movimiento',
+          tipo: esAlcanciaIngreso ? 'Ahorro' : 'Movimiento',
           desc: m.desc||m.nota||'Movimiento',
           meta: montoTxt+restoMeta,
-          metaHtml: esAlcIngreso ? _iconoOculto + escHtml(restoMeta) : null,
+          metaHtml: esAlcanciaIngreso ? _iconoOculto + escHtml(restoMeta) : null,
           color:'var(--accent)',
-          navTipo: esAlcIngreso ? 'alcancia' : (esFuenteCuenta(m.fuente) ? 'cuenta' : 'movimiento_general'),
-          navId: esAlcIngreso ? null : (m.fuente||null)
+          navTipo: esAlcanciaIngreso ? 'alcancia' : (esFuenteCuenta(m.fuente) ? 'cuenta' : 'movimiento_general'),
+          navId: esAlcanciaIngreso ? null : (m.fuente||null)
         });
       }
     });

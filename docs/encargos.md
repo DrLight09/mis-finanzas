@@ -216,8 +216,8 @@ Si el movimiento es una porción de una salida dividida de "Registrar salida" (`
 | `_miaMontoEfectivo(montoCampo)` | Devuelve el real del diferencial si el bloque está abierto y `0 < real < monto`; si no, el monto del campo. Lo usan las tres funciones de "Yo puse la plata" |
 | `_encSplitKey(m)` / `_encGrupoSplit(enc, m)` / `_encSplitCarrier(partes)` | Agrupan las porciones de una salida dividida de "Registrar salida" (por `_splitGrupo`, o por coincidencia completa en datos viejos), y eligen la porción que lleva los efectos secundarios; las usan el historial del detalle y `deleteMovEncargo` |
 | `crearSplitWidget('miaSale', ...)`, `crearSplitWidget('miaEntra', ...)`, `_miaLeerCuentas(monto)` | Instancias del motor común de split para los dos lados de "Yo puse la plata"; `_miaLeerCuentas` devuelve `{sale, entra}` como `[{fuente, monto}]` sea modo simple o dividido |
-| `crearSplitWidget('movencDifMi', ...)`, `_difMiSplitPreview()` | Split del sobrante del margen en "Registrar salida" |
-| `_crearSplitSobrante(instId, key, ids)`, `_usarParteMi`, `_ctcMi` | Fábrica y las dos instancias del split del sobrante en "Ya la usé" y "Compra con TC" |
+| `crearSplitWidget('movencDifMi', ...)`, `_diferencialMiSplitPreview()` | Split del sobrante del margen en "Registrar salida" |
+| `_crearSplitSobrante(instId, key, ids)`, `_usarParteMi`, `_compraConTcMi` | Fábrica y las dos instancias del split del sobrante en "Ya la usé" y "Compra con TC" |
 | `diffValidarMiCuenta(instId)` (`js/core/diferencial.js`) | Valida que el reparto del sobrante sume exactamente el sobrante y que cada fila tenga cuenta; se llama al confirmar en los tres flujos |
 | `_movEncActualizarFaltante()` | Muestra/oculta el banner "Prestar lo que falta" según monto vs. `encargoLibre()`, en cada input de monto |
 | `_movEncConfirmarPrestarFaltante()` | Registra la salida normal (lo disponible) en el encargo + el préstamo del faltante en `S.deudores`, vía `_autoGrupoIdMov` (de `prestado.js`) |

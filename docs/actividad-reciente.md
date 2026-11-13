@@ -144,7 +144,7 @@ Carga lazy del módulo → render inmediato al final del archivo
 | `_normSpotify(S)` | Cobros de `S.spotify.historial`. |
 | `_normEncargos(S)` | Movimientos de encargos (sin duplicados). |
 | `_normTC(S)` | Pagos de TC y avisos de corte. |
-| `_normCP(S)` | Plata comprometida recibida o pendiente. |
+| `_normPlataComprometida(S)` | Plata comprometida recibida o pendiente. |
 | `_labelFecha(f)` | "Hoy", "Ayer", "12 sep" o "Sin fecha". |
 | `ICONOS` | Diccionario de SVG + fondo por `tipo`. |
 | `MAX_ITEMS` | 50. |

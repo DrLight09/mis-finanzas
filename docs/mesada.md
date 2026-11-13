@@ -240,7 +240,7 @@ Navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años), resumen (
 | `renderMesada()` | Pinta la pantalla a partir de `mesadaResumenAnio()` |
 | `clickMesDot`, `cambiarAnio` | Navegación (registrar o detalle según haya datos / ±1 año guardando antes las cuotas) |
 | `abrirRegistrarMesada`, `actualizarMpPreview`, `mesadaAvisoMesPago`/`actualizarMpAvisoMes`, `_syncMpDebeWrap`, `confirmarMesadaPago` | Sheet de registrar pago (lee el formulario y llama a `mesadaRegistrarPago`) |
-| `abrirResolverPendiente`, `actualizarMppPreview`, `confirmarPendienteMesada` | Sheet de pago de lo pendiente |
+| `abrirResolverPendiente`, `actualizarMesadaPagoPendientePreview`, `confirmarPendienteMesada` | Sheet de pago de lo pendiente |
 | `abrirDetalleMesada`, `eliminarMesadaPago`, `marcarMesadaComoPendiente`, `deshacerPendienteMesada` | Detalle y acciones (el borrado aplica la protección por antigüedad antes de llamar al dominio) |
 | `_crearEncargoPicker(prefijo, estado, onCambio)` | Widget "pagó con plata de un encargo": una instancia por sheet (`mp`, `mpp`) |
 | `_mesadaMostrarError(r, previewId)` | Traduce un rechazo del dominio a mensaje (escapa el nombre del encargo) |

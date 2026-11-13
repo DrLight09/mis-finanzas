@@ -211,8 +211,8 @@ describe('historial-cuenta', () => {
     test('un depósito a la alcancía sale como fila "alcancia" con monto oculto, en cuenta estándar y personalizada', () => {
       const app = cargar();
       const e = fila(app, 'cuenta:nequi', 't04'), c = fila(app, 'cuenta:z', 't09');
-      assert.equal(e.tipo, 'alcancia'); assert.equal(e._alcOculto, true);
-      assert.equal(c.tipo, 'alcancia'); assert.equal(c._alcOculto, true);
+      assert.equal(e.tipo, 'alcancia'); assert.equal(e._alcanciaOculto, true);
+      assert.equal(c.tipo, 'alcancia'); assert.equal(c._alcanciaOculto, true);
     });
     test('el cobro de Spotify descuenta los abonos ya recibidos (no cuenta la plata dos veces)', () => {
       const app = cargar();
@@ -519,7 +519,7 @@ describe('cdt-campos', () => {
       assert.equal(v({ rte: '3.5' }).rte, 3.5);
     });
     test('RTE no numérica, negativa o mayor a 100 se rechaza', () => {
-      for (const rte of ['abc', '-1', '4%', '4,5,6']) assert.match(v({ rte }).mensaje, /no es un número válido/, `rte ${rte}`);
+      for (const tasaRetencion of ['abc', '-1', '4%', '4,5,6']) assert.match(v({ rte: tasaRetencion }).mensaje, /no es un número válido/, `rte ${tasaRetencion}`);
       assert.match(v({ rte: '150' }).mensaje, /no puede pasar de 100/);
     });
     test('apertura vacía usa el defecto; una apertura futura se rechaza', () => {
@@ -852,7 +852,7 @@ describe('nu-cdt', () => {
   });
 
   describe('confirmarCrearCDT — RTE', () => {
-    function entornoCDT({ rte, monto = '100.000,00', saldo = 1000000 }) {
+    function entornoCDT({ rte: tasaRetencion, monto = '100.000,00', saldo = 1000000 }) {
       const app = loadApp(ARCHIVOS, { permissive: true });
       aplicar(app.S, { movimientos: [], gastosVar: [], encargos: [], historialTasasNu: [],
         cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
@@ -869,7 +869,7 @@ describe('nu-cdt', () => {
       guardados = 0;
       const venceAnio = String(new Date().getFullYear() + 1) + '-06-15';
       Object.assign(campos.cdt_monto, { value: monto }); Object.assign(campos.cdt_tasa, { value: '9,25' });
-      Object.assign(campos.cdt_rte, { value: rte }); Object.assign(campos.cdt_inicio, { value: app.hoy() });
+      Object.assign(campos.cdt_rte, { value: tasaRetencion }); Object.assign(campos.cdt_inicio, { value: app.hoy() });
       Object.assign(campos.cdt_vence, { value: venceAnio });
       return { app, toasts, cerrados, guardados: () => guardados, cdts: () => app.S.cajitas[0].cdts || [] };
     }
@@ -882,24 +882,24 @@ describe('nu-cdt', () => {
       assert.equal(e.cdts().length, 1); assert.equal(e.cdts()[0].rte, 4);
     });
     test('RTE 0 se respeta (antes la creación lo convertía en 4; la edición ya lo aceptaba)', () => {
-      for (const rte of ['0', '0,00']) {
-        const e = entornoCDT({ rte }); e.app.confirmarCrearCDT();
-        assert.equal(e.cdts().length, 1, `rte ${rte}`); assert.equal(e.cdts()[0].rte, 0, `rte ${rte}`);
+      for (const tasaRetencion of ['0', '0,00']) {
+        const e = entornoCDT({ rte: tasaRetencion }); e.app.confirmarCrearCDT();
+        assert.equal(e.cdts().length, 1, `rte ${tasaRetencion}`); assert.equal(e.cdts()[0].rte, 0, `rte ${tasaRetencion}`);
       }
     });
     test('RTE con decimales y punto o coma', () => {
-      for (const [rte, esperado] of [['3,5', 3.5], ['3.5', 3.5], ['7', 7]]) {
-        const e = entornoCDT({ rte }); e.app.confirmarCrearCDT();
-        assert.equal(e.cdts()[0].rte, esperado, `rte ${rte}`);
+      for (const [tasaRetencion, esperado] of [['3,5', 3.5], ['3.5', 3.5], ['7', 7]]) {
+        const e = entornoCDT({ rte: tasaRetencion }); e.app.confirmarCrearCDT();
+        assert.equal(e.cdts()[0].rte, esperado, `rte ${tasaRetencion}`);
       }
     });
     test('RTE no numérico, negativo o > 100 se rechaza y no crea nada ni toca el saldo', () => {
-      for (const rte of ['abc', '-1', '4%', '150', '4,5,6']) {
-        const e = entornoCDT({ rte }); e.app.confirmarCrearCDT();
-        assert.equal(e.cdts().length, 0, `rte ${rte}`);
-        assert.equal(e.guardados(), 0, `rte ${rte}`);
-        assert.equal(Math.round(e.app.S.cajitas[0].saldo), 1000000, `rte ${rte}`);
-        assert.equal(e.toasts.at(-1).tipo, 'err', `rte ${rte}`);
+      for (const tasaRetencion of ['abc', '-1', '4%', '150', '4,5,6']) {
+        const e = entornoCDT({ rte: tasaRetencion }); e.app.confirmarCrearCDT();
+        assert.equal(e.cdts().length, 0, `rte ${tasaRetencion}`);
+        assert.equal(e.guardados(), 0, `rte ${tasaRetencion}`);
+        assert.equal(Math.round(e.app.S.cajitas[0].saldo), 1000000, `rte ${tasaRetencion}`);
+        assert.equal(e.toasts.at(-1).tipo, 'err', `rte ${tasaRetencion}`);
       }
     });
     test('un CDT válido descuenta el monto de la cajita', () => {
@@ -1244,32 +1244,32 @@ describe('spotify-cajita', () => {
 
   const NU = { id: 'nu', tipo: 'ahorro', nombre: 'Nu', saldo: 0 };
   const NEQUI = { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 };
-  const sp = fuenteId => ({ personas: [], costo: 0, fuenteId, historial: [] });
+  const spotify = fuenteId => ({ personas: [], costo: 0, fuenteId, historial: [] });
 
-  test('getSpFuenteSaldo — sin cuenta elegida da 0', () => {
-    assert.equal(freshApp({ cajitas: [] }).getSpFuenteSaldo(), 0);
+  test('getSpotifyFuenteSaldo — sin cuenta elegida da 0', () => {
+    assert.equal(freshApp({ cajitas: [] }).getSpotifyFuenteSaldo(), 0);
   });
 
-  test('getSpFuenteSaldo — cajita recién creada (sin fecha) vale su saldo', () => {
-    const ctx = freshApp({ cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Para la música', saldo: 12000 }], spotify: sp('cajita:s1') });
-    assert.equal(ctx.getSpFuenteSaldo(), 12000);
+  test('getSpotifyFuenteSaldo — cajita recién creada (sin fecha) vale su saldo', () => {
+    const ctx = freshApp({ cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Para la música', saldo: 12000 }], spotify: spotify('cajita:s1') });
+    assert.equal(ctx.getSpotifyFuenteSaldo(), 12000);
   });
 
-  test('getSpFuenteSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
-    const ctx = freshApp({ nuRate: 9.3003, cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }], spotify: sp('cajita:s1') });
-    assert.ok(ctx.getSpFuenteSaldo() > 1050000);
+  test('getSpotifyFuenteSaldo — suma el interés real de calcC cuando la cajita tiene fecha', () => {
+    const ctx = freshApp({ nuRate: 9.3003, cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 1000000, fecha: hace(365) }], spotify: spotify('cajita:s1') });
+    assert.ok(ctx.getSpotifyFuenteSaldo() > 1050000);
   });
 
   test('sirve CUALQUIER cuenta (no solo cajitas): Nequi como cuenta de Spotify', () => {
-    const ctx = freshApp({ cuentas: [NEQUI], spotify: sp('cuenta:nequi') });
+    const ctx = freshApp({ cuentas: [NEQUI], spotify: spotify('cuenta:nequi') });
     ctx.getSaldoFuente = () => 33000;
-    assert.equal(ctx.getSpFuente(), 'cuenta:nequi');
+    assert.equal(ctx.getSpotifyFuente(), 'cuenta:nequi');
   });
 
   test('llamarse «Spotify» NO vincula la cajita; tampoco se auto-asigna', () => {
     const ctx = freshApp({ cuentas: [NU], cajitas: [{ id: 's1', cuentaId: 'nu', nombre: 'Spotify', saldo: 5000 }] });
-    assert.equal(ctx.getSpFuente(), null);
-    assert.equal(ctx.getSpFuenteSaldo(), 0);
+    assert.equal(ctx.getSpotifyFuente(), null);
+    assert.equal(ctx.getSpotifyFuenteSaldo(), 0);
     assert.equal(ctx.S.spotify.fuenteId, '');
   });
 
@@ -1277,17 +1277,17 @@ describe('spotify-cajita', () => {
     const ctx = freshApp({
       cuentas: [NU],
       cajitas: [{ id: 'a', cuentaId: 'nu', nombre: 'Spotify viejo', saldo: 1000 }, { id: 'b', cuentaId: 'nu', nombre: 'Spotify', saldo: 7000 }],
-      spotify: sp('cajita:a'),
+      spotify: spotify('cajita:a'),
     });
-    assert.equal(ctx.getSpFuente(), 'cajita:a');
+    assert.equal(ctx.getSpotifyFuente(), 'cajita:a');
     ctx.S.cajitas[0].nombre = 'Música';
-    assert.equal(ctx.getSpFuente(), 'cajita:a');
-    assert.equal(ctx.getSpFuenteSaldo(), 1000);
+    assert.equal(ctx.getSpotifyFuente(), 'cajita:a');
+    assert.equal(ctx.getSpotifyFuenteSaldo(), 1000);
   });
 
   test('una referencia rota (cajita inexistente, cuenta archivada) cuenta como «sin elegir»', () => {
-    assert.equal(freshApp({ cajitas: [], spotify: sp('cajita:fantasma') }).getSpFuente(), null);
-    assert.equal(freshApp({ cuentas: [{ ...NEQUI, archivada: true }], spotify: sp('cuenta:nequi') }).getSpFuente(), null);
+    assert.equal(freshApp({ cajitas: [], spotify: spotify('cajita:fantasma') }).getSpotifyFuente(), null);
+    assert.equal(freshApp({ cuentas: [{ ...NEQUI, archivada: true }], spotify: spotify('cuenta:nequi') }).getSpotifyFuente(), null);
   });
 
   test('las acciones del botón «Elegir» están registradas (en el primer bloque del módulo)', () => {
@@ -1302,9 +1302,9 @@ describe('spotify-cajita', () => {
 
   test('el código ya no busca la cajita (ni el gasto de Spotify) por el texto «spotify» en un nombre', () => {
     const fs = require('node:fs');
-    const sp = fs.readFileSync(path.join(MODULES_DIR, 'spotify.js'), 'utf8');
+    const spotify = fs.readFileSync(path.join(MODULES_DIR, 'spotify.js'), 'utf8');
     const ga = fs.readFileSync(path.join(MODULES_DIR, 'gastos.js'), 'utf8');
-    assert.ok(!/nombre&&x\.nombre\.toLowerCase\(\)\.includes\('spotify'\)/.test(sp));
+    assert.ok(!/nombre&&x\.nombre\.toLowerCase\(\)\.includes\('spotify'\)/.test(spotify));
     assert.ok(!/gv\.desc[^;]*includes\('spotify'\)/.test(ga));
     assert.ok(!/__spotify__|_virtual/.test(ga), 'Gastos fijos ya no inventa una fila virtual de Spotify');
   });

@@ -59,9 +59,9 @@ test('mes parcial: un mes que apenas empieza no regala puntos por «gastar poco�
 });
 
 test('el ratio gasto/ingreso usa los meses completos: gastar más de lo que ingresas casi siempre penaliza; gastar poco suma', () => {
-  const ing = ingresosEn(1000000, ultimosN(3));
-  const sano = score({ cuentas: cuentas(3000000), ingresosFijos: ing, ...gastosEn(500000, ultimosN(3)) });
-  const mal = score({ cuentas: cuentas(3000000), ingresosFijos: ing, ...gastosEn(1500000, ultimosN(3)) });
+  const ingreso = ingresosEn(1000000, ultimosN(3));
+  const sano = score({ cuentas: cuentas(3000000), ingresosFijos: ingreso, ...gastosEn(500000, ultimosN(3)) });
+  const mal = score({ cuentas: cuentas(3000000), ingresosFijos: ingreso, ...gastosEn(1500000, ultimosN(3)) });
   assert.ok(sano.score > mal.score);
   assert.ok(mal.tips.some(t => t.includes('gastando más de lo que ingresas')));
 });
@@ -1681,7 +1681,7 @@ test('el push sigue funcionando a través de checks.js (ruta real del script) y 
   assert.deepEqual(ejecutarChecks({}, HOY), []);
 });
 
-test('guarda: checks.js ya no copia reglas (no define spPersonaPagadaVigente ni checkCDT propios)', () => {
+test('guarda: checks.js ya no copia reglas (no define spotifyPersonaPagadaVigente ni checkCDT propios)', () => {
   const src = require('node:fs').readFileSync(path.join(__dirname, '..', 'scripts', 'notificaciones', 'checks.js'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(src, /function (spPersonaPagadaVigente|checkCDT|checkEncargos|checkSpotifyVencido|checkWrapped)/);
 });
@@ -1833,10 +1833,10 @@ test('cobrar a una cuenta: sube el saldo, deja un espejo neutro y el ingreso se 
   const esp = ctx.S.movimientos.find(m => m.id === cobro._movSecId);
   assert.ok(esp && esp._secundario && esp._origenSeccion === 'Ingreso fijo' && esp.clase === 'neutro');
   assert.equal(esp.desc, 'Sueldo — cobro de Sep 2026');
-  const ing = ingresosDelMes(ctx, '2026-09');
-  assert.equal(ing.fijos, 2000);
-  assert.equal(ing.entradas, 0, 'el espejo no se cuenta otra vez como entrada real');
-  assert.equal(ing.total, 2000);
+  const ingreso = ingresosDelMes(ctx, '2026-09');
+  assert.equal(ingreso.fijos, 2000);
+  assert.equal(ingreso.entradas, 0, 'el espejo no se cuenta otra vez como entrada real');
+  assert.equal(ingreso.total, 2000);
 });
 
 test('el mes que cubre es solo una etiqueta: el ingreso cuenta en el mes de la FECHA', () => {
@@ -1891,11 +1891,11 @@ test('cobroRevertirTodos (antes de eliminar un ingreso fijo) devuelve toda la pl
 
 test('ingresoFijoEstadoMes: esperado según «desde» y cobrado según los cobros que cubren ese mes', () => {
   const ctx = fresh({ ingresosFijos: [{ id: 'if1', nombre: 'Sueldo', monto: 10, desde: '2026-10' }] });
-  const ing = ctx.S.ingresosFijos[0];
-  assert.deepEqual([ctx.ingresoFijoEstadoMes(ing, '2026-09').esperado, ctx.ingresoFijoEstadoMes(ing, '2026-10').esperado], [false, true]);
+  const ingreso = ctx.S.ingresosFijos[0];
+  assert.deepEqual([ctx.ingresoFijoEstadoMes(ingreso, '2026-09').esperado, ctx.ingresoFijoEstadoMes(ingreso, '2026-10').esperado], [false, true]);
   cobrar(ctx, { mesCubre: '2026-10', fecha: '2026-10-05', monto: 4 });
   cobrar(ctx, { mesCubre: '2026-10', fecha: '2026-10-20', monto: 6 });
-  assert.equal(ctx.ingresoFijoEstadoMes(ing, '2026-10').cobrado, 10);
+  assert.equal(ctx.ingresoFijoEstadoMes(ingreso, '2026-10').cobrado, 10);
 });
 
 test('cobroAvisoMes: avisa solo cuando la fecha cae en otro mes que el que cubre', () => {

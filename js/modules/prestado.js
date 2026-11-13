@@ -66,7 +66,7 @@
    entre filas. */
 let _prestSplitMode = false;
 
-const _sp_prest = crearSplitWidget('prest', {
+const _spotify_prest = crearSplitWidget('prest', {
   simpleId:'mov_fuente_simple', splitId:'mov_fuente_split', toggleId:'mov_split_toggle', rowsId:'mov_split_rows',
   getModo:()=>_prestSplitMode, setModo:v=>{_prestSplitMode=v;},
   // Solo cuentas con saldo >= $1: de una cuenta vacía no puede salir el préstamo.
@@ -80,7 +80,7 @@ const _sp_prest = crearSplitWidget('prest', {
    El margen (dijo - real) es un ingreso mío, pero nunca tocó una cuenta (quedó prestado
    directamente) → mismo criterio que "Préstamo con TC" (instancia 'prtc'): ingreso fantasma
    fuente:'' (permiteMiCuenta:false), enlazado al préstamo para poder borrarlo con él. */
-const _dif_prestamoDif = diffRegistrarInstancia('prestamoDif', {
+const _diferencial_prestamoDiferencial = diffRegistrarInstancia('prestamoDif', {
   ids: { wrap: 'mov-dif-wrap', body: 'mov-dif-body', icon: 'mov-dif-icon', real: 'mov_dif_real', resumen: 'mov-dif-resumen' },
   permiteBeneficiarios: false,
   permiteIntercambio: false,
@@ -671,7 +671,7 @@ async function eliminarDeudorActual() {
 // pantalla en la sesión. Un abono registrado con "Guardar en la alcancía →
 // cobro de deuda" puede borrarse desde Prestado sin haber visitado nunca
 // Alcancía, así que hay que asegurar la carga antes de poder revertir su
-// mitad del depósito (mismo patrón que _spEnsureTC() en spotify.js).
+// mitad del depósito (mismo patrón que _spotifyEnsureTC() en spotify.js).
 async function _prEnsureAlcancia() {
   if (typeof window._alcanciaQuitarPorCobroDeuda === 'function') return true;
   if (typeof Loader === 'undefined' || typeof Loader.ensure !== 'function') return false;
@@ -831,8 +831,8 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
   // Se aborta si Alcancía no carga, para no dejar el borrado a medias
   // (mismo criterio que tcEliminarCompraInterna/getMesadaData en movimientos.js).
   if (m._viaAlcancia && m._alcanciaMovId) {
-    const alcOk = await _prEnsureAlcancia();
-    if (!alcOk) {
+    const alcanciaOk = await _prEnsureAlcancia();
+    if (!alcanciaOk) {
       toast('No se pudo cargar Alcancía para revertir el depósito — intenta de nuevo', 'err', 4000);
       return;
     }
@@ -880,7 +880,7 @@ function initMovSheet(tipo) {
   document.getElementById('mov_fuente_wrap').style.display = esPrestamo ? '' : 'none';
   // "El valor era diferente": solo en Nuevo préstamo (abonos/pago completo no lo usan).
   diffReset('prestamoDif');
-  { const difWrap = document.getElementById('mov-dif-wrap'); if (difWrap) difWrap.style.display = esPrestamo ? '' : 'none'; }
+  { const diferencialWrap = document.getElementById('mov-dif-wrap'); if (diferencialWrap) diferencialWrap.style.display = esPrestamo ? '' : 'none'; }
   document.getElementById('mov_destino_wrap').style.display = esAbono ? '' : 'none';
   document.getElementById('mov_extra_wrap').style.display = esAbono ? '' : 'none';
   // "¿Se lo regalas?" existe en "Registrar abono" (perdonas el monto que escribas: una parte o todo) y en
@@ -1316,7 +1316,7 @@ function _planAbonoEncargo(base) {
   // ¿La plata del encargo sale de VARIAS cuentas a la vez?
   let encCuentaSplits = null;
   if (_abonoEncCuentaSplitMode) {
-    const splits = _sp_abonoEncCuenta.data().filter(s => s.fuente && s.monto > 0);
+    const splits = _spotify_abonoEncCuenta.data().filter(s => s.fuente && s.monto > 0);
     if (!splits.length) return _planErr('Agrega al menos una cuenta del encargo con monto');
     const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
     if (Math.abs(totalSplit - monto) > Deudas.TOL) {
@@ -1357,7 +1357,7 @@ function _planAbonoEncargo(base) {
   // Destino(s) de la plata del abono
   let destinos = null, destino = '';
   if (_abonoSplitMode) {
-    destinos = _sp_abonoDestino.data().map(r => ({ ...r }));
+    destinos = _spotify_abonoDestino.data().map(r => ({ ...r }));
     const sinCuentaPre = _errFilaSinCuenta(destinos);
     if (sinCuentaPre) return sinCuentaPre;
     const totalSplitPre = destinos.reduce((a, r) => a + (r.monto || 0), 0);
@@ -1460,7 +1460,7 @@ function _planAbonoNormal(base) {
   if (ex.error) return ex;
   let destinos = null, destino = '';
   if (_abonoSplitMode) {
-    destinos = _sp_abonoDestino.data().map(r => ({ ...r }));
+    destinos = _spotify_abonoDestino.data().map(r => ({ ...r }));
     const sinCuenta = _errFilaSinCuenta(destinos);
     if (sinCuenta) return sinCuenta;
     const totalSplit = destinos.reduce((a, r) => a + (r.monto || 0), 0);
@@ -1712,7 +1712,7 @@ let _abonoEncId        = '';
 let _abonoEncCuenta    = '';
 let _extPartes         = []; // sistema de partes libres del extra
 
-const _sp_abonoDestino = crearSplitWidget('abonoDestino', {
+const _spotify_abonoDestino = crearSplitWidget('abonoDestino', {
   simpleId:'mov_destino_simple', splitId:'mov_destino_split', toggleId:'mov_dest_split_toggle', rowsId:'mov_dest_split_rows',
   getModo:()=>_abonoSplitMode, setModo:v=>{_abonoSplitMode=v;},
   fuentes:{},
@@ -1726,7 +1726,7 @@ const _sp_abonoDestino = crearSplitWidget('abonoDestino', {
 
 function abonoSplitResumen() {
   const monto = parseMoney(document.getElementById('mov_monto').value)||0;
-  const total = _sp_abonoDestino.data().reduce((a,r)=>a+(r.monto||0),0);
+  const total = _spotify_abonoDestino.data().reduce((a,r)=>a+(r.monto||0),0);
   const diff  = monto - total;
   const el    = document.getElementById('mov_dest_split_resumen');
   if(!el) return;
@@ -1993,7 +1993,7 @@ let _mdMovTipo = 'recibido';
 let _mdSplitMode = false;
 
 
-const _sp_mdSplit = crearSplitWidget('mdSplit', {
+const _spotify_mdSplit = crearSplitWidget('mdSplit', {
   simpleId: 'md_cuenta_simple', splitId: 'md_cuenta_split', toggleId: 'md_split_toggle', rowsId: 'md_split_rows',
   getModo: () => _mdSplitMode, setModo: v => { _mdSplitMode = v; },
   // 'recibido' = plata que entra: sin tarjetas ni filtro de saldo. 'pago' = plata que sale: cuentas con saldo y tarjetas con cupo.
@@ -2170,9 +2170,9 @@ function _aplicarMovMiDeuda(p) {
   if (perdon) {
     // Ingreso real que no tocó ninguna cuenta: fuente '' (mismo criterio que el margen de un préstamo).
     if (!S.movimientos) S.movimientos = [];
-    const ingId = uid();
+    const ingresoId = uid();
     S.movimientos.push({
-      id: ingId, tipo: 'entrada', fuente: '', monto, fecha, nota,
+      id: ingresoId, tipo: 'entrada', fuente: '', monto, fecha, nota,
       desc: Math.abs(monto - Deudas.saldo(d)) <= Deudas.TOL_FINO ? `Me perdonó la deuda — ${d.nombre}` : `Me perdonó parte de la deuda — ${d.nombre}`,
       // _prestadoDirectamente: sin esta bandera, Inicio no cuenta una entrada sin cuenta (fuente '') como ingreso del mes
       // (ver el filtro de ingresosMes en inicio.js); es la misma que usa el margen de un préstamo (diferencial.js).
@@ -2181,7 +2181,7 @@ function _aplicarMovMiDeuda(p) {
       _secundario: true, _origenSeccion: origen, _esPerdonRecibido: true, _deudaId: d.id, _deudaMovId: mov.id, ts: Date.now()
     });
     mov._perdon = true;
-    mov._ingresoPerdonId = ingId;
+    mov._ingresoPerdonId = ingresoId;
   }
   if (extra > 0) {
     // El extra salió de las cuentas pero no bajó la deuda: gasto real, no descuenta ningún saldo
@@ -2292,7 +2292,7 @@ async function eliminarMiDeuda() {
 
 /* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */
 
-const _dif_prtc = diffRegistrarInstancia('prtc', {
+const _diferencial_prestamoConTc = diffRegistrarInstancia('prtc', {
   ids: { wrap: 'prtc-dif-wrap', body: 'prtc-dif-body', icon: 'prtc-dif-icon', real: 'prtc_dif_real', resumen: 'prtc-dif-resumen' },
   permiteBeneficiarios: false,
   permiteIntercambio: false,
@@ -2358,8 +2358,8 @@ function confirmarPrestamoTC() {
   if (!tc) { toast('TC no encontrada', 'err'); return; }
 
   // Leer diferencial si está activo, vía el motor común
-  const difActivo = diffEstaAbierto('prtc');
-  const calc = difActivo ? diffCalcular('prtc') : null;
+  const diferencialActivo = diffEstaAbierto('prtc');
+  const calc = diferencialActivo ? diffCalcular('prtc') : null;
   const real = calc ? calc.real : 0;
   // Monto real que cobró la TC: si hay diferencial es 'real', si no es igual a lo que dijiste
   const montoTC = (real > 0) ? real : dijo;
@@ -2429,7 +2429,7 @@ function confirmarPrestamoTC() {
    500mil sale de ambas a la vez). Reutiliza el motor genérico de splits. ── */
 let _abonoEncCuentaSplitMode = false;
 
-const _sp_abonoEncCuenta = crearSplitWidget('abonoEncCuenta', {
+const _spotify_abonoEncCuenta = crearSplitWidget('abonoEncCuenta', {
   simpleId: 'mov_enc_cuenta_simple', splitId: 'mov_enc_cuenta_split',
   toggleId: 'mov_enc_cuenta_split_toggle', rowsId: 'mov_enc_cuenta_split_rows',
   getModo: () => _abonoEncCuentaSplitMode, setModo: v => { _abonoEncCuentaSplitMode = v; },
@@ -2457,7 +2457,7 @@ function _abonoEncCuentaSplitPreview() {
   if (!el) return;
   const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
   const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
-  const splits = _sp_abonoEncCuenta.data();
+  const splits = _spotify_abonoEncCuenta.data();
   if (!splits.length) { el.textContent = ''; return; }
   const total = splits.reduce((a, s) => a + (s.monto || 0), 0);
   const restante = monto - total;
@@ -2606,21 +2606,21 @@ Events.registerAll('prestado', {
   abrirSheetAbono: _abrirSheetAbono,
   abrirSheetPagoCompleto: _abrirSheetPagoCompleto,
   confirmarMovimientoGuard: _confirmarMovimientoConGuard,
-  togglePrestSplit: _sp_prest.toggle,
-  prestAddSplitRow: _sp_prest.addRow,
-  toggleMdSplit: _sp_mdSplit.toggle,
-  mdAddSplitRow: _sp_mdSplit.addRow,
-  movDifToggle: _dif_prestamoDif.toggle,
-  toggleAbonoSplit: _sp_abonoDestino.toggle,
-  abonoAddSplitRow: _sp_abonoDestino.addRow,
+  togglePrestSplit: _spotify_prest.toggle,
+  prestAddSplitRow: _spotify_prest.addRow,
+  toggleMdSplit: _spotify_mdSplit.toggle,
+  mdAddSplitRow: _spotify_mdSplit.addRow,
+  movDifToggle: _diferencial_prestamoDiferencial.toggle,
+  toggleAbonoSplit: _spotify_abonoDestino.toggle,
+  abonoAddSplitRow: _spotify_abonoDestino.addRow,
   extAddParte: extAddParte,
   extDelParte: extDelParte,
-  abonoEncCuentaSplitToggle: _sp_abonoEncCuenta.toggle,
-  abonoEncCuentaAgregarSplitRow: _sp_abonoEncCuenta.addRow,
+  abonoEncCuentaSplitToggle: _spotify_abonoEncCuenta.toggle,
+  abonoEncCuentaAgregarSplitRow: _spotify_abonoEncCuenta.addRow,
 
   // Préstamo con TC
   abrirSheetPrestamoTC: abrirSheetPrestamoTC,
-  prtcDifToggle: _dif_prtc.toggle,
+  prtcDifToggle: _diferencial_prestamoConTc.toggle,
   confirmarPrestamoTC: confirmarPrestamoTC,
 
   // Yo debo
@@ -2647,7 +2647,7 @@ Events.registerAll('prestado', {
   if (movMonto) movMonto.addEventListener('input', () => {
     // Con "El valor era diferente" abierto, "dijiste" cambia con el monto: refresca el resumen
     // (que a su vez refresca el split si está abierto). Si no, solo el split.
-    if (diffEstaAbierto('prestamoDif')) _dif_prestamoDif.resumen();
+    if (diffEstaAbierto('prestamoDif')) _diferencial_prestamoDiferencial.resumen();
     else if (_prestSplitMode) _updatePrestSplitResumen();
     _onMovMontoInput();
   });
@@ -2672,8 +2672,8 @@ Events.registerAll('prestado', {
   ['md_monto', 'input', _updateMdSplitResumen],
   ['md_extra_monto', 'input', _updateMdSplitResumen],
   ['mov_extra_monto', 'input', extResumenPartes],
-  ['prtc_dif_real', 'input', _dif_prtc.resumen],
-  ['mov_dif_real', 'input', _dif_prestamoDif.resumen],
+  ['prtc_dif_real', 'input', _diferencial_prestamoConTc.resumen],
+  ['mov_dif_real', 'input', _diferencial_prestamoDiferencial.resumen],
 ].forEach(([elId, evt, fn]) => {
   const el = document.getElementById(elId);
   if (el) el.addEventListener(evt, fn);

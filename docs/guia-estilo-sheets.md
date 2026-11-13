@@ -262,7 +262,7 @@ Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — 
 
 > El detalle (tabla de efectos sobre saldos, tipos guardados, destape) vive en [`alcancia.md`](./alcancia.md); aquí solo lo que condiciona el diseño del sheet.
 
-El sheet "Depositar" **no tiene selector de tipo**: cada depósito se arma con **uno o varios orígenes** (`_alcOrigenOptsHtml`, select `alc_dep_origen`). Con un solo origen se guarda el tipo clásico; con varios ("Dividir…", `js/core/split.js`), tipo `multi` con `partes[]`, y cada parte tiene el efecto de su origen:
+El sheet "Depositar" **no tiene selector de tipo**: cada depósito se arma con **uno o varios orígenes** (`_alcanciaOrigenOptsHtml`, select `alc_dep_origen`). Con un solo origen se guarda el tipo clásico; con varios ("Dividir…", `js/core/split.js`), tipo `multi` con `partes[]`, y cada parte tiene el efecto de su origen:
 
 | Origen | Tipo guardado (un origen) | ¿Descuenta cuenta? | ¿Ingreso del mes? | Dónde queda |
 |---|---|---|---|---|
@@ -300,7 +300,7 @@ Al destapar se generan hasta 3 movimientos automáticos, y **no son intercambiab
 |---|---|---|---|
 | "Alcancía destapada — saldo registrado" | Plata que **ya estaba contada** (ingreso al guardarla, o gasto al sacarla de una cuenta) y solo cambia de lugar | `transferencia` | Neutral: ni ingreso nuevo ni gasto. Si contara como `entrada`, el ingreso del mes quedaría inflado (doble conteo). |
 | "Dinero extra encontrado en alcancía" (diferencia positiva) | Plata real **nunca registrada** en ningún lado | `entrada` | Ingreso nuevo de verdad: debe sumar a "Ingresos estimados" del mes. |
-| "Ajuste alcancía — faltante" (diferencia negativa) | Plata esperada que no apareció | gasto en `S.gastosVar` con `_esAlcanciaAjuste: true` (no vive en `S.movimientos`) | Excluido de gastos normales. Llama `_sumarASaldo(destino, -absDif)` para que el saldo físico también quede correcto. |
+| "Ajuste alcancía — faltante" (diferencia negativa) | Plata esperada que no apareció | gasto en `S.gastosVar` con `_esAlcanciaAjuste: true` (no vive en `S.movimientos`) | Excluido de gastos normales. Llama `_sumarASaldo(destino, -absDiferencial)` para que el saldo físico también quede correcto. |
 
 **Reglas que no se deben romper en el código:**
 
@@ -309,7 +309,7 @@ Al destapar se generan hasta 3 movimientos automáticos, y **no son intercambiab
 - `_esAlcancia: true` oculta movimientos del feed general (`_normMovimientos`) — **no decide** si cuentan como ingreso; eso lo decide la `clase` guardada.
 - `_esAlcanciaIngreso: true` identifica los ingresos reales generados al momento del depósito (regalo, mandado, yo-directo, partes sin cuenta de un depósito dividido). Son tipo `'entrada'` y **sí aparecen** en el feed porque son ingresos reales visibles.
 - Al destapar, `S.alcancia.saldoRegistrado` se resetea a `0` — necesario porque `calcPatrimonioTotal()` suma ese campo mientras está activa; si no se reseteara, el dinero quedaría contado dos veces.
-- El historial (`entradaHist`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `_alcDesgloseHtml` no tendría de dónde sacar el desglose de los ciclos anteriores.
+- El historial (`entradaHist`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `_alcanciaDesgloseHtml` no tendría de dónde sacar el desglose de los ciclos anteriores.
 
 ---
 

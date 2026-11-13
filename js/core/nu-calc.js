@@ -267,7 +267,7 @@ function cdtVencido(cdt,ahora){
 function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
   const rate=_tasaCDT(cdt)/100;
-  const rte=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente (default 4%)
+  const tasaRetencion=(cdt.rte!=null?cdt.rte:4)/100; // retención en fuente (default 4%)
   const desde=_fechaSafe(cdt.inicio);
   const hasta=cdt.vence?_fechaSafe(cdt.vence):new Date();
   const ahora=new Date();
@@ -278,7 +278,7 @@ function calcCDT(cdt){
   // Nu redondea el bruto al $0,50 más cercano antes de calcular RTE
   const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;
   // RTE se aplica sobre el bruto redondeado
-  const retencion=ganado_bruto*rte;
+  const retencion=ganado_bruto*tasaRetencion;
   const ganado=ganado_bruto-retencion;
   const val=cdt.monto+ganado;
   return{val,ganado,ganado_bruto,retencion,dias};
@@ -288,10 +288,10 @@ function calcCDT(cdt){
 function _rendimientoCDTaDias(cdt,dias){
   if(dias<=0)return 0;
   const rate=_tasaCDT(cdt)/100;
-  const rte=(cdt.rte!=null?cdt.rte:4)/100;
+  const tasaRetencion=(cdt.rte!=null?cdt.rte:4)/100;
   const ganado_bruto_exacto=cdt.monto*(Math.pow(1+rate,dias/365)-1);
   const ganado_bruto=Math.round(ganado_bruto_exacto*2)/2;
-  const retencion=ganado_bruto*rte;
+  const retencion=ganado_bruto*tasaRetencion;
   return ganado_bruto-retencion;
 }
 

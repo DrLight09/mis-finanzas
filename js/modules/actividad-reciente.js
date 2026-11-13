@@ -111,7 +111,7 @@
 
   // ── NORMALIZAR FUENTES ─────────────────────────────────────────────
 
-  function _normCP(S) {
+  function _normPlataComprometida(S) {
     // Muestra los registros de plata comprometida en el feed (solo los recibidos y los pendientes)
     // Los movimientos individuales (Reposición, Ingreso libre) ya aparecen en _normMovimientos.
     // Aquí mostramos el evento de alto nivel: "Llegó plata comprometida" o "Plata comprometida pendiente".
@@ -416,7 +416,7 @@
       _normSpotify(Sx),
       _normEncargos(Sx),
       _normTC(Sx),
-      _normCP(Sx)
+      _normPlataComprometida(Sx)
     );
 
     // Ordenar: fecha desc, ts como desempate
@@ -524,7 +524,7 @@
   // que disparó la carga. Sin esto, la pantalla se queda pegada en
   // "Cargando..." para siempre la primera vez. Se agrega un cuarto
   // trigger sin condición de evento — mismo criterio que usa
-  // _cpInit() en plata-comprometida.js ("Render inicial si hay
+  // _plataComprometidaInit() en plata-comprometida.js ("Render inicial si hay
   // datos"). renderFeedActividad() ya lee `S` con fallback si no
   // existe todavía (ver comentario del encabezado), así que llamarla
   // acá es seguro incluso si por algún motivo se cargara antes de

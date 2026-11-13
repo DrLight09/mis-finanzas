@@ -280,12 +280,12 @@ function abrirDetalleMov(el){
       const benefsYoPague = benefs.filter(b => b.pagadoPorMi);
 
       // Cabecera compacta: cuánto fue la ganancia (o pérdida) y de qué a qué, sin explicación.
-      const _difPerdida = d.margen < 0;
+      const _diferencialPerdida = d.margen < 0;
       richParts.push(`
         <div class="mdet-panel-dif">
           <div class="mdet-dif-cab">
-            <span class="mdet-cap-amber">${_difPerdida ? 'Pérdida' : 'Ganancia'} por valor diferente</span>
-            <span class="mdet-dif-monto ${_difPerdida ? 'mdet-c-red' : 'mdet-c-amber'}">${_difPerdida ? '− ' : '+ '}${fmt(Math.abs(d.margen))}</span>
+            <span class="mdet-cap-amber">${_diferencialPerdida ? 'Pérdida' : 'Ganancia'} por valor diferente</span>
+            <span class="mdet-dif-monto ${_diferencialPerdida ? 'mdet-c-red' : 'mdet-c-amber'}">${_diferencialPerdida ? '− ' : '+ '}${fmt(Math.abs(d.margen))}</span>
           </div>
           <div class="mdet-dif-detalle">Cobrado ${fmt(d.dijo)} · Real ${fmt(d.real)}</div>
           ${d.yoMeQuedo > 0 && d.miCuenta ? `
@@ -653,7 +653,7 @@ async function _eliminarMovimientoImpl(btn) {
       } else if (g.splits && g.splits.length) {
         // Gasto dividido entre varias cuentas (`fuente` vacío): se devuelve cada parte a su cuenta, igual que deleteGastoVar() en
         // gastos.js. Antes esta rama no las devolvía y la plata se perdía al borrar desde la cuenta o desde el feed.
-        g.splits.forEach(sp => { if (sp.fuente) sumarFuente(sp.fuente, sp.monto || 0, _ogMov(movId, true)); });
+        g.splits.forEach(spotify => { if (spotify.fuente) sumarFuente(spotify.fuente, spotify.monto || 0, _ogMov(movId, true)); });
       }
       // Bug fix: si era pago de gasto fijo, desmarcar como pagado
       if(g.esPagoGastoFijo && g.gastoFijoId){

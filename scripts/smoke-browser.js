@@ -97,7 +97,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   ev(`abrirCuenta('cuenta:nu')`); chequea(visibles() === 'detalle-nu', 'abrirCuenta(nu) no muestra solo el detalle de Nu: ' + visibles()); chequea(ev('cuentaActual') === 'cuenta:nu', 'cuentaActual != cuenta:nu');
   const tNu = await tocar('Nu');
   ev(`abrirCuenta('cuenta:nu'); abrirDetalleCajita('ca')`); chequea(visibles() === 'detalle-cajita', 'abrirDetalleCajita no muestra solo el detalle de la cajita: ' + visibles()); chequea(ev('_cajitaActualId') === 'ca', '_cajitaActualId no quedó en ca');
-  const tCaj = await tocar('cajita');
+  const tCajita = await tocar('cajita');
   ev(`abrirCuenta('cuenta:nu'); abrirDetalleCajita('ca'); volverSelector()`); chequea(visibles() === 'selector', 'volver desde la cajita: ' + visibles()); chequea(ev('_cajitaActualId') === null, 'volverSelector no reinició la cajita abierta');
   ev(`abrirCuenta('cuenta:nequi')`); chequea(visibles() === 'detalle-simple', 'abrirCuenta(nequi) no muestra el detalle simple: ' + visibles()); chequea(ev('_cajitaActualId') === null, 'quedó una cajita abierta al entrar a Nequi');
   const tSim = await tocar('simple');
@@ -105,10 +105,10 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   // Escenario de Spotify con datos (S.spotify): pinta la pantalla y toca sus botones
   ev(`S.spotify.costo=17500; S.spotify.personas.push({id:'sp1',nombre:'Ana',monto:5000,pagado:false,proximoPago:'${iso(5)}',fechaIngreso:'${iso(-30)}',ultimoDestino:'',mesesAdelantados:1});
       S.spotify.historial.push({id:'h1',tipo:'cobro',spId:'sp1',nombre:'Ana',fuente:'cuenta:nequi',fecha:'${iso(-2)}',monto:5000});`);
-  try { ev(`renderSpotify(); renderSpHistorial(); renderSpStats()`); } catch (e) { fallos.push('Spotify: render lanzó ' + e.message); }
+  try { ev(`renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`); } catch (e) { fallos.push('Spotify: render lanzó ' + e.message); }
   chequea(/Ana/.test(ev(`document.getElementById('spotifyList').innerHTML`)), 'Spotify: la lista no muestra al integrante guardado en S.spotify.personas');
-  const accSp = [...new Set([...w.document.querySelectorAll('#screen-spotify [data-action]')].map(e => e.dataset.action))];
-  for (const a of accSp) {
+  const accSpotify = [...new Set([...w.document.querySelectorAll('#screen-spotify [data-action]')].map(e => e.dataset.action))];
+  for (const a of accSpotify) {
     const el = w.document.querySelector(`#screen-spotify [data-action="${a}"]`); const w0 = logs.warn.length, u0 = uncaught.length;
     try { el.dispatchEvent(new w.MouseEvent('click', { bubbles: true, cancelable: true })); } catch (e) { fallos.push(`Spotify: ${a} lanzó ${e.message}`); }
     await esperar(10);
@@ -116,8 +116,8 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     uncaught.slice(u0).forEach(m => fallos.push(`Spotify: ${a} → ${m.slice(0, 170)}`));
     try { ev('closeAllSheets()'); } catch (e) {}
   }
-  console.log('FASE 2 Spotify: botones tocados', accSp.length, '→', accSp.join(' '));
-  const todas = [...new Set([...tSel, ...tNu, ...tCaj, ...tSim])];
+  console.log('FASE 2 Spotify: botones tocados', accSpotify.length, '→', accSpotify.join(' '));
+  const todas = [...new Set([...tSel, ...tNu, ...tCajita, ...tSim])];
   console.log('\nFASE 2 (Cuentas/Nu con datos): botones tocados:', todas.length, '→', todas.join(' '));
   console.log('FASE 2 fallos (' + fallos.length + '):'); fallos.forEach(f => console.log('  ' + f));
 
@@ -150,11 +150,11 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(`S.tarjetasCredito=[{id:'t1',nombre:'Visa',cupo:1000000,deuda:0,color:'#60b0f0',ultimos4:'1234'}]; renderTCScreen()`);
     c4(nBtn(q('#tc-lista')) === 0 && viz(q('#btn-nueva-tarjeta')), 'Tarjetas con datos: falta el botón de pie');
 
-    ev(`S.spotify.personas=[]; S.spotify.historial=[]; renderSpotify(); renderSpHistorial(); renderSpStats()`);
+    ev(`S.spotify.personas=[]; S.spotify.historial=[]; renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`);
     c4(nBtn(q('#spotifyList')) === 1 && !viz(q('#btn-add-spotify-persona')) && sinSvg(q('#spotifyList')), 'Spotify vacío: un solo «Agregar persona» y sin «svg»');
     c4(!viz(q('#spStatsTitulo')), 'Spotify vacío: el título «Estadísticas» debe estar oculto');
     c4(!!q('#spHistorial .empty-inline'), 'Spotify vacío: «Sin pagos registrados aún» debe quedar dentro del historial');
-    ev(`S.spotify.personas.push({id:'sp9',nombre:'Luz',monto:5000,pagado:false,proximoPago:'2099-01-01',fechaIngreso:'2026-10-01',ultimoDestino:'',mesesAdelantados:0}); renderSpotify(); renderSpHistorial(); renderSpStats()`);
+    ev(`S.spotify.personas.push({id:'sp9',nombre:'Luz',monto:5000,pagado:false,proximoPago:'2099-01-01',fechaIngreso:'2026-10-01',ultimoDestino:'',mesesAdelantados:0}); renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`);
     c4(nBtn(q('#spotifyList')) === 0 && viz(q('#btn-add-spotify-persona')) && viz(q('#spStatsTitulo')), 'Spotify con persona: faltan el botón de pie o el título «Estadísticas»');
 
     ev(`S.deudores=[]; S.misDeudas=[]; renderDeudoresList(); renderMisDeudasList()`);
@@ -195,16 +195,16 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
 
     // Mejora 6: balance de Análisis — un color, un signo y un mensaje por escenario. Con ingresos hay 2 meses previos con ingreso (base para evaluar);
     // gastos SIN ingresos anotados es información que falta, no un déficit: neutro y sin «−$X».
-    const esc6 = (ing, gas) => {
-      ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ing ? `[{id:'i6',nombre:'Sueldo',monto:${ing},cobros:[{id:'c6',mesCubre:mesActual(),monto:${ing},fecha:mesActual()+'-01'},{id:'c6a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c6b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:${ing},fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}]}]` : '[]'};` +
+    const esc6 = (ingreso, gas) => {
+      ev(`S.movimientos=[]; S.gastosVar=[]; S.gastosFijos=[]; S.pagosGastosFijos={}; S.cajitas=[]; S.mesadas=S.mesadas&&{}; S.ingresosFijos=${ingreso ? `[{id:'i6',nombre:'Sueldo',monto:${ingreso},cobros:[{id:'c6',mesCubre:mesActual(),monto:${ingreso},fecha:mesActual()+'-01'},{id:'c6a',mesCubre:Periodo.mesDesplazado(mesActual(),-1),monto:${ingreso},fecha:Periodo.mesDesplazado(mesActual(),-1)+'-15'},{id:'c6b',mesCubre:Periodo.mesDesplazado(mesActual(),-2),monto:${ingreso},fecha:Periodo.mesDesplazado(mesActual(),-2)+'-15'}]}]` : '[]'};` +
          (gas ? `S.gastosVar=[{id:'g6',desc:'Compra',monto:${gas},fecha:hoy(),cat:'Comida',fuente:'cuenta:efectivo',clase:'gasto'}];` : '') + `renderAnalisis()`);
       const h = q('#analisis-balance-hero');
-      return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: tx(h.querySelector('.an-hero-monto')), msg: h.querySelector('.an-hero-msg').textContent.trim(), ing: tx(q('#an-ingresos')) };
+      return { cls: h.className.replace('ix-analisis-balance-hero ', ''), monto: tx(h.querySelector('.an-hero-monto')), msg: h.querySelector('.an-hero-msg').textContent.trim(), ingreso: tx(q('#an-ingresos')) };
     };
     let r6 = esc6(0, 0);
     c4(r6.cls === 'an-hero-neu' && /Aún no hay ingresos ni gastos que cuenten para este mes/.test(r6.msg), 'Balance sin ingresos ni gastos: neutro con «Aún no hay ingresos ni gastos que cuenten para este mes.»');
     r6 = esc6(0, 33.33);
-    c4(r6.cls === 'an-hero-neu' && r6.monto === '—' && /^Registra tus ingresos para ver el balance del mes\.$/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ing === '—', 'Balance sin ingresos y con gastos: neutro, «—» y mensaje de registrar ingresos (falta información, no un déficit)');
+    c4(r6.cls === 'an-hero-neu' && r6.monto === '—' && /^Registra tus ingresos para ver el balance del mes\.$/.test(r6.msg) && !/Mesada/.test(r6.msg) && r6.ingreso === '—', 'Balance sin ingresos y con gastos: neutro, «—» y mensaje de registrar ingresos (falta información, no un déficit)');
     r6 = esc6(100000, 30000);
     c4(r6.cls === 'an-hero-pos' && r6.monto === '+$70.000' && /vas bien: has gastado menos de lo que has recibido/.test(r6.msg), 'Balance con ingresos > gastos: verde con signo +');
     r6 = esc6(50000, 50000);

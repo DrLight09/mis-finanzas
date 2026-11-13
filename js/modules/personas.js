@@ -492,7 +492,7 @@ function _guardarEditarPersonaGlobal() {
   Deudas.lista('contra').forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
   // Sincronizar nombre en integrantes de Spotify vinculados (el campo crudo .nombre
   // se usa directo en la validación de nombres duplicados de addSpotify)
-  (S.spotify.personas || []).forEach(sp => { if (sp.personaId === p.id) sp.nombre = nombre; });
+  (S.spotify.personas || []).forEach(spotify => { if (spotify.personaId === p.id) spotify.nombre = nombre; });
   save(); refresh();
   _renderListaPersonas();
   if (typeof renderEncargosList === 'function') renderEncargosList();
@@ -529,11 +529,11 @@ function abrirPerfilPersona(personaId) {
   if (nm) nm.textContent = p.nombre;
 
   const datos = getPersonaDatos(personaId);
-  const spEntry = (S.spotify.personas || []).find(sp => sp.personaId === personaId);
+  const spotifyEntry = (S.spotify.personas || []).find(spotify => spotify.personaId === personaId);
   const partes = [];
   if (datos.deudor) partes.push('Préstamos');
   if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
-  if (spEntry) partes.push('Spotify');
+  if (spotifyEntry) partes.push('Spotify');
   if (datos.misDeudas && datos.misDeudas.length) partes.push('Le debo');
   if (sb) sb.textContent = partes.length ? partes.join(' · ') : 'Sin actividad registrada';
 
@@ -674,9 +674,9 @@ function abrirPerfilPersona(personaId) {
   }
 
   // ── Sección Spotify ──
-  if (spEntry) {
-    const diasRestantes = spEntry.proximoPago
-      ? Fecha.diasEntre(hoy(), spEntry.proximoPago)
+  if (spotifyEntry) {
+    const diasRestantes = spotifyEntry.proximoPago
+      ? Fecha.diasEntre(hoy(), spotifyEntry.proximoPago)
       : null;
     const vencido = diasRestantes !== null && diasRestantes < 0;
     const hoy0    = diasRestantes === 0;
@@ -684,17 +684,17 @@ function abrirPerfilPersona(personaId) {
     const badgeText  = diasRestantes === null ? '' :
       vencido ? 'Vencido hace ' + Math.abs(diasRestantes) + 'd' :
       hoy0    ? 'Vence hoy' :
-                'Paga en ' + diasRestantes + 'd · ' + spEntry.proximoPago;
-    const estadoBadge = spEntry.pagado
+                'Paga en ' + diasRestantes + 'd · ' + spotifyEntry.proximoPago;
+    const estadoBadge = spotifyEntry.pagado
       ? html`<span class="badge bg-green pe-fs9">Pagó este ciclo</span>`
       : html`<span class="badge bg-red pe-fs9">Pendiente</span>`;
 
     // Stats Spotify de esta persona
-    const histSp = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && h.nombre === spEntry.nombre);
-    const totalCobradoSp = histSp.reduce((a, h) => a + (h.monto || 0), 0);
-    const mayorCobroSp   = histSp.length ? histSp.reduce((mx, h) => h.monto > mx.monto ? h : mx, histSp[0]) : null;
-    const diasEnPlan     = spEntry.fechaIngreso
-      ? Fecha.diasEntre(spEntry.fechaIngreso, hoy())
+    const histSpotify = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && h.nombre === spotifyEntry.nombre);
+    const totalCobradoSpotify = histSpotify.reduce((a, h) => a + (h.monto || 0), 0);
+    const mayorCobroSpotify   = histSpotify.length ? histSpotify.reduce((mx, h) => h.monto > mx.monto ? h : mx, histSpotify[0]) : null;
+    const diasEnPlan     = spotifyEntry.fechaIngreso
+      ? Fecha.diasEntre(spotifyEntry.fechaIngreso, hoy())
       : null;
     const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
 
@@ -709,29 +709,29 @@ function abrirPerfilPersona(personaId) {
       <div class="pe-grid2-mb8">
         <div class="pe-celda">
           <div class="pe-celda-cap">Cuota</div>
-          <div class="pe-val-text">${fmt(spEntry.monto || 0)}/período</div>
+          <div class="pe-val-text">${fmt(spotifyEntry.monto || 0)}/período</div>
         </div>
         <div class="pe-celda">
           <div class="pe-celda-cap">Estado</div>
           <div class="pe-mt4">${estadoBadge}</div>
         </div>
-        ${totalCobradoSp > 0 ? html`<div class="pe-celda">
+        ${totalCobradoSpotify > 0 ? html`<div class="pe-celda">
           <div class="pe-celda-cap">Total cobrado</div>
-          <div class="pe-val14-spotify">${fmt(totalCobradoSp)}</div>
-          <div class="pe-fecha10-mt1">${histSp.length} cobro${histSp.length !== 1 ? 's' : ''}</div>
+          <div class="pe-val14-spotify">${fmt(totalCobradoSpotify)}</div>
+          <div class="pe-fecha10-mt1">${histSpotify.length} cobro${histSpotify.length !== 1 ? 's' : ''}</div>
         </div>` : ''}
         ${diasEnPlan !== null ? html`<div class="pe-celda">
           <div class="pe-celda-cap">En el plan</div>
           <div class="pe-val14-text">${mesesEstimados !== null ? mesesEstimados + ' período' + (mesesEstimados !== 1 ? 's' : '') : diasEnPlan + 'd'}</div>
-          <div class="pe-fecha10-mt1">desde ${spEntry.fechaIngreso}</div>
+          <div class="pe-fecha10-mt1">desde ${spotifyEntry.fechaIngreso}</div>
         </div>` : ''}
-        ${mayorCobroSp ? html`<div class="pe-celda-full">
+        ${mayorCobroSpotify ? html`<div class="pe-celda-full">
           <div class="pe-celda-cap">Mayor cobro registrado</div>
-          <div class="pe-val14-spotify">${fmt(mayorCobroSp.monto)}${mayorCobroSp.nota ? html` <span class="pe-sp-nota">· ${mayorCobroSp.nota}</span>` : ''}</div>
-          ${mayorCobroSp.fecha ? html`<div class="pe-fecha10-mt1">${mayorCobroSp.fecha}</div>` : ''}
+          <div class="pe-val14-spotify">${fmt(mayorCobroSpotify.monto)}${mayorCobroSpotify.nota ? html` <span class="pe-sp-nota">· ${mayorCobroSpotify.nota}</span>` : ''}</div>
+          ${mayorCobroSpotify.fecha ? html`<div class="pe-fecha10-mt1">${mayorCobroSpotify.fecha}</div>` : ''}
         </div>` : ''}
       </div>
-      ${badgeText ? html`<div>${spEntry.pagado ? '' : html`<span class="badge ${badgeClass} pe-fs9">${badgeText}</span>`}</div>` : ''}
+      ${badgeText ? html`<div>${spotifyEntry.pagado ? '' : html`<span class="badge ${badgeClass} pe-fs9">${badgeText}</span>`}</div>` : ''}
     </div>`);
   }
 
@@ -798,7 +798,7 @@ function abrirPerfilPersona(personaId) {
     </div>`);
   }
 
-  if (!datos.deudor && !datos.encargos.length && !spEntry && !(datos.misDeudas && datos.misDeudas.length)) {
+  if (!datos.deudor && !datos.encargos.length && !spotifyEntry && !(datos.misDeudas && datos.misDeudas.length)) {
     contenido.push(raw(emptyInline('Esta persona no tiene préstamos, encargos ni está en Spotify todavía.')));
   }
 

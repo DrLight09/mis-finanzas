@@ -135,11 +135,11 @@ const Periodo = (() => {
     const fijos = _st(estado).ingresosFijos;
     if (!Array.isArray(fijos)) return [];
     const out = [];
-    fijos.forEach(ing => {
-      if (!ing || !Array.isArray(ing.cobros)) return;
-      ing.cobros.forEach(c => {
+    fijos.forEach(ingreso => {
+      if (!ingreso || !Array.isArray(ingreso.cobros)) return;
+      ingreso.cobros.forEach(c => {
         if (!c || !(c.monto > 0)) return;
-        out.push({ id: ing.id, nombre: ing.nombre || '', cobroId: c.id, mesCubre: c.mesCubre || '', monto: c.monto, fecha: c.fecha || '', mes: c.fecha ? mesKey(c.fecha) : (c.mesCubre || '') });
+        out.push({ id: ingreso.id, nombre: ingreso.nombre || '', cobroId: c.id, mesCubre: c.mesCubre || '', monto: c.monto, fecha: c.fecha || '', mes: c.fecha ? mesKey(c.fecha) : (c.mesCubre || '') });
       });
     });
     return out;
@@ -153,8 +153,8 @@ const Periodo = (() => {
   //     principal cuente en la fecha del cobro y cada abono en la suya.
   //   · El extra con destino (extraFuente) ya cuenta como entrada real (movimiento espejo clase 'ingreso'): aquí no se repite.
   function spotifyEntradas(estado) {
-    const sp = _st(estado).spotify;
-    const hist = sp && Array.isArray(sp.historial) ? sp.historial : [];
+    const spotify = _st(estado).spotify;
+    const hist = spotify && Array.isArray(spotify.historial) ? spotify.historial : [];
     const out = [];
     const push = (h, tipo, monto, fecha) => {
       if (!(monto > 0)) return;

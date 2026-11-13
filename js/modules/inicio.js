@@ -21,12 +21,12 @@
      tocar Análisis, que está fuera del alcance de esta sesión.
 
    Requiere estar cargado DESPUÉS de: mesada.js, spotify.js,
-   prestado.js, tarjetas-credito.js, cuentas.js (usa spNombreDe,
+   prestado.js, tarjetas-credito.js, cuentas.js (usa spotifyNombreDe,
    getMesadaData, tcCupoUsadoPct, etc. definidos ahí) y después de
    js/core/events.js.
 
    Nota (2026-08-02): las llamadas a getDeudorSaldo, getMesadaData,
-   _getCuotaAnio, tcCupoUsadoPct, spPersonaPagadaVigente y spNombreDe
+   _getCuotaAnio, tcCupoUsadoPct, spotifyPersonaPagadaVigente y spotifyNombreDe
    ahora tienen guard typeof === 'function' — mismo patrón que ya usaba
    calcPatrimonioTotal/totalPrestadoPendiente/calcC/calcCDT en este
    mismo archivo. No cambia el comportamiento actual (todo sigue
@@ -44,7 +44,7 @@
 // de "anidamiento sin doble escapado" validada con el piloto de
 // abrirPresupuestos()/renderPresupuestos() en analisis.js), así que el
 // render final (más abajo) puede interpolar `it.texto` sin volver a escapar
-// ni perder el escapado ya aplicado acá. d.nombre, tc.nombre, spNombreDe(p),
+// ni perder el escapado ya aplicado acá. d.nombre, tc.nombre, spotifyNombreDe(p),
 // c.nombre, enc.nombre y p.desc son los seis campos de texto libre reales de
 // esta función — pNombre y _mesNombreDeKey(k) son vocabulario fijo/fechas
 // calculadas, sin riesgo, pero quedan igual bajo el escapado por defecto de
@@ -107,12 +107,12 @@ function _ctxReglas(){
   if(typeof ingresoFijoEstadoMes==='function'){
     api.ingresosFijosAtrasados=()=>{
       const out=[];
-      (S.ingresosFijos||[]).forEach(ing=>{
-        const f=Periodo.diaDelMes(ing.dia,mes,hoyStr);
+      (S.ingresosFijos||[]).forEach(ingreso=>{
+        const f=Periodo.diaDelMes(ingreso.dia,mes,hoyStr);
         if(!f||f.dias>=0)return;
-        const est=ingresoFijoEstadoMes(ing,mes);
+        const est=ingresoFijoEstadoMes(ingreso,mes);
         if(!est.esperado||est.cobrado>0)return;
-        out.push({nombre:ing.nombre||'Un ingreso fijo',dia:f.dia,monto:ing.monto||0});
+        out.push({nombre:ingreso.nombre||'Un ingreso fijo',dia:f.dia,monto:ingreso.monto||0});
       });
       return out;
     };
@@ -149,12 +149,12 @@ function _eventosCaja(hoyStr, dias){
   const mes=mesActual();
   [mes,Periodo.mesDesplazado(mes,1)].forEach(m=>{
     Periodo.gastosFijosProgramados(m,hoyStr).forEach(g=>ev.push({fecha:g.dias<0?hoyStr:g.fecha,monto:-g.monto,tipo:'gasto',texto:g.nombre}));
-    (S.ingresosFijos||[]).forEach(ing=>{
-      const f=Periodo.diaDelMes(ing.dia,m,hoyStr);
+    (S.ingresosFijos||[]).forEach(ingreso=>{
+      const f=Periodo.diaDelMes(ingreso.dia,m,hoyStr);
       if(!f||f.dias<0||typeof ingresoFijoEstadoMes!=='function')return;
-      const est=ingresoFijoEstadoMes(ing,m);
+      const est=ingresoFijoEstadoMes(ingreso,m);
       if(!est.esperado||est.cobrado>0)return;
-      ev.push({fecha:f.fecha,monto:ing.monto||0,tipo:'ingreso',texto:ing.nombre||'Ingreso fijo'});
+      ev.push({fecha:f.fecha,monto:ingreso.monto||0,tipo:'ingreso',texto:ingreso.nombre||'Ingreso fijo'});
     });
   });
   (S.cajitas||[]).forEach(c=>(c.cdts||[]).forEach(cdt=>{

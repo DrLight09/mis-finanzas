@@ -1402,13 +1402,13 @@ describe('requisitos-y-filtros-de-sheets', () => {
     app.S.spotify = { ...(app.S.spotify || {}), personas: [], historial: [] };
     for (const malo of [0, NaN, undefined, '', 'abc', -5]) {
       app.S.spotify.costo = malo; app.abiertos.length = 0; app.toasts.length = 0;
-      assert.equal(app.spCostoValido(), false, String(malo));
+      assert.equal(app.spotifyCostoValido(), false, String(malo));
       app.abrirPagarSpotify();
       assert.deepEqual(app.abiertos, [], 'no abre con costo ' + String(malo));
       assert.equal(app.toasts.length, 1);
     }
     app.S.spotify.costo = 30500; app.abiertos.length = 0;
-    assert.equal(app.spCostoValido(), true);
+    assert.equal(app.spotifyCostoValido(), true);
     app.abrirPagarSpotify();
     assert.deepEqual(app.abiertos, ['pagar-spotify']);
   });
@@ -2204,10 +2204,10 @@ describe('dinero y fechas — una sola función para formatear pesos y otra para
 
   test('una fecha SIN ceros (2099-1-5) se lee igual que 2099-01-05 en los módulos que antes hacían new Date(str+"T00:00:00")', () => {
     // Con el parser de strings ISO la fecha sin padding daba Invalid Date y cualquier comparación salía false en silencio.
-    const { spPersonaPagadaVigente } = app();
-    assert.equal(spPersonaPagadaVigente({ pagado: true, proximoPago: '2099-01-05' }), true);
-    assert.equal(spPersonaPagadaVigente({ pagado: true, proximoPago: '2099-1-5' }), true, 'sin ceros también es futura');
-    assert.equal(spPersonaPagadaVigente({ pagado: true, proximoPago: '2000-1-5' }), false, 'sin ceros y pasada: el pago ya no está vigente');
+    const { spotifyPersonaPagadaVigente } = app();
+    assert.equal(spotifyPersonaPagadaVigente({ pagado: true, proximoPago: '2099-01-05' }), true);
+    assert.equal(spotifyPersonaPagadaVigente({ pagado: true, proximoPago: '2099-1-5' }), true, 'sin ceros también es futura');
+    assert.equal(spotifyPersonaPagadaVigente({ pagado: true, proximoPago: '2000-1-5' }), false, 'sin ceros y pasada: el pago ya no está vigente');
   });
 
   // ── Guardas estáticas: que no vuelvan a aparecer las copias que se eliminaron ──

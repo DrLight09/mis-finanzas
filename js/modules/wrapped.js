@@ -66,7 +66,7 @@
    Depende de (todas con guard typeof, ninguna es obligatoria):
    - `_esGastoVarNoReal` / `_esEntradaEspejoNoIngreso` — helpers de
      Análisis financiero (núcleo eager, ver analisis-financiero.md §9bis).
-   - `window._alcRachaAhorro` — expuesta por alcancia.js (grupo lazy
+   - `window._alcanciaRachaAhorro` — expuesta por alcancia.js (grupo lazy
      aparte); si Alcancía no cargó todavía, esa cifra puntual no se
      muestra.
    - `getPersonaNombre` — expuesta por personas.js (núcleo eager, ver
@@ -2008,9 +2008,9 @@ function _wrappedFasesAnio(S, anioK, mesMax){
 
   const { enPrimera, enSegunda } = _wrappedCorteMitadAnio(anioK, mesMax);
 
-  const alcMovs = (S.alcancia && Array.isArray(S.alcancia.movimientos)) ? S.alcancia.movimientos : [];
-  const ahorroPrimera = alcMovs.filter(m => m && enPrimera(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
-  const ahorroSegunda = alcMovs.filter(m => m && enSegunda(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
+  const alcanciaMovs = (S.alcancia && Array.isArray(S.alcancia.movimientos)) ? S.alcancia.movimientos : [];
+  const ahorroPrimera = alcanciaMovs.filter(m => m && enPrimera(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
+  const ahorroSegunda = alcanciaMovs.filter(m => m && enSegunda(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
   const cambioAhorro = _wrappedCambioFuerte(ahorroPrimera, ahorroSegunda);
   if(cambioAhorro){
     return { tipo:'ahorro', direccion: cambioAhorro.direccion };
@@ -2523,8 +2523,8 @@ function _wrappedPersonalidad(S, anioK){
   const prestado = _wrappedCalcularPrestado(S, 'anio', null, anioK);
   const periodo = _wrappedCalcularPeriodo(S, 'anio', null, anioK);
   let racha = 0;
-  if(typeof window !== 'undefined' && typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
-    racha = window._alcRachaAhorro(S.alcancia.historial);
+  if(typeof window !== 'undefined' && typeof window._alcanciaRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
+    racha = window._alcanciaRachaAhorro(S.alcancia.historial);
   }
   const catsDistintas = new Set((S.gastosVar||[]).map(g => g.cat).filter(Boolean)).size;
   const tieneCdt = cajitas.some(c => Array.isArray(c.cdts) && c.cdts.length > 0);
@@ -2657,9 +2657,9 @@ function _wrappedProtagonistas(S, tipo, mesK, anioK){
   });
   ((S.spotify||{}).historial||[]).forEach(h => {
     if(h && h.tipo==='cobro' && h.spId && _wrappedEnRango(h.fecha, tipo, mesK, anioK)){
-      const sp = ((S.spotify||{}).personas||[]).find(p => p.id === h.spId);
-      const nombre = sp ? sp.nombre : h.nombre;
-      const personaId = sp ? sp.personaId : null;
+      const spotify = ((S.spotify||{}).personas||[]).find(p => p.id === h.spId);
+      const nombre = spotify ? spotify.nombre : h.nombre;
+      const personaId = spotify ? spotify.personaId : null;
       sumar(personaId||nombre, nombre, personaId||null, 1);
     }
   });
@@ -3126,7 +3126,7 @@ const WRAPPED_MAX_INSIGHTS_POOL = 8;
 /* Lee el estado de "Ocultar saldos" (saldos-ocultos.js) directo de
    su localStorage ya documentado (`mf-saldos-ocultos`) — Wrapped no
    tiene forma de leer la variable interna de ese módulo (no está
-   expuesta como `window._algo`, a diferencia de `_alcRachaAhorro`), así
+   expuesta como `window._algo`, a diferencia de `_alcanciaRachaAhorro`), así
    que usa la misma llave pública que ya persiste el toggle.
    Confirmado contra `saldos-ocultos.js`:
    `toggleSaldos()` guarda literalmente `'1'`/`'0'` (no `'true'`/`'false'`,
@@ -3176,8 +3176,8 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   _wrappedIniciarBanco(anioK + '|' + s.totalIngresos + '|' + s.totalGastos + '|' + (patrimonio && Number.isFinite(patrimonio.diff) ? patrimonio.diff : 0));
 
   let racha = 0;
-  if(typeof window !== 'undefined' && typeof window._alcRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
-    racha = window._alcRachaAhorro(S.alcancia.historial);
+  if(typeof window !== 'undefined' && typeof window._alcanciaRachaAhorro === 'function' && S.alcancia && S.alcancia.historial){
+    racha = window._alcanciaRachaAhorro(S.alcancia.historial);
   }
 
   // Dominios "de terceros" — ver comentario de cabecera del archivo y

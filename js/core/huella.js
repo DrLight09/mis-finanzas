@@ -80,11 +80,11 @@ const Huella = (() => {
     [['antes', a], ['despues', b]].forEach(([lado, h]) => {
       Object.keys((h && h.errores) || {}).forEach(n => errores.push(lado + ': ' + n + ' — ' + h.errores[n]));
     });
-    const dif = (ruta, x, y) => diferencias.push({ ruta, antes: x, despues: y });
+    const diferencial = (ruta, x, y) => diferencias.push({ ruta, antes: x, despues: y });
     (function rec(x, y, ruta) {
-      if (typeof x === 'number' && typeof y === 'number') { if (Math.abs(x - y) > tol) dif(ruta, x, y); return; }
+      if (typeof x === 'number' && typeof y === 'number') { if (Math.abs(x - y) > tol) diferencial(ruta, x, y); return; }
       if (Array.isArray(x) && Array.isArray(y)) {
-        if (x.length !== y.length) { dif(ruta + '.length', x.length, y.length); return; }
+        if (x.length !== y.length) { diferencial(ruta + '.length', x.length, y.length); return; }
         x.forEach((v, i) => rec(v, y[i], ruta + '[' + i + ']'));
         return;
       }
@@ -93,7 +93,7 @@ const Huella = (() => {
         claves.forEach(k => rec(k in x ? x[k] : undefined, k in y ? y[k] : undefined, ruta ? ruta + '.' + k : k));
         return;
       }
-      if (x !== y) dif(ruta, x === undefined ? '(no existe)' : x, y === undefined ? '(no existe)' : y);
+      if (x !== y) diferencial(ruta, x === undefined ? '(no existe)' : x, y === undefined ? '(no existe)' : y);
     })((a && a.sondas) || {}, (b && b.sondas) || {}, '');
     return { ok: diferencias.length === 0 && errores.length === 0, diferencias, errores };
   }

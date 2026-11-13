@@ -142,7 +142,7 @@ test('alcancia: las clases de color que arma el código (alc-c-X, alc-dif-X) exi
   ['alc-c-accent', 'alc-c-amber', 'alc-c-red', 'alc-c-text3', 'alc-dif-0', 'alc-dif-pos', 'alc-dif-neg'].forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
   const src = leer('js/modules/alcancia.js');
   // los mapas de color que alimentan class=\"…\" son clases (el hint.style.color y el fill del SVG sí siguen usando var(--x), por CSSOM/atributo SVG)
-  for (const nombre of ['tipoColor', 'difColor', 'difMsgColor']) {
+  for (const nombre of ['tipoColor', 'diferencialColor', 'diferencialMsgColor']) {
     const linea = src.split('\n').find(l => l.includes('const ' + nombre));
     assert.ok(linea && !/var\(--/.test(linea), nombre);
   }
@@ -152,7 +152,7 @@ test('plata comprometida: las clases por tipo (cp-tbg-X, cp-tc-X) y los colores 
   const css = leer('css/styles.css'), src = leer('js/modules/plata-comprometida.js');
   ['reposicion', 'gasto', 'abono_deuda', 'otro'].forEach(t => ['cp-tbg-', 'cp-tc-'].forEach(p => {
     assert.ok(new RegExp('\\.' + p + t + '(?![\\w-])').test(css), p + t);
-    assert.ok(new RegExp("k:'" + t + "'").test(src), 'falta k:' + t + ' en _CP_TIPO_LABELS');
+    assert.ok(new RegExp("k:'" + t + "'").test(src), 'falta k:' + t + ' en _PLATA_COMPROMETIDA_TIPO_LABELS');
   }));
   ['cp-c-red', 'cp-c-amber', 'cp-c-text3'].forEach(c => assert.ok(new RegExp('\\.' + c + '(?![\\w-])').test(css), c));
   assert.doesNotMatch(src, /ti\.(bg|border|color)\b/, 'los colores por tipo son clases, no ti.bg/border/color');

@@ -5,8 +5,8 @@
 function applyModulos(){
   const mod=S.modulos||{mesada:true,spotify:true,corregirSaldo:true};
   // Spotify nav tab
-  const navSp=document.getElementById('nav-spotify');
-  if(navSp)navSp.style.display=mod.spotify?'':'none';
+  const navSpotify=document.getElementById('nav-spotify');
+  if(navSpotify)navSpotify.style.display=mod.spotify?'':'none';
   // Mesada screen in Más menu
   const mesScreen=document.getElementById('screen-mesada');
   if(mesScreen && !mod.mesada) mesScreen.classList.remove('active');

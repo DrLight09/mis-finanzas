@@ -16,8 +16,8 @@
    - Un solo archivo alcanzó (a diferencia de Spotify/Encargos): el
      módulo no depende de nada definido más abajo en index.html — usa
      S.deudores directo para "Me devuelven", no funciones de Personas.
-   - Las funciones de acción (_cpAbrirNuevo, _cpGuardar, etc.) y el
-     estado de los sheets en construcción (_cpMarcarId, _cpMarcarTmp,
+   - Las funciones de acción (_plataComprometidaAbrirNuevo, _plataComprometidaGuardar, etc.) y el
+     estado de los sheets en construcción (_plataComprometidaMarcarId, _plataComprometidaMarcarTmp,
      _cpdGastoOrigenVal, _cpdYaSaqueVal, _cpdYaPagueVal) vivían
      innecesariamente en `window` — solo para que los onclick inline
      pudieran llamarlos. Ya no hace falta: quedaron como funciones y
@@ -369,11 +369,11 @@ function _injectSheet(){
 }
 
 /* ── ESTADO DEL MÓDULO ───────────────────────────────────────────── */
-let _cpEditId = null;
-let _cpDestinosTmp = [];   // destinos mientras se construye el nuevo ingreso
-let _cpRecibirId = null;
-let _cpMarcarId = null;         // id del ingreso cuyo sheet "Pagos" está abierto
-let _cpMarcarTmp = null;        // copia de trabajo de destinos mientras se marca
+let _plataComprometidaEditId = null;
+let _plataComprometidaDestinosTmp = [];   // destinos mientras se construye el nuevo ingreso
+let _plataComprometidaRecibirId = null;
+let _plataComprometidaMarcarId = null;         // id del ingreso cuyo sheet "Pagos" está abierto
+let _plataComprometidaMarcarTmp = null;        // copia de trabajo de destinos mientras se marca
 let _cpdGastoOrigenVal = 'cajita'; // origen elegido en el destino "Gasto" que se está armando
 let _cpdYaSaqueVal = false;        // ¿ya adelantó? (destino "Reposición" en construcción)
 let _cpdYaPagueVal = false;        // ¿ya pagó/cargó? (destino "Gasto"/"Otro" en construcción)
@@ -381,21 +381,21 @@ let _cpdYaPagueVal = false;        // ¿ya pagó/cargó? (destino "Gasto"/"Otro"
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 // Origen de las patas de saldo de este módulo (libro-de-movimientos.md §3.3). `ref` es el id del destino que causó el
 // movimiento (o el del ingreso comprometido, para el sobrante); quien lo deshace pasa el mismo `ref` con rev=true.
-const _ogCp = Libro.origen('plata-comprometida');
+const _ogPlataComprometida = Libro.origen('plata-comprometida');
 
-function _cpData(){
+function _plataComprometidaData(){
   if(!window.S) return [];
   if(!S.plataComprometida) S.plataComprometida = [];
   return S.plataComprometida;
 }
 
-function _cpPoblarCuentas(selId, incluirTC){
+function _plataComprometidaPoblarCuentas(selId, incluirTC){
   const sel = document.getElementById(selId);
   if(!sel) return;
   sel.innerHTML = opcionesCuenta({ tarjetas: !!incluirTC });
 }
 
-function _cpPoblarPersonas(selId){
+function _plataComprometidaPoblarPersonas(selId){
   const sel = document.getElementById(selId);
   if(!sel) return;
   const deudores = Deudas.lista('favor');
@@ -422,7 +422,7 @@ function _cpPoblarPersonas(selId){
   }
 }
 
-function _cpPoblarTC(selId){
+function _plataComprometidaPoblarTC(selId){
   const sel = document.getElementById(selId);
   if(!sel) return;
   const tcs = (window.S && S.tarjetasCredito) ? S.tarjetasCredito : [];
@@ -436,7 +436,7 @@ function _cpPoblarTC(selId){
 }
 
 /* ── TIPOS DE DESTINO ────────────────────────────────────────────── */
-const _CP_TIPO_LABELS = {
+const _PLATA_COMPROMETIDA_TIPO_LABELS = {
   reposicion:  { k:'reposicion', label:'Repone cajita/cuenta que ya usé' },
   gasto:       { k:'gasto', label:'Gasto pendiente' },
   abono_deuda: { k:'abono_deuda', label:'Abono a deuda pendiente' },
@@ -444,10 +444,10 @@ const _CP_TIPO_LABELS = {
 };
 
 /* ── RENDER LISTA PRINCIPAL ──────────────────────────────────────── */
-function _cpRenderLista(){
+function _plataComprometidaRenderLista(){
   const el = document.getElementById('cp-lista');
   if(!el) return;
-  const items = _cpData();
+  const items = _plataComprometidaData();
   const pendientes = items.filter(i => !i.recibido);
   const recibidos = items.filter(i => i.recibido);
 
@@ -490,7 +490,7 @@ function _cpRenderLista(){
       const comp = (item.destinos||[]).filter(d=>d.tipo!=='libre').reduce((s,d)=>s+(d.monto||0),0);
       const libre = Math.max(0,(item.montoTotal||0)-comp);
       const pctComp = item.montoTotal > 0 ? Math.min(100,(comp/item.montoTotal)*100) : 0;
-      const diasStr = _cpDiasHastaStr(item.fechaLlegada);
+      const diasStr = _plataComprometidaDiasHastaStr(item.fechaLlegada);
 
       // Bloque de barra de compromisos: solo números/labels fijos, sin texto
       // libre del usuario — se arma aparte y se interpola con raw() (mismo
@@ -514,7 +514,7 @@ function _cpRenderLista(){
       const chipsDestinos = (item.destinos||[]).length ? html`
         <div class="cp-dest-chips">
           ${raw((item.destinos||[]).map(d=>{
-            const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+            const ti = _PLATA_COMPROMETIDA_TIPO_LABELS[d.tipo]||_PLATA_COMPROMETIDA_TIPO_LABELS.otro;
             let estadoBadge = '';
             if(d.tipo === 'reposicion'){
               estadoBadge = d.yaSaque
@@ -600,7 +600,7 @@ function _cpRenderLista(){
             <span class="cp-guardada-cap">Plata guardada para pagar</span>
           </div>
           ${raw(gastosGuardados.map(d => {
-            const cajLabel = fuenteTexto(d.gastoCajita);
+            const cajitaLabel = fuenteTexto(d.gastoCajita);
             let fechaInfo = '';
             if(d.fechaPago){
               const diasFecha = Fecha.diasEntre(hoy(), d.fechaPago);
@@ -616,7 +616,7 @@ function _cpRenderLista(){
             return html`<div class="cp-g-fila">
               <div class="cp-g-cuerpo">
                 <div class="cp-g-desc">${d.desc}</div>
-                <div class="cp-g-caja"><i class="fa-solid fa-box cp-ico-fecha-caja"></i>${cajLabel}${raw(fechaInfo)}</div>
+                <div class="cp-g-caja"><i class="fa-solid fa-box cp-ico-fecha-caja"></i>${cajitaLabel}${raw(fechaInfo)}</div>
               </div>
               <span class="cp-g-monto">${fmt(d.monto)}</span>
             </div>`;
@@ -651,7 +651,7 @@ function _cpRenderLista(){
 }
 
 
-function _cpDiasHastaStr(fecha){
+function _plataComprometidaDiasHastaStr(fecha){
   if(!fecha) return { texto:'Sin fecha definida', urgente:false };
   const dias = Fecha.diasEntre(hoy(), fecha);
   if(dias < 0)  return { texto:`Llegaba hace ${Math.abs(dias)} día${Math.abs(dias)!==1?'s':''} — ¿ya recibiste?`, urgente:true };
@@ -662,42 +662,42 @@ function _cpDiasHastaStr(fecha){
 }
 
 /* ── NUEVO / EDITAR ──────────────────────────────────────────────── */
-function _cpAbrirNuevo(){
-  _cpEditId = null;
-  _cpDestinosTmp = [];
+function _plataComprometidaAbrirNuevo(){
+  _plataComprometidaEditId = null;
+  _plataComprometidaDestinosTmp = [];
   document.getElementById('cp-sheet-title').textContent = 'Nuevo ingreso comprometido';
   document.getElementById('cp-desc').value = '';
   document.getElementById('cp-monto-total').value = '';
   document.getElementById('cp-fecha-llegada').value = '';
-  _cpPoblarCuentas('cp-cuenta-destino', false);
+  _plataComprometidaPoblarCuentas('cp-cuenta-destino', false);
   document.getElementById('cp-cuenta-destino').value = '';
-  _cpRenderDestinosTmp();
+  _plataComprometidaRenderDestinosTmp();
   openSheet('cp-nuevo');
   focusSheetField('cp-desc');
 };
 
-function _cpAbrirEditar(id){
-  const items = _cpData();
+function _plataComprometidaAbrirEditar(id){
+  const items = _plataComprometidaData();
   const item = items.find(i=>i.id===id);
   if(!item) return;
-  _cpEditId = id;
-  _cpDestinosTmp = JSON.parse(JSON.stringify(item.destinos||[]));
+  _plataComprometidaEditId = id;
+  _plataComprometidaDestinosTmp = JSON.parse(JSON.stringify(item.destinos||[]));
   document.getElementById('cp-sheet-title').textContent = 'Editar ingreso';
   document.getElementById('cp-desc').value = item.desc||'';
   document.getElementById('cp-monto-total').value = fmtInput(item.montoTotal||0);
   document.getElementById('cp-fecha-llegada').value = item.fechaLlegada||'';
-  _cpPoblarCuentas('cp-cuenta-destino', false);
+  _plataComprometidaPoblarCuentas('cp-cuenta-destino', false);
   document.getElementById('cp-cuenta-destino').value = item.cuentaDestino||'';
-  _cpRenderDestinosTmp();
+  _plataComprometidaRenderDestinosTmp();
   openSheet('cp-nuevo');
 };
 
-function _cpCancelSheet(){
-  _cpEditId = null;
-  _cpDestinosTmp = [];
+function _plataComprometidaCancelSheet(){
+  _plataComprometidaEditId = null;
+  _plataComprometidaDestinosTmp = [];
 };
 
-function _cpGuardar(){
+function _plataComprometidaGuardar(){
   const desc = (document.getElementById('cp-desc').value||'').trim();
   if(!desc){ toast('Escribe de qué plata es','err'); return; }
 
@@ -710,20 +710,20 @@ function _cpGuardar(){
 
   const cuentaDestino = document.getElementById('cp-cuenta-destino').value||'';
 
-  const totalComp = _cpDestinosTmp.reduce((a,d)=>a+(d.monto||0),0);
+  const totalComp = _plataComprometidaDestinosTmp.reduce((a,d)=>a+(d.monto||0),0);
   if(totalComp > monto){
     toast('Los destinos superan el monto total','err'); return;
   }
 
-  _cpData(); // asegurar que existe S.plataComprometida
-  if(_cpEditId){
-    const item = S.plataComprometida.find(i=>i.id===_cpEditId);
+  _plataComprometidaData(); // asegurar que existe S.plataComprometida
+  if(_plataComprometidaEditId){
+    const item = S.plataComprometida.find(i=>i.id===_plataComprometidaEditId);
     if(item){
       item.desc = desc;
       item.montoTotal = monto;
       item.fechaLlegada = fecha;
       item.cuentaDestino = cuentaDestino;
-      item.destinos = JSON.parse(JSON.stringify(_cpDestinosTmp));
+      item.destinos = JSON.parse(JSON.stringify(_plataComprometidaDestinosTmp));
     }
   } else {
     S.plataComprometida.push({
@@ -732,7 +732,7 @@ function _cpGuardar(){
       montoTotal: monto,
       fechaLlegada: fecha,
       cuentaDestino,
-      destinos: JSON.parse(JSON.stringify(_cpDestinosTmp)),
+      destinos: JSON.parse(JSON.stringify(_plataComprometidaDestinosTmp)),
       recibido: false,
       creadoEn: hoy(),
     });
@@ -740,13 +740,13 @@ function _cpGuardar(){
 
   save();
   closeSheet('cp-nuevo');
-  _cpRenderLista();
-  toast(_cpEditId ? 'Ingreso actualizado' : html`Ingreso registrado <i class="fa-solid fa-check"></i>`, 'ok');
-  _cpEditId = null;
-  _cpDestinosTmp = [];
+  _plataComprometidaRenderLista();
+  toast(_plataComprometidaEditId ? 'Ingreso actualizado' : html`Ingreso registrado <i class="fa-solid fa-check"></i>`, 'ok');
+  _plataComprometidaEditId = null;
+  _plataComprometidaDestinosTmp = [];
 
   if(window.logCambio) logCambio(
-    (_cpEditId?'Editaste':'Registraste')+' plata comprometida: "'+desc+'"', '', monto, 'ingreso'
+    (_plataComprometidaEditId?'Editaste':'Registraste')+' plata comprometida: "'+desc+'"', '', monto, 'ingreso'
   );
 
   // Agregar a "Necesita atención" si llega pronto
@@ -782,10 +782,10 @@ function _cpdSetTipo(tipo){
   if(typeof _cpdTipoChange === 'function') _cpdTipoChange();
 };
 
-function _cpAgregarDestino(){
-  _cpPoblarPersonas('cpd-persona');
-  _cpPoblarTC('cpd-tc');
-  _cpPoblarCuentas('cpd-cuenta', false);
+function _plataComprometidaAgregarDestino(){
+  _plataComprometidaPoblarPersonas('cpd-persona');
+  _plataComprometidaPoblarTC('cpd-tc');
+  _plataComprometidaPoblarCuentas('cpd-cuenta', false);
   document.getElementById('cpd-desc').value = '';
   document.getElementById('cpd-monto').value = '';
   const fpInput = document.getElementById('cpd-fecha-pago');
@@ -858,15 +858,15 @@ function _cpdPoblarGastoSelectores(){
 
 function _cpdSetGastoOrigen(val){
   _cpdGastoOrigenVal = val;
-  const cajBtn  = document.getElementById('cpd-origen-cajita-btn');
+  const cajitaBtn  = document.getElementById('cpd-origen-cajita-btn');
   const tcBtn   = document.getElementById('cpd-origen-tc-btn');
-  const cajWrap = document.getElementById('cpd-gasto-cajita-wrap');
+  const cajitaWrap = document.getElementById('cpd-gasto-cajita-wrap');
   const tcWrap  = document.getElementById('cpd-gasto-tc-wrap');
-  if(!cajBtn) return;
+  if(!cajitaBtn) return;
   if(val==='cajita'){
-    cajBtn.style.cssText += ';background:rgba(176,144,240,.15);border-color:var(--purple);color:var(--purple);';
+    cajitaBtn.style.cssText += ';background:rgba(176,144,240,.15);border-color:var(--purple);color:var(--purple);';
     tcBtn.style.cssText  += ';background:transparent;border-color:var(--border2);color:var(--text2);';
-    if(cajWrap) cajWrap.style.display = '';
+    if(cajitaWrap) cajitaWrap.style.display = '';
     if(tcWrap)  tcWrap.style.display  = 'none';
     _cpdPoblarGastoSelectores();
     // Mostrar fecha pago solo si es cajita y no está ya pagado
@@ -874,9 +874,9 @@ function _cpdSetGastoOrigen(val){
     if(fechaPagoWrapG) fechaPagoWrapG.style.display = _cpdYaPagueVal ? 'none' : '';
   } else {
     tcBtn.style.cssText  += ';background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.5);color:var(--red);';
-    cajBtn.style.cssText += ';background:transparent;border-color:var(--border2);color:var(--text2);';
+    cajitaBtn.style.cssText += ';background:transparent;border-color:var(--border2);color:var(--text2);';
     if(tcWrap)  tcWrap.style.display  = '';
-    if(cajWrap) cajWrap.style.display = 'none';
+    if(cajitaWrap) cajitaWrap.style.display = 'none';
     _cpdPoblarGastoSelectores();
     // Ocultar fecha pago para TC
     const fechaPagoWrapG = document.getElementById('cpd-fecha-pago-wrap');
@@ -981,11 +981,11 @@ function _cpdConfirmar(){
   if(yaSaque && cuentaId && typeof sumarFuente === 'function'){
     try {
       if(Fuente.esCajita(cuentaId)){
-        const cajId = cuentaId.split(':')[1];
-        const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-        if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+        const cajitaId = cuentaId.split(':')[1];
+        const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
+        if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
       }
-      sumarFuente(cuentaId, -monto, _ogCp(destId));
+      sumarFuente(cuentaId, -monto, _ogPlataComprometida(destId));
       if(!S.movimientos) S.movimientos = [];
       S.movimientos.push({ id:uid(), tipo:'salida', fuente:cuentaId, monto, fecha:hoy(), desc:'Adelanto comprometido: '+desc });
       if(window.logCambio) logCambio('Adelantaste plata de '+fuenteTexto(cuentaId), fmt(monto)+' — será repuesto al llegar el ingreso', monto, 'gasto');
@@ -998,19 +998,19 @@ function _cpdConfirmar(){
   // MISMO — igual que la reposición de arriba —, no solo guardar el flag
   // `yaPague:true`. Antes esta rama no existía acá: marcar "ya pagué" al
   // crear el destino guardaba el flag pero nunca descontaba la cajita ni
-  // cargaba la TC, y como _cpGuardarMarcados() (el sheet "Marcar pagos")
+  // cargaba la TC, y como _plataComprometidaGuardarMarcados() (el sheet "Marcar pagos")
   // solo actúa sobre transiciones false→true, un destino que ya nacía en
   // true jamás pasaba por ahí — la plata "pagada" quedaba sin moverse para
   // siempre, en silencio, sin ningún error. Misma lógica que ya usa
-  // _cpGuardarMarcados() para la transición false→true, sin comparar
+  // _plataComprometidaGuardarMarcados() para la transición false→true, sin comparar
   // contra un estado viejo porque acá no lo hay: el destino recién nace.
   if(tipo === 'gasto' && yaPague){
     if(gastoOrigen === 'cajita' && gastoCajita && typeof descontarFuente === 'function'){
       try {
-        const cajId2 = Fuente.esCajita(gastoCajita) ? gastoCajita.split(':')[1] : null;
-        const caj2 = cajId2 ? (S.cajitas||[]).find(x=>x.id===cajId2) : null;
-        if(caj2 && typeof materializarIntereses==='function') materializarIntereses(caj2);
-        descontarFuente(gastoCajita, monto, _ogCp(destId));
+        const cajitaId2 = Fuente.esCajita(gastoCajita) ? gastoCajita.split(':')[1] : null;
+        const cajita2 = cajitaId2 ? (S.cajitas||[]).find(x=>x.id===cajitaId2) : null;
+        if(cajita2 && typeof materializarIntereses==='function') materializarIntereses(cajita2);
+        descontarFuente(gastoCajita, monto, _ogPlataComprometida(destId));
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({ id:uid(), tipo:'salida', fuente:gastoCajita, monto, fecha:hoy(), desc:'Pago: '+desc });
         if(window.logCambio) logCambio('Pagaste '+desc, fmt(monto)+' de '+fuenteTexto(gastoCajita), monto, 'gasto');
@@ -1038,12 +1038,12 @@ function _cpdConfirmar(){
     fechaPago = fpEl ? (fpEl.value || '') : '';
   }
 
-  _cpDestinosTmp.push({ id:destId, tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago, _tcCompraId:_tcCompraIdInicial||undefined });
+  _plataComprometidaDestinosTmp.push({ id:destId, tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago, _tcCompraId:_tcCompraIdInicial||undefined });
   closeSheet('cp-destino');
-  _cpRenderDestinosTmp();
+  _plataComprometidaRenderDestinosTmp();
 };
 
-function _cpRenderDestinosTmp(){
+function _plataComprometidaRenderDestinosTmp(){
   const el = document.getElementById('cp-destinos-list');
   const balEl = document.getElementById('cp-balance-preview');
   if(!el) return;
@@ -1055,14 +1055,14 @@ function _cpRenderDestinosTmp(){
     otro:        `<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/></svg>`,
   };
 
-  if(!_cpDestinosTmp.length){
+  if(!_plataComprometidaDestinosTmp.length){
     el.innerHTML = `<div class="cp-sd-caja">
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       <div class="cp-sd-txt">Sin destinos — todo queda libre para ti.</div>
     </div>`;
   } else {
-    el.innerHTML = _cpDestinosTmp.map((d,i)=>{
-      const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+    el.innerHTML = _plataComprometidaDestinosTmp.map((d,i)=>{
+      const ti = _PLATA_COMPROMETIDA_TIPO_LABELS[d.tipo]||_PLATA_COMPROMETIDA_TIPO_LABELS.otro;
       const icon = _tipoIcon[d.tipo]||_tipoIcon.otro;
       let badges = '';
       if(d.tipo === 'reposicion'){
@@ -1109,7 +1109,7 @@ function _cpRenderDestinosTmp(){
   if(balEl){
     const montoStr = document.getElementById('cp-monto-total') ? document.getElementById('cp-monto-total').value : '';
     const total = typeof parseMoney === 'function' ? parseMoney(montoStr)||0 : 0;
-    const comp = _cpDestinosTmp.reduce((a,d)=>a+(d.monto||0),0);
+    const comp = _plataComprometidaDestinosTmp.reduce((a,d)=>a+(d.monto||0),0);
     const ganancia = total - comp;
     if(total > 0){
       if(ganancia < 0){
@@ -1132,16 +1132,16 @@ function _cpRenderDestinosTmp(){
   }
 }
 
-function _cpQuitarDestino(i){
-  _cpDestinosTmp.splice(i,1);
-  _cpRenderDestinosTmp();
+function _plataComprometidaQuitarDestino(i){
+  _plataComprometidaDestinosTmp.splice(i,1);
+  _plataComprometidaRenderDestinosTmp();
 };
 
 /* ── RECIBIR ─────────────────────────────────────────────────────── */
-function _cpAbrirRecibir(id){
-  const item = _cpData().find(i=>i.id===id);
+function _plataComprometidaAbrirRecibir(id){
+  const item = _plataComprometidaData().find(i=>i.id===id);
   if(!item) return;
-  _cpRecibirId = id;
+  _plataComprometidaRecibirId = id;
 
   document.getElementById('cp-recibir-desc').textContent = item.desc||'';
   document.getElementById('cp-recibir-monto').textContent = fmt(item.montoTotal);
@@ -1157,7 +1157,7 @@ function _cpAbrirRecibir(id){
       planEl.innerHTML = emptyInline('Sin compromisos — todo el monto queda libre.');
     } else {
       planEl.innerHTML = (item.destinos||[]).map(d=>{
-        const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+        const ti = _PLATA_COMPROMETIDA_TIPO_LABELS[d.tipo]||_PLATA_COMPROMETIDA_TIPO_LABELS.otro;
         let detalle = '';
         let subLabel = ti.label;
         let extraInfo = '';
@@ -1189,33 +1189,33 @@ function _cpAbrirRecibir(id){
           if(d.gastoOrigen==='tc' && d.gastoTcId){
             const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
             const tcNombre = tc ? tc.nombre : 'Tarjeta de crédito';
-            const cajDestLabel = d.gastoTcCajita && fuenteTexto(d.gastoTcCajita);
+            const cajitaDestLabel = d.gastoTcCajita && fuenteTexto(d.gastoTcCajita);
             if(d.yaPague){
               subLabel = html`Pagado con ${tcNombre}`;
               extraInfo = html`<div class="cp-int-caja-ok">
                 <i class="fa-solid fa-check cp-int-ok-ico"></i>
-                <span class="cp-int-ok-txt">Ya pagado${cajDestLabel ? html` · La plata va a "${cajDestLabel}"` : ''}</span>
+                <span class="cp-int-ok-txt">Ya pagado${cajitaDestLabel ? html` · La plata va a "${cajitaDestLabel}"` : ''}</span>
               </div>`;
             } else {
               subLabel = html`Pendiente · Se cargará a ${tcNombre}`;
               extraInfo = html`<div class="cp-int-caja-tc">
                 <i class="fa-solid fa-credit-card cp-int-tc-ico"></i>
-                <span class="cp-int-tc-txt">Se cargará a ${tcNombre}${cajDestLabel ? html` · plata a "${cajDestLabel}"` : ''}</span>
+                <span class="cp-int-tc-txt">Se cargará a ${tcNombre}${cajitaDestLabel ? html` · plata a "${cajitaDestLabel}"` : ''}</span>
               </div>`;
             }
           } else if(d.gastoOrigen==='cajita' && d.gastoCajita){
-            const cajLabel = fuenteTexto(d.gastoCajita);
+            const cajitaLabel = fuenteTexto(d.gastoCajita);
             if(d.yaPague){
               subLabel = 'Ya pagado';
               extraInfo = html`<div class="cp-int-caja-ok">
                 <i class="fa-solid fa-check cp-int-ok-ico"></i>
-                <span class="cp-int-ok-txt">Repone "${cajLabel}"</span>
+                <span class="cp-int-ok-txt">Repone "${cajitaLabel}"</span>
               </div>`;
             } else {
               subLabel = 'Gasto pendiente';
               extraInfo = html`<div class="cp-int-caja-res">
                 <i class="fa-regular fa-clock cp-int-res-ico"></i>
-                <span class="cp-int-res-txt">Guardada en "${cajLabel}" hasta vencimiento</span>
+                <span class="cp-int-res-txt">Guardada en "${cajitaLabel}" hasta vencimiento</span>
               </div>`;
             }
           } else {
@@ -1248,7 +1248,7 @@ function _cpAbrirRecibir(id){
       sobEl.textContent = fmt(sobrante > 0 ? sobrante : item.montoTotal||0);
       // Poblar selector de destino del sobrante
       if(sobCuenta){
-        _cpPoblarCuentas('cp-recibir-sobrante-cuenta', false);
+        _plataComprometidaPoblarCuentas('cp-recibir-sobrante-cuenta', false);
         sobCuenta.value = item.cuentaDestino || '';
       }
     } else {
@@ -1271,11 +1271,11 @@ function _cpAbrirRecibir(id){
             <span class="cp-rec-cap">Recordatorio de pagos pendientes</span>
           </div>
           ${raw(pendientesConFecha.map(d=>{
-            const cajLabel = fuenteTexto(d.gastoCajita);
+            const cajitaLabel = fuenteTexto(d.gastoCajita);
             return html`<div class="cp-rec-it">
               <div>
                 <div class="cp-rec-it-desc">${d.desc}</div>
-                <div class="cp-rec-it-sub">La plata queda en "${cajLabel}"</div>
+                <div class="cp-rec-it-sub">La plata queda en "${cajitaLabel}"</div>
               </div>
               <span class="cp-rec-it-monto">${fmt(d.monto)}</span>
             </div>`;
@@ -1291,9 +1291,9 @@ function _cpAbrirRecibir(id){
   openSheet('cp-recibir');
 };
 
-function _cpConfirmarRecibir(){
-  const id = _cpRecibirId;
-  const items = _cpData();
+function _plataComprometidaConfirmarRecibir(){
+  const id = _plataComprometidaRecibirId;
+  const items = _plataComprometidaData();
   const item = items.find(i=>i.id===id);
   if(!item){ closeSheet('cp-recibir'); return; }
 
@@ -1309,11 +1309,11 @@ function _cpConfirmarRecibir(){
           const cuenta = d.cuentaId || item.cuentaDestino;
           if(cuenta && typeof sumarFuente === 'function'){
             if(Fuente.esCajita(cuenta)){
-              const cajId = cuenta.split(':')[1];
-              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+              const cajitaId = cuenta.split(':')[1];
+              const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
+              if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
             }
-            sumarFuente(cuenta, d.monto, _ogCp(d.id));
+            sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (no es ingreso nuevo, es devolución)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
@@ -1324,11 +1324,11 @@ function _cpConfirmarRecibir(){
           const cuenta = d.cuentaId || item.cuentaDestino;
           if(cuenta && typeof sumarFuente === 'function'){
             if(Fuente.esCajita(cuenta)){
-              const cajId = cuenta.split(':')[1];
-              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+              const cajitaId = cuenta.split(':')[1];
+              const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
+              if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
             }
-            sumarFuente(cuenta, d.monto, _ogCp(d.id));
+            sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (devolución de plata que ya salió)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
@@ -1350,7 +1350,7 @@ function _cpConfirmarRecibir(){
           // Nota: esta deuda es un FAVOR — la plata del ingreso cubre la TC, NO es deuda propia
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
           if(tc){
-            // FIX double-entry: si el usuario ya marcó yaPague=true via _cpGuardarMarcados,
+            // FIX double-entry: si el usuario ya marcó yaPague=true via _plataComprometidaGuardarMarcados,
             // la deuda ya fue subida allí. No volver a subirla al confirmar el recibo.
             if(!d.yaPague){
               const _compraTc=tcCrearCompra(tc,{
@@ -1365,11 +1365,11 @@ function _cpConfirmarRecibir(){
             const destCajita = d.gastoTcCajita;
             if(destCajita && typeof sumarFuente === 'function'){
               if(Fuente.esCajita(destCajita)){
-                const cajId = destCajita.split(':')[1];
-                const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-                if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+                const cajitaId = destCajita.split(':')[1];
+                const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
+                if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
               }
-              sumarFuente(destCajita, d.monto, _ogCp(d.id));
+              sumarFuente(destCajita, d.monto, _ogPlataComprometida(d.id));
               if(!S.movimientos) S.movimientos = [];
               // _esReposicionCP:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
               S.movimientos.push({id:uid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
@@ -1380,11 +1380,11 @@ function _cpConfirmarRecibir(){
           // Gasto de cajita: reponer esa cajita con el ingreso
           if(typeof sumarFuente === 'function'){
             if(Fuente.esCajita(d.gastoCajita)){
-              const cajId = d.gastoCajita.split(':')[1];
-              const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-              if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+              const cajitaId = d.gastoCajita.split(':')[1];
+              const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
+              if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
             }
-            sumarFuente(d.gastoCajita, d.monto, _ogCp(d.id));
+            sumarFuente(d.gastoCajita, d.monto, _ogPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionCP:true → excluido del análisis de tendencia (repone cajita, no es ingreso nuevo)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, clase:'neutro', _esReposicionCP:true, _cpItemId:item.id});
@@ -1409,11 +1409,11 @@ function _cpConfirmarRecibir(){
     try {
       if(typeof sumarFuente === 'function'){
         if(Fuente.esCajita(sobranteCuenta)){
-          const cajId = sobranteCuenta.split(':')[1];
-          const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-          if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+          const cajitaId = sobranteCuenta.split(':')[1];
+          const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
+          if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
         }
-        sumarFuente(sobranteCuenta, ganancia, _ogCp(item.id));
+        sumarFuente(sobranteCuenta, ganancia, _ogPlataComprometida(item.id));
         item.sobrante = { cuenta: sobranteCuenta, monto: ganancia }; // para devolverlo si se elimina el ingreso
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:uid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha,
@@ -1434,8 +1434,8 @@ function _cpConfirmarRecibir(){
   save();
   if(typeof refresh === 'function') refresh();
   closeSheet('cp-recibir');
-  _cpRenderLista();
-  _cpRecibirId = null;
+  _plataComprometidaRenderLista();
+  _plataComprometidaRecibirId = null;
 
   if(errores.length){
     toast('Recibido con errores menores en: '+errores.join(', '),'warn');
@@ -1450,8 +1450,8 @@ function _cpConfirmarRecibir(){
 };
 
 /* ── MARCAR PAGOS INDIVIDUALES ───────────────────────────────────── */
-function _cpMarcarPagos(id){
-  const item = _cpData().find(i=>i.id===id);
+function _plataComprometidaMarcarPagos(id){
+  const item = _plataComprometidaData().find(i=>i.id===id);
   if(!item || !(item.destinos||[]).length){
     toast('Este ingreso no tiene destinos para marcar','err'); return;
   }
@@ -1490,21 +1490,21 @@ function _cpMarcarPagos(id){
     }
   }
 
-  _cpMarcarId = id;
-  _cpMarcarTmp = JSON.parse(JSON.stringify(item.destinos));
+  _plataComprometidaMarcarId = id;
+  _plataComprometidaMarcarTmp = JSON.parse(JSON.stringify(item.destinos));
 
   const listEl = document.getElementById('cp-marcar-list');
-  if(listEl) _cpRenderMarcarList();
+  if(listEl) _plataComprometidaRenderMarcarList();
 
   if(typeof openSheet === 'function') openSheet('cp-marcar');
   else { const el=document.getElementById('sheet-cp-marcar'); if(el) el.classList.add('open'); }
 };
 
-function _cpRenderMarcarList(){
+function _plataComprometidaRenderMarcarList(){
   const listEl = document.getElementById('cp-marcar-list');
   if(!listEl) return;
-  listEl.innerHTML = (_cpMarcarTmp||[]).map((d,i)=>{
-    const ti = _CP_TIPO_LABELS[d.tipo]||_CP_TIPO_LABELS.otro;
+  listEl.innerHTML = (_plataComprometidaMarcarTmp||[]).map((d,i)=>{
+    const ti = _PLATA_COMPROMETIDA_TIPO_LABELS[d.tipo]||_PLATA_COMPROMETIDA_TIPO_LABELS.otro;
     const esReposicion = d.tipo === 'reposicion';
     const esAbono = d.tipo === 'abono_deuda';
     if(esAbono) return ''; // los abonos son plata que te llega, no hay nada que marcar como pagado
@@ -1533,22 +1533,22 @@ function _cpRenderMarcarList(){
   }).join('');
 }
 
-function _cpToggleMarcar(i, val){
-  if(!_cpMarcarTmp || !_cpMarcarTmp[i]) return;
-  const d = _cpMarcarTmp[i];
+function _plataComprometidaToggleMarcar(i, val){
+  if(!_plataComprometidaMarcarTmp || !_plataComprometidaMarcarTmp[i]) return;
+  const d = _plataComprometidaMarcarTmp[i];
   if(d.tipo === 'reposicion') d.yaSaque = val;
   else d.yaPague = val;
-  _cpRenderMarcarList();
+  _plataComprometidaRenderMarcarList();
 };
 
-function _cpGuardarMarcados(){
-  const id = _cpMarcarId;
-  const item = _cpData().find(i=>i.id===id);
+function _plataComprometidaGuardarMarcados(){
+  const id = _plataComprometidaMarcarId;
+  const item = _plataComprometidaData().find(i=>i.id===id);
   if(!item){ if(typeof closeSheet==='function') closeSheet('cp-marcar'); return; }
 
   // Saldo suficiente ANTES de tocar nada (todo o nada): suma por fuente lo que sale en las transiciones false→true.
   const _filasSalida = [];
-  (_cpMarcarTmp||[]).forEach((dNuevo,i)=>{
+  (_plataComprometidaMarcarTmp||[]).forEach((dNuevo,i)=>{
     const dViejo = item.destinos[i];
     if(dNuevo.tipo==='reposicion' && !dViejo.yaSaque && dNuevo.yaSaque){
       const f = dNuevo.cuentaId || item.cuentaDestino;
@@ -1562,7 +1562,7 @@ function _cpGuardarMarcados(){
   if(!_vSalida.ok){ toast(_vSalida.motivo, 'err', 3500); return; }
 
   // Detectar si alguna reposicion pasó de false→true (acaba de marcarla como "ya saqué")
-  (_cpMarcarTmp||[]).forEach((dNuevo,i)=>{
+  (_plataComprometidaMarcarTmp||[]).forEach((dNuevo,i)=>{
     const dViejo = item.destinos[i];
     if(dNuevo.tipo==='reposicion' && !dViejo.yaSaque && dNuevo.yaSaque){
       // Descontar el saldo ahora
@@ -1570,11 +1570,11 @@ function _cpGuardarMarcados(){
       if(cuentaId && typeof sumarFuente === 'function'){
         try {
           if(Fuente.esCajita(cuentaId)){
-            const cajId = cuentaId.split(':')[1];
-            const caj = (S.cajitas||[]).find(x=>x.id===cajId);
-            if(caj && typeof materializarIntereses === 'function') materializarIntereses(caj);
+            const cajitaId = cuentaId.split(':')[1];
+            const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
+            if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
           }
-          sumarFuente(cuentaId, -dNuevo.monto, _ogCp(dNuevo.id));
+          sumarFuente(cuentaId, -dNuevo.monto, _ogPlataComprometida(dNuevo.id));
           if(!S.movimientos) S.movimientos = [];
           S.movimientos.push({id:uid(),tipo:'salida',fuente:cuentaId,monto:dNuevo.monto,fecha:hoy(),desc:'Adelanto comprometido: '+dNuevo.desc});
           if(window.logCambio) logCambio('Adelantaste plata de '+fuenteTexto(cuentaId), fmt(dNuevo.monto)+' — será repuesto al llegar el ingreso', dNuevo.monto, 'gasto');
@@ -1582,14 +1582,14 @@ function _cpGuardarMarcados(){
       }
     }
     // Detectar si un gasto de cajita pasó de false→true (acaba de marcar "ya lo pagué")
-    // La plata ya estaba guardada en la cajita desde _cpConfirmarRecibir → ahora hay que descontarla
+    // La plata ya estaba guardada en la cajita desde _plataComprometidaConfirmarRecibir → ahora hay que descontarla
     if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='cajita' && dNuevo.gastoCajita && !dViejo.yaPague && dNuevo.yaPague){
       try {
-        const cajId2 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
-        const caj2 = cajId2 ? (S.cajitas||[]).find(x=>x.id===cajId2) : null;
-        if(caj2 && typeof materializarIntereses==='function') materializarIntereses(caj2);
-        if(typeof descontarFuente==='function') descontarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogCp(dNuevo.id));
-        else if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, -dNuevo.monto, _ogCp(dNuevo.id));
+        const cajitaId2 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
+        const cajita2 = cajitaId2 ? (S.cajitas||[]).find(x=>x.id===cajitaId2) : null;
+        if(cajita2 && typeof materializarIntereses==='function') materializarIntereses(cajita2);
+        if(typeof descontarFuente==='function') descontarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogPlataComprometida(dNuevo.id));
+        else if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, -dNuevo.monto, _ogPlataComprometida(dNuevo.id));
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:uid(), tipo:'salida', fuente:dNuevo.gastoCajita, monto:dNuevo.monto,
           fecha:hoy(), desc:'Pago: '+dNuevo.desc});
@@ -1599,10 +1599,10 @@ function _cpGuardarMarcados(){
     // Detectar si un gasto de cajita pasó de true→false (desmarcó — revertir el descuento)
     if(dNuevo.tipo==='gasto' && dNuevo.gastoOrigen==='cajita' && dNuevo.gastoCajita && dViejo.yaPague && !dNuevo.yaPague){
       try {
-        const cajId3 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
-        const caj3 = cajId3 ? (S.cajitas||[]).find(x=>x.id===cajId3) : null;
-        if(caj3 && typeof materializarIntereses==='function') materializarIntereses(caj3);
-        if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogCp(dNuevo.id, true));
+        const cajitaId3 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
+        const cajita3 = cajitaId3 ? (S.cajitas||[]).find(x=>x.id===cajitaId3) : null;
+        if(cajita3 && typeof materializarIntereses==='function') materializarIntereses(cajita3);
+        if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogPlataComprometida(dNuevo.id, true));
         if(S.movimientos) S.movimientos = S.movimientos.filter(m=>!(
           m.tipo==='salida' && m.fuente===dNuevo.gastoCajita && m.monto===dNuevo.monto &&
           (m.desc||'').startsWith('Pago: '+dNuevo.desc)
@@ -1641,17 +1641,17 @@ function _cpGuardarMarcados(){
     }
   });
 
-  item.destinos = JSON.parse(JSON.stringify(_cpMarcarTmp));
+  item.destinos = JSON.parse(JSON.stringify(_plataComprometidaMarcarTmp));
   save();
   if(typeof refresh === 'function') refresh();
   if(typeof closeSheet==='function') closeSheet('cp-marcar');
-  _cpRenderLista();
+  _plataComprometidaRenderLista();
   toast(html`Estados actualizados <i class="fa-solid fa-check"></i>`,'ok');
 };
 
 
-async function _cpEliminar(id){
-  const item = _cpData().find(i=>i.id===id);
+async function _plataComprometidaEliminar(id){
+  const item = _plataComprometidaData().find(i=>i.id===id);
   if(!item) return;
 
   // ── Calcular efectos secundarios que se revertirán ───────────────
@@ -1740,7 +1740,7 @@ async function _cpEliminar(id){
   // ── Revertir efectos secundarios ─────────────────────────────────
   try {
     if(yaRecibido){
-      // El ingreso ya se distribuyó: revertir todos los movimientos generados en _cpConfirmarRecibir
+      // El ingreso ya se distribuyó: revertir todos los movimientos generados en _plataComprometidaConfirmarRecibir
       // 1) Revertir entradas en S.movimientos que fueron creadas por este ingreso comprometido
       //    Identificamos los movimientos por su desc que contiene el nombre del item.
       //    Usamos la bandera _esReposicionCP para los de reposición,
@@ -1771,10 +1771,10 @@ async function _cpEliminar(id){
             const cuenta = d.cuentaId || item.cuentaDestino;
             if(cuenta && typeof descontarFuente==='function'){
               if(Fuente.esCajita(cuenta)){
-                const caj=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
-                if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+                const cajita=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
+                if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
               }
-              descontarFuente(cuenta, d.monto, _ogCp(d.id, true));
+              descontarFuente(cuenta, d.monto, _ogPlataComprometida(d.id, true));
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='tc' && d.gastoTcId){
             // Revertir deuda y compra de TC generada al recibir
@@ -1785,20 +1785,20 @@ async function _cpEliminar(id){
               // También revertir la cajita a la que se movió la plata para pagar TC
               if(d.gastoTcCajita && typeof descontarFuente==='function'){
                 if(Fuente.esCajita(d.gastoTcCajita)){
-                  const caj=(S.cajitas||[]).find(x=>x.id===d.gastoTcCajita.split(':')[1]);
-                  if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+                  const cajita=(S.cajitas||[]).find(x=>x.id===d.gastoTcCajita.split(':')[1]);
+                  if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
                 }
-                descontarFuente(d.gastoTcCajita, d.monto, _ogCp(d.id, true));
+                descontarFuente(d.gastoTcCajita, d.monto, _ogPlataComprometida(d.id, true));
               }
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='cajita' && d.gastoCajita){
             // Revertir la reposición del gasto de cajita
             if(typeof descontarFuente==='function'){
               if(Fuente.esCajita(d.gastoCajita)){
-                const caj=(S.cajitas||[]).find(x=>x.id===d.gastoCajita.split(':')[1]);
-                if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+                const cajita=(S.cajitas||[]).find(x=>x.id===d.gastoCajita.split(':')[1]);
+                if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
               }
-              descontarFuente(d.gastoCajita, d.monto, _ogCp(d.id, true));
+              descontarFuente(d.gastoCajita, d.monto, _ogPlataComprometida(d.id, true));
             }
           }
         } catch(e){ console.warn('[CP] Error revirtiendo destino al eliminar:', e); }
@@ -1810,13 +1810,13 @@ async function _cpEliminar(id){
           if(d.tipo==='reposicion' && d.yaSaque){
             const cuenta = d.cuentaId || item.cuentaDestino;
             if(cuenta){
-              sumarFuente(cuenta, d.monto, _ogCp(d.id, true));
+              sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id, true));
               if(S.movimientos) S.movimientos = S.movimientos.filter(m => !(
                 m.tipo==='salida' && m.fuente===cuenta && m.monto===d.monto && (m.desc||'').includes(d.desc||item.desc)
               ));
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='cajita' && d.gastoCajita && d.yaPague){
-            sumarFuente(d.gastoCajita, d.monto, _ogCp(d.id, true));
+            sumarFuente(d.gastoCajita, d.monto, _ogPlataComprometida(d.id, true));
             if(S.movimientos) S.movimientos = S.movimientos.filter(m => !(
               m.tipo==='salida' && m.fuente===d.gastoCajita && m.monto===d.monto && (m.desc||'').startsWith('Pago: '+d.desc)
             ));
@@ -1824,7 +1824,7 @@ async function _cpEliminar(id){
         } catch(e){ console.warn('[CP] Error revirtiendo adelanto/pago al eliminar:', e); }
       });
       if(item.sobrante && item.sobrante.cuenta && item.sobrante.monto){
-        try { descontarFuente(item.sobrante.cuenta, item.sobrante.monto, _ogCp(item.id, true)); }
+        try { descontarFuente(item.sobrante.cuenta, item.sobrante.monto, _ogPlataComprometida(item.id, true)); }
         catch(e){ console.warn('[CP] Error revirtiendo el sobrante al eliminar:', e); }
       }
     } else {
@@ -1835,11 +1835,11 @@ async function _cpEliminar(id){
             const cuenta = d.cuentaId || item.cuentaDestino;
             if(cuenta && typeof sumarFuente==='function'){
               if(Fuente.esCajita(cuenta)){
-                const caj=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
-                if(caj && typeof materializarIntereses==='function') materializarIntereses(caj);
+                const cajita=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
+                if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
               }
               // Revertir el descuento que se hizo al adelantar (devolver la plata a la cajita)
-              sumarFuente(cuenta, d.monto, _ogCp(d.id, true));
+              sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id, true));
               // Quitar el movimiento de salida generado por el adelanto
               if(S.movimientos){
                 S.movimientos = S.movimientos.filter(m => !(
@@ -1866,7 +1866,7 @@ async function _cpEliminar(id){
   S.plataComprometida = S.plataComprometida.filter(i=>i.id!==id);
   save();
   if(typeof refresh==='function') refresh();
-  _cpRenderLista();
+  _plataComprometidaRenderLista();
   toast(html`Ingreso eliminado y efectos revertidos <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="cp-svg-warn"><polyline points="20 6 9 17 4 12"/></svg>`,'ok');
 };
 
@@ -1882,7 +1882,7 @@ async function _cpEliminar(id){
 (function(){
   Ui.en('atencion', function(){
     // Agregar alertas de plata que llega pronto o ya llegó
-    const items = _cpData ? _cpData() : [];
+    const items = _plataComprometidaData ? _plataComprometidaData() : [];
     const list = document.getElementById('s-attn-list');
     const sec  = document.getElementById('s-attn-section');
     if(!list || !sec) return;
@@ -1904,7 +1904,7 @@ async function _cpEliminar(id){
         chip.style.marginBottom='7px';
         chip.style.cursor='pointer';
         chip.innerHTML = html`<div class="cp-aviso-amber">${txt}</div>`;
-        chip.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
+        chip.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_plataComprometidaRenderLista,100); };
         list.appendChild(chip);
       }
     });
@@ -1916,10 +1916,10 @@ async function _cpEliminar(id){
       ).forEach(d => {
         const diasG = Fecha.diasEntre(hoyStr, d.fechaPago);
         let txtG = '', tipoG = '';
-        const cajLabelG = fuenteTexto(d.gastoCajita);
-        if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='red'; }
+        const cajitaLabelG = fuenteTexto(d.gastoCajita);
+        if(diasG < 0){ txtG = html`Vencido: "${d.desc}" de "${item.desc}" debía pagarse el ${d.fechaPago} — tienes ${fmt(d.monto)} en ${cajitaLabelG}`; tipoG='red'; }
         else if(diasG === 0){ txtG = html`¡Hoy hay que pagar "${d.desc}"! Tienes ${fmt(d.monto)} guardado`; tipoG='amber'; }
-        else if(diasG === 1){ txtG = html`Mañana vence "${d.desc}" — tienes ${fmt(d.monto)} en ${cajLabelG}`; tipoG='amber'; }
+        else if(diasG === 1){ txtG = html`Mañana vence "${d.desc}" — tienes ${fmt(d.monto)} en ${cajitaLabelG}`; tipoG='amber'; }
         else if(diasG <= 3){ txtG = html`En ${diasG} días vence "${d.desc}" (${d.fechaPago}) — tienes ${fmt(d.monto)} guardado`; tipoG='amber'; }
         if(txtG){
           sec.style.display = '';
@@ -1929,7 +1929,7 @@ async function _cpEliminar(id){
           chipG.style.cursor='pointer';
           chipG.style.borderColor = tipoG==='red' ? 'rgba(240,104,104,.4)' : '';
           chipG.innerHTML = html`<div class="cp-fs12 cp-c-${raw(tipoG)}">${txtG}</div>`;
-          chipG.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_cpRenderLista,100); };
+          chipG.onclick = ()=>{ if(typeof showScreen==='function') showScreen('comprometida'); setTimeout(_plataComprometidaRenderLista,100); };
           list.appendChild(chipG);
         }
       });
@@ -1938,7 +1938,7 @@ async function _cpEliminar(id){
 })();
 
 /* ── INTEGRACIÓN: swipe/sheet handle para los nuevos sheets ─────── */
-function _cpInitSwipe(){
+function _plataComprometidaInitSwipe(){
   // Usa la función unificada _makeSheetSwipeable (sección 7)
   ['cp-nuevo','cp-destino','cp-recibir'].forEach(sheetId=>{
     const overlay = document.getElementById('sheet-'+sheetId);
@@ -1949,11 +1949,11 @@ function _cpInitSwipe(){
 }
 
 /* ── INICIALIZAR ─────────────────────────────────────────────────── */
-function _cpInit(){
+function _plataComprometidaInit(){
   _injectScreen();
   _injectMasItem();
   _injectSheet();
-  _cpInitSwipe();
+  _plataComprometidaInitSwipe();
 
   // El acceso a Plata comprometida está en el menú Más (#mas-comprometida).
   // El listener se conecta en _injectMasItem() al inyectar el ítem.
@@ -1961,7 +1961,7 @@ function _cpInit(){
   // Actualizar input de balance en tiempo real cuando cambia el monto total
   const montoInput = document.getElementById('cp-monto-total');
   if(montoInput){
-    montoInput.addEventListener('input', ()=>_cpRenderDestinosTmp());
+    montoInput.addEventListener('input', ()=>_plataComprometidaRenderDestinosTmp());
   }
 
   // Select oculto de tipo de destino: por defensividad, si algo llega a
@@ -1983,15 +1983,15 @@ function _cpInit(){
   // Render cuando se navega a la pantalla (via click en cualquier parte del DOM)
   document.addEventListener('click', e=>{
     const target = e.target.closest('[data-screen="comprometida"], #mas-comprometida');
-    if(target) setTimeout(_cpRenderLista, 100);
+    if(target) setTimeout(_plataComprometidaRenderLista, 100);
   });
 
   // Integrar con refresh global para mantener stats actualizados (Refresh.registrar, js/core/refresh.js).
   //
-  Refresh.registrar('comprometida-lista', function(){ _cpRenderLista(); }, { pantalla: 'comprometida' }); // solo con la pantalla activa
+  Refresh.registrar('comprometida-lista', function(){ _plataComprometidaRenderLista(); }, { pantalla: 'comprometida' }); // solo con la pantalla activa
 
   // Render inicial si hay datos
-  if(window.S && (window.S.plataComprometida||[]).length) _cpRenderLista();
+  if(window.S && (window.S.plataComprometida||[]).length) _plataComprometidaRenderLista();
 }
 
 /* ── EVENTOS: registrar acciones en el despachador central ─────────
@@ -1999,40 +1999,40 @@ function _cpInit(){
    inline que tenía este módulo (27 en total: 26 onclick + 1 onchange
    sobre un <select> oculto que en la práctica nunca se disparaba). */
 Events.registerAll('cp', {
-  abrirNuevo:       _cpAbrirNuevo,
-  abrirEditar:      _cpAbrirEditar,
-  cancelarSheet:    _cpCancelSheet,
-  guardar:          _cpGuardar,
-  agregarDestino:   _cpAgregarDestino,
+  abrirNuevo:       _plataComprometidaAbrirNuevo,
+  abrirEditar:      _plataComprometidaAbrirEditar,
+  cancelarSheet:    _plataComprometidaCancelSheet,
+  guardar:          _plataComprometidaGuardar,
+  agregarDestino:   _plataComprometidaAgregarDestino,
   dSetTipo:         _cpdSetTipo,
   dSetGastoOrigen:  _cpdSetGastoOrigen,
   dSetYaSaque:      _cpdSetYaSaque,
   dSetYaPague:      _cpdSetYaPague,
   dConfirmar:       _cpdConfirmar,
-  quitarDestino:    _cpQuitarDestino,
-  abrirRecibir:     _cpAbrirRecibir,
-  confirmarRecibir: _cpConfirmarRecibir,
-  marcarPagos:      _cpMarcarPagos,
-  guardarMarcados:  _cpGuardarMarcados,
-  toggleMarcar:     _cpToggleMarcar,
-  eliminar:         _cpEliminar,
+  quitarDestino:    _plataComprometidaQuitarDestino,
+  abrirRecibir:     _plataComprometidaAbrirRecibir,
+  confirmarRecibir: _plataComprometidaConfirmarRecibir,
+  marcarPagos:      _plataComprometidaMarcarPagos,
+  guardarMarcados:  _plataComprometidaGuardarMarcados,
+  toggleMarcar:     _plataComprometidaToggleMarcar,
+  eliminar:         _plataComprometidaEliminar,
   // Cierre del sheet dinámico "cp-marcar" — no tenía addEventListener
-  // propio (se crea después de que _cpInit ya conectó los data-close-sheet
+  // propio (se crea después de que _plataComprometidaInit ya conectó los data-close-sheet
   // estáticos), así que antes dependía por completo del onclick inline.
   cerrarMarcar:     ()=>{ if(typeof closeSheet==='function') closeSheet('cp-marcar'); },
 });
 
 // Arrancar: esperar a que la app esté lista
 if(document.readyState === 'loading'){
-  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_cpInit, 400));
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(_plataComprometidaInit, 400));
 } else {
-  setTimeout(_cpInit, 400);
+  setTimeout(_plataComprometidaInit, 400);
 }
 
 // Arrancar también cuando Firebase termina de cargar los datos.
 // Usamos el evento 'appDataLoaded' en lugar de sobrescribir window._fbLoadData,
 // porque este script es inline y se ejecuta ANTES que los módulos (type="module"),
 // por lo que cualquier wrapper sobre _fbLoadData quedaría sobreescrito por el módulo.
-window.addEventListener('appDataLoaded', function(){ setTimeout(_cpInit, 800); });
+window.addEventListener('appDataLoaded', function(){ setTimeout(_plataComprometidaInit, 800); });
 
 })();

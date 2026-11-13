@@ -95,7 +95,7 @@ const Loader = (function () {
     // pasa a ser lazy de verdad, y los 3 puntos en spotify.js (más 2 en
     // movimientos.js: tcEliminarCompraInterna/tcEliminarPagoInterna) ya esperan
     // Loader.ensure('tarjetas') antes de usar esas funciones — ver
-    // js/modules/spotify.js (_spEnsureTC) y js/core/movimientos.js.
+    // js/modules/spotify.js (_spotifyEnsureTC) y js/core/movimientos.js.
     // #screen-tarjetas y #mas-tarjetas ya eran HTML estático (mismo caso que
     // Mesada/Configuración). Sí requirió 2 cambios reales dentro del propio
     // archivo (ver su header): el wiring de botones que esperaba
@@ -231,7 +231,7 @@ const Loader = (function () {
   //     hasta que el usuario visite esa pantalla a mano.
   // "Necesita atención" en sí NO depende de ningún módulo lazy: las 6
   // funciones que usa (getDeudorSaldo, getMesadaData, _mesNombreDeKey,
-  // tcCupoUsadoPct, spNombreDe, spPersonaPagadaVigente) viven en
+  // tcCupoUsadoPct, spotifyNombreDe, spotifyPersonaPagadaVigente) viven en
   // js/core/calc-helpers.js, que carga de entrada.
   // Se decidió explícitamente NO forzar la carga desde dentro de inicio.js
   // (eso reintroduciría el problema que la modularización por pantalla

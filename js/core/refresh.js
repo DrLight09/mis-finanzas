@@ -103,7 +103,7 @@ function _refreshNucleo(){
   // cuenta que usan el historial, la gráfica de Análisis, la Proyección y Salud. Así el hero no puede desalinearse de ellos
   // (antes tenía su propia fórmula y no restaba «Yo debo»). `visible` = sin Alcancía, que se oculta para mantener la sorpresa.
   const _pat=calcPatrimonioDesglose();
-  const _alcSaldo=_pat.alcancia;
+  const _alcanciaSaldo=_pat.alcancia;
   const _patrimonioVisible=_pat.visible;
   // Red de seguridad (2026-09-26): fmt()/fmtNoCents() hacen `n||0`, así que un
   // NaN acá se mostraría como "$0" silencioso, indistinguible de un patrimonio
@@ -124,14 +124,14 @@ function _refreshNucleo(){
   // label, alternar su visibility no reserva ni desplaza nada — cero CLS sin
   // el hueco vacío permanente que tenía la versión anterior (bloque con
   // padding/borde debajo, ver historial de este archivo).
-  const _heroAlcBadge = document.getElementById('hero-alcancia-badge');
+  const _heroAlcanciaBadge = document.getElementById('hero-alcancia-badge');
   const _heroLabel    = document.getElementById('hero-patrimonio-label');
-  if(_heroAlcBadge){
-    if(_alcSaldo > 0){
-      _heroAlcBadge.style.visibility = 'visible';
+  if(_heroAlcanciaBadge){
+    if(_alcanciaSaldo > 0){
+      _heroAlcanciaBadge.style.visibility = 'visible';
       if(_heroLabel) _heroLabel.textContent = 'Patrimonio visible';
     } else {
-      _heroAlcBadge.style.visibility = 'hidden';
+      _heroAlcanciaBadge.style.visibility = 'hidden';
       if(_heroLabel) _heroLabel.textContent = 'Patrimonio total';
     }
   }

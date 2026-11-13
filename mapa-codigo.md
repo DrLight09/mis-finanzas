@@ -110,7 +110,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `mesadaOrigenDeMovEncargo`, `spNombreDe`, `spPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
+**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `mesadaOrigenDeMovEncargo`, `spotifyNombreDe`, `spotifyPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
 
 ### `js/core/cierre.js`
 
@@ -294,7 +294,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_saldoCPAjeno`, `_saldoEncargosEnCuenta`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `diaCreacionMov`, `medirPatrimonioParaHistorial`, `patrimonioFormulaTexto`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `snapshotPatrimonio`
+**Funciones:** `_actualizarCierresPatrimonio`, `_ajusteAlcanciaPorFecha`, `_ajusteDeudasSinCuentaPorFecha`, `_movsDeudaSinCuenta`, `_patrimonioDependenciasListas`, `_saldoEncargosEnCuenta`, `_saldoPlataComprometidaAjeno`, `calcBienes`, `calcDeudaAjenaDeTarjeta`, `calcDeudaTcPropia`, `calcDeudaTcPropiaDeTarjeta`, `calcLiquidez`, `calcPatrimonioConBienes`, `calcPatrimonioDesglose`, `calcPatrimonioTotal`, `calcPatrimonioVisible`, `calcSaldoInicialPendiente`, `calcValorBien`, `diaCreacionMov`, `medirPatrimonioParaHistorial`, `patrimonioFormulaTexto`, `purgarAperturaDelHistorial`, `purgarEfectoEnHistorial`, `quitarDeHistorial`, `recalcularMontoBaseHistorial`, `snapshotPatrimonio`
 
 **Globales:** `ME_DEBEN_ABRE`
 
@@ -444,7 +444,7 @@ Carga: lazy — grupo `historial`
 
 Carga: lazy — grupo `alcancia`
 
-**Funciones:** `_actualizarDiferenciaHint`, `_alcanciaEjecutarEliminarDeposito`, `_alcanciaInit`, `_alcanciaToggleDesglose`, `_alcDecode`, `_alcDesgloseHtml`, `_alcDeudorSaldoHintActualizar`, `_alcDeudorSelActualizar`, `_alcEncode`, `_alcMejorCiclo`, `_alcNombreFuente`, `_alcOrigenActualizar`, `_alcOrigenOptsHtml`, `_alcParteDesdeValor`, `_alcQuitarMirrorCuenta`, `_alcRachaAhorro`, `_alcSplitPreview`, `_alcWrappedBarrasSvg`, `_alcWrappedProgresoHtml`, `_diasDesde`, `_fmtTiempo`, `_getA`, `_getMoneyVal`, `_getSaldoOfuscado`, `_initA`, `_inyectarAlcanciaSheets`, `_inyectarMasMenuItem`, `_saldoRegistrado`, `_setSaldoOfuscado`, `_sumarASaldo`, `closeSwipeSheet`
+**Funciones:** `_actualizarDiferenciaHint`, `_alcanciaDecode`, `_alcanciaDesgloseHtml`, `_alcanciaDeudorSaldoHintActualizar`, `_alcanciaDeudorSelActualizar`, `_alcanciaEjecutarEliminarDeposito`, `_alcanciaEncode`, `_alcanciaInit`, `_alcanciaMejorCiclo`, `_alcanciaNombreFuente`, `_alcanciaOrigenActualizar`, `_alcanciaOrigenOptsHtml`, `_alcanciaParteDesdeValor`, `_alcanciaQuitarMirrorCuenta`, `_alcanciaRachaAhorro`, `_alcanciaSplitPreview`, `_alcanciaToggleDesglose`, `_alcanciaWrappedBarrasSvg`, `_alcanciaWrappedProgresoHtml`, `_diasDesde`, `_fmtTiempo`, `_getA`, `_getMoneyVal`, `_getSaldoOfuscado`, `_initA`, `_inyectarAlcanciaSheets`, `_inyectarMasMenuItem`, `_saldoRegistrado`, `_setSaldoOfuscado`, `_sumarASaldo`, `closeSwipeSheet`
 
 **Asigna a `window`:** `_alcanciaQuitarPorCobroDeuda`, `alcanciaAgregarOrigen`, `alcanciaConfirmarDeposito`, `alcanciaConfirmarDestapar`, `alcanciaEliminarDeposito`, `alcanciaIniciarNueva`, `alcanciaToggleDividir`, `alcanciaToggleMontoDeposito`, `renderAlcancia`
 
@@ -472,7 +472,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: lazy — grupo `encargos`
 
-**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_ctcActualizarCuentaEncHint`, `_ctcActualizarDestinoHint`, `_ctcActualizarPreview`, `_ctcMiAgregarRow`, `_ctcMiSplitToggle`, `_difMiSplitPreview`, `_difRenderHistorialParte`, `_encDetallePartes`, `_encDetallePersona`, `_encGrupoSplit`, `_encPicker`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_irAEncargo`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_movEncActualizarFaltante`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_moverEncGetFuentesOptions`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_pintarEncargoDetalle`, `_pintarEncargosList`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteFuentePreview`, `_usarParteFuentes`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
+**Funciones:** `_actualizarMovEncCuentaHint`, `_actualizarMoverEncDestinoHint`, `_actualizarMoverEncOrigenHint`, `_actualizarMoverEncPreview`, `_actualizarPartePreview`, `_actualizarTransfEncPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_compraConTcActualizarCuentaEncHint`, `_compraConTcActualizarDestinoHint`, `_compraConTcActualizarPreview`, `_compraConTcMiAgregarRow`, `_compraConTcMiSplitToggle`, `_confirmarMoverEncCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_diferencialMiSplitPreview`, `_diferencialRenderHistorialParte`, `_encDetallePartes`, `_encDetallePersona`, `_encGrupoSplit`, `_encPicker`, `_encSplitCarrier`, `_encSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_irAEncargo`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_movEncActualizarFaltante`, `_movEncConfirmarPrestarFaltante`, `_movEncFaltanteCuentaHint`, `_movEncMiaPreview`, `_movEncMiaToggle`, `_movEncSplitPreview`, `_moverEncGetFuentesOptions`, `_moverEncSplitPreview`, `_moverEncSplitToggle`, `_pintarEncargoDetalle`, `_pintarEncargosList`, `_procesarDiferencial`, `_procesarMovEncMia`, `_salidaEncMenuIr`, `_usarParteFuentePreview`, `_usarParteFuentes`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_validarMovEncMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMovEncargo`, `abrirMoverEntreCuentasEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMovEncargo`, `confirmarMoverEncCuentas`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
 
 ### `js/modules/gastos.js`
 
@@ -492,7 +492,7 @@ Carga: de entrada (defer)
 
 Carga: lazy — grupo `mesada`
 
-**Funciones:** `_crearEncargoPicker`, `_htmlMesDot`, `_mesadaAnioDeKey`, `_mesadaApiEncargos`, `_mesadaAplicarEntrada`, `_mesadaCrearSalidaEncargo`, `_mesadaEntrar`, `_mesadaMostrarError`, `_mesadaNombreCoincide`, `_mesadaQuitarSalidaEncargo`, `_mesadaSacar`, `_mesadaSumaSplits`, `_mesadaValidarEncargo`, `_msCablear`, `_msEl`, `_msFilaClickeable`, `_msOn`, `_msVal`, `_normTxt`, `_poblarDestinoMesada`, `_previewDisponible`, `_previewSplit`, `_syncMpDebeWrap`, `abrirDetalleMesada`, `abrirRegistrarMesada`, `abrirResolverPendiente`, `actualizarMpAvisoMes`, `actualizarMppPreview`, `actualizarMpPreview`, `cambiarAnio`, `clickMesDot`, `confirmarMesadaPago`, `confirmarPendienteMesada`, `deshacerPendienteMesada`, `eliminarMesadaPago`, `marcarMesadaComoPendiente`, `mesadaAbonarPendiente`, `mesadaAbonosDe`, `mesadaAvisoMesPago`, `mesadaBorrarPago`, `mesadaCuentasDeEncargo`, `mesadaCuotaDeKey`, `mesadaDeshacerAbono`, `mesadaDisponibleEncargo`, `mesadaEncargosDelParent`, `mesadaEstadoMes`, `mesadaFuentesDe`, `mesadaMarcarPendiente`, `mesadaMesVencido`, `mesadaNombrePadre`, `mesadaOpsPosteriores`, `mesadaRegistrarPago`, `mesadaResumenAnio`, `mesadaRevertirAbono`, `mesadaTieneCuentaAfectada`, `renderMesada`
+**Funciones:** `_crearEncargoPicker`, `_htmlMesDot`, `_mesadaAnioDeKey`, `_mesadaApiEncargos`, `_mesadaAplicarEntrada`, `_mesadaCrearSalidaEncargo`, `_mesadaEntrar`, `_mesadaMostrarError`, `_mesadaNombreCoincide`, `_mesadaQuitarSalidaEncargo`, `_mesadaSacar`, `_mesadaSumaSplits`, `_mesadaValidarEncargo`, `_msCablear`, `_msEl`, `_msFilaClickeable`, `_msOn`, `_msVal`, `_normTxt`, `_poblarDestinoMesada`, `_previewDisponible`, `_previewSplit`, `_syncMpDebeWrap`, `abrirDetalleMesada`, `abrirRegistrarMesada`, `abrirResolverPendiente`, `actualizarMesadaPagoPendientePreview`, `actualizarMpAvisoMes`, `actualizarMpPreview`, `cambiarAnio`, `clickMesDot`, `confirmarMesadaPago`, `confirmarPendienteMesada`, `deshacerPendienteMesada`, `eliminarMesadaPago`, `marcarMesadaComoPendiente`, `mesadaAbonarPendiente`, `mesadaAbonosDe`, `mesadaAvisoMesPago`, `mesadaBorrarPago`, `mesadaCuentasDeEncargo`, `mesadaCuotaDeKey`, `mesadaDeshacerAbono`, `mesadaDisponibleEncargo`, `mesadaEncargosDelParent`, `mesadaEstadoMes`, `mesadaFuentesDe`, `mesadaMarcarPendiente`, `mesadaMesVencido`, `mesadaNombrePadre`, `mesadaOpsPosteriores`, `mesadaRegistrarPago`, `mesadaResumenAnio`, `mesadaRevertirAbono`, `mesadaTieneCuentaAfectada`, `renderMesada`
 
 **Globales:** `MESADA_PADRES`
 
@@ -514,7 +514,7 @@ Carga: de entrada (defer)
 
 Carga: lazy — grupo `comprometida`
 
-**Funciones:** `_cpAbrirEditar`, `_cpAbrirNuevo`, `_cpAbrirRecibir`, `_cpAgregarDestino`, `_cpCancelSheet`, `_cpConfirmarRecibir`, `_cpData`, `_cpdConfirmar`, `_cpDiasHastaStr`, `_cpdPoblarGastoSelectores`, `_cpdRepoblarFuentes`, `_cpdSetGastoOrigen`, `_cpdSetTipo`, `_cpdSetYaPague`, `_cpdSetYaSaque`, `_cpdTipoChange`, `_cpEliminar`, `_cpGuardar`, `_cpGuardarMarcados`, `_cpInit`, `_cpInitSwipe`, `_cpMarcarPagos`, `_cpPoblarCuentas`, `_cpPoblarPersonas`, `_cpPoblarTC`, `_cpQuitarDestino`, `_cpRenderDestinosTmp`, `_cpRenderLista`, `_cpRenderMarcarList`, `_cpToggleMarcar`, `_injectMasItem`, `_injectScreen`, `_injectSheet`
+**Funciones:** `_cpdConfirmar`, `_cpdPoblarGastoSelectores`, `_cpdRepoblarFuentes`, `_cpdSetGastoOrigen`, `_cpdSetTipo`, `_cpdSetYaPague`, `_cpdSetYaSaque`, `_cpdTipoChange`, `_injectMasItem`, `_injectScreen`, `_injectSheet`, `_plataComprometidaAbrirEditar`, `_plataComprometidaAbrirNuevo`, `_plataComprometidaAbrirRecibir`, `_plataComprometidaAgregarDestino`, `_plataComprometidaCancelSheet`, `_plataComprometidaConfirmarRecibir`, `_plataComprometidaData`, `_plataComprometidaDiasHastaStr`, `_plataComprometidaEliminar`, `_plataComprometidaGuardar`, `_plataComprometidaGuardarMarcados`, `_plataComprometidaInit`, `_plataComprometidaInitSwipe`, `_plataComprometidaMarcarPagos`, `_plataComprometidaPoblarCuentas`, `_plataComprometidaPoblarPersonas`, `_plataComprometidaPoblarTC`, `_plataComprometidaQuitarDestino`, `_plataComprometidaRenderDestinosTmp`, `_plataComprometidaRenderLista`, `_plataComprometidaRenderMarcarList`, `_plataComprometidaToggleMarcar`
 
 ### `js/modules/prestado.js`
 
@@ -530,9 +530,9 @@ Carga: lazy — grupo `prestamos`
 
 Carga: lazy — grupo `spotify`
 
-**Funciones:** `_borrarSpHistorial`, `_spEditPicker`, `_spEnsureTC`, `_spExtraOpts`, `_spPicker`, `_spPintarAvatares`, `_spProporcionarSplits`, `_syncSpDebeWrap`, `_syncSpExtraWrap`, `abrirElegirFuenteSpotify`, `abrirPagarSpotify`, `actualizarSpDestinoPreview`, `actualizarSpPagarPreview`, `actualizarSpResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpDestino`, `confirmarSpResolverPendiente`, `deleteSpHistorial`, `deleteSpotify`, `deshacerAbonoPendienteSp`, `editarSpotify`, `getSpFuente`, `getSpFuenteSaldo`, `guardarEditarSpotify`, `guardarFuenteSpotify`, `marcarPagoSpotify`, `openSheet_pagarSpotify`, `renderSpHistorial`, `renderSpotify`, `renderSpStats`, `resolverPendienteSpHistorial`, `selSpMeses`, `spAsignarPeriodos`, `spCicloCobrosActual`, `spCobradoDePersona`, `spCostoValido`, `spMontoAntesDe`, `spPeriodosVencidos`, `spResumenCicloActual`, `spSumarDias`, `spTramosDeCobro`
+**Funciones:** `_borrarSpotifyHistorial`, `_spotifyEditPicker`, `_spotifyEnsureTC`, `_spotifyExtraOpts`, `_spotifyPicker`, `_spotifyPintarAvatares`, `_spotifyProporcionarSplits`, `_syncSpotifyDebeWrap`, `_syncSpotifyExtraWrap`, `abrirElegirFuenteSpotify`, `abrirPagarSpotify`, `actualizarSpotifyDestinoPreview`, `actualizarSpotifyPagarPreview`, `actualizarSpotifyResolverPreview`, `addSpotify`, `confirmarPagarSpotify`, `confirmarSpotifyDestino`, `confirmarSpotifyResolverPendiente`, `deleteSpotify`, `deleteSpotifyHistorial`, `deshacerAbonoPendienteSpotify`, `editarSpotify`, `getSpotifyFuente`, `getSpotifyFuenteSaldo`, `guardarEditarSpotify`, `guardarFuenteSpotify`, `marcarPagoSpotify`, `openSheet_pagarSpotify`, `renderSpotify`, `renderSpotifyHistorial`, `renderSpotifyStats`, `resolverPendienteSpotifyHistorial`, `selSpotifyMeses`, `spotifyAsignarPeriodos`, `spotifyCicloCobrosActual`, `spotifyCobradoDePersona`, `spotifyCostoValido`, `spotifyMontoAntesDe`, `spotifyPeriodosVencidos`, `spotifyResumenCicloActual`, `spotifySumarDias`, `spotifyTramosDeCobro`
 
-**Globales:** `SP_EMPATE_PERIODOS`, `SP_PERIODO_DIAS`
+**Globales:** `SPOTIFY_EMPATE_PERIODOS`, `SPOTIFY_PERIODO_DIAS`
 
 ### `js/modules/tarjetas-credito.js`
 
@@ -596,25 +596,25 @@ Ninguno.
 | `_ahorroActualId` | `js/modules/nu.js` |
 | `_ajusteAlcanciaPorFecha` | `js/core/patrimonio.js` |
 | `_ajusteDeudasSinCuentaPorFecha` | `js/core/patrimonio.js` |
+| `_alcanciaDecode` | `js/modules/alcancia.js` |
+| `_alcanciaDesgloseHtml` | `js/modules/alcancia.js` |
+| `_alcanciaDeudorSaldoHintActualizar` | `js/modules/alcancia.js` |
+| `_alcanciaDeudorSelActualizar` | `js/modules/alcancia.js` |
 | `_alcanciaEjecutarEliminarDeposito` | `js/modules/alcancia.js` |
+| `_alcanciaEncode` | `js/modules/alcancia.js` |
 | `_alcanciaInit` | `js/modules/alcancia.js` |
+| `_alcanciaMejorCiclo` | `js/modules/alcancia.js` |
+| `_alcanciaNombreFuente` | `js/modules/alcancia.js` |
+| `_alcanciaOrigenActualizar` | `js/modules/alcancia.js` |
+| `_alcanciaOrigenOptsHtml` | `js/modules/alcancia.js` |
+| `_alcanciaParteDesdeValor` | `js/modules/alcancia.js` |
+| `_alcanciaQuitarMirrorCuenta` | `js/modules/alcancia.js` |
 | `_alcanciaQuitarPorCobroDeuda` | `js/modules/alcancia.js` (window._alcanciaQuitarPorCobroDeuda = …) |
+| `_alcanciaRachaAhorro` | `js/modules/alcancia.js` |
+| `_alcanciaSplitPreview` | `js/modules/alcancia.js` |
 | `_alcanciaToggleDesglose` | `js/modules/alcancia.js` |
-| `_alcDecode` | `js/modules/alcancia.js` |
-| `_alcDesgloseHtml` | `js/modules/alcancia.js` |
-| `_alcDeudorSaldoHintActualizar` | `js/modules/alcancia.js` |
-| `_alcDeudorSelActualizar` | `js/modules/alcancia.js` |
-| `_alcEncode` | `js/modules/alcancia.js` |
-| `_alcMejorCiclo` | `js/modules/alcancia.js` |
-| `_alcNombreFuente` | `js/modules/alcancia.js` |
-| `_alcOrigenActualizar` | `js/modules/alcancia.js` |
-| `_alcOrigenOptsHtml` | `js/modules/alcancia.js` |
-| `_alcParteDesdeValor` | `js/modules/alcancia.js` |
-| `_alcQuitarMirrorCuenta` | `js/modules/alcancia.js` |
-| `_alcRachaAhorro` | `js/modules/alcancia.js` |
-| `_alcSplitPreview` | `js/modules/alcancia.js` |
-| `_alcWrappedBarrasSvg` | `js/modules/alcancia.js` |
-| `_alcWrappedProgresoHtml` | `js/modules/alcancia.js` |
+| `_alcanciaWrappedBarrasSvg` | `js/modules/alcancia.js` |
+| `_alcanciaWrappedProgresoHtml` | `js/modules/alcancia.js` |
 | `_aperturaToggleUI` | `js/modules/cuentas.js` |
 | `_aplicarAbonoEncargo` | `js/modules/prestado.js` |
 | `_aplicarAbonoNormal` | `js/modules/prestado.js` |
@@ -629,7 +629,7 @@ Ninguno.
 | `_balancePromedioReciente` | `js/modules/inicio.js` |
 | `_bienPoblar` | `js/modules/gastos.js` |
 | `_bindInputsAS` | `js/core/eventos-base.js` |
-| `_borrarSpHistorial` | `js/modules/spotify.js` |
+| `_borrarSpotifyHistorial` | `js/modules/spotify.js` |
 | `_buildFuentesOpts` | `js/core/cuentas-fuentes.js` |
 | `_cajitaDetDelete` | `js/modules/nu.js` |
 | `_cajitasAhorroActual` | `js/modules/nu.js` |
@@ -644,19 +644,16 @@ Ninguno.
 | `_cobroSacar` | `js/core/cobros.js` |
 | `_colorDeuda` | `js/modules/prestado.js` |
 | `_colorSeguro` | `js/core/refresh.js` |
+| `_compraConTcActualizarCuentaEncHint` | `js/modules/encargos.js` |
+| `_compraConTcActualizarDestinoHint` | `js/modules/encargos.js` |
+| `_compraConTcActualizarPreview` | `js/modules/encargos.js` |
+| `_compraConTcMiAgregarRow` | `js/modules/encargos.js` |
+| `_compraConTcMiSplitToggle` | `js/modules/encargos.js` |
 | `_confirmarMoverEncCuentasSplit` | `js/modules/encargos.js` |
 | `_confirmarMovimientoConGuard` | `js/modules/prestado.js` |
 | `_confirmarMovimientoInterno` | `js/modules/prestado.js` |
 | `_confirmarUsarParte` | `js/modules/encargos.js` |
-| `_cpAbrirEditar` | `js/modules/plata-comprometida.js` |
-| `_cpAbrirNuevo` | `js/modules/plata-comprometida.js` |
-| `_cpAbrirRecibir` | `js/modules/plata-comprometida.js` |
-| `_cpAgregarDestino` | `js/modules/plata-comprometida.js` |
-| `_cpCancelSheet` | `js/modules/plata-comprometida.js` |
-| `_cpConfirmarRecibir` | `js/modules/plata-comprometida.js` |
-| `_cpData` | `js/modules/plata-comprometida.js` |
 | `_cpdConfirmar` | `js/modules/plata-comprometida.js` |
-| `_cpDiasHastaStr` | `js/modules/plata-comprometida.js` |
 | `_cpdPoblarGastoSelectores` | `js/modules/plata-comprometida.js` |
 | `_cpdRepoblarFuentes` | `js/modules/plata-comprometida.js` |
 | `_cpdSetGastoOrigen` | `js/modules/plata-comprometida.js` |
@@ -664,29 +661,10 @@ Ninguno.
 | `_cpdSetYaPague` | `js/modules/plata-comprometida.js` |
 | `_cpdSetYaSaque` | `js/modules/plata-comprometida.js` |
 | `_cpdTipoChange` | `js/modules/plata-comprometida.js` |
-| `_cpEliminar` | `js/modules/plata-comprometida.js` |
-| `_cpGuardar` | `js/modules/plata-comprometida.js` |
-| `_cpGuardarMarcados` | `js/modules/plata-comprometida.js` |
-| `_cpInit` | `js/modules/plata-comprometida.js` |
-| `_cpInitSwipe` | `js/modules/plata-comprometida.js` |
-| `_cpMarcarPagos` | `js/modules/plata-comprometida.js` |
-| `_cpPoblarCuentas` | `js/modules/plata-comprometida.js` |
-| `_cpPoblarPersonas` | `js/modules/plata-comprometida.js` |
-| `_cpPoblarTC` | `js/modules/plata-comprometida.js` |
-| `_cpQuitarDestino` | `js/modules/plata-comprometida.js` |
-| `_cpRenderDestinosTmp` | `js/modules/plata-comprometida.js` |
-| `_cpRenderLista` | `js/modules/plata-comprometida.js` |
-| `_cpRenderMarcarList` | `js/modules/plata-comprometida.js` |
-| `_cpToggleMarcar` | `js/modules/plata-comprometida.js` |
 | `_crearEncargoPicker` | `js/modules/mesada.js` |
 | `_crearGrupoDeudor` | `js/modules/prestado.js` |
 | `_crearPersonaGlobal` | `js/modules/personas.js` |
 | `_crearSplitSobrante` | `js/modules/encargos.js` |
-| `_ctcActualizarCuentaEncHint` | `js/modules/encargos.js` |
-| `_ctcActualizarDestinoHint` | `js/modules/encargos.js` |
-| `_ctcActualizarPreview` | `js/modules/encargos.js` |
-| `_ctcMiAgregarRow` | `js/modules/encargos.js` |
-| `_ctcMiSplitToggle` | `js/modules/encargos.js` |
 | `_ctxReglas` | `js/modules/inicio.js` |
 | `_cuentaOpsPosteriores` | `js/core/movimientos.js` |
 | `_cuentaOrdenHtml` | `js/modules/cuentas.js` |
@@ -704,10 +682,10 @@ Ninguno.
 | `_diasDesde` | `js/modules/alcancia.js` |
 | `_diasDeUso` | `js/modules/inicio.js` |
 | `_diasEntreFechas` | `js/core/nu-calc.js` |
+| `_diferencialMiSplitPreview` | `js/modules/encargos.js` |
+| `_diferencialRenderHistorialParte` | `js/modules/encargos.js` |
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js` |
-| `_difMiSplitPreview` | `js/modules/encargos.js` |
-| `_difRenderHistorialParte` | `js/modules/encargos.js` |
 | `_editarPersonaDesdePerfilSheet` | `js/modules/personas.js` |
 | `_eliminarMovimientoImpl` | `js/core/movimientos.js` |
 | `_encargosConSaldoEn` | `js/modules/cuentas.js` |
@@ -861,6 +839,28 @@ Ninguno.
 | `_planMovimiento` | `js/modules/prestado.js` |
 | `_planMovMiDeuda` | `js/modules/prestado.js` |
 | `_planPrestamo` | `js/modules/prestado.js` |
+| `_plataComprometidaAbrirEditar` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaAbrirNuevo` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaAbrirRecibir` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaAgregarDestino` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaCancelSheet` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaConfirmarRecibir` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaData` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaDiasHastaStr` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaEliminar` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaGuardar` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaGuardarMarcados` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaInit` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaInitSwipe` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaMarcarPagos` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaPoblarCuentas` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaPoblarPersonas` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaPoblarTC` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaQuitarDestino` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaRenderDestinosTmp` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaRenderLista` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaRenderMarcarList` | `js/modules/plata-comprometida.js` |
+| `_plataComprometidaToggleMarcar` | `js/modules/plata-comprometida.js` |
 | `_poblarDestinoMesada` | `js/modules/mesada.js` |
 | `_prEnsureAlcancia` | `js/modules/prestado.js` |
 | `_prestMontoSalida` | `js/modules/prestado.js` |
@@ -900,10 +900,10 @@ Ninguno.
 | `_revertirMovMiDeuda` | `js/modules/prestado.js` |
 | `_revertirMovMiDeudaImpl` | `js/modules/prestado.js` |
 | `_ritmosPorTercio` | `js/modules/inicio.js` |
-| `_saldoCPAjeno` | `js/core/patrimonio.js` |
 | `_saldoEncargosEnCajita` | `js/core/nu-calc.js` |
 | `_saldoEncargosEnCajitaEnFecha` | `js/core/nu-calc.js` |
 | `_saldoEncargosEnCuenta` | `js/core/patrimonio.js` |
+| `_saldoPlataComprometidaAjeno` | `js/core/patrimonio.js` |
 | `_saldoRegistrado` | `js/modules/alcancia.js` |
 | `_salidaEncMenuIr` | `js/modules/encargos.js` |
 | `_segmentosTasa` | `js/core/nu-calc.js` |
@@ -917,16 +917,16 @@ Ninguno.
 | `_showCuentasPanel` | `js/modules/cuentas.js` |
 | `_showScreenLoading` | `js/core/navegacion.js` |
 | `_situacion` | `js/modules/inicio.js` |
-| `_spEditPicker` | `js/modules/spotify.js` |
-| `_spEnsureTC` | `js/modules/spotify.js` |
-| `_spExtraOpts` | `js/modules/spotify.js` |
-| `_spPicker` | `js/modules/spotify.js` |
-| `_spPintarAvatares` | `js/modules/spotify.js` |
-| `_spProporcionarSplits` | `js/modules/spotify.js` |
+| `_spotifyEditPicker` | `js/modules/spotify.js` |
+| `_spotifyEnsureTC` | `js/modules/spotify.js` |
+| `_spotifyExtraOpts` | `js/modules/spotify.js` |
+| `_spotifyPicker` | `js/modules/spotify.js` |
+| `_spotifyPintarAvatares` | `js/modules/spotify.js` |
+| `_spotifyProporcionarSplits` | `js/modules/spotify.js` |
 | `_sumarASaldo` | `js/modules/alcancia.js` |
 | `_syncMpDebeWrap` | `js/modules/mesada.js` |
-| `_syncSpDebeWrap` | `js/modules/spotify.js` |
-| `_syncSpExtraWrap` | `js/modules/spotify.js` |
+| `_syncSpotifyDebeWrap` | `js/modules/spotify.js` |
+| `_syncSpotifyExtraWrap` | `js/modules/spotify.js` |
 | `_tasaCDT` | `js/core/nu-calc.js` |
 | `_tasaVigenteEnFecha` | `js/core/nu-calc.js` |
 | `_tcEsCargoExterno` | `js/modules/tarjetas-credito.js` |
@@ -1148,12 +1148,12 @@ Ninguno.
 | `actualizarCbPreview` | `js/modules/analisis.js` |
 | `actualizarGastoVariableImpacto` | `js/modules/gastos.js` |
 | `actualizarGastoVariableSplitPreview` | `js/modules/gastos.js` |
+| `actualizarMesadaPagoPendientePreview` | `js/modules/mesada.js` |
 | `actualizarMpAvisoMes` | `js/modules/mesada.js` |
-| `actualizarMppPreview` | `js/modules/mesada.js` |
 | `actualizarMpPreview` | `js/modules/mesada.js` |
-| `actualizarSpDestinoPreview` | `js/modules/spotify.js` |
-| `actualizarSpPagarPreview` | `js/modules/spotify.js` |
-| `actualizarSpResolverPreview` | `js/modules/spotify.js` |
+| `actualizarSpotifyDestinoPreview` | `js/modules/spotify.js` |
+| `actualizarSpotifyPagarPreview` | `js/modules/spotify.js` |
+| `actualizarSpotifyResolverPreview` | `js/modules/spotify.js` |
 | `actualizarTransfPreview` | `js/modules/cuentas.js` |
 | `addCajita` | `js/modules/nu.js` |
 | `addGastoFijo` | `js/modules/gastos.js` |
@@ -1260,8 +1260,8 @@ Ninguno.
 | `confirmarPrestamoTC` | `js/modules/prestado.js` |
 | `confirmarRestarDinero` | `js/modules/cuentas.js` |
 | `confirmarSheetCDT` | `js/modules/nu.js` |
-| `confirmarSpDestino` | `js/modules/spotify.js` |
-| `confirmarSpResolverPendiente` | `js/modules/spotify.js` |
+| `confirmarSpotifyDestino` | `js/modules/spotify.js` |
+| `confirmarSpotifyResolverPendiente` | `js/modules/spotify.js` |
 | `confirmarTransferenciaEncargo` | `js/modules/encargos.js` |
 | `confirmarTransferir` | `js/modules/cuentas.js` |
 | `confirmarTraspasoEncargo` | `js/modules/encargos.js` |
@@ -1282,10 +1282,10 @@ Ninguno.
 | `deleteGastoFijo` | `js/modules/gastos.js` |
 | `deleteGastoVar` | `js/modules/gastos.js` |
 | `deleteMovEncargo` | `js/modules/encargos.js` |
-| `deleteSpHistorial` | `js/modules/spotify.js` |
 | `deleteSpotify` | `js/modules/spotify.js` |
+| `deleteSpotifyHistorial` | `js/modules/spotify.js` |
 | `descontarFuente` | `js/core/cuentas-fuentes.js` |
-| `deshacerAbonoPendienteSp` | `js/modules/spotify.js` |
+| `deshacerAbonoPendienteSpotify` | `js/modules/spotify.js` |
 | `deshacerPendienteMesada` | `js/modules/mesada.js` |
 | `Deudas` | `js/core/calc-helpers.js` |
 | `diaCreacionMov` | `js/core/patrimonio.js` |
@@ -1397,8 +1397,8 @@ Ninguno.
 | `getPersonaDatos` | `js/modules/personas.js` |
 | `getPersonaNombre` | `js/modules/personas.js` |
 | `getSaldoFuente` | `js/core/cuentas-fuentes.js` |
-| `getSpFuente` | `js/modules/spotify.js` |
-| `getSpFuenteSaldo` | `js/modules/spotify.js` |
+| `getSpotifyFuente` | `js/modules/spotify.js` |
+| `getSpotifyFuenteSaldo` | `js/modules/spotify.js` |
 | `getTasaCuenta` | `js/core/nu-calc.js` |
 | `getTCById` | `js/core/calc-helpers.js` |
 | `guardarBien` | `js/modules/gastos.js` |
@@ -1551,16 +1551,16 @@ Ninguno.
 | `renderRespaldos` | `js/modules/configuracion.js` |
 | `renderSelectorCuentas` | `js/modules/cuentas.js` |
 | `renderSimulador` | `js/modules/analisis.js` |
-| `renderSpHistorial` | `js/modules/spotify.js` |
 | `renderSpotify` | `js/modules/spotify.js` |
-| `renderSpStats` | `js/modules/spotify.js` |
+| `renderSpotifyHistorial` | `js/modules/spotify.js` |
+| `renderSpotifyStats` | `js/modules/spotify.js` |
 | `renderTamanoDatos` | `js/modules/configuracion.js` |
 | `renderTCDashboard` | `js/modules/tarjetas-credito.js` |
 | `renderTCScreen` | `js/modules/tarjetas-credito.js` |
 | `renderWrapped` | `js/modules/wrapped.js` (window.renderWrapped = …) |
 | `rendimientoCajitaPorMes` | `js/core/nu-calc.js` |
 | `Reordenable` | `js/core/reordenable.js` |
-| `resolverPendienteSpHistorial` | `js/modules/spotify.js` |
+| `resolverPendienteSpotifyHistorial` | `js/modules/spotify.js` |
 | `restaurarRespaldo` | `js/modules/configuracion.js` |
 | `Reversibles` | `js/core/utilidades-ui.js` |
 | `S` | `js/core/estado.js` |
@@ -1573,19 +1573,13 @@ Ninguno.
 | `SCHEMA_VERSION_ACTUAL` | `js/core/persistencia.js` |
 | `selColorNC` | `js/modules/cuentas.js` |
 | `selIconoNC` | `js/modules/cuentas.js` |
-| `selSpMeses` | `js/modules/spotify.js` |
+| `selSpotifyMeses` | `js/modules/spotify.js` |
 | `selTipoNC` | `js/modules/cuentas.js` |
 | `setMesFiltro` | `js/modules/gastos.js` |
 | `setMoneyInput` | `js/core/persistencia.js` |
 | `showScreen` | `js/core/navegacion.js` |
 | `SIN_DATO` | `js/core/utilidades-ui.js` |
 | `snapshotPatrimonio` | `js/core/patrimonio.js` |
-| `SP_EMPATE_PERIODOS` | `js/modules/spotify.js` |
-| `SP_PERIODO_DIAS` | `js/modules/spotify.js` |
-| `spAsignarPeriodos` | `js/modules/spotify.js` |
-| `spCicloCobrosActual` | `js/modules/spotify.js` |
-| `spCobradoDePersona` | `js/modules/spotify.js` |
-| `spCostoValido` | `js/modules/spotify.js` |
 | `splitActualizarBotones` | `js/core/split.js` |
 | `splitActualizarOpciones` | `js/core/split.js` |
 | `splitAgregarRow` | `js/core/split.js` |
@@ -1595,13 +1589,19 @@ Ninguno.
 | `splitPreview` | `js/core/split.js` |
 | `splitReset` | `js/core/split.js` |
 | `splitToggle` | `js/core/split.js` |
-| `spMontoAntesDe` | `js/modules/spotify.js` |
-| `spNombreDe` | `js/core/calc-helpers.js` |
-| `spPeriodosVencidos` | `js/modules/spotify.js` |
-| `spPersonaPagadaVigente` | `js/core/calc-helpers.js` |
-| `spResumenCicloActual` | `js/modules/spotify.js` |
-| `spSumarDias` | `js/modules/spotify.js` |
-| `spTramosDeCobro` | `js/modules/spotify.js` |
+| `SPOTIFY_EMPATE_PERIODOS` | `js/modules/spotify.js` |
+| `SPOTIFY_PERIODO_DIAS` | `js/modules/spotify.js` |
+| `spotifyAsignarPeriodos` | `js/modules/spotify.js` |
+| `spotifyCicloCobrosActual` | `js/modules/spotify.js` |
+| `spotifyCobradoDePersona` | `js/modules/spotify.js` |
+| `spotifyCostoValido` | `js/modules/spotify.js` |
+| `spotifyMontoAntesDe` | `js/modules/spotify.js` |
+| `spotifyNombreDe` | `js/core/calc-helpers.js` |
+| `spotifyPeriodosVencidos` | `js/modules/spotify.js` |
+| `spotifyPersonaPagadaVigente` | `js/core/calc-helpers.js` |
+| `spotifyResumenCicloActual` | `js/modules/spotify.js` |
+| `spotifySumarDias` | `js/modules/spotify.js` |
+| `spotifyTramosDeCobro` | `js/modules/spotify.js` |
 | `sumarFuente` | `js/core/cuentas-fuentes.js` |
 | `switchGastoTab` | `js/modules/gastos.js` |
 | `tasaATexto` | `js/core/nu-calc.js` |

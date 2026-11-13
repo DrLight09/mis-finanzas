@@ -35,7 +35,7 @@
    Se migraron los onclick="..." inline de este módulo a data-action
    (ver js/core/events.js), y se corrigieron ~18 casos de texto libre
    sin escapar en .innerHTML/toast() — mismo patrón ya visto en
-   Spotify (spNombreDe) y Mesada (fuenteLabel): el barrido original de
+   Spotify (spotifyNombreDe) y Mesada (fuenteLabel): el barrido original de
    escHtml() por nombre de campo no detecta texto libre que llega
    envuelto en una función auxiliar. Acá la función era fuenteLabel()
    (nombre de cajita/cuenta personalizada/tarjeta — todos campos de
@@ -389,8 +389,8 @@ function _pintarEncargoDetalle(id) {
     if (hayMultiple && saldo > 0) {
       // La tasa depende de la cuenta de ahorro a la que pertenece cada cajita.
       const tasaDiariaDe = k => {
-        const caj = (S.cajitas || []).find(x => x.id === k.split(':')[1]);
-        return Math.pow(1 + getTasaCuenta(caj && caj.cuentaId) / 100, 1 / 365) - 1;
+        const cajita = (S.cajitas || []).find(x => x.id === k.split(':')[1]);
+        return Math.pow(1 + getTasaCuenta(cajita && cajita.cuentaId) / 100, 1 / 365) - 1;
       };
       const filas = Object.entries(mapRaw)
         .filter(([k,v]) => v > 0)
@@ -599,7 +599,7 @@ function renderEncargoParts(enc) {
         <div class="enc-usada-desc">${p.desc}</div>
         <div class="enc-fila-g6">
           <span class="enc-usada-monto"><s>${fmt(p.monto)}</s></span>
-          ${raw(typeof _difRenderHistorialParte === 'function' ? _difRenderHistorialParte(p) : '')}
+          ${raw(typeof _diferencialRenderHistorialParte === 'function' ? _diferencialRenderHistorialParte(p) : '')}
           <button type="button" ${raw(Events.attr('encargos:eliminarParte', enc.id, p.id))} class="enc-usada-x">&#x2715;</button>
         </div>
       </div>
@@ -760,9 +760,9 @@ function crearEncargo() {
 
 // Split (Dividir) del sobrante del margen: true cuando el usuario repartió lo que sobra
 // entre varias cuentas suyas en vez de una sola. Ver crearSplitWidget('movencDifMi') abajo.
-let _difMiSplitMode = false;
+let _diferencialMiSplitMode = false;
 
-const _dif_movenc = diffRegistrarInstancia('movenc', {
+const _diferencial_movimientoEncargo = diffRegistrarInstancia('movenc', {
   ids: {
     wrap: 'movenc-dif-wrap', body: 'movenc-dif-body', icon: 'movenc-dif-toggle-icon',
     real: 'movenc_dif_real', partesList: 'movenc-dif-beneficiarios',
@@ -774,22 +774,22 @@ const _dif_movenc = diffRegistrarInstancia('movenc', {
   getDijo: () => parseMoney(document.getElementById('movenc_monto')?.value) || 0,
   descMargen: () => 'Margen de encargo — ',
   origenSeccion: 'Encargos', // margen/intercambios protegidos contra borrado suelto (ver diferencial.js)
-  getMiCuentaSplit: () => _difMiSplitMode ? splitGetData('movencDifMi') : null,
+  getMiCuentaSplit: () => _diferencialMiSplitMode ? splitGetData('movencDifMi') : null,
   onReset: () => splitReset('movencDifMi'),
-  onResumen: () => _difMiSplitPreview()
+  onResumen: () => _diferencialMiSplitPreview()
 });
 
-const _sp_movencDifMi = crearSplitWidget('movencDifMi', {
+const _spotify_movimientoEncargoDiferencialMi = crearSplitWidget('movencDifMi', {
   simpleId: 'movenc_dif_mi_simple', splitId: 'movenc_dif_mi_split', toggleId: 'movenc_dif_mi_toggle', rowsId: 'movencDifMiRows',
-  getModo: () => _difMiSplitMode, setModo: v => { _difMiSplitMode = v; },
+  getModo: () => _diferencialMiSplitMode, setModo: v => { _diferencialMiSplitMode = v; },
   getFuentesFn: sel => opcionesCuenta({ selectedVal: sel, placeholder: 'Elegir cuenta' }),
-  onPreview: () => _difMiSplitPreview()
+  onPreview: () => _diferencialMiSplitPreview()
 });
 
-function _difMiSplitPreview() {
+function _diferencialMiSplitPreview() {
   const el = document.getElementById('movenc_dif_mi_preview');
   if (!el) return;
-  if (!_difMiSplitMode) { el.textContent = ''; return; }
+  if (!_diferencialMiSplitMode) { el.textContent = ''; return; }
   const calc = diffCalcular('movenc');
   const sobra = calc ? Math.max(0, calc.sinAsignar) : 0;
   const filas = splitGetData('movencDifMi');
@@ -835,13 +835,13 @@ function _movEncMiaToggle() {
 let _miaSaleSplitMode  = false;
 let _miaEntraSplitMode = false;
 
-const _sp_miaSale = crearSplitWidget('miaSale', {
+const _spotify_miaSale = crearSplitWidget('miaSale', {
   simpleId: 'movenc_mia_sale_simple', splitId: 'movenc_mia_sale_split', toggleId: 'movenc_mia_sale_toggle', rowsId: 'miaSaleRows',
   getModo: () => _miaSaleSplitMode, setModo: v => { _miaSaleSplitMode = v; },
   getFuentesFn: sel => _diffFuentesOptsHtml(sel, true),
   onPreview: () => _movEncMiaPreview()
 });
-const _sp_miaEntra = crearSplitWidget('miaEntra', {
+const _spotify_miaEntra = crearSplitWidget('miaEntra', {
   simpleId: 'movenc_mia_entra_simple', splitId: 'movenc_mia_entra_split', toggleId: 'movenc_mia_entra_toggle', rowsId: 'miaEntraRows',
   getModo: () => _miaEntraSplitMode, setModo: v => { _miaEntraSplitMode = v; },
   getFuentesFn: sel => _diffFuentesOptsHtml(sel, false),
@@ -1051,7 +1051,7 @@ const _usarParteMi = _crearSplitSobrante('usarParte', 'usarParteMi', {
 function _usarParteMiSplitToggle() { _usarParteMi.toggle(); }
 function _usarParteMiAgregarRow() { _usarParteMi.agregar(); }
 
-const _dif_usarParte = diffRegistrarInstancia('usarParte', {
+const _diferencial_usarParte = diffRegistrarInstancia('usarParte', {
   ids: {
     wrap: 'usar-parte-dif-wrap', body: 'usar-parte-dif-body', icon: 'usar-parte-dif-icon',
     real: 'usar_parte_dif_real', partesList: 'usar-parte-dif-benefs',
@@ -1078,7 +1078,7 @@ const _dif_usarParte = diffRegistrarInstancia('usarParte', {
 let _usarParteSplitMode = false;
 let _usarParteMargenPendiente = null;
 
-const _sp_usarParte = crearSplitWidget('usarParte', {
+const _spotify_usarParte = crearSplitWidget('usarParte', {
   simpleId:'usarParteModoSimple', splitId:'usarParteModoDividido', toggleId:'usarParteSplitToggle', rowsId:'usarParteSplitRows',
   getModo:()=>_usarParteSplitMode, setModo:v=>{_usarParteSplitMode=v;},
   fuentes:_usarParteFuentes,
@@ -1103,7 +1103,7 @@ function _usarParteFuentePreview() {
   if (!monto) { el.textContent = ''; return; }
 
   if (_usarParteSplitMode) {
-    const splits = _sp_usarParte.data();
+    const splits = _spotify_usarParte.data();
     const total = splits.reduce((a, s) => a + s.monto, 0);
     const restante = monto - total;
     if (splits.length === 0) { el.textContent = ''; return; }
@@ -1136,7 +1136,7 @@ async function _confirmarUsarParte() {
   // Leer origen de la plata (fuente simple o split)
   let fuentesOrigen = [];
   if (_usarParteSplitMode) {
-    fuentesOrigen = _sp_usarParte.data();
+    fuentesOrigen = _spotify_usarParte.data();
   } else {
     const sel = document.getElementById('usar_parte_fuente');
     const val = sel ? sel.value : '';
@@ -1303,7 +1303,7 @@ function abrirUsarParteSheet(encId, parteId) {
   openSheet('usar-parte');
 }
 
-function _difRenderHistorialParte(parte) {
+function _diferencialRenderHistorialParte(parte) {
   const out = [];
   // Mostrar origen de la plata si se registró
   if (parte.fuentes && parte.fuentes.length > 0) {
@@ -1404,13 +1404,13 @@ function abrirMovEncargo(tipo) {
   sel.onchange = function() { if(!_movEncMuestraSaldoEnOpcion) _actualizarMovEncCuentaHint(enc, sel.value); };
 
   // Mostrar/ocultar diferencial según tipo
-  const difWrap = document.getElementById('movenc-dif-wrap');
-  if (difWrap) {
+  const diferencialWrap = document.getElementById('movenc-dif-wrap');
+  if (diferencialWrap) {
     if (tipo === 'salida') {
-      difWrap.style.display = '';
+      diferencialWrap.style.display = '';
       diffReset('movenc');
     } else {
-      difWrap.style.display = 'none';
+      diferencialWrap.style.display = 'none';
     }
   }
 
@@ -1467,7 +1467,7 @@ function _actualizarMovEncCuentaHint(enc, cuentaVal) {
 /* ─── Split de fuente en "Retirar plata" del encargo ─────────────── */
 let _movEncSplitMode = false;
 
-const _sp_movenc = crearSplitWidget('movenc', {
+const _spotify_movimientoEncargo = crearSplitWidget('movenc', {
   simpleId:'movenc_cuenta_simple', splitId:'movenc_cuenta_split', toggleId:'movenc_split_toggle', rowsId:'movencSplitRows',
   getModo:()=>_movEncSplitMode, setModo:v=>{_movEncSplitMode=v;},
   // Con distribución por cuenta: solo las cuentas del encargo con su saldo. Sin distribución: todas las fuentes (con tarjetas), sin saldo.
@@ -1485,7 +1485,7 @@ function _movEncSplitPreview() {
     const montoTotal = parseMoney(document.getElementById('movenc_monto').value) || 0;
     if (!_movEncSplitMode) { el.textContent = ''; }
     else {
-      const splits  = _sp_movenc.data();
+      const splits  = _spotify_movimientoEncargo.data();
       const asignado = splits.reduce((a, s) => a + s.monto, 0);
       const restante = montoTotal - asignado;
       if (splits.length === 0) { el.textContent = ''; }
@@ -1594,7 +1594,7 @@ function confirmarMovEncargo() {
 
   if (movEncargoTipo === 'salida' && _movEncSplitMode) {
     // ── MODO SPLIT ──────────────────────────────────────────────────
-    const splits = _sp_movenc.data();
+    const splits = _spotify_movimientoEncargo.data();
     const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
     if (splits.length === 0) { toast('Agrega al menos una cuenta en el split', 'err'); return; }
     if (Math.abs(totalSplit - monto) > 0.5) {
@@ -1614,12 +1614,12 @@ function confirmarMovEncargo() {
       }
     }
     // Validar intercambios antes de registrar
-    const _errIntSplit = _dif_movenc.validarIntercambios();
+    const _errIntSplit = _diferencial_movimientoEncargo.validarIntercambios();
     if (_errIntSplit) { toast(_errIntSplit, 'err', 5000); return; }
     const _errMiaSplit = _validarMovEncMia();
     if (_errMiaSplit) { toast(_errMiaSplit, 'err', 5000); return; }
-    const _errDifMiSplit = diffValidarMiCuenta('movenc');
-    if (_errDifMiSplit) { toast(_errDifMiSplit, 'err', 5000); return; }
+    const _errDiferencialMiSplit = diffValidarMiCuenta('movenc');
+    if (_errDiferencialMiSplit) { toast(_errDiferencialMiSplit, 'err', 5000); return; }
     // Registrar un movimiento por cada porción del split
     const fecha = document.getElementById('movenc_fecha').value || hoy();
     const nota  = document.getElementById('movenc_nota').value.trim();
@@ -1673,12 +1673,12 @@ function confirmarMovEncargo() {
       ts: Date.now()
     };
     if (movEncargoTipo === 'salida') {
-      const _errInt = _dif_movenc.validarIntercambios();
+      const _errInt = _diferencial_movimientoEncargo.validarIntercambios();
       if (_errInt) { toast(_errInt, 'err', 5000); return; }
       const _errMia = _validarMovEncMia();
       if (_errMia) { toast(_errMia, 'err', 5000); return; }
-      const _errDifMi = diffValidarMiCuenta('movenc');
-      if (_errDifMi) { toast(_errDifMi, 'err', 5000); return; }
+      const _errDiferencialMi = diffValidarMiCuenta('movenc');
+      if (_errDiferencialMi) { toast(_errDiferencialMi, 'err', 5000); return; }
     }
     enc.movimientos.push(nuevoMov);
     if (movEncargoTipo === 'salida') {
@@ -1707,7 +1707,7 @@ function _movEncActualizarFaltante() {
   const wrap = document.getElementById('movenc-faltante-wrap');
   if (!wrap) return;
   const btnGuardar = document.getElementById('btn-confirmar-mov-encargo');
-  const difWrap = document.getElementById('movenc-dif-wrap');
+  const diferencialWrap = document.getElementById('movenc-dif-wrap');
   const miaWrap = document.getElementById('movenc-mia-wrap');
   const enc = encargoActualId ? getEncargo(encargoActualId) : null;
   const montoEl = document.getElementById('movenc_monto');
@@ -1719,7 +1719,7 @@ function _movEncActualizarFaltante() {
     // Diferencial y "yo puse la plata" solo aplican a salidas — se restauran
     // acá porque _movEncActualizarFaltante puede haberlos ocultado antes.
     if (movEncargoTipo === 'salida') {
-      if (difWrap) difWrap.style.display = '';
+      if (diferencialWrap) diferencialWrap.style.display = '';
       if (miaWrap) miaWrap.style.display = '';
     }
   };
@@ -1752,7 +1752,7 @@ function _movEncActualizarFaltante() {
   }
   wrap.style.display = '';
   if (btnGuardar) btnGuardar.style.display = 'none';
-  if (difWrap) difWrap.style.display = 'none';
+  if (diferencialWrap) diferencialWrap.style.display = 'none';
   if (miaWrap) miaWrap.style.display = 'none';
   _movEncFaltanteCuentaHint();
 }
@@ -1991,8 +1991,8 @@ async function deleteMovEncargo(encId, movId) {
     // Borrar todos los S.movimientos vinculados (destino + diferencial, pasos 2 y 5)
     // y revertir sus sumas. Excluye los de intercambio — esos los maneja el bloque siguiente.
     if (S.movimientos) {
-      const difMovs = S.movimientos.filter(m => m._encMovId === movId && !m._esIntercambioEncargo);
-      difMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _ogEnc(movId, true)); });
+      const diferencialMovs = S.movimientos.filter(m => m._encMovId === movId && !m._esIntercambioEncargo);
+      diferencialMovs.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _ogEnc(movId, true)); });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movId && !m._esIntercambioEncargo));
     }
   }
@@ -2399,7 +2399,7 @@ function _actualizarMoverEncDestinoHint() {
    UsarParte (js/core/split.js), instancia propia 'moverenc'. */
 let _moverEncSplitMode = false;
 
-const _sp_moverenc = crearSplitWidget('moverenc', {
+const _spotify_moverenc = crearSplitWidget('moverenc', {
   simpleId:'moverenc_origen_simple', splitId:'moverenc_origen_split', toggleId:'moverenc_split_toggle', rowsId:'moverencSplitRows',
   getModo:()=>_moverEncSplitMode, setModo:v=>{_moverEncSplitMode=v;},
   getFuentesFn:_moverEncGetFuentesOptions,
@@ -2444,7 +2444,7 @@ function _actualizarMoverEncPreview(enc) {
   if (!prev) return;
 
   if (_moverEncSplitMode) {
-    const splits = _sp_moverenc.data(); // [{fuente, monto}]
+    const splits = _spotify_moverenc.data(); // [{fuente, monto}]
     if (splits.length === 0 || !destino) { prev.innerHTML = ''; return; }
     // Filas con monto pero sin cuenta elegida todavía: no cuentan para el
     // cálculo, solo se avisan aparte (evita mostrar matemática sin sentido
@@ -2518,7 +2518,7 @@ function _actualizarMoverEncPreview(enc) {
 // total. No se agrupan para borrado — igual que esa salida dividida, cada
 // parte queda como un registro independiente en el historial del encargo.
 function _confirmarMoverEncCuentasSplit(enc, destino, fecha) {
-  const splits = _sp_moverenc.data(); // [{fuente, monto}]
+  const splits = _spotify_moverenc.data(); // [{fuente, monto}]
   if (splits.length === 0) { toast('Agrega al menos una cuenta de origen', 'err'); return; }
   if (splits.some(s => !s.fuente)) { toast('Selecciona la cuenta de origen en cada fila', 'err'); return; }
   if (splits.some(s => FuentesFiltro.esTC(s.fuente))) { toast('Una tarjeta de crédito no puede ser cuenta de origen', 'err'); return; }
@@ -2875,8 +2875,8 @@ function abrirNuevoEncargo() {
   // tampoco se llegaban a conectar. Mismo tipo de degradación aceptada que
   // ya existe para otros cruces entre módulos lazy: si spotify.js todavía
   // no cargó, este botón puntual queda sin conectar hasta que sí lo haga.
-  const btn_guardar_edit_sp = document.getElementById('btn-guardar-editar-spotify');
-  if (btn_guardar_edit_sp && typeof guardarEditarSpotify === 'function') btn_guardar_edit_sp.addEventListener('click', guardarEditarSpotify);
+  const btn_guardar_edit_spotify = document.getElementById('btn-guardar-editar-spotify');
+  if (btn_guardar_edit_spotify && typeof guardarEditarSpotify === 'function') btn_guardar_edit_spotify.addEventListener('click', guardarEditarSpotify);
 
   const btn_mov = document.getElementById('btn-confirmar-mov-encargo');
   if (btn_mov) btn_mov.addEventListener('click', confirmarMovEncargo);
@@ -2906,14 +2906,14 @@ if (_origNavEncargos) {
      ni intercambio, solo "real" + cuenta propia para el margen.
    ================================================================ */
 
-const _ctcMi = _crearSplitSobrante('ctc', 'ctcMi', {
+const _compraConTcMi = _crearSplitSobrante('ctc', 'ctcMi', {
   simple: 'ctc_dif_mi_simple', split: 'ctc_dif_mi_split', toggle: 'ctc_dif_mi_toggle',
   rows: 'ctcDifMiRows', preview: 'ctc_dif_mi_preview'
 });
-function _ctcMiSplitToggle() { _ctcMi.toggle(); }
-function _ctcMiAgregarRow() { _ctcMi.agregar(); }
+function _compraConTcMiSplitToggle() { _compraConTcMi.toggle(); }
+function _compraConTcMiAgregarRow() { _compraConTcMi.agregar(); }
 
-const _dif_ctc = diffRegistrarInstancia('ctc', {
+const _diferencial_compraConTc = diffRegistrarInstancia('ctc', {
   ids: {
     wrap: 'ctc-dif-wrap', body: 'ctc-dif-body', icon: 'ctc-dif-icon',
     real: 'ctc_dif_real', resumen: 'ctc-dif-resumen',
@@ -2928,9 +2928,9 @@ const _dif_ctc = diffRegistrarInstancia('ctc', {
   getDijo: () => parseMoney(document.getElementById('ctc_monto')?.value) || 0,
   descMargen: (mov) => `Diferencial encargo ${mov._encNombre || ''} — `,
   origenSeccion: 'Encargos', // ídem: deleteMovEncargo limpia estos por _encMovId
-  getMiCuentaSplit: () => _ctcMi.getData(),
-  onReset: () => _ctcMi.reset(),
-  onResumen: () => { _ctcMi.preview(); _ctcActualizarPreview(); }
+  getMiCuentaSplit: () => _compraConTcMi.getData(),
+  onReset: () => _compraConTcMi.reset(),
+  onResumen: () => { _compraConTcMi.preview(); _compraConTcActualizarPreview(); }
 });
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
@@ -2956,20 +2956,20 @@ function abrirCompraConTC() {
   // Poblar select de cuentas del encargo
   const selEnc = document.getElementById('ctc_cuenta_enc');
   const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
-  let _ctcCuentaEncMuestraSaldoEnOpcion = false;
+  let _compraConTcCuentaEncMuestraSaldoEnOpcion = false;
   if (cuentasConSaldo.length === 0) {
     const fuentes = getFuentesSinTC(); // la plata de un encargo no está en una TC
     selEnc.innerHTML = html`<option value="">Sin especificar</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   } else {
     selEnc.innerHTML = html`<option value="">Sin especificar</option>${cuentasConSaldo.map(f => html`<option value="${f.cuenta}">${f.label} (${fmt(f.saldo)})</option>`)}`;
     selEnc.value = cuentasConSaldo[0].cuenta;
-    _ctcCuentaEncMuestraSaldoEnOpcion = true;
+    _compraConTcCuentaEncMuestraSaldoEnOpcion = true;
   }
   // El hint solo aporta info nueva cuando el select no la muestra ya en cada
   // opción. Ver reglas-visuales.md#selectores-con-saldo.
-  const _ctcCuentaEncHintEl = document.getElementById('ctc_cuenta_enc_hint');
-  if (_ctcCuentaEncHintEl) _ctcCuentaEncHintEl.style.display = _ctcCuentaEncMuestraSaldoEnOpcion ? 'none' : '';
-  if (!_ctcCuentaEncMuestraSaldoEnOpcion) _ctcActualizarCuentaEncHint();
+  const _compraConTcCuentaEncHintEl = document.getElementById('ctc_cuenta_enc_hint');
+  if (_compraConTcCuentaEncHintEl) _compraConTcCuentaEncHintEl.style.display = _compraConTcCuentaEncMuestraSaldoEnOpcion ? 'none' : '';
+  if (!_compraConTcCuentaEncMuestraSaldoEnOpcion) _compraConTcActualizarCuentaEncHint();
 
   // Poblar tarjetas de credito
   const selTC = document.getElementById('ctc_tarjeta');
@@ -2994,14 +2994,14 @@ function abrirCompraConTC() {
   });
   if (cajitaTC) selDest.value = 'cajita:' + cajitaTC.id;
 
-  _ctcActualizarDestinoHint();
-  _ctcActualizarPreview();
+  _compraConTcActualizarDestinoHint();
+  _compraConTcActualizarPreview();
 
   openSheet('compra-tc-encargo');
   focusSheetField('ctc_desc');
 }
 
-function _ctcActualizarCuentaEncHint() {
+function _compraConTcActualizarCuentaEncHint() {
   const sel = document.getElementById('ctc_cuenta_enc');
   const hint = document.getElementById('ctc_cuenta_enc_hint');
   if (!hint) return;
@@ -3016,7 +3016,7 @@ function _ctcActualizarCuentaEncHint() {
   hint.style.color = saldoEnCuenta > 0 ? 'var(--text3)' : 'var(--red)';
 }
 
-function _ctcActualizarDestinoHint() {
+function _compraConTcActualizarDestinoHint() {
   const sel = document.getElementById('ctc_destino');
   const hint = document.getElementById('ctc_destino_hint');
   if (!hint) return;
@@ -3026,7 +3026,7 @@ function _ctcActualizarDestinoHint() {
   hint.style.color = 'var(--text3)';
 }
 
-function _ctcActualizarPreview() {
+function _compraConTcActualizarPreview() {
   const prev = document.getElementById('ctc_preview');
   if (!prev) return;
   const monto = parseMoney(document.getElementById('ctc_monto').value) || 0;
@@ -3040,8 +3040,8 @@ function _ctcActualizarPreview() {
   const saldoEncCuenta = (enc && cuentaEnc) ? _getEncargoSaldoEnCuenta(enc, cuentaEnc) : saldoEnc;
 
   // Diferencial — vía motor común
-  const difActivo = diffEstaAbierto('ctc');
-  const calc = difActivo ? diffCalcular('ctc') : null;
+  const diferencialActivo = diffEstaAbierto('ctc');
+  const calc = diferencialActivo ? diffCalcular('ctc') : null;
   const real = calc ? calc.real : 0;
   const tcMonto = calc && real > 0 && real < monto ? real : monto;
   const margen = calc && real > 0 && real < monto ? calc.margen : 0;
@@ -3095,12 +3095,12 @@ function confirmarCompraConTC() {
   }
 
   // Reparto del sobrante en varias cuentas (si usó "Dividir") — antes de escribir nada
-  const _errCtcMi = diffValidarMiCuenta('ctc');
-  if (_errCtcMi) { toast(_errCtcMi, 'err', 5000); return; }
+  const _errCompraConTcMi = diffValidarMiCuenta('ctc');
+  if (_errCompraConTcMi) { toast(_errCompraConTcMi, 'err', 5000); return; }
 
   // Diferencial — vía motor común. tcMonto/margen dependen de si el real es válido (real>0 y real<monto).
-  const difActivo = diffEstaAbierto('ctc');
-  const calc = difActivo ? diffCalcular('ctc') : null;
+  const diferencialActivo = diffEstaAbierto('ctc');
+  const calc = diferencialActivo ? diffCalcular('ctc') : null;
   const realValido = calc && calc.real > 0 && calc.real < monto;
   const tcMonto = realValido ? calc.real : monto;
   const margen = realValido ? calc.margen : 0;
@@ -3196,9 +3196,9 @@ function confirmarCompraConTC() {
   if (btn) btn.addEventListener('click', confirmarCompraConTC);
   // Listeners de cambio en los selects del sheet
   const selEnc = document.getElementById('ctc_cuenta_enc');
-  if (selEnc) selEnc.addEventListener('change', _ctcActualizarCuentaEncHint);
+  if (selEnc) selEnc.addEventListener('change', _compraConTcActualizarCuentaEncHint);
   const selDest = document.getElementById('ctc_destino');
-  if (selDest) selDest.addEventListener('change', _ctcActualizarDestinoHint);
+  if (selDest) selDest.addEventListener('change', _compraConTcActualizarDestinoHint);
 })();
 
 /* ═══════════════════════════════════════════════════════════════
@@ -3211,20 +3211,20 @@ function confirmarCompraConTC() {
    ═══════════════════════════════════════════════════════════════ */
 [
   ['movenc_monto', 'input', _movEncSplitPreview],
-  ['movenc_monto', 'input', _dif_movenc.resumen],
+  ['movenc_monto', 'input', _diferencial_movimientoEncargo.resumen],
   ['movenc_monto', 'input', _movEncMiaPreview],
   ['movenc_dif_real', 'input', _movEncMiaPreview],
   ['movenc_mia_cuenta_sale', 'change', _movEncMiaPreview],
   ['movenc_mia_cuenta_entra', 'change', _movEncMiaPreview],
   ['movenc_faltante_cuenta', 'change', _movEncFaltanteCuentaHint],
-  ['ctc_monto', 'input', _ctcActualizarPreview],
-  ['ctc_monto', 'input', _dif_ctc.resumen],
-  ['ctc_cuenta_enc', 'change', _ctcActualizarPreview],
-  ['ctc_tarjeta', 'change', _ctcActualizarPreview],
-  ['ctc_destino', 'change', _ctcActualizarPreview],
-  ['movenc_dif_real', 'input', _dif_movenc.resumen],
-  ['ctc_dif_real', 'input', _dif_ctc.resumen],
-  ['usar_parte_dif_real', 'input', _dif_usarParte.resumen],
+  ['ctc_monto', 'input', _compraConTcActualizarPreview],
+  ['ctc_monto', 'input', _diferencial_compraConTc.resumen],
+  ['ctc_cuenta_enc', 'change', _compraConTcActualizarPreview],
+  ['ctc_tarjeta', 'change', _compraConTcActualizarPreview],
+  ['ctc_destino', 'change', _compraConTcActualizarPreview],
+  ['movenc_dif_real', 'input', _diferencial_movimientoEncargo.resumen],
+  ['ctc_dif_real', 'input', _diferencial_compraConTc.resumen],
+  ['usar_parte_dif_real', 'input', _diferencial_usarParte.resumen],
 ].forEach(([elId, evt, fn]) => {
   const el = document.getElementById(elId);
   if (el) el.addEventListener(evt, fn);
@@ -3263,32 +3263,32 @@ Events.registerAll('encargos', {
   salidaMenuIr:           (...args) => _salidaEncMenuIr(...args),         // data-args: ["normal"|"mio"|"otroEncargo"|"tc"]
   abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
   moverEncSplitToggle:      (...args) => _moverEncSplitToggle(...args),
-  moverEncAgregarSplitRow:  (...args) => _sp_moverenc.addRow(...args),
+  moverEncAgregarSplitRow:  (...args) => _spotify_moverenc.addRow(...args),
   abrirNuevaParte:        (...args) => abrirNuevaParte(...args),
-  movSplitToggle:         (...args) => _sp_movenc.toggle(...args),
-  movAgregarSplitRow:     (...args) => _sp_movenc.addRow(...args),
-  difToggle:              (...args) => _dif_movenc.toggle(...args),
-  difAddBenef:            (...args) => _dif_movenc.addParte(...args),
+  movSplitToggle:         (...args) => _spotify_movimientoEncargo.toggle(...args),
+  movAgregarSplitRow:     (...args) => _spotify_movimientoEncargo.addRow(...args),
+  difToggle:              (...args) => _diferencial_movimientoEncargo.toggle(...args),
+  difAddBenef:            (...args) => _diferencial_movimientoEncargo.addParte(...args),
   miaToggle:              (...args) => _movEncMiaToggle(...args),
-  miaSaleSplitToggle:     (...args) => _sp_miaSale.toggle(...args),
-  miaSaleAgregarRow:      (...args) => _sp_miaSale.addRow(...args),
-  miaEntraSplitToggle:    (...args) => _sp_miaEntra.toggle(...args),
-  miaEntraAgregarRow:     (...args) => _sp_miaEntra.addRow(...args),
-  difMiSplitToggle:       (...args) => _sp_movencDifMi.toggle(...args),
-  ctcMiSplitToggle:       (...args) => _ctcMiSplitToggle(...args),
-  ctcMiAgregarRow:        (...args) => _ctcMiAgregarRow(...args),
+  miaSaleSplitToggle:     (...args) => _spotify_miaSale.toggle(...args),
+  miaSaleAgregarRow:      (...args) => _spotify_miaSale.addRow(...args),
+  miaEntraSplitToggle:    (...args) => _spotify_miaEntra.toggle(...args),
+  miaEntraAgregarRow:     (...args) => _spotify_miaEntra.addRow(...args),
+  difMiSplitToggle:       (...args) => _spotify_movimientoEncargoDiferencialMi.toggle(...args),
+  ctcMiSplitToggle:       (...args) => _compraConTcMiSplitToggle(...args),
+  ctcMiAgregarRow:        (...args) => _compraConTcMiAgregarRow(...args),
   usarParteMiSplitToggle: (...args) => _usarParteMiSplitToggle(...args),
   usarParteMiAgregarRow:  (...args) => _usarParteMiAgregarRow(...args),
-  difMiAgregarRow:        (...args) => _sp_movencDifMi.addRow(...args),
+  difMiAgregarRow:        (...args) => _spotify_movimientoEncargoDiferencialMi.addRow(...args),
   confirmarPrestarFaltante: (...args) => _movEncConfirmarPrestarFaltante(...args),
   guardarParte:           (...args) => guardarParte(...args),
   cerrarParteSheet:       (...args) => cerrarPartSheet(...args),
-  usarParteSplitToggle:   (...args) => _sp_usarParte.toggle(...args),
-  usarParteAgregarSplitRow: (...args) => _sp_usarParte.addRow(...args),
-  usarParteDifToggle:     (...args) => _dif_usarParte.toggle(...args),
-  usarParteAddBenef:      (...args) => _dif_usarParte.addParte(...args),
+  usarParteSplitToggle:   (...args) => _spotify_usarParte.toggle(...args),
+  usarParteAgregarSplitRow: (...args) => _spotify_usarParte.addRow(...args),
+  usarParteDifToggle:     (...args) => _diferencial_usarParte.toggle(...args),
+  usarParteAddBenef:      (...args) => _diferencial_usarParte.addParte(...args),
   confirmarUsarParte:     (...args) => _confirmarUsarParte(...args),
-  ctcDifToggle:           (...args) => _dif_ctc.toggle(...args),
+  ctcDifToggle:           (...args) => _diferencial_compraConTc.toggle(...args),
   // Con argumentos dinámicos (id de encargo / movimiento / parte):
   abrirDetalle:           (...args) => abrirEncargoDetalle(...args),       // (encId)
   abrirDesdeCuenta:       (...args) => abrirEncargoDesdeCuenta(...args),   // (encId)

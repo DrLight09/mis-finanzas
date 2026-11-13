@@ -93,4 +93,6 @@ Se corrigen cuando se toca ese código, no en una campaña aparte:
 - `cobros.js` y `tipo: 'cobro'` (los tres sentidos de «cobro»).
 - `splits` en `spotify.historial` (el mismo concepto que `partes` en Alcancía, Prestado y Encargos).
 - `plata_comprometida` como clave de `config.proteccionAntiguedad` (clave de datos: cambiarla exige migrar datos).
+- **Campos guardados que aún llevan abreviatura** (cambiarlos exige migrar datos): `rte` (retención del CDT) y su opción `rteDefecto`, `spId` (historial de Spotify), `_desdeCP`, `_esReposicionCP`, `_cpItemId`, `_difDijo`, `_difReal`, `_difMargen`, `_alcTipo`.
+- **Nombres que además son texto en otro lugar** (acciones de los widgets de reparto, prefijos de ids, atributos): `difToggle`, `difAddBenef`, `difMiSplitToggle`, `difMiAgregarRow`, `ctcMiSplitToggle`, `ctcMiAgregarRow`, `ctcDifToggle`, `usarParteDifToggle`, `movDifToggle`, `prtcDifToggle`, la clave `mpp` del estado de Mesada (sale del prefijo de los ids), `barIng` (atributo `data-bar-ing`) y la clave `cp` del registro de módulos de los tests.
 - Valores guardados con formatos mezclados (`pago-completo`, `abono_deuda`, `yo-cuenta`, `cargo_spotify`).

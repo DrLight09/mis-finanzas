@@ -821,16 +821,16 @@ function abrirDetalleTCSheet(tcId){
   document.getElementById('detalle-tc-title').textContent=tc.nombre;
   const compras=(tc.compras||[]).filter(c=>!c.eliminado);
   const pagos=(tc.pagos||[]).filter(p=>!p.eliminado);
-  const tcMovs=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&!m.eliminado);
+  const tcMovimientos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&!m.eliminado);
   const mesClave=mesActual();
 
   let contenido='';
 
   const deuda=tc.deuda||0;
   const comprasMes=compras.filter(c=>mesKey(c.fecha)===mesClave);
-  const tcMovsMes=tcMovs.filter(m=>mesKey(m.fecha)===mesClave);
-  const totalMes=comprasMes.reduce((a,c)=>a+(c.monto||0),0)+tcMovsMes.reduce((a,m)=>a+(m.monto||0),0);
-  const totalItems=comprasMes.length+tcMovsMes.length;
+  const tcMovimientosMes=tcMovimientos.filter(m=>mesKey(m.fecha)===mesClave);
+  const totalMes=comprasMes.reduce((a,c)=>a+(c.monto||0),0)+tcMovimientosMes.reduce((a,m)=>a+(m.monto||0),0);
+  const totalItems=comprasMes.length+tcMovimientosMes.length;
   contenido+=`<div class="tc-det-grid">
     <div class="tc-det-caja-deuda">
       <div class="tc-det-cap">Deuda actual</div>
@@ -879,7 +879,7 @@ function abrirDetalleTCSheet(tcId){
   const itemsLinea=[
     ...(tc.saldoInicial&&!tc.saldoInicial.eliminado?[{_tipo:'saldo_inicial',...tc.saldoInicial}]:[]),
     ...compras.map(c=>({_tipo:'compra',...c})),
-    ...tcMovs.map(m=>({_tipo:'tcmov',...m})),
+    ...tcMovimientos.map(m=>({_tipo:'tcmov',...m})),
     ...pagos.map(p=>({_tipo:'pago',...p}))
   ];
 
@@ -1060,7 +1060,7 @@ Events.registerAll('tarjetas', {
   eliminarCompra:   eliminarCompraTC,
   eliminarPago:     eliminarPagoTC,
   seleccionarColor: tcSelColor,          // usada por los 8 círculos de color estáticos en #sheet-nueva-tc
-  verMov:           (...args) => abrirDetalleMov(...args), // función compartida (js/core/movimientos.js), envuelta por el mismo motivo que en prestado.js: se define más abajo (en movimientos.js, que carga DESPUÉS de este archivo), así que pasarla directo la capturaría como undefined al cargar. Envuelta así, la búsqueda del nombre global ocurre recién al hacer click.
+  verMov:           (...args) => abrirDetalleMovimiento(...args), // función compartida (js/core/movimientos.js), envuelta por el mismo motivo que en prestado.js: se define más abajo (en movimientos.js, que carga DESPUÉS de este archivo), así que pasarla directo la capturaría como undefined al cargar. Envuelta así, la búsqueda del nombre global ocurre recién al hacer click.
   verTodo:          () => { closeMas(); showScreen('tarjetas'); } // antes navTo('tarjetas') — ver CHANGELOG.md#infraestructura--seguridad (2026-09-10, retiro de nav.js)
 });
 // ── Conectar botones TC al formulario y selects ───────────────────

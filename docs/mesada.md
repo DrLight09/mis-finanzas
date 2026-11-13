@@ -99,7 +99,7 @@ S.mesadaAnio  // año que se está viendo actualmente en la pantalla (nav ← �
 
 Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
 
-- El espejo de un pago de Mesada en la cuenta destino (`registrarMovEspejo` con `origen: 'Mesada'`) es `neutro`: el ingreso de la mesada se cuenta una sola vez, en `Periodo.mesadaDelMes` (por la fecha del pago).
+- El espejo de un pago de Mesada en la cuenta destino (`registrarMovimientoEspejo` con `origen: 'Mesada'`) es `neutro`: el ingreso de la mesada se cuenta una sola vez, en `Periodo.mesadaDelMes` (por la fecha del pago).
 
 ### Mes que cubre vs. fecha en que te pagaron
 
@@ -163,7 +163,7 @@ Todas las reversiones de saldo usan `descontarFuente(..., { exacto: true })`: si
 - **Sin destino especificado** ("No especificar / lo gasté"): el mes cuenta igual como recibido en las estadísticas, pero no mueve ningún saldo ni genera movimiento espejo.
 - **Un mes registrado con menos plata que la cuota pero nunca marcado como pendiente** (típico de registros viejos): muestra un aviso neutro para marcarlo retroactivamente como deuda, sin perder nada de lo ya guardado.
 - **Abono mal cargado:** se puede deshacer un abono puntual del historial de pendiente (con confirmación), revirtiendo su plata, su movimiento espejo, y devolviendo ese monto de `monto` a `pendiente`.
-- **La salida de un encargo creada por Mesada no se borra desde Encargos.** Su efecto real vive acá (suma a la cuenta destino + espejo); borrarla desde Encargos devolvería la plata al encargo pero dejaría el pago contándola. `deleteMovEncargo` lo reconoce con `mesadaOrigenDeMovEncargo(movId)` (`calc-helpers.js`; mira los pagos y abonos guardados, no una marca en el movimiento, así que también cubre las salidas anteriores a este cambio) y avisa que se borra desde Mesada.
+- **La salida de un encargo creada por Mesada no se borra desde Encargos.** Su efecto real vive acá (suma a la cuenta destino + espejo); borrarla desde Encargos devolvería la plata al encargo pero dejaría el pago contándola. `deleteMovimientoEncargo` lo reconoce con `mesadaOrigenDeMovimientoEncargo(movId)` (`calc-helpers.js`; mira los pagos y abonos guardados, no una marca en el movimiento, así que también cubre las salidas anteriores a este cambio) y avisa que se borra desde Mesada.
 - **Limitación conocida del match por nombre:** "Papas" (la comida) es indistinguible de "Papás" (plural de papá) y entra como candidato, y un encargo que se llame de otra forma ("Carlos") no aparece. Es solo una opción de una lista; la solución es ponerle al encargo un nombre que diga papá/mamá. Si esto llega a ser un problema real, la alternativa sería guardar un vínculo explícito `S.mesadas[parent].personaId` (se probó el 2026-10-08 y se quitó por no hacer falta; ver `CHANGELOG.md#mesada`).
 - **Sin encargos cargados:** Mesada consulta a Encargos con guards, sin forzar su carga. Si el módulo todavía no cargó, o no hay un encargo con saldo que coincida con papá/mamá, la opción de pagar con encargo simplemente no aparece.
 - **Borrar un pago viejo:** si borrarlo movería el saldo de una cuenta o de un encargo, aplica la protección por antigüedad (ver `docs/proteccion-antiguedad-movimientos.md`): los muy viejos se bloquean y los viejos piden una confirmación específica. Las "operaciones posteriores" que cuentan son los pagos de mesada más nuevos que tocaron alguna de las mismas cuentas. Un pago 100% "Sin especificar" (sin cuenta ni encargo afectados) no tiene nada que proteger y se borra normal.
@@ -194,7 +194,7 @@ El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_mov
 **Ubicación:** el HTML de la pantalla y los sheets sigue en `index.html`; los estilos en `styles.css` (clases `.mesada-grid`, `.mes-dot*` y el bloque `.ms-*`). La lógica vive en `js/modules/mesada.js`, un solo archivo (grupo lazy `Loader.GROUPS.mesada` en `js/core/lazy-loader.js`, sin `<script>` propio) con dos partes: **Parte 1, reglas de negocio** (sin DOM) y **Parte 2, pantalla**. La Parte 2 solo habla con la Parte 1 por su API. Depende de:
 
 - los globals del núcleo (`S`, `save`, `refresh`, `fmt`, `parseMoney`, `hoy`, `uid`, `toast`, `openSheet`/`closeSheet`, `dialogo`, `sumarFuente`/`descontarFuente`, etc.);
-- `js/core/calc-helpers.js` (`_ensureMesadas`, `_getCuotaAnio`, `getMesadaData`, `_mesNombreDeKey`, `mesadaOrigenDeMovEncargo`) y `js/core/cuenta-efectos.js` (`registrarMovEspejo`/`borrarMovEspejo`);
+- `js/core/calc-helpers.js` (`_ensureMesadas`, `_getCuotaAnio`, `getMesadaData`, `_mesNombreDeKey`, `mesadaOrigenDeMovimientoEncargo`) y `js/core/cuenta-efectos.js` (`registrarMovimientoEspejo`/`borrarMovimientoEspejo`);
 - `js/core/events.js` (`Events`) y el motor de split compartido (`js/core/split.js`);
 - `encargos.js`, solo de forma opcional y con guards.
 

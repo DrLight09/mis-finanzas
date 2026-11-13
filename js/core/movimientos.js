@@ -24,7 +24,7 @@
    deshacer TODO lo que este movimiento implica?". Dos formas de que falle:
 
    (a) Estructural — el objeto vive en un array que ninguna rama del switch
-       de abajo (movTipoEl === ...) sabe limpiar. Ej.: un "espejo" guardado
+       de abajo (movimientoTipoEl === ...) sabe limpiar. Ej.: un "espejo" guardado
        en el historial propio de otro módulo — las ramas genéricas solo saben
         tocar S.movimientos (el historial de TODAS
         las cuentas), S.gastosVar y deudores[].movimientos.
@@ -39,7 +39,7 @@
      1. ¿En qué array vive realmente? (S.movimientos, historial propio del
          módulo, etc.)
      2. ¿Hay una rama en el switch de abajo que busque y haga
-        splice()/filter() de ESE array exacto para este movTipoEl? Si no →
+        splice()/filter() de ESE array exacto para este movimientoTipoEl? Si no →
         _secundario obligatorio (falla (a)).
      3. ¿Tiene un campo que lo liga a un registro "dueño" en otro módulo? Si
         sí, y ese dueño no se revierte solo cuando se borra este → _secundario
@@ -72,17 +72,17 @@
    ========================================================================== */
 
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
-// _ogMov(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogMov = Libro.origen('movimientos');
+// _ogMovimiento(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _ogMovimiento = Libro.origen('movimientos');
 
 /* ---- DETALLE DE MOVIMIENTO (sheet) ---- */
 // Abre un sheet con el detalle de un movimiento y el saldo de la cuenta
 // (de la fuente involucrada) antes y después de ese movimiento.
 // `el` es el .gasto-item / .card clickeado, con data-mov-* attributes.
-function abrirDetalleMov(el){
+function abrirDetalleMovimiento(el){
   if(!el) return;
-  const movId = el.dataset.movId;
-  const movTipo = el.dataset.movTipo || '';
+  const movimientoId = el.dataset.movId;
+  const movimientoTipo = el.dataset.movTipo || '';
   const fuente = el.dataset.movFuenteReal || el.dataset.movFuente || '';
   const montoAbs = parseFloat(el.dataset.movMonto) || 0;
   const cuentaKey = el.dataset.cuentaKey || '';
@@ -90,7 +90,7 @@ function abrirDetalleMov(el){
 
   if(cuentaKey==='deudor' || cuentaKey==='tc' || cuentaKey==='encargo'){
     // Movimiento que afecta una deuda/saldo de terceros (préstamo/abono, compra/pago TC, entrada/salida encargo)
-    const aumentaSaldo = (movTipo === 'prestamo' || movTipo === 'compra' || movTipo === 'entrada');
+    const aumentaSaldo = (movimientoTipo === 'prestamo' || movimientoTipo === 'compra' || movimientoTipo === 'entrada');
     monto = aumentaSaldo ? montoAbs : -montoAbs;
     fecha = el.dataset.movFecha || '';
     desc = el.dataset.movDesc || (aumentaSaldo ? 'Entrada' : 'Salida');
@@ -106,7 +106,7 @@ function abrirDetalleMov(el){
   if(esFuenteCuenta(fuente)){
     // Cuenta normal: getMovimientosCuenta incluye todas las fuentes que la afectan
     lista = getMovimientosCuenta(fuente);
-    idx = lista.findIndex(m => m._movId === movId);
+    idx = lista.findIndex(m => m._movId === movimientoId);
     if(idx===-1) return;
     signedFn = m => m.monto;
     const m = lista[idx];
@@ -116,7 +116,7 @@ function abrirDetalleMov(el){
     const cajita = (S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]);
     const tipoCuenta = cajita && cajita.cuentaId ? fuenteDeCuenta(cajita.cuentaId) : fuente;
     lista = getMovimientosCuenta(tipoCuenta).filter(m=>m.fuente===fuente);
-    idx = lista.findIndex(m=> movId ? m._movId===movId : (m.fecha===el.dataset.movFecha && Math.abs(m.monto)===montoAbs));
+    idx = lista.findIndex(m=> movimientoId ? m._movId===movimientoId : (m.fecha===el.dataset.movFecha && Math.abs(m.monto)===montoAbs));
     if(idx===-1) return;
     signedFn = m => m.monto;
     const m = lista[idx];
@@ -135,7 +135,7 @@ function abrirDetalleMov(el){
   const esPositivo = monto >= 0;
   const claseMonto = esPositivo ? 'mdet-c-accent' : 'mdet-c-red';
   const signo = esPositivo ? '+' : '−';
-  const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', compra:'Compra', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Retiro' }[movTipo] || movTipo;
+  const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', compra:'Compra', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Retiro' }[movimientoTipo] || movimientoTipo;
 
   // Sección de origen (módulo donde se registró este movimiento)
   const origenLabel = el.dataset.movOrigen || '';
@@ -161,47 +161,47 @@ function abrirDetalleMov(el){
     </div>` : '';
 
   // ── Buscar el objeto raw del movimiento para mostrar info rica ────────────
-  let _rawMov = null;
+  let _rawMovimiento = null;
   try {
-    if (movId) {
+    if (movimientoId) {
       if (cuentaKey === 'encargo') {
         // Buscar en todos los encargos (no solo el activo, para cubrir casos donde el usuario navegó)
-        const encIdHint = el.dataset.movEncId || null;
+        const encargoIdHint = el.dataset.movEncId || null;
         const todosEncs = (S.encargos||[]);
-        for (const enc of todosEncs) {
-          const found = (enc.movimientos||[]).find(m=>m.id===movId);
-          if (found) { _rawMov = found; break; }
+        for (const encargo of todosEncs) {
+          const found = (encargo.movimientos||[]).find(m=>m.id===movimientoId);
+          if (found) { _rawMovimiento = found; break; }
         }
         // Fallback al encargo activo
-        if (!_rawMov) {
+        if (!_rawMovimiento) {
           if (typeof getEncargo==='function') {
-            const enc = getEncargo(encargoActualId);
-            if (enc) _rawMov = (enc.movimientos||[]).find(m=>m.id===movId) || null;
+            const encargo = getEncargo(encargoActualId);
+            if (encargo) _rawMovimiento = (encargo.movimientos||[]).find(m=>m.id===movimientoId) || null;
           }
         }
       } else if (cuentaKey === 'deudor') {
         for (const d of Deudas.lista('favor')) {
-          const found = (d.movimientos||[]).find(m=>m.id===movId);
-          if (found) { _rawMov = found; break; }
+          const found = (d.movimientos||[]).find(m=>m.id===movimientoId);
+          if (found) { _rawMovimiento = found; break; }
         }
       } else if (cuentaKey === 'tc') {
         for (const tc of (S.tarjetasCredito||[])) {
-          _rawMov = (tc.compras||[]).find(m=>m.id===movId)
-                 || (tc.pagos||[]).find(m=>m.id===movId)
+          _rawMovimiento = (tc.compras||[]).find(m=>m.id===movimientoId)
+                 || (tc.pagos||[]).find(m=>m.id===movimientoId)
                  || null;
-          if (_rawMov) break;
+          if (_rawMovimiento) break;
         }
-        if (!_rawMov) _rawMov = (S.tcMovimientos||[]).find(m=>m.id===movId) || null;
+        if (!_rawMovimiento) _rawMovimiento = (S.tcMovimientos||[]).find(m=>m.id===movimientoId) || null;
       } else {
         // Cuentas estándar/custom: busca en gastosVar, S.movimientos, transferencias, deudores (abonos), mesadas, Spotify
-        _rawMov = (S.gastosVar||[]).find(m=>m.id===movId)
-               || (S.movimientos||[]).find(m=>m.id===movId)
-               || (S.transferencias||[]).find(m=>m.id===movId)
+        _rawMovimiento = (S.gastosVar||[]).find(m=>m.id===movimientoId)
+               || (S.movimientos||[]).find(m=>m.id===movimientoId)
+               || (S.transferencias||[]).find(m=>m.id===movimientoId)
                || null;
-        if (!_rawMov) {
+        if (!_rawMovimiento) {
           for (const d of Deudas.lista('favor')) {
-            const found = (d.movimientos||[]).find(m=>m.id===movId);
-            if (found) { _rawMov = found; break; }
+            const found = (d.movimientos||[]).find(m=>m.id===movimientoId);
+            if (found) { _rawMovimiento = found; break; }
           }
         }
       }
@@ -210,8 +210,8 @@ function abrirDetalleMov(el){
 
   // ── Info rica del movimiento raw en lenguaje claro ──────────────────────
   let richHtml = '';
-  if (_rawMov) {
-    const rm = _rawMov;
+  if (_rawMovimiento) {
+    const rm = _rawMovimiento;
     const richParts = [];
 
     // Abono de deuda con extra: aunque en la cuenta se ve un solo movimiento (o uno por cuenta), el detalle dice que todo
@@ -243,19 +243,19 @@ function abrirDetalleMov(el){
 
     // ── Sobrante del diferencial de encargo (ingreso generado automáticamente) ─
     if (rm._esDiferencialEncargo) {
-      const encMovRef = rm._encMovId ? (() => {
-        for (const enc of (S.encargos||[])) {
-          const m = (enc.movimientos||[]).find(x=>x.id===rm._encMovId);
-          if (m) return { enc, mov: m };
+      const encargoMovimientoRef = rm._encMovId ? (() => {
+        for (const encargo of (S.encargos||[])) {
+          const m = (encargo.movimientos||[]).find(x=>x.id===rm._encMovId);
+          if (m) return { encargo, movimiento: m };
         }
         return null;
       })() : null;
-      const dijo  = rm._difDijo  || (encMovRef?.mov?.monto) || 0;
+      const dijo  = rm._difDijo  || (encargoMovimientoRef?.movimiento?.monto) || 0;
       const real  = rm._difReal  || 0;
       const margenVal = rm._difMargen || (dijo - real) || 0;
-      const encNombre = encMovRef?.enc?.nombre || '';
-      const tcUsada = encMovRef?.mov?._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===encMovRef.mov._tcId)||{}).nombre : '';
-      const destino = encMovRef?.mov?._destino ? fuenteLabel(encMovRef.mov._destino) : '';
+      const encargoNombre = encargoMovimientoRef?.encargo?.nombre || '';
+      const tcUsada = encargoMovimientoRef?.movimiento?._tcId ? ((S.tarjetasCredito||[]).find(t=>t.id===encargoMovimientoRef.movimiento._tcId)||{}).nombre : '';
+      const destino = encargoMovimientoRef?.movimiento?._destino ? fuenteLabel(encargoMovimientoRef.movimiento._destino) : '';
 
       richParts.push(`
         <div class="mdet-panel-sobrante">
@@ -267,7 +267,7 @@ function abrirDetalleMov(el){
           ${real ? `<div class="mdet-fila"><span class="mdet-c-text2">Costó realmente (TC)</span><span class="mdet-val-blue">${fmt(real)}</span></div>` : ''}
           ${margenVal ? `<div class="mdet-fila"><span class="mdet-c-amber">Margen a tu favor</span><span class="mdet-val-amber">+ ${fmt(margenVal)}</span></div>` : ''}
           ${tcUsada ? `<div class="mdet-fila"><span class="mdet-c-text2">Tarjeta que se usó</span><span class="mdet-b-blue">${escHtml(tcUsada)}</span></div>` : ''}
-          ${encNombre ? `<div class="mdet-fila"><span class="mdet-c-text2">Encargo origen</span><span class="mdet-b-text2">${escHtml(encNombre)}</span></div>` : ''}
+          ${encargoNombre ? `<div class="mdet-fila"><span class="mdet-c-text2">Encargo origen</span><span class="mdet-b-text2">${escHtml(encargoNombre)}</span></div>` : ''}
           ${destino ? `<div class="mdet-fila"><span class="mdet-c-text2">Fondos para pagar la TC en</span><span class="mdet-b-accent">${escHtml(destino)}</span></div>` : ''}
         </div>`);
     }
@@ -356,9 +356,9 @@ function abrirDetalleMov(el){
     if (rm._esTcEncargo) {
       const tc = (S.tarjetasCredito||[]).find(t=>t.id===rm._tcId);
       const tcNombre = tc ? tc.nombre : (rm._tcId || 'tarjeta desconocida');
-      const montoEnc = rm.monto;         // lo que salió del encargo (= lo que se le dijo)
-      const montoReal = rm._tcMonto || montoEnc;  // lo que realmente se cargó a la TC
-      const hayMargen = montoEnc !== montoReal && Math.abs(montoEnc - montoReal) > 0.5;
+      const montoEncargo = rm.monto;         // lo que salió del encargo (= lo que se le dijo)
+      const montoReal = rm._tcMonto || montoEncargo;  // lo que realmente se cargó a la TC
+      const hayMargen = montoEncargo !== montoReal && Math.abs(montoEncargo - montoReal) > 0.5;
       const destinoLabel = rm._destino ? fuenteLabel(rm._destino) : '';
 
       richParts.push(`
@@ -370,7 +370,7 @@ function abrirDetalleMov(el){
           </div>
           <div class="mdet-fila-wrap">
             <span class="mdet-txt">Salió del encargo</span>
-            <span class="mdet-tc-monto mdet-c-red">− ${fmt(montoEnc)}</span>
+            <span class="mdet-tc-monto mdet-c-red">− ${fmt(montoEncargo)}</span>
           </div>
           <div class="mdet-fila-wrap">
             <span class="mdet-txt">Cargado a la TC</span>
@@ -379,7 +379,7 @@ function abrirDetalleMov(el){
           ${hayMargen ? `
           <div class="mdet-fila-wrap">
             <span class="mdet-tc-amber">Diferencia (tu margen)</span>
-            <span class="mdet-tc-monto mdet-c-amber">+ ${fmt(montoEnc - montoReal)}</span>
+            <span class="mdet-tc-monto mdet-c-amber">+ ${fmt(montoEncargo - montoReal)}</span>
           </div>` : ''}
           ${destinoLabel ? `
           <div class="mdet-fila-wrap">
@@ -450,7 +450,7 @@ function abrirDetalleMov(el){
 }
 
 
-// Motor de filtros de movimientos (renderMovsCuenta y compañía) migrado a js/modules/cuentas.js.
+// Motor de filtros de movimientos (renderMovimientosCuenta y compañía) migrado a js/modules/cuentas.js.
 
 /* ---- ELIMINAR MOVIMIENTO (con reversión bidireccional) ---- */
 // Cantidad de movimientos manuales (S.movimientos: salida_manual/ingreso/
@@ -475,7 +475,7 @@ function _cuentaOpsPosteriores(cuenta, fecha, excludeId) {
 }
 
 // ¿Existe todavía el registro que borra eliminarMovimiento()? true / false, o null si el tipo no se puede comprobar aquí.
-function _movExiste(tipo, id) {
+function _movimientoExiste(tipo, id) {
   switch (tipo) {
     case 'transferencia': return (S.transferencias || []).some(t => t.id === id);
     case 'salida_manual': case 'ingreso': case 'apertura': case 'entrada':
@@ -487,36 +487,36 @@ function _movExiste(tipo, id) {
 
 // Movimientos que se están eliminando ahora mismo: un segundo disparo del mismo clic (o un doble clic) no abre otro diálogo ni
 // revierte otra vez. Se libera siempre al terminar, cancele o no el usuario.
-const _movEliminando = new Set();
+const _movimientoEliminando = new Set();
 async function eliminarMovimiento(btn) {
   const item = btn && btn.closest && btn.closest('.gasto-item');
   const id = item && item.dataset && item.dataset.movId;
   if (!id) return;
-  if (_movEliminando.has(id)) return;
-  _movEliminando.add(id);
+  if (_movimientoEliminando.has(id)) return;
+  _movimientoEliminando.add(id);
   try { await _eliminarMovimientoImpl(btn); }
-  finally { _movEliminando.delete(id); }
+  finally { _movimientoEliminando.delete(id); }
 }
 
 async function _eliminarMovimientoImpl(btn) {
   const item = btn.closest('.gasto-item');
   if (!item) return;
-  const movId = item.dataset.movId;
-  const movTipoEl = item.dataset.movTipo;
+  const movimientoId = item.dataset.movId;
+  const movimientoTipoEl = item.dataset.movTipo;
   const fuenteOrigen = item.dataset.movFuente;
   const fuenteDestino = item.dataset.movDestino;
   const monto = parseFloat(item.dataset.movMonto) || 0;
   const fechaItem = item.dataset.movFecha || '';
 
   // Bloquear si es un movimiento secundario (generado automáticamente por otra sección)
-  const movObj = (S.movimientos || []).find(x => x.id === movId)
-    || (() => { for (const enc of (S.encargos||[])) { const m=(enc.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
-    || (() => { for (const d of Deudas.lista('favor')) { const m=(d.movimientos||[]).find(x=>x.id===movId); if(m) return m; } return null; })()
-    || (S.gastosVar || []).find(x => x.id === movId)
-    || (S.spotify.historial || []).find(x => x.id === movId)
-    || (() => { for (const h of (S.spotify.historial||[])) { const ab=(h.pendienteHistorial||[]).find(x=>x.id===movId); if(ab) return ab; } return null; })();
-  if (movObj && movObj._secundario) {
-    const seccion = movObj._origenSeccion || 'la sección de origen';
+  const movimientoObj = (S.movimientos || []).find(x => x.id === movimientoId)
+    || (() => { for (const encargo of (S.encargos||[])) { const m=(encargo.movimientos||[]).find(x=>x.id===movimientoId); if(m) return m; } return null; })()
+    || (() => { for (const d of Deudas.lista('favor')) { const m=(d.movimientos||[]).find(x=>x.id===movimientoId); if(m) return m; } return null; })()
+    || (S.gastosVar || []).find(x => x.id === movimientoId)
+    || (S.spotify.historial || []).find(x => x.id === movimientoId)
+    || (() => { for (const h of (S.spotify.historial||[])) { const ab=(h.pendienteHistorial||[]).find(x=>x.id===movimientoId); if(ab) return ab; } return null; })();
+  if (movimientoObj && movimientoObj._secundario) {
+    const seccion = movimientoObj._origenSeccion || 'la sección de origen';
     await avisarNoSePuede('Movimiento vinculado', `Este movimiento fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`);
     return;
   }
@@ -529,17 +529,17 @@ async function _eliminarMovimientoImpl(btn) {
   // llamaba funciones de prestado.js (grupo lazy) sin guard. Se delega en
   // eliminarMovDeudor(), que trae todo eso; { desdeFeed: true } evita que navegue
   // al detalle del deudor (el usuario se queda en la cuenta desde donde borró).
-  if (movTipoEl === 'prestamo' || movTipoEl === 'abono') {
-    const deudorDueno = Deudas.lista('favor').find(d => (d.movimientos || []).some(x => x.id === movId));
+  if (movimientoTipoEl === 'prestamo' || movimientoTipoEl === 'abono') {
+    const deudorDueno = Deudas.lista('favor').find(d => (d.movimientos || []).some(x => x.id === movimientoId));
     if (!deudorDueno) {
       toast('No se encontró este movimiento en Préstamos — puede que ya se haya eliminado', 'err', 4000);
       return;
     }
-    if (typeof eliminarMovDeudor !== 'function') {
+    if (typeof eliminarMovimientoDeudor !== 'function') {
       try { await Loader.ensure('prestamos'); }
       catch (err) { toast('No se pudo cargar Préstamos. Intenta de nuevo.', 'err', 4000); return; }
     }
-    await eliminarMovDeudor(deudorDueno.id, movId, { desdeFeed: true });
+    await eliminarMovimientoDeudor(deudorDueno.id, movimientoId, { desdeFeed: true });
     _rerenderCuentaActiva();
     return;
   }
@@ -556,26 +556,26 @@ async function _eliminarMovimientoImpl(btn) {
   // entrada.
   // Cada tipo declara su protección con Reversibles.registrar() (más abajo en este archivo y en gastos.js).
   let ref = null;
-  if (movTipoEl === 'mesada') {
+  if (movimientoTipoEl === 'mesada') {
     ['papa', 'mama'].forEach(parent => {
       const data = getMesadaData(parent);
-      Object.keys(data).forEach(k => { if (data[k] && data[k]._id === movId) ref = { parent, key: k, info: data[k] }; });
+      Object.keys(data).forEach(k => { if (data[k] && data[k]._id === movimientoId) ref = { parent, key: k, info: data[k] }; });
     });
-  } else if (movTipoEl === 'gasto') ref = (S.gastosVar || []).find(x => x.id === movId);
-  else if (movTipoEl === 'transferencia') ref = (S.transferencias || []).find(t => t.id === movId);
-  else if (movTipoEl === 'salida_manual') ref = (S.movimientos || []).find(x => x.id === movId);
-  else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
-    const m = (S.movimientos || []).find(x => x.id === movId);
+  } else if (movimientoTipoEl === 'gasto') ref = (S.gastosVar || []).find(x => x.id === movimientoId);
+  else if (movimientoTipoEl === 'transferencia') ref = (S.transferencias || []).find(t => t.id === movimientoId);
+  else if (movimientoTipoEl === 'salida_manual') ref = (S.movimientos || []).find(x => x.id === movimientoId);
+  else if (movimientoTipoEl === 'ingreso' || movimientoTipoEl === 'apertura' || movimientoTipoEl === 'entrada') {
+    const m = (S.movimientos || []).find(x => x.id === movimientoId);
     ref = { m, fuente: (m && m.fuente) || fuenteOrigen, fecha: (m && m.fecha) || fechaItem, monto: m ? m.monto : monto };
   }
-  const prot = await Reversibles.proteger(movTipoEl, ref, { fechaItem });
+  const prot = await Reversibles.proteger(movimientoTipoEl, ref, { fechaItem });
   if (!prot.ok) return;
   let confirmado = prot.confirmado;
 
   // Confirmación
   // Seguridad: si el movimiento ya no existe (otro clic, otra pestaña, otro dispositivo) no se pregunta ni se revierte nada:
   // revertir dos veces el mismo movimiento duplica la plata.
-  if (_movExiste(movTipoEl, movId) === false) {
+  if (_movimientoExiste(movimientoTipoEl, movimientoId) === false) {
     toast('Este movimiento ya se eliminó', 'info', 3000);
     _rerenderCuentaActiva();
     return;
@@ -584,45 +584,45 @@ async function _eliminarMovimientoImpl(btn) {
     const ok = await confirmarEliminar({ titulo: 'Eliminar movimiento', objeto: 'este movimiento', detalle: 'Se revertirá el efecto en los saldos de todas las cuentas involucradas.', irreversible: false });
     if (!ok) return;
   }
-  if (_movExiste(movTipoEl, movId) === false) { _rerenderCuentaActiva(); return; }
+  if (_movimientoExiste(movimientoTipoEl, movimientoId) === false) { _rerenderCuentaActiva(); return; }
 
   // Lo que cambie el patrimonio al revertir se quita también de las instantáneas del historial (el núcleo).
   const _histAntes = medirPatrimonioParaHistorial();
-  const _histItem = movObj || (S.transferencias || []).find(t => t.id === movId) || { id: movId, fecha: fechaItem };
+  const _histItem = movimientoObj || (S.transferencias || []).find(t => t.id === movimientoId) || { id: movimientoId, fecha: fechaItem };
   let _histApertura = null;
 
   // Revertir según el tipo
-  if (movTipoEl === 'transferencia') {
+  if (movimientoTipoEl === 'transferencia') {
     // Una transferencia afecta dos cuentas: origen pierde, destino gana.
     // Para revertir: origen recupera, destino pierde.
-    const tr = (S.transferencias || []).find(t => t.id === movId);
+    const tr = (S.transferencias || []).find(t => t.id === movimientoId);
     if (tr) {
       // Se revierte con la misma regla única (los dos lados o ninguno). sinSaldo: revertir nunca se bloquea por saldo, y
       // permitirArchivada: una cuenta archivada igual debe poder deshacer su historial.
-      const rev = Plata.transferir(tr.destino, tr.origen, tr.monto, { og: _ogMov(movId, true), sinSaldo: true, permitirArchivada: true });
+      const rev = Plata.transferir(tr.destino, tr.origen, tr.monto, { og: _ogMovimiento(movimientoId, true), sinSaldo: true, permitirArchivada: true });
       if (!rev.ok) { toast('No se pudo revertir la transferencia: ' + rev.motivo, 'err', 4500); _rerenderCuentaActiva(); return; }
-      S.transferencias = S.transferencias.filter(t => t.id !== movId);
+      S.transferencias = S.transferencias.filter(t => t.id !== movimientoId);
     }
-  } else if (movTipoEl === 'salida_manual') {
+  } else if (movimientoTipoEl === 'salida_manual') {
     // Fue una salida manual (S.movimientos tipo 'salida_manual')
-    const m = (S.movimientos || []).find(x => x.id === movId);
+    const m = (S.movimientos || []).find(x => x.id === movimientoId);
     if (m) {
-      sumarFuente(m.fuente, m.monto, _ogMov(movId, true));
-      S.movimientos = S.movimientos.filter(x => x.id !== movId);
+      sumarFuente(m.fuente, m.monto, _ogMovimiento(movimientoId, true));
+      S.movimientos = S.movimientos.filter(x => x.id !== movimientoId);
     }
-  } else if (movTipoEl === 'ingreso' || movTipoEl === 'apertura' || movTipoEl === 'entrada') {
+  } else if (movimientoTipoEl === 'ingreso' || movimientoTipoEl === 'apertura' || movimientoTipoEl === 'entrada') {
     // Fue una entrada manual (S.movimientos tipo 'entrada' o 'apertura'; 'ingreso' es como la vista de Cuentas rotula una entrada)
-    const m = (S.movimientos || []).find(x => x.id === movId);
+    const m = (S.movimientos || []).find(x => x.id === movimientoId);
     if (m) {
       const fuente = m.fuente || fuenteOrigen;
-      if (fuente) descontarFuente(fuente, m.monto, _ogMov(movId, true));
-      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, _ogMov(movId, true));
+      if (fuente) descontarFuente(fuente, m.monto, _ogMovimiento(movimientoId, true));
+      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, _ogMovimiento(movimientoId, true));
       if (m.tipo === 'apertura') _histApertura = m;
-      S.movimientos = S.movimientos.filter(x => x.id !== movId);
+      S.movimientos = S.movimientos.filter(x => x.id !== movimientoId);
     }
-  } else if (movTipoEl === 'gasto') {
+  } else if (movimientoTipoEl === 'gasto') {
     // Gasto variable (S.gastosVar)
-    const g = (S.gastosVar || []).find(x => x.id === movId);
+    const g = (S.gastosVar || []).find(x => x.id === movimientoId);
     if (g) {
       if (g._esCompraTC && g._tcId) {
         // Compra de TC: marcar como eliminada en tc.compras (nunca se borra
@@ -647,22 +647,22 @@ async function _eliminarMovimientoImpl(btn) {
         }
         const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
         if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
-        if (g.fuente) sumarFuente(g.fuente, g.monto, _ogMov(movId, true));
+        if (g.fuente) sumarFuente(g.fuente, g.monto, _ogMovimiento(movimientoId, true));
       } else if (g.fuente) {
-        sumarFuente(g.fuente, g.monto, _ogMov(movId, true)); // devolver el dinero
+        sumarFuente(g.fuente, g.monto, _ogMovimiento(movimientoId, true)); // devolver el dinero
       } else if (g.splits && g.splits.length) {
         // Gasto dividido entre varias cuentas (`fuente` vacío): se devuelve cada parte a su cuenta, igual que deleteGastoVar() en
         // gastos.js. Antes esta rama no las devolvía y la plata se perdía al borrar desde la cuenta o desde el feed.
-        g.splits.forEach(spotify => { if (spotify.fuente) sumarFuente(spotify.fuente, spotify.monto || 0, _ogMov(movId, true)); });
+        g.splits.forEach(spotify => { if (spotify.fuente) sumarFuente(spotify.fuente, spotify.monto || 0, _ogMovimiento(movimientoId, true)); });
       }
       // Bug fix: si era pago de gasto fijo, desmarcar como pagado
       if(g.esPagoGastoFijo && g.gastoFijoId){
         const mes = mesKey(g.fecha);
         if(S.pagosGastosFijos) delete S.pagosGastosFijos[g.gastoFijoId+'_'+mes];
       }
-      S.gastosVar = S.gastosVar.filter(x => x.id !== movId);
+      S.gastosVar = S.gastosVar.filter(x => x.id !== movimientoId);
     }
-  } else if (movTipoEl === 'mesada') {
+  } else if (movimientoTipoEl === 'mesada') {
     // Mesada
     // FIX: getMesadaData es una mutación real (encuentra y borra el registro
     // original + revierte la plata al destino) — mesada.js ya es un grupo
@@ -678,12 +678,12 @@ async function _eliminarMovimientoImpl(btn) {
       const data = getMesadaData(parent);
       Object.keys(data).forEach(k => {
         const info = data[k];
-        if (info && info._id === movId) {
+        if (info && info._id === movimientoId) {
           // Revertir destino(s)
           if (info.splits && info.splits.length) {
-            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, _ogMov(movId, true)); });
+            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, _ogMovimiento(movimientoId, true)); });
           } else if (info.destino) {
-            descontarFuente(info.destino, info.monto, _ogMov(movId, true));
+            descontarFuente(info.destino, info.monto, _ogMovimiento(movimientoId, true));
           }
           delete data[k];
           found = true;
@@ -710,7 +710,7 @@ function _rerenderCuentaActiva() {
 }
 
 // Registro bajo el namespace 'core' — ver nota de cabecera de este archivo.
-Events.on('core:abrirDetalleMov', abrirDetalleMov);
+Events.on('core:abrirDetalleMov', abrirDetalleMovimiento);
 Events.on('core:eliminarMovimiento', eliminarMovimiento);
 // Marca o quita «extraordinario» en una entrada ya registrada (S.movimientos). No mueve plata: solo cambia cómo cuenta en el ingreso típico.
 function toggleExtraordinario(id) {

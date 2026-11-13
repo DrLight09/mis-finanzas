@@ -19,17 +19,17 @@ describe('mesada-reglas', () => {
   // Encargos real es otro grupo lazy: acá se simula SOLO su API pública (la misma que
   // consulta mesada.js (Parte 1) con guards typeof), sobre S.encargos.
   function stubEncargos(ctx) {
-    const mov = (enc, cuenta) => (enc.movimientos || []).reduce((a, m) => {
+    const movimiento = (encargo, cuenta) => (encargo.movimientos || []).reduce((a, m) => {
       if ((m.cuenta || '') !== (cuenta || '')) return a;
       return a + (m.tipo === 'entrada' ? m.monto : -m.monto);
     }, 0);
     ctx.getEncargo = id => (ctx.S.encargos || []).find(e => e.id === id);
-    ctx.encargoSaldo = enc => (enc.movimientos || []).reduce((a, m) => a + (m.tipo === 'entrada' ? m.monto : -m.monto), 0);
-    ctx._getEncargoSaldoEnCuenta = (enc, cuenta) => mov(enc, cuenta);
-    ctx._getEncargoSaldoSinCuenta = enc => mov(enc, '');
-    ctx._getEncargoSaldoPorCuenta = enc => {
-      const set = new Set((enc.movimientos || []).map(m => m.cuenta).filter(Boolean));
-      return [...set].map(c => ({ cuenta: c, label: c, saldo: mov(enc, c) }));
+    ctx.encargoSaldo = encargo => (encargo.movimientos || []).reduce((a, m) => a + (m.tipo === 'entrada' ? m.monto : -m.monto), 0);
+    ctx._getEncargoSaldoEnCuenta = (encargo, cuenta) => movimiento(encargo, cuenta);
+    ctx._getEncargoSaldoSinCuenta = encargo => movimiento(encargo, '');
+    ctx._getEncargoSaldoPorCuenta = encargo => {
+      const set = new Set((encargo.movimientos || []).map(m => m.cuenta).filter(Boolean));
+      return [...set].map(c => ({ cuenta: c, label: c, saldo: movimiento(encargo, c) }));
     };
   }
 
@@ -52,7 +52,7 @@ describe('mesada-reglas', () => {
   }
 
   const saldo = (ctx, id) => ctx.S.cuentas.find(c => c.id === String(id).replace('cuenta:', '')).saldo;
-  const enc = (id, nombre, movs) => ({ id, nombre, movimientos: movs });
+  const encargo = (id, nombre, movimientos) => ({ id, nombre, movimientos: movimientos });
   const entrada = (monto, cuenta = '') => ({ id: 'm' + monto + cuenta, tipo: 'entrada', monto, cuenta });
   const pago = (ctx, over = {}) => ctx.mesadaRegistrarPago({
     parent: 'papa', key: '2026-3', monto: 80000, fecha: '2026-04-05', nota: '', destino: '', ...over,
@@ -127,7 +127,7 @@ describe('mesada-reglas', () => {
   /* ── Pagar con plata de un encargo ───────────────────────────────── */
 
   test('encargo — descuenta del encargo, suma a la cuenta destino y marca sumado', () => {
-    const ctx = fresh({ encargos: [enc('e1', 'Plata de papá', [entrada(100000, 'cuenta:nequi')])] });
+    const ctx = fresh({ encargos: [encargo('e1', 'Plata de papá', [entrada(100000, 'cuenta:nequi')])] });
     const r = pago(ctx, { destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     assert.equal(r.ok, true);
     const info = ctx.getMesadaData('papa')['2026-3'];
@@ -137,10 +137,10 @@ describe('mesada-reglas', () => {
   });
 
   test('encargo — saldo insuficiente se rechaza sin dejar rastro', () => {
-    const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(10000, 'cuenta:nequi')])] });
+    const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(10000, 'cuenta:nequi')])] });
     const antes = clone(ctx.S);
     const r = pago(ctx, { destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
-    assert.deepEqual([r.ok, r.motivo, r.disponible, r.encNombre], [false, 'encargo-insuficiente', 10000, 'Papá']);
+    assert.deepEqual([r.ok, r.motivo, r.disponible, r.encargoNombre], [false, 'encargo-insuficiente', 10000, 'Papá']);
     assert.deepEqual(clone(ctx.S), antes);
   });
 
@@ -152,7 +152,7 @@ describe('mesada-reglas', () => {
   test('REGRESIÓN bug 1 — encargo + dividido que excede NO deja la salida huérfana en el encargo', () => {
     // Antes: la salida se agregaba al encargo ANTES de validar el split; si fallaba, quedaba
     // descontada y al reintentar se descontaba dos veces.
-    const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(200000, 'cuenta:nequi')])] });
+    const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(200000, 'cuenta:nequi')])] });
     const antes = clone(ctx.S);
     const r = pago(ctx, { splitMode: true, splits: [{ fuente: 'cuenta:nequi', monto: 99999 }], encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     assert.equal(r.motivo, 'split-excede');
@@ -161,7 +161,7 @@ describe('mesada-reglas', () => {
   });
 
   test('encargo sin destino: la salida del encargo existe pero sumado=false y no sube ningún saldo', () => {
-    const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(100000)])] });
+    const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(100000)])] });
     pago(ctx, { destino: '', encargo: { id: 'e1', cuentaSel: '' } });
     assert.equal(ctx.getMesadaData('papa')['2026-3'].origenEncargo.sumado, false);
     assert.equal(saldo(ctx, 'cuenta:nequi'), 0);
@@ -200,7 +200,7 @@ describe('mesada-reglas', () => {
   });
 
   test('abonar con encargo insuficiente se rechaza sin tocar nada', () => {
-    const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(1000, 'cuenta:nequi')])] });
+    const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(1000, 'cuenta:nequi')])] });
     conPendiente(ctx);
     const antes = clone(ctx.S);
     const r = ctx.mesadaAbonarPendiente({ parent: 'papa', key: '2026-3', monto: 5000, destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
@@ -231,7 +231,7 @@ describe('mesada-reglas', () => {
   // Invariante central: registrar (+ abonar) y luego borrar deja S exactamente como estaba.
   function idaYVuelta(nombre, preparar) {
     test('ida y vuelta — ' + nombre, () => {
-      const ctx = fresh({ nequi: 5000, efectivo: 700, encargos: [enc('e1', 'Mamá', [entrada(300000, 'cuenta:nequi'), entrada(50000)])] });
+      const ctx = fresh({ nequi: 5000, efectivo: 700, encargos: [encargo('e1', 'Mamá', [entrada(300000, 'cuenta:nequi'), entrada(50000)])] });
       ctx.S.cuentas.push({ id: 'c1', tipo: 'banco', nombre: 'C1', saldo: 100, movimientos: [] });
       ctx._ensureMesadas(); ctx.S.mesadas.papa.cuotas = { '2026': 80000 };
       const antes = clone(ctx.S);
@@ -257,7 +257,7 @@ describe('mesada-reglas', () => {
   });
 
   test('deshacer un abono deja el mes exactamente como antes de ese abono', () => {
-    const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
+    const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
     conPendiente(ctx);
     ctx.mesadaAbonarPendiente({ parent: 'papa', key: '2026-3', monto: 5000, fecha: '2026-05-01', destino: 'cuenta:efectivo' });
     const antes = clone(ctx.S);
@@ -271,7 +271,7 @@ describe('mesada-reglas', () => {
   test('REGRESIÓN bug 2 — si la salida del encargo ya no existe, borrar IGUAL devuelve la plata a la cuenta', () => {
     // Antes: el monto a devolver se leía del movimiento del encargo; sin él quedaba en 0, no se
     // descontaba nada y el espejo sí se borraba → saldo inflado y sin rastro.
-    const ctx = fresh({ nequi: 1000, encargos: [enc('e1', 'Papá', [entrada(100000, 'cuenta:nequi')])] });
+    const ctx = fresh({ nequi: 1000, encargos: [encargo('e1', 'Papá', [entrada(100000, 'cuenta:nequi')])] });
     pago(ctx, { destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     assert.equal(saldo(ctx, 'cuenta:nequi'), 81000);
     ctx.S.encargos[0].movimientos = ctx.S.encargos[0].movimientos.filter(m => m.tipo === 'entrada'); // alguien la borró
@@ -355,17 +355,17 @@ describe('mesada-reglas', () => {
 
   /* ── Encargos candidatos ──────────────────────────────────────────── */
 
-  const candidatos = (ctx, p) => ctx.mesadaEncargosDelParent(p).map(x => x.enc.id);
+  const candidatos = (ctx, p) => ctx.mesadaEncargosDelParent(p).map(x => x.encargo.id);
 
   test('encargos candidatos — por nombre, palabra completa, con saldo y de mayor a menor', () => {
     const ctx = fresh({ encargos: [
-      enc('a', 'Plata de papá para el mercado', [entrada(1000)]),
-      enc('b', 'Papi', [entrada(5000)]),
-      enc('c', 'papayera', [entrada(9000)]),
-      enc('d', 'Papás', [entrada(100)]),
-      enc('e', 'Papá sin saldo', []),
-      enc('f', 'Mamá', [entrada(7000)]),
-      enc('g', 'MADRE', [entrada(100)]),
+      encargo('a', 'Plata de papá para el mercado', [entrada(1000)]),
+      encargo('b', 'Papi', [entrada(5000)]),
+      encargo('c', 'papayera', [entrada(9000)]),
+      encargo('d', 'Papás', [entrada(100)]),
+      encargo('e', 'Papá sin saldo', []),
+      encargo('f', 'Mamá', [entrada(7000)]),
+      encargo('g', 'MADRE', [entrada(100)]),
     ] });
     // 'Papás' (plural) entra; 'papayera' no. 'Papas' a secas (las del almuerzo) es indistinguible de 'Papás':
     // la forma de evitarlo es ponerle otro nombre al encargo.
@@ -374,31 +374,31 @@ describe('mesada-reglas', () => {
   });
 
   test('sin Encargos cargado no hay candidatos (guard)', () => {
-    const ctx = fresh({ encargos: [enc('a', 'Papá', [entrada(1000)])] });
+    const ctx = fresh({ encargos: [encargo('a', 'Papá', [entrada(1000)])] });
     ctx.encargoSaldo = undefined;
     assert.deepEqual(clone(ctx.mesadaEncargosDelParent('papa')), []);
   });
 
   /* ── Protección en Encargos ───────────────────────────────────────── */
 
-  test('mesadaOrigenDeMovEncargo — reconoce la salida de un pago y la de un abono; ignora las demás', () => {
-    const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
+  test('mesadaOrigenDeMovimientoEncargo — reconoce la salida de un pago y la de un abono; ignora las demás', () => {
+    const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
     ctx._ensureMesadas(); ctx.S.mesadas.papa.cuotas = { '2026': 80000 };
     pago(ctx, { monto: 50000, destino: 'cuenta:nequi', quedaDebiendo: true, encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     ctx.mesadaAbonarPendiente({ parent: 'papa', key: '2026-3', monto: 10000, destino: '', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     const info = ctx.getMesadaData('papa')['2026-3'];
-    assert.deepEqual(clone(ctx.mesadaOrigenDeMovEncargo(info.origenEncargo.movId)), { parent: 'papa', key: '2026-3' });
-    assert.deepEqual(clone(ctx.mesadaOrigenDeMovEncargo(info.pendienteHistorial[0].origenEncargo.movId)), { parent: 'papa', key: '2026-3' });
-    assert.equal(ctx.mesadaOrigenDeMovEncargo('m300000nequi'), null);
-    assert.equal(ctx.mesadaOrigenDeMovEncargo(''), null);
+    assert.deepEqual(clone(ctx.mesadaOrigenDeMovimientoEncargo(info.origenEncargo.movId)), { parent: 'papa', key: '2026-3' });
+    assert.deepEqual(clone(ctx.mesadaOrigenDeMovimientoEncargo(info.pendienteHistorial[0].origenEncargo.movId)), { parent: 'papa', key: '2026-3' });
+    assert.equal(ctx.mesadaOrigenDeMovimientoEncargo('m300000nequi'), null);
+    assert.equal(ctx.mesadaOrigenDeMovimientoEncargo(''), null);
   });
 
-  test('mesadaOrigenDeMovEncargo — tras borrar el mes ya no bloquea (la salida desapareció)', () => {
-    const ctx = fresh({ encargos: [enc('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
+  test('mesadaOrigenDeMovimientoEncargo — tras borrar el mes ya no bloquea (la salida desapareció)', () => {
+    const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
     pago(ctx, { destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
-    const movId = ctx.getMesadaData('papa')['2026-3'].origenEncargo.movId;
+    const movimientoId = ctx.getMesadaData('papa')['2026-3'].origenEncargo.movId;
     ctx.mesadaBorrarPago('papa', '2026-3');
-    assert.equal(ctx.mesadaOrigenDeMovEncargo(movId), null);
+    assert.equal(ctx.mesadaOrigenDeMovimientoEncargo(movimientoId), null);
   });
 });
 
@@ -425,11 +425,11 @@ describe('mesada-ui', () => {
       cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 1000 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
       movimientos: [], encargos,
     });
-    const mov = (e, c) => (e.movimientos || []).reduce((a, m) => (m.cuenta || '') !== (c || '') ? a : a + (m.tipo === 'entrada' ? m.monto : -m.monto), 0);
+    const movimiento = (e, c) => (e.movimientos || []).reduce((a, m) => (m.cuenta || '') !== (c || '') ? a : a + (m.tipo === 'entrada' ? m.monto : -m.monto), 0);
     ctx.getEncargo = id => ctx.S.encargos.find(e => e.id === id);
     ctx.encargoSaldo = e => e.movimientos.reduce((a, m) => a + (m.tipo === 'entrada' ? m.monto : -m.monto), 0);
-    ctx._getEncargoSaldoEnCuenta = mov; ctx._getEncargoSaldoSinCuenta = e => mov(e, '');
-    ctx._getEncargoSaldoPorCuenta = e => [...new Set(e.movimientos.map(m => m.cuenta).filter(Boolean))].map(c => ({ cuenta: c, label: c, saldo: mov(e, c) }));
+    ctx._getEncargoSaldoEnCuenta = movimiento; ctx._getEncargoSaldoSinCuenta = e => movimiento(e, '');
+    ctx._getEncargoSaldoPorCuenta = e => [...new Set(e.movimientos.map(m => m.cuenta).filter(Boolean))].map(c => ({ cuenta: c, label: c, saldo: movimiento(e, c) }));
     const tag = createHtmlTag(ctx.escHtml); ctx.html = tag.html; ctx.raw = tag.raw;
     const toasts = []; ctx.toast = (m, t) => toasts.push([m, t]);
     ctx.save = () => {}; ctx.refresh = () => {};
@@ -438,7 +438,7 @@ describe('mesada-ui', () => {
     ctx._ensureMesadas(); ctx.S.mesadas.papa.cuotas = { '2026': 80000 };
     return { ctx, d, toasts };
   }
-  const enc = (id, nombre, monto, cuenta) => ({ id, nombre, movimientos: [{ id: 'in' + id, tipo: 'entrada', monto, cuenta }] });
+  const encargo = (id, nombre, monto, cuenta) => ({ id, nombre, movimientos: [{ id: 'in' + id, tipo: 'entrada', monto, cuenta }] });
 
   test('UI — registrar un pago simple de punta a punta (abrir, escribir, confirmar)', () => {
     const { ctx, d } = ui();
@@ -456,7 +456,7 @@ describe('mesada-ui', () => {
   });
 
   test('UI — con encargo: el widget aparece, valida saldo y descuenta al confirmar', () => {
-    const { ctx, d } = ui({ encargos: [enc('e1', 'Plata de papá', 100000, 'cuenta:nequi')] });
+    const { ctx, d } = ui({ encargos: [encargo('e1', 'Plata de papá', 100000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
     assert.equal(d.el('mpEncargoBox').style.display, '');
     assert.match(d.el('mpEncargoSub').textContent, /^Tienes .* guardados de Papá en encargos$/);
@@ -471,14 +471,14 @@ describe('mesada-ui', () => {
   });
 
   test('UI — sin candidatos el widget de encargo queda oculto', () => {
-    const { ctx, d } = ui({ encargos: [enc('e1', 'Carlos', 100000, 'cuenta:nequi')] });
+    const { ctx, d } = ui({ encargos: [encargo('e1', 'Carlos', 100000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
     assert.equal(d.el('mpEncargoBox').style.display, 'none');
   });
 
   test('REGRESIÓN bug 3 — el nombre del encargo va como texto (no HTML) en el toast de saldo insuficiente', () => {
     const nombre = 'Papá <img src=x onerror=alert(1)>';
-    const { ctx, d, toasts } = ui({ encargos: [enc('e1', nombre, 1000, 'cuenta:nequi')] });
+    const { ctx, d, toasts } = ui({ encargos: [encargo('e1', nombre, 1000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
     d.el('mpMonto').value = '80000';
     d.el('mpUsarEncargo').click();
@@ -491,7 +491,7 @@ describe('mesada-ui', () => {
   });
 
   test('UI — dividido que excede muestra el aviso y NO deja la salida del encargo huérfana', () => {
-    const { ctx, d } = ui({ encargos: [enc('e1', 'Papá', 200000, 'cuenta:nequi')] });
+    const { ctx, d } = ui({ encargos: [encargo('e1', 'Papá', 200000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
     d.el('mpMonto').value = '80000';
     d.el('mpUsarEncargo').click();
@@ -542,7 +542,7 @@ describe('mesada-ui', () => {
   });
 
   test('UI — borrar un mes revierte todo', async () => {
-    const { ctx, d } = ui({ encargos: [enc('e1', 'Papá', 100000, 'cuenta:nequi')] });
+    const { ctx, d } = ui({ encargos: [encargo('e1', 'Papá', 100000, 'cuenta:nequi')] });
     ctx.mesadaRegistrarPago({ parent: 'papa', key: '2026-3', monto: 80000, fecha: hoyISO(), destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     await ctx.eliminarMesadaPago('papa', '2026-3');
     assert.equal(ctx.S.cuentas[0].saldo, 1000);

@@ -99,10 +99,10 @@ S.libro = [{
 | Qué | Dónde |
 |---|---|
 | El libro (`Libro`: `registrar`, `conOrigen`, `verificar`, `entradasVisibles`, `saldo`), la puerta única (`sumarFuente`, `descontarFuente`, `ajustarSaldoCuenta`, `_libroPata`), la verificación en `save()`, y la versión del esquema (`SCHEMA_BASE`, `MIGRACIONES`, `aplicarMigraciones`) | `js/core/ (núcleo)` |
-| Espejo en el historial (`registrarMovEspejo`, `borrarMovEspejo`): siempre en `S.movimientos` con `fuente` | `js/core/cuenta-efectos.js` |
+| Espejo en el historial (`registrarMovimientoEspejo`, `borrarMovimientoEspejo`): siempre en `S.movimientos` con `fuente` | `js/core/cuenta-efectos.js` |
 | Historial de una cuenta con las entradas del libro sin fila | `getMovimientosCuenta` en `js/modules/cuentas.js` |
 | Borrado desde el feed o el historial de una cuenta | `eliminarMovimiento` en `js/core/movimientos.js` |
-| Origen por módulo | Cada módulo declara el suyo con `Libro.origen('modulo')` (núcleo): `_ogGastoVariable` (gastos), `_ogEnc` (encargos), `_ogSpotify` (spotify), `_ogMes` (mesada), `_ogTc` (tarjetas), `_ogAlcancia` (alcancía), `_ogCta` (cuentas), `_ogPlataComprometida` (plata comprometida), `_ogCobro` (ingresos fijos), `_ogMov` (borrado desde el historial), `_og`/`_enReversion` (préstamos). `_og(ref)` aplica; `_og(ref, true)` revierte. Un módulo nuevo solo añade su línea; una guarda en `tests/nucleo.test.js` impide volver a copiar la función |
+| Origen por módulo | Cada módulo declara el suyo con `Libro.origen('modulo')` (núcleo): `_ogGastoVariable` (gastos), `_ogEncargo` (encargos), `_ogSpotify` (spotify), `_ogMes` (mesada), `_ogTc` (tarjetas), `_ogAlcancia` (alcancía), `_ogCta` (cuentas), `_ogPlataComprometida` (plata comprometida), `_ogCobro` (ingresos fijos), `_ogMovimiento` (borrado desde el historial), `_og`/`_enReversion` (préstamos). `_og(ref)` aplica; `_og(ref, true)` revierte. Un módulo nuevo solo añade su línea; una guarda en `tests/nucleo.test.js` impide volver a copiar la función |
 | Validación al importar un backup (versión del esquema, `libro` debe ser array) | `_validarEstructuraJSON` en `js/modules/configuracion.js` |
 | Pruebas | `tests/libro.test.js` (suites `libro` y `libro-modulos`), `tests/cuentas.test.js` (suite `historial-cuenta`), `tests/nucleo.test.js` (suites `migraciones`, `clase-movimientos` y `clase-cobertura`) |
 | Guardia de las reglas 2 y 3 (nadie escribe `.saldo`; toda llamada de saldo con `origen`) | `tests/libro.test.js` (suite `puerta-unica`) |

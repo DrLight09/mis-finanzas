@@ -187,9 +187,9 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     gm.value = '';
 
     // Mejora 4: «Yo debo» marca el monto vacío en el propio campo, igual que «Me deben»
-    ev(`abrirMiDeuda('d2'); abrirMovMiDeuda('recibido')`);
+    ev(`abrirMiDeuda('d2'); abrirMovimientoMiDeuda('recibido')`);
     c4(q('#mdMovSheetTitle').textContent === 'Nueva deuda', 'Yo debo: el sheet de nueva deuda debe titularse «Nueva deuda»');
-    ev(`confirmarMovMiDeuda()`);
+    ev(`confirmarMovimientoMiDeuda()`);
     c4(q('#md_monto').classList.contains('input-error') && q('#md_monto_err').textContent === 'Ingresa un monto mayor a 0', 'Yo debo: monto vacío debe marcar el campo con «Ingresa un monto mayor a 0»');
     ev(`closeSheet('mov-mi-deuda')`);
 

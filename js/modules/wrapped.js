@@ -449,7 +449,7 @@ function _wrappedEntradasIngreso(S){
 
 function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   S = S || {};
-  const movs = S.movimientos || [];
+  const movimientos = S.movimientos || [];
 
 
   const { gastosVarPeriodo, pagosFijosPeriodo } = _wrappedItemsRealesPeriodo(S, tipo, mesK, anioK);
@@ -2008,9 +2008,9 @@ function _wrappedFasesAnio(S, anioK, mesMax){
 
   const { enPrimera, enSegunda } = _wrappedCorteMitadAnio(anioK, mesMax);
 
-  const alcanciaMovs = (S.alcancia && Array.isArray(S.alcancia.movimientos)) ? S.alcancia.movimientos : [];
-  const ahorroPrimera = alcanciaMovs.filter(m => m && enPrimera(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
-  const ahorroSegunda = alcanciaMovs.filter(m => m && enSegunda(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
+  const alcanciaMovimientos = (S.alcancia && Array.isArray(S.alcancia.movimientos)) ? S.alcancia.movimientos : [];
+  const ahorroPrimera = alcanciaMovimientos.filter(m => m && enPrimera(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
+  const ahorroSegunda = alcanciaMovimientos.filter(m => m && enSegunda(m.fecha)).reduce((s,m)=>s+(m.monto||0),0);
   const cambioAhorro = _wrappedCambioFuerte(ahorroPrimera, ahorroSegunda);
   if(cambioAhorro){
     return { tipo:'ahorro', direccion: cambioAhorro.direccion };
@@ -2138,19 +2138,19 @@ function _wrappedCalcularEncargos(S, tipo, mesK, anioK){
   let topEncargo = null; // el que más recibió este período
   const personasSet = new Set();
 
-  encargos.forEach(enc => {
-    const movs = Array.isArray(enc.movimientos) ? enc.movimientos : [];
+  encargos.forEach(encargo => {
+    const movimientos = Array.isArray(encargo.movimientos) ? encargo.movimientos : [];
     let totalEsteEncargo = 0;
-    movs.forEach(m => {
+    movimientos.forEach(m => {
       if(m && m.tipo === 'entrada' && _wrappedEnRango(m.fecha, tipo, mesK, anioK)){
         totalEsteEncargo += (m.monto||0);
       }
     });
     if(totalEsteEncargo > 0){
       totalEncargado += totalEsteEncargo;
-      personasSet.add(enc.personaId || enc.nombre || enc.id);
+      personasSet.add(encargo.personaId || encargo.nombre || encargo.id);
       if(!topEncargo || totalEsteEncargo > topEncargo.monto){
-        topEncargo = { nombre: enc.nombre, personaId: enc.personaId || null, monto: totalEsteEncargo };
+        topEncargo = { nombre: encargo.nombre, personaId: encargo.personaId || null, monto: totalEsteEncargo };
       }
     }
   });
@@ -2173,9 +2173,9 @@ function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
   let topDeudor = null;
 
   deudores.forEach(d => {
-    const movs = Array.isArray(d.movimientos) ? d.movimientos : [];
+    const movimientos = Array.isArray(d.movimientos) ? d.movimientos : [];
     let prestadoAEsta = 0, nPrestamosAEsta = 0;
-    movs.forEach(m => {
+    movimientos.forEach(m => {
       if(!m || !_wrappedEnRango(m.fecha, tipo, mesK, anioK)) return;
       if(m.tipo === 'prestamo'){ totalPrestado += (m.monto||0); prestadoAEsta += (m.monto||0); nPrestamosAEsta++; }
       // Un perdón de deuda ("¿Se lo regalas?", m._perdon) es un 'pago-completo' que NO
@@ -2202,8 +2202,8 @@ function _wrappedCalcularMisDeudas(S, tipo, mesK, anioK){
   let totalRecibido = 0, totalPagado = 0;
 
   misDeudas.forEach(d => {
-    const movs = Array.isArray(d.movimientos) ? d.movimientos : [];
-    movs.forEach(m => {
+    const movimientos = Array.isArray(d.movimientos) ? d.movimientos : [];
+    movimientos.forEach(m => {
       if(!m || !_wrappedEnRango(m.fecha, tipo, mesK, anioK)) return;
       if(m.tipo === 'recibido') totalRecibido += (m.monto||0);
       else if(m.tipo === 'pago' && !m._perdon) totalPagado += (m.monto||0); // un perdón no es plata pagada
@@ -2643,9 +2643,9 @@ function _wrappedProtagonistas(S, tipo, mesK, anioK){
     conteo[key].n += n;
   };
 
-  (S.encargos||[]).forEach(enc => {
-    const n = (enc.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
-    if(n>0) sumar(enc.personaId||enc.nombre, enc.nombre, enc.personaId||null, n);
+  (S.encargos||[]).forEach(encargo => {
+    const n = (encargo.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
+    if(n>0) sumar(encargo.personaId||encargo.nombre, encargo.nombre, encargo.personaId||null, n);
   });
   Deudas.lista('favor').forEach(d => {
     const n = (d.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
@@ -2888,12 +2888,12 @@ function _wrappedRecuperacionMasRapida(S, anioK){
   const deudores = Deudas.lista('favor');
   let mejor = null;
   deudores.forEach(d => {
-    const movs = (Array.isArray(d.movimientos) ? d.movimientos : [])
+    const movimientos = (Array.isArray(d.movimientos) ? d.movimientos : [])
       .filter(m => m && typeof m.fecha === 'string')
       .slice()
       .sort((a,b) => a.fecha.localeCompare(b.fecha));
-    if(movs.length !== 2) return;
-    const [primero, segundo] = movs;
+    if(movimientos.length !== 2) return;
+    const [primero, segundo] = movimientos;
     if(primero.tipo !== 'prestamo') return;
     if(!(segundo.tipo === 'abono' || segundo.tipo === 'pago-completo')) return;
     if(segundo._perdon) return; // perdonada ≠ recuperada: no es una devolución rápida
@@ -2976,9 +2976,9 @@ function _wrappedRecordsAnio(S, anioK, s, prestadoAnio, serieMensual){
   }
 
   const { gastosVarPeriodo } = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
-  let totalMovs = gastosVarPeriodo.length + (S.movimientos||[]).length;
-  Deudas.lista('favor').forEach(d => totalMovs += (d.movimientos||[]).length);
-  Deudas.lista('contra').forEach(d => totalMovs += (d.movimientos||[]).length);
+  let totalMovimientos = gastosVarPeriodo.length + (S.movimientos||[]).length;
+  Deudas.lista('favor').forEach(d => totalMovimientos += (d.movimientos||[]).length);
+  Deudas.lista('contra').forEach(d => totalMovimientos += (d.movimientos||[]).length);
 
   const registros = [
     { l:'Mayor gasto', v: s.gastoMasGrande ? s.gastoMasGrande.monto : null, fmt:'money' },
@@ -2986,7 +2986,7 @@ function _wrappedRecordsAnio(S, anioK, s, prestadoAnio, serieMensual){
     { l:'Mayor préstamo', v: mayorPrestamo ? mayorPrestamo.monto : null, fmt:'money' },
     { l:'Mes más caro', v: mesMasCaro ? _wrappedMesKaAbrev(mesMasCaro.mesK) : null, fmt:'text' },
     { l:'Ahorro neto', v: s.balance, fmt:'money' },
-    { l:'Movimientos totales', v: totalMovs || null, fmt:'text' }
+    { l:'Movimientos totales', v: totalMovimientos || null, fmt:'text' }
   ];
   return registros.some(r => r.v !== null) ? registros : null;
 }
@@ -3015,9 +3015,9 @@ function _wrappedPersonasInvolucradas(S){
 function _wrappedPeriodoEnNumeros(S, anioK, s, prestadoAnio, serieMensual){
   const { gastosVarPeriodo } = _wrappedItemsRealesPeriodo(S, 'anio', null, anioK);
   const categorias = new Set(gastosVarPeriodo.map(g => g.cat).filter(Boolean)).size;
-  let totalMovs = gastosVarPeriodo.length + (S.movimientos||[]).length;
-  Deudas.lista('favor').forEach(d => totalMovs += (d.movimientos||[]).length);
-  Deudas.lista('contra').forEach(d => totalMovs += (d.movimientos||[]).length);
+  let totalMovimientos = gastosVarPeriodo.length + (S.movimientos||[]).length;
+  Deudas.lista('favor').forEach(d => totalMovimientos += (d.movimientos||[]).length);
+  Deudas.lista('contra').forEach(d => totalMovimientos += (d.movimientos||[]).length);
   return [
     { l:'Dinero movido', v: s.totalIngresos + s.totalGastos, fmt:'money' },
     { l:'Ingresos', v: s.totalIngresos, fmt:'money' },
@@ -3027,7 +3027,7 @@ function _wrappedPeriodoEnNumeros(S, anioK, s, prestadoAnio, serieMensual){
     { l:'Personas', v: _wrappedPersonasInvolucradas(S), fmt:'text' },
     { l:'Categorías', v: categorias, fmt:'text' },
     { l:'Meses activos', v: serieMensual ? serieMensual.length : 0, fmt:'text' },
-    { l:'Movimientos', v: totalMovs, fmt:'text' }
+    { l:'Movimientos', v: totalMovimientos, fmt:'text' }
   ];
 }
 function _wrappedRecordsHtml(registros, fmt2){

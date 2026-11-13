@@ -111,7 +111,7 @@ describe('PersonaPicker: markup estático en index.html', () => {
 describe('Encargos: la integración con Personas sigue dentro del módulo', () => {
   test('renderEncargosList y abrirEncargoDetalle llaman a helpers que existen', () => {
     const src = fs.readFileSync(f('js/modules/encargos.js'), 'utf8');
-    for (const fn of ['_pintarEncargosList', '_pintarEncargoDetalle', '_encDetallePartes', '_encDetallePersona']) {
+    for (const fn of ['_pintarEncargosList', '_pintarEncargoDetalle', '_encargoDetallePartes', '_encargoDetallePersona']) {
       assert.ok(new RegExp('^function ' + fn + '\\(', 'm').test(src), 'falta function ' + fn);
       assert.ok(new RegExp('[^\\w]' + fn + '\\(').test(src.replace(new RegExp('^function ' + fn + '\\(', 'm'), '')), fn + ' no se llama desde ningún lado');
     }

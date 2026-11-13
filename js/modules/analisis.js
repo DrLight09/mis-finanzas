@@ -86,19 +86,19 @@ function renderAnalisis(){
     //   sin ingresos y sin gastos → neutro · sin ingresos y con gastos → rojo · ingresos > gastos → verde
     //   ingresos = gastos → neutro · gastos > ingresos → rojo
     const sinIngresos=!_hayIngresos;
-    const sinMovs=sinIngresos&&gastosTotalMes<0.005;
+    const sinMovimientos=sinIngresos&&gastosTotalMes<0.005;
     // Sin base (usuario nuevo) el balance del mes no es una conclusión: los ingresos pueden estar a medio anotar o el gasto salir de un saldo
     // inicial (que no es ingreso). Se muestra el dato, en tono neutro y sin juicio. Mismo criterio que la tarjeta de Salud de Inicio.
     const sinBase=typeof calcSinBase==='function'&&calcSinBase();
     // Gastos sin ningún ingreso anotado: falta información, no un déficit. Nunca rojo ni «−$X».
-    const estado=(sinMovs||sinIngresos||sinBase)?'neu':_cero?'neu':balance>0?'pos':'neg';
+    const estado=(sinMovimientos||sinIngresos||sinBase)?'neu':_cero?'neu':balance>0?'pos':'neg';
     const claseTono={pos:'c-green',neg:'c-red',neu:'an-t-muted'}[estado];
     const mes2d=MESES_NOMBRE[mesNum]+' '+anio;
     const flecha=trazo=>`<svg aria-hidden="true" class="an-hero-flecha" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${trazo}</svg>`;
     const icono=estado==='pos'?flecha('<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>')
       :estado==='neg'?flecha('<line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/>'):'';
     let mensaje, monto;
-    if(sinMovs){ mensaje='Aún no hay ingresos ni gastos que cuenten para este mes.'; monto=fmt(0); }
+    if(sinMovimientos){ mensaje='Aún no hay ingresos ni gastos que cuenten para este mes.'; monto=fmt(0); }
     else if(sinIngresos){ mensaje='Registra tus ingresos para ver el balance del mes.'; monto=raw(SIN_DATO); }
     else if(_cero){ mensaje='Por ahora has gastado todo lo que has recibido este mes.'; monto=fmt(0); }
     else if(balance>0){ mensaje=sinBase?'Por ahora has gastado menos de lo que has recibido este mes.':'Por ahora vas bien: has gastado menos de lo que has recibido este mes.'; monto='+'+fmt(balance); }

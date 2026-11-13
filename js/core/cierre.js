@@ -84,7 +84,7 @@ const Cierre = (() => {
   } });
   registrarFuente({ clave: 'encargos', etiqueta: 'Movimientos de encargos', raiz: ['encargos'], sonda: 'encargos', registros: st => {
     const out = [];
-    _lst(st.encargos).forEach(enc => _lst(enc && enc.movimientos).forEach((m, i) => out.push(_R(m, m && m.fecha, 'em:' + enc.id + i, enc.id))));
+    _lst(st.encargos).forEach(encargo => _lst(encargo && encargo.movimientos).forEach((m, i) => out.push(_R(m, m && m.fecha, 'em:' + encargo.id + i, encargo.id))));
     return out;
   } });
   registrarFuente({ clave: 'alcancia', etiqueta: 'Alcancía (depósitos y ciclos)', raiz: ['alcancia', 'alcanciaSaldoOfuscado'], sonda: 'alcancia', registros: st => {

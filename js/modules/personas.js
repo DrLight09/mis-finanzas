@@ -555,12 +555,12 @@ function abrirPerfilPersona(personaId) {
     const d = datos.deudor;
     const saldo = datos.saldoPrestamo;
     // Consolidar movimientos de TODOS los deudores vinculados a esta persona
-    const movs = (datos.deudores || [datos.deudor]).flatMap(dd => dd.movimientos || [])
+    const movimientos = (datos.deudores || [datos.deudor]).flatMap(dd => dd.movimientos || [])
       .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
-    const prestamos = movs.filter(m => m.tipo === 'prestamo');
+    const prestamos = movimientos.filter(m => m.tipo === 'prestamo');
     // Lo perdonado (m._perdon, "¿Se lo regalas?" en Préstamos) NO es plata que
     // te devolvió: no cuenta en "Abonado", ni en el progreso de pago, ni en "Mayor abono".
-    const abonos   = movs.filter(m => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon);
+    const abonos   = movimientos.filter(m => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon);
     const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
     const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
     const color2 = saldo > 0 ? 'pe-c-amber' : saldo < 0 ? 'pe-c-red' : 'pe-c-accent';
@@ -570,8 +570,8 @@ function abrirPerfilPersona(personaId) {
     const mayorPrestamo = prestamos.length ? prestamos.reduce((mx, m) => m.monto > mx.monto ? m : mx, prestamos[0]) : null;
     const mayorAbono    = abonos.length    ? abonos.reduce((mx, m) => m.monto > mx.monto ? m : mx, abonos[0])       : null;
     const cuantasveces  = prestamos.length;
-    const diasDesde     = movs.length ? Fecha.diasEntre(movs[0].fecha, hoy()) : null;
-    const ultimoMov     = movs.length ? movs[movs.length - 1] : null;
+    const diasDesde     = movimientos.length ? Fecha.diasEntre(movimientos[0].fecha, hoy()) : null;
+    const ultimoMovimiento     = movimientos.length ? movimientos[movimientos.length - 1] : null;
 
     contenido.push(html`<div class="pe-card-amber">
       <div class="pe-cab">
@@ -620,19 +620,19 @@ function abrirPerfilPersona(personaId) {
           <div class="pe-val14-text">${diasDesde}d</div>
         </div>` : ''}
       </div>
-      ${ultimoMov ? html`<div class="pe-ultimo">
-        Último movimiento: <span class="pe-ultimo-val">${ultimoMov.tipo === 'prestamo' ? 'Préstamo' : (ultimoMov._perdon ? 'Deuda perdonada' : (ultimoMov.tipo === 'pago-completo' ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
+      ${ultimoMovimiento ? html`<div class="pe-ultimo">
+        Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'prestamo' ? 'Préstamo' : (ultimoMovimiento._perdon ? 'Deuda perdonada' : (ultimoMovimiento.tipo === 'pago-completo' ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
       </div>` : ''}
     </div>`);
   }
 
   // ── Sección Encargos ──
   if (datos.encargos.length) {
-    const totalEnc = datos.saldoEncargos;
+    const totalEncargo = datos.saldoEncargos;
     // Stats encargos
-    const todosMovEnc = datos.encargos.flatMap(e => (e.movimientos || []).map(m => ({...m, _enc: e})));
-    const entradasEnc = todosMovEnc.filter(m => m.tipo === 'entrada' || m.tipo === 'deposito' || !m.tipo || m.monto > 0);
-    const mayorEntrada = entradasEnc.length ? entradasEnc.reduce((mx, m) => (m.monto||0) > (mx.monto||0) ? m : mx, entradasEnc[0]) : null;
+    const todosMovimientoEncargo = datos.encargos.flatMap(e => (e.movimientos || []).map(m => ({...m, _encargo: e})));
+    const entradasEncargo = todosMovimientoEncargo.filter(m => m.tipo === 'entrada' || m.tipo === 'deposito' || !m.tipo || m.monto > 0);
+    const mayorEntrada = entradasEncargo.length ? entradasEncargo.reduce((mx, m) => (m.monto||0) > (mx.monto||0) ? m : mx, entradasEncargo[0]) : null;
     const encargoMayor = datos.encargos.length ? [...datos.encargos].sort((a,b) => encargoSaldo(b) - encargoSaldo(a))[0] : null;
 
     contenido.push(html`<div class="pe-card-azul">
@@ -643,7 +643,7 @@ function abrirPerfilPersona(personaId) {
       <div class="pe-grid2-mb10">
         <div class="pe-celda">
           <div class="pe-celda-cap">Total activo</div>
-          <div class="pe-val15-azul">${fmt(totalEnc)}</div>
+          <div class="pe-val15-azul">${fmt(totalEncargo)}</div>
         </div>
         <div class="pe-celda">
           <div class="pe-celda-cap">Cantidad</div>
@@ -738,16 +738,16 @@ function abrirPerfilPersona(personaId) {
   // ── Sección Le debo (misDeudas) ──
   if (datos.misDeudas && datos.misDeudas.length) {
     const totalMisDeudas = datos.saldoMisDeudas;
-    const movsTodos = datos.misDeudas.flatMap(d => (d.movimientos || []).map(m => ({...m, _deuda: d})))
+    const movimientosTodos = datos.misDeudas.flatMap(d => (d.movimientos || []).map(m => ({...m, _deuda: d})))
       .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
-    const recibidos = movsTodos.filter(m => m.tipo === 'recibido');
-    const pagos = movsTodos.filter(m => m.tipo === 'pago');
+    const recibidos = movimientosTodos.filter(m => m.tipo === 'recibido');
+    const pagos = movimientosTodos.filter(m => m.tipo === 'pago');
     const totalRecibido = recibidos.reduce((a, m) => a + (m.monto || 0), 0);
     const totalPagado = pagos.reduce((a, m) => a + (m.monto || 0), 0);
     const pct = totalRecibido > 0 ? Math.min(100, Math.round(totalPagado / totalRecibido * 100)) : 0;
     const mayorRecibido = recibidos.length ? recibidos.reduce((mx, m) => m.monto > mx.monto ? m : mx, recibidos[0]) : null;
     const mayorPago = pagos.length ? pagos.reduce((mx, m) => m.monto > mx.monto ? m : mx, pagos[0]) : null;
-    const ultimoMov = movsTodos.length ? movsTodos[movsTodos.length - 1] : null;
+    const ultimoMovimiento = movimientosTodos.length ? movimientosTodos[movimientosTodos.length - 1] : null;
     const colorDeuda = totalMisDeudas > 0 ? 'pe-c-red' : 'pe-c-accent';
     const primerMiDeuda = datos.misDeudas[0];
 
@@ -792,8 +792,8 @@ function abrirPerfilPersona(personaId) {
           ${mayorPago.fecha ? html`<div class="pe-fecha10">${mayorPago.fecha}</div>` : ''}
         </div>` : ''}
       </div>
-      ${ultimoMov ? html`<div class="pe-ultimo">
-        Último mov: <span class="pe-ultimo-val">${ultimoMov.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMov.monto)}</span>${ultimoMov.fecha ? ' · ' + ultimoMov.fecha : ''}${ultimoMov.nota ? html` · <i>${ultimoMov.nota}</i>` : ''}
+      ${ultimoMovimiento ? html`<div class="pe-ultimo">
+        Último mov: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
       </div>` : ''}
     </div>`);
   }

@@ -130,13 +130,13 @@ function _segmentosTasa(cuentaId,desdeStr,hastaStr){
 function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
   const cuentaKey='cajita:'+cajitaId;
   let total=0;
-  (S.encargos||[]).forEach(enc=>{
+  (S.encargos||[]).forEach(encargo=>{
     const map={};
-    if((enc.saldoInicial||0)>0){
-      const k=enc.cuentaInicial||'__sin__';
-      map[k]=(map[k]||0)+(enc.saldoInicial||0);
+    if((encargo.saldoInicial||0)>0){
+      const k=encargo.cuentaInicial||'__sin__';
+      map[k]=(map[k]||0)+(encargo.saldoInicial||0);
     }
-    (enc.movimientos||[]).forEach(m=>{
+    (encargo.movimientos||[]).forEach(m=>{
       if((m.fecha||'')>fechaStr)return; // ignora movimientos posteriores a la fecha pedida
       const k=m.cuenta||'__sin__';
       if(m.tipo==='entrada')map[k]=(map[k]||0)+(m.monto||0);
@@ -153,8 +153,8 @@ function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
 function _fechasCambioEncargoEnCajita(cajitaId,desdeStr,hastaStr){
   const cuentaKey='cajita:'+cajitaId;
   const fechas=new Set();
-  (S.encargos||[]).forEach(enc=>{
-    (enc.movimientos||[]).forEach(m=>{
+  (S.encargos||[]).forEach(encargo=>{
+    (encargo.movimientos||[]).forEach(m=>{
       if((m.cuenta||'')===cuentaKey&&m.fecha>desdeStr&&m.fecha<=hastaStr)fechas.add(m.fecha);
     });
   });
@@ -186,8 +186,8 @@ function calcC(c,hastaStr){
   const cambiosTasa=_historialTasas(c.cuentaId).filter(h=>h.fecha>c.fecha&&h.fecha<=hoyStr).map(h=>h.fecha);
   const cambiosEncargo=[..._fechasCambioEncargoEnCajita(c.id,c.fecha,hoyStr)];
   const puntos=[...new Set([c.fecha,...cambiosTasa,...cambiosEncargo,hoyStr])].sort();
-  let saldoEncActual=_saldoEncargosEnCajitaEnFecha(c.id,c.fecha);
-  let valor=saldoPropio+saldoEncActual;
+  let saldoEncargoActual=_saldoEncargosEnCajitaEnFecha(c.id,c.fecha);
+  let valor=saldoPropio+saldoEncargoActual;
   let diasTotal=0;
   for(let i=0;i<puntos.length-1;i++){
     const desde=puntos[i],hasta=puntos[i+1];
@@ -200,16 +200,16 @@ function calcC(c,hastaStr){
     }
     // Al llegar a este punto, actualizar el saldo de encargos vigente desde acá en
     // adelante (si el quiebre fue por un movimiento de encargo, no solo por tasa).
-    const nuevoSaldoEnc=_saldoEncargosEnCajitaEnFecha(c.id,hasta);
-    if(nuevoSaldoEnc!==saldoEncActual){
-      valor+=(nuevoSaldoEnc-saldoEncActual);
-      saldoEncActual=nuevoSaldoEnc;
+    const nuevoSaldoEncargo=_saldoEncargosEnCajitaEnFecha(c.id,hasta);
+    if(nuevoSaldoEncargo!==saldoEncargoActual){
+      valor+=(nuevoSaldoEncargo-saldoEncargoActual);
+      saldoEncargoActual=nuevoSaldoEncargo;
     }
   }
-  const val=valor-saldoEncActual; // saldoEncActual ya quedó igual a saldoEncargosHoy
+  const val=valor-saldoEncargoActual; // saldoEncargoActual ya quedó igual a saldoEncargosHoy
   const ganado=val-saldoPropio;
   const tasaDiaria=Math.pow(1+tasaHoy/100,1/365)-1;
-  return{val,ganado,dias:diasTotal,tasaDiaria,tasa:tasaHoy,saldoEncargos:saldoEncActual};
+  return{val,ganado,dias:diasTotal,tasaDiaria,tasa:tasaHoy,saldoEncargos:saldoEncargoActual};
 }
 
 // Reparte por mes el interés que una cajita lleva acumulado SIN materializar (desde c.fecha hasta hoy):

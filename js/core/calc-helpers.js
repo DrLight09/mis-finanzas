@@ -59,14 +59,14 @@ function _mesNombreDeKey(key){
 // dejar borrar a mano una salida cuyo efecto vive en Mesada (cuenta destino + espejo): solo
 // Mesada sabe revertirla completa. No depende de marcas en el movimiento, así que también
 // reconoce las creadas antes de este cambio.
-function mesadaOrigenDeMovEncargo(movId){
-  if(!movId||!S.mesadas)return null;
+function mesadaOrigenDeMovimientoEncargo(movimientoId){
+  if(!movimientoId||!S.mesadas)return null;
   for(const parent of ['papa','mama']){
     const pagos=(S.mesadas[parent]&&S.mesadas[parent].pagos)||{};
     for(const key of Object.keys(pagos)){
       const info=pagos[key];
-      if(info.origenEncargo&&info.origenEncargo.movId===movId)return {parent,key};
-      if((info.pendienteHistorial||[]).some(h=>h.origenEncargo&&h.origenEncargo.movId===movId))return {parent,key};
+      if(info.origenEncargo&&info.origenEncargo.movId===movimientoId)return {parent,key};
+      if((info.pendienteHistorial||[]).some(h=>h.origenEncargo&&h.origenEncargo.movId===movimientoId))return {parent,key};
     }
   }
   return null;

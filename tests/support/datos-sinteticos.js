@@ -2,7 +2,7 @@
 // tests/support/datos-sinteticos.js — historia sintética de varios años para probar la huella y el cierre de períodos.
 //
 // La app nació limpia el 2026-10-18: aún no existen movimientos con 2 años de antigüedad, así que se simulan. Los saldos y el
-// libro se escriben con las funciones REALES de la app (sumarFuente/descontarFuente con Libro.conOrigen, registrarMovEspejo,
+// libro se escriben con las funciones REALES de la app (sumarFuente/descontarFuente con Libro.conOrigen, registrarMovimientoEspejo,
 // tcRecalcular), de modo que las invariantes (el libro cuadra, deuda de tarjeta calculada…) se prueban contra el comportamiento
 // real y no contra una copia. Lo que no tiene una función pura (bolsa de un encargo, movimientos de una deuda) se arma con la forma
 // que documentan docs/encargos.md y docs/prestamos.md.
@@ -81,8 +81,8 @@ function generar(ctx, { desde = '2024-01-01', dias = 1000, semilla = 7 } = {}) {
     { // transferencia nequi → efectivo: una fila en S.transferencias, dos espejos y dos patas en el libro, todos ligados por el id
       const tid = ctx.uid(), monto = Math.round(20000 + azar() * 100000);
       S.transferencias.push({ id: tid, fecha: f, origen: 'cuenta:nequi', destino: 'cuenta:efectivo', monto });
-      ctx.registrarMovEspejo({ cuenta: 'cuenta:nequi', flujo: 'salida', monto, fecha: f, desc: 'Transferencia a Efectivo', origen: 'Cuentas', extra: { _transferenciaId: tid } });
-      ctx.registrarMovEspejo({ cuenta: 'cuenta:efectivo', flujo: 'entrada', monto, fecha: f, desc: 'Transferencia desde Nequi', origen: 'Cuentas', extra: { _transferenciaId: tid } });
+      ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:nequi', flujo: 'salida', monto, fecha: f, desc: 'Transferencia a Efectivo', origen: 'Cuentas', extra: { _transferenciaId: tid } });
+      ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:efectivo', flujo: 'entrada', monto, fecha: f, desc: 'Transferencia desde Nequi', origen: 'Cuentas', extra: { _transferenciaId: tid } });
       con({ modulo: 'cuentas', ref: tid }, () => { ctx.descontarFuente('cuenta:nequi', monto, { fecha: f }); ctx.sumarFuente('cuenta:efectivo', monto, { fecha: f }); });
     }
     if (dia === 15 && Number(mes.slice(5)) % 3 === 0) { // compra trimestral con tarjeta

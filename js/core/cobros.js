@@ -34,7 +34,7 @@
    Las funciones de dominio validan antes de mutar (un rechazo no deja efectos a medias) y devuelven
    { ok:true, ... } o { ok:false, motivo }. No llaman a save(), refresh(), toast() ni tocan el DOM.
    Carga de entrada (<script defer>) después de cuenta-efectos.js: usa uid(), hoy(), S, sumarFuente(), descontarFuente(),
-   registrarMovEspejo() y borrarMovEspejo().
+   registrarMovimientoEspejo() y borrarMovimientoEspejo().
    ═══════════════════════════════════════════════════════════════ */
 
 // Libro (js/core/cuentas-fuentes.js): cada sumar/descontarFuente deja { modulo:'ingreso-fijo', ref:<id del espejo> }; rev=true es la reversión.
@@ -45,15 +45,15 @@ const COBRO_MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 function _cobroEntrar(destino, monto, fecha, desc) {
   if (!destino || !monto) return null;
   // El espejo se crea primero para que el libro apunte a su id (el orden no afecta al saldo).
-  const movId = registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Ingreso fijo' });
-  sumarFuente(destino, monto, _ogCobro(movId || undefined));
-  return movId;
+  const movimientoId = registrarMovimientoEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Ingreso fijo' });
+  sumarFuente(destino, monto, _ogCobro(movimientoId || undefined));
+  return movimientoId;
 }
 
-function _cobroSacar(destino, monto, movId) {
+function _cobroSacar(destino, monto, movimientoId) {
   if (!destino) return;
-  descontarFuente(destino, monto, _ogCobro(movId, true));
-  borrarMovEspejo(destino, movId);
+  descontarFuente(destino, monto, _ogCobro(movimientoId, true));
+  borrarMovimientoEspejo(destino, movimientoId);
 }
 
 function ingresoFijoPorId(id, estado) {

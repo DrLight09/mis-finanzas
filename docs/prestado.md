@@ -57,7 +57,7 @@ Ambos lados afectan el saldo de una cuenta real (cajita, Nequi, efectivo o cuent
 
 `_confirmarMovimientoInterno()` hace tres cosas, en este orden: `_planMovimiento()` lee el formulario y **valida todo sin escribir nada** (devuelve `{ error }` o un plan); `_aplicarMovimiento(plan)` escribe y **no tiene ningún `return` de validación**; luego se registra el log, se cierran los grupos saldados, se guarda y se refresca. Así un error de formulario no puede dejar una deuda a medias. Cada rama tiene su par: perdón (`_aplicarPerdon`), préstamo (`_planPrestamo` / `_aplicarPrestamo`), abono desde encargo (`_planAbonoEncargo` / `_aplicarAbonoEncargo`) y abono a una cuenta propia (`_planAbonoNormal` / `_aplicarAbonoNormal`). Los extras ("¿pagaron de más?") los comparten las dos ramas de abono (`_planExtra`, `_aplicarExtraPartes`); lo único que cambia entre ellas son las descripciones y que el extra de la rama normal es ingreso real (`_esExtraIngreso`).
 
-El grupo del movimiento (`_resolverGrupoIdMov`) se resuelve al **aplicar**, no antes de validar, porque puede crear un grupo nuevo ("Es un préstamo nuevo"): si se creara antes, un error de validación dejaría un grupo vacío.
+El grupo del movimiento (`_resolverGrupoIdMovimiento`) se resuelve al **aplicar**, no antes de validar, porque puede crear un grupo nuevo ("Es un préstamo nuevo"): si se creara antes, un error de validación dejaría un grupo vacío.
 
 ### 2.2c Perdonar ("¿Se lo regalas?")
 
@@ -67,7 +67,7 @@ El movimiento queda como `'abono'` con `_perdon: true` si es una parte, y como `
 
 ### 2.3 Eliminar un movimiento (`eliminarMovDeudor`)
 
-`eliminarMovDeudor` solo decide **si** se puede borrar y lo confirma (antigüedad, diálogo, que Alcancía cargue). La reversión en sí es `_revertirMovDeudor(d, m)`: deshace saldos, movimientos espejo, deuda de la TC, salidas del encargo, extras, gasto del perdón y margen, sin ninguna pregunta ni validación, así que no puede quedar a medias.
+`eliminarMovDeudor` solo decide **si** se puede borrar y lo confirma (antigüedad, diálogo, que Alcancía cargue). La reversión en sí es `_revertirMovimientoDeudor(d, m)`: deshace saldos, movimientos espejo, deuda de la TC, salidas del encargo, extras, gasto del perdón y margen, sin ninguna pregunta ni validación, así que no puede quedar a medias.
 
 Al borrar un `'prestamo'`: revierte el saldo de la(s) fuente(s) con `sumarFuente` (o `descontarFuente` de las fuentes según corresponda). No hay movimiento secundario que limpiar. Si el préstamo tenía `m.diferencial` ("El valor real era diferente"), borra además el ingreso del margen (`_esDiferencialEncargo` con `_encMovId === m.id`), que no tiene cuenta y por eso no hay saldo que revertir.
 
@@ -107,7 +107,7 @@ m.grupoId = 'g_xxx'
 
 **Saldo:** `getDeudorSaldo(d)` (envoltorio de `Deudas.saldo`, en `js/core/calc-helpers.js` — Inicio y el patrimonio lo necesitan sin cargar `prestado.js`; el total de la persona) no cambia — sigue sumando todos los movimientos sin filtrar por grupo. `getGrupoSaldo(d, grupoId)` es el mismo cálculo pero acotado a un grupo.
 
-**Resolución de a qué grupo pertenece un movimiento nuevo (`_resolverGrupoIdMov` / `_autoGrupoIdMov`):**
+**Resolución de a qué grupo pertenece un movimiento nuevo (`_resolverGrupoIdMovimiento` / `_autoGrupoIdMovimiento`):**
 - **0 grupos abiertos** → se usa/crea el grupo **"Histórico"** (`_getOrCrearHistorico`, id fijo `'_historico'`), sin preguntar. Nunca se crea un grupo con nombre de fecha por sorpresa — ese nombre solo se usa cuando el usuario abre un grupo aparte a propósito (ver abajo). Este caso en la práctica solo ocurre en el primer movimiento de un deudor nuevo: una vez creado, "Histórico" nunca se vuelve a cerrar (ver Auto-cierre), así que 0 grupos abiertos no vuelve a pasar después.
 - **1 grupo abierto** → se reutiliza ese mismo grupo automáticamente (sin fricción para el caso simple, que es la mayoría — normalmente es "Histórico"). Para un **préstamo nuevo** (no un abono) aparece además un checkbox opcional "🆕 Es un préstamo aparte" (`#mov_grupo_check_wrap`) — es la única forma de llegar a tener 2 grupos abiertos, porque sin él todo préstamo nuevo se fusionaría siempre con el único grupo existente. Marcarlo es la única vía para crear un grupo con nombre de fecha (o nombre custom).
 - **≥2 grupos abiertos** → aparece el selector `#mov_grupo_wrap` (obligatorio elegir a cuál pertenece el movimiento, con opción "🆕 Es un préstamo nuevo" para arrancar un tercero).
@@ -143,7 +143,7 @@ m.grupoId = 'g_xxx'
 - `extra: { monto, gastoId }` — pagaste de más. El pago baja la deuda solo `monto`; el extra sale de la cuenta pero no baja la deuda, así que es un **gasto real** del mes (`S.gastosVar`, `_esExtraDeuda`, `fuente: ''`, enlazado por `gastoId`). Las cuentas descuentan `monto + extra`.
 - `_perdon: true` + `_ingresoPerdonId` — te perdonaron una parte de lo que faltaba, o todo. El `monto` es lo perdonado (nunca más que el saldo); no sale plata de ninguna cuenta. Es un **ingreso real** (tu patrimonio neto sube): queda un ingreso "fantasma" en `S.movimientos` (`fuente: ''`, `_esPerdonRecibido`, enlazado por `_ingresoPerdonId`) que `_esEntradaEspejoNoIngreso()` no excluye. Lleva también `_prestadoDirectamente: true`: Inicio solo suma al ingreso del mes las entradas sin cuenta que traen esa bandera (la misma que el margen de un préstamo); sin ella el perdón subía el patrimonio pero no el ingreso del mes. No cuenta como "Pagado" (ni en el detalle ni en Wrapped); en el historial aparece como "Perdonada".
 
-Reglas que se validan **antes** de escribir nada (`_planMovMiDeuda`; `_aplicarMovMiDeuda` no tiene ningún `return` de validación, así que un error no puede dejar la deuda a medias): el pago no puede pasar del saldo (el extra es aparte); el perdón no puede pasar del saldo; con Dividir ÷ cada fila lleva cuenta y la suma debe cuadrar con `monto + extra`; en un pago, ninguna cuenta puede quedar con menos de lo que se le descuenta. Un pago puede salir de una tarjeta de crédito con cupo disponible (nunca una tarjeta recibe plata): ver abajo. Los movimientos de "Yo debo" también pertenecen a un grupo de préstamo (ver 2.4).
+Reglas que se validan **antes** de escribir nada (`_planMovimientoMiDeuda`; `_aplicarMovimientoMiDeuda` no tiene ningún `return` de validación, así que un error no puede dejar la deuda a medias): el pago no puede pasar del saldo (el extra es aparte); el perdón no puede pasar del saldo; con Dividir ÷ cada fila lleva cuenta y la suma debe cuadrar con `monto + extra`; en un pago, ninguna cuenta puede quedar con menos de lo que se le descuenta. Un pago puede salir de una tarjeta de crédito con cupo disponible (nunca una tarjeta recibe plata): ver abajo. Los movimientos de "Yo debo" también pertenecen a un grupo de préstamo (ver 2.4).
 
 **Pago con tarjeta de crédito.** La fuente de un pago puede ser `tc:<id>` (sola o como una fila del reparto). En vez de un movimiento secundario, deja un cargo `cargo_deuda` en `S.tcMovimientos` (`miDeudaId`, `_miDeudaMovId`) y sube `tc.deuda`; la fila guarda su id en `_tcMovId`. Es deuda **propia** de la tarjeta (no ajena, a diferencia de `cargo_encargo` y `cargo_prestamo`) y **no es un gasto**: cambiaste deuda con el prestamista por deuda de tarjeta, así que el patrimonio queda igual. Cupo insuficiente se rechaza antes de escribir. `tcRecalcular` reconstruye `tc.deuda` desde los cargos en cada refresh, por eso `cargo_deuda` tiene que figurar en `_tcEsCargoExterno` (`tarjetas-credito.js`); de otro modo la deuda se perdería en el siguiente refresh.
 
@@ -151,13 +151,13 @@ Reglas que se validan **antes** de escribir nada (`_planMovMiDeuda`; `_aplicarMo
 
 ### 3.3 Eliminar un movimiento (`eliminarMovMiDeuda`)
 
-`_revertirMovMiDeuda` deshace exactamente lo que hizo el movimiento: revierte el saldo de cada cuenta (`destinos[]`/`fuentes[]`, o `destino`/`fuente` en los registros antiguos de una sola cuenta) y borra su movimiento secundario; si hubo extra, borra el gasto; si fue perdón, borra el ingreso; si una fila fue con tarjeta, borra el cargo `cargo_deuda` y baja la deuda de la TC (si el cargo ya no existe, no la resta otra vez). Si el movimiento secundario de una fila ya no existe, el saldo de esa fila no se toca otra vez. La reversión de saldo usa `{ exacto: true }` (ver 2.3). La protección por antigüedad aplica también al perdón y al extra, porque borrarlos quita un ingreso o gasto real.
+`_revertirMovimientoMiDeuda` deshace exactamente lo que hizo el movimiento: revierte el saldo de cada cuenta (`destinos[]`/`fuentes[]`, o `destino`/`fuente` en los registros antiguos de una sola cuenta) y borra su movimiento secundario; si hubo extra, borra el gasto; si fue perdón, borra el ingreso; si una fila fue con tarjeta, borra el cargo `cargo_deuda` y baja la deuda de la TC (si el cargo ya no existe, no la resta otra vez). Si el movimiento secundario de una fila ya no existe, el saldo de esa fila no se toca otra vez. La reversión de saldo usa `{ exacto: true }` (ver 2.3). La protección por antigüedad aplica también al perdón y al extra, porque borrarlos quita un ingreso o gasto real.
 
 ---
 
 ## 4. Movimientos secundarios (rastro en la cuenta destino/origen)
 
-Cada vez que un préstamo mueve plata hacia o desde una cuenta real, se crea una **segunda entrada visible** en esa cuenta, para que su historial refleje el movimiento. Se escribe y se borra siempre con `registrarMovEspejo()` / `borrarMovEspejo()` (`js/core/cuenta-efectos.js`, compartidas con Mesada): solo tocan el historial, nunca el saldo (eso sigue siendo `sumarFuente` / `descontarFuente`). Si la cuenta ya no existe, `registrarMovEspejo` devuelve `null`. Un abono cuyo espejo ya no existe se revierte sin descontar el saldo otra vez (`_revertirDestinoAbono`).
+Cada vez que un préstamo mueve plata hacia o desde una cuenta real, se crea una **segunda entrada visible** en esa cuenta, para que su historial refleje el movimiento. Se escribe y se borra siempre con `registrarMovimientoEspejo()` / `borrarMovimientoEspejo()` (`js/core/cuenta-efectos.js`, compartidas con Mesada): solo tocan el historial, nunca el saldo (eso sigue siendo `sumarFuente` / `descontarFuente`). Si la cuenta ya no existe, `registrarMovimientoEspejo` devuelve `null`. Un abono cuyo espejo ya no existe se revierte sin descontar el saldo otra vez (`_revertirDestinoAbono`).
 
 | Cuenta | Dónde vive | Tipo de entrada |
 |---|---|---|
@@ -214,7 +214,7 @@ Las dos listas se dibujan con un solo render, `_renderListaDeudas(dir)`; lo que 
 
 ## 5b. Tolerancias
 
-Dos constantes únicas, `Deudas.TOL` ($1: suma de partes contra total, saldo "≈ 0", guardia de integridad) y `Deudas.TOL_FINO` ($0,50: comparar un monto contra un saldo o tope, auto-detección de pago completo). No usar números sueltos. Por eso los avisos de saldo de un pago de "Yo debo" (`_planMovMiDeuda`: "En X solo hay $N" / "Cupo insuficiente en X") siguen siendo propios y no usan `validarSalidaFuente()` de `el núcleo` (que compara estricto y redacta distinto, para Gastos y Spotify): aquí la tolerancia es `Deudas.TOL_FINO` a propósito.
+Dos constantes únicas, `Deudas.TOL` ($1: suma de partes contra total, saldo "≈ 0", guardia de integridad) y `Deudas.TOL_FINO` ($0,50: comparar un monto contra un saldo o tope, auto-detección de pago completo). No usar números sueltos. Por eso los avisos de saldo de un pago de "Yo debo" (`_planMovimientoMiDeuda`: "En X solo hay $N" / "Cupo insuficiente en X") siguen siendo propios y no usan `validarSalidaFuente()` de `el núcleo` (que compara estricto y redacta distinto, para Gastos y Spotify): aquí la tolerancia es `Deudas.TOL_FINO` a propósito.
 
 ---
 

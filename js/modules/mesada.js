@@ -23,8 +23,8 @@
        sumarFuente, descontarFuente, MC, nivelAntiguedadMovimiento,
        avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, html/raw.
      - js/core/calc-helpers.js: _ensureMesadas, getMesadaData, _getCuotaAnio,
-       _mesNombreDeKey, mesadaOrigenDeMovEncargo.
-     - js/core/cuenta-efectos.js: registrarMovEspejo, borrarMovEspejo.
+       _mesNombreDeKey, mesadaOrigenDeMovimientoEncargo.
+     - js/core/cuenta-efectos.js: registrarMovimientoEspejo, borrarMovimientoEspejo.
      - js/core/events.js (Events.attr/registerAll) y el motor de split
        (js/core/split.js: crearSplitWidget, splitToggle, splitAgregarRow,
        splitGetData, splitReset).
@@ -146,19 +146,19 @@ function _mesadaApiEncargos() {
 
 // Cuánta plata hay disponible en el encargo, en la cuenta elegida ('' = "sin cuenta").
 // Devuelve { enc, disponible } o null si el encargo no existe / Encargos no cargó.
-function mesadaDisponibleEncargo(encId, cuentaSel) {
+function mesadaDisponibleEncargo(encargoId, cuentaSel) {
   const api = _mesadaApiEncargos();
-  const enc = api ? api.get(encId) : null;
-  if (!enc) return null;
-  return { enc, disponible: cuentaSel ? api.enCuenta(enc, cuentaSel) : api.sinCuenta(enc) };
+  const encargo = api ? api.get(encargoId) : null;
+  if (!encargo) return null;
+  return { encargo, disponible: cuentaSel ? api.enCuenta(encargo, cuentaSel) : api.sinCuenta(encargo) };
 }
 
 // Opciones del selector "¿de cuál cuenta sale esa plata?": [{val,label,saldo}] + sinCuenta.
-function mesadaCuentasDeEncargo(encId) {
+function mesadaCuentasDeEncargo(encargoId) {
   const api = _mesadaApiEncargos();
-  const enc = api ? api.get(encId) : null;
-  if (!enc) return null;
-  return { enc, cuentas: api.porCuenta(enc), sinCuenta: api.sinCuenta(enc) };
+  const encargo = api ? api.get(encargoId) : null;
+  if (!encargo) return null;
+  return { encargo, cuentas: api.porCuenta(encargo), sinCuenta: api.sinCuenta(encargo) };
 }
 
 const _MESADA_CLAVES = {
@@ -183,7 +183,7 @@ function mesadaEncargosDelParent(parent) {
   const claves = _MESADA_CLAVES[parent];
   return S.encargos
     .filter(e => _mesadaNombreCoincide(e.nombre, claves))
-    .map(e => ({ enc: e, saldo: encargoSaldo(e) }))
+    .map(e => ({ encargo: e, saldo: encargoSaldo(e) }))
     .filter(x => x.saldo > 0.5)
     .sort((a, b) => b.saldo - a.saldo);
 }
@@ -195,40 +195,40 @@ function mesadaEncargosDelParent(parent) {
 function _mesadaEntrar(destino, monto, fecha, desc) {
   if (!destino || !monto) return null;
   // El espejo se crea primero para que el libro apunte a su id (el orden no afecta al saldo).
-  const movId = registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Mesada' });
-  sumarFuente(destino, monto, _ogMes(movId || undefined));
-  return movId;
+  const movimientoId = registrarMovimientoEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Mesada' });
+  sumarFuente(destino, monto, _ogMes(movimientoId || undefined));
+  return movimientoId;
 }
 
 // Inverso de _mesadaEntrar. `descontar=false` solo borra el espejo (ver mesadaRevertirAbono).
-function _mesadaSacar(destino, monto, movSecId, descontar) {
+function _mesadaSacar(destino, monto, movimientoSecId, descontar) {
   if (!destino) return;
-  if (descontar) descontarFuente(destino, monto, _ogMes(movSecId, true));
-  borrarMovEspejo(destino, movSecId);
+  if (descontar) descontarFuente(destino, monto, _ogMes(movimientoSecId, true));
+  borrarMovimientoEspejo(destino, movimientoSecId);
 }
 
-function _mesadaCrearSalidaEncargo(enc, monto, cuentaSel, fecha, desc, nota) {
-  const mov = { id: uid(), tipo: 'salida', desc, monto, cuenta: cuentaSel || '', fecha, nota, ts: Date.now() };
-  if (!enc.movimientos) enc.movimientos = [];
-  enc.movimientos.push(mov);
-  return mov;
+function _mesadaCrearSalidaEncargo(encargo, monto, cuentaSel, fecha, desc, nota) {
+  const movimiento = { id: uid(), tipo: 'salida', desc, monto, cuenta: cuentaSel || '', fecha, nota, ts: Date.now() };
+  if (!encargo.movimientos) encargo.movimientos = [];
+  encargo.movimientos.push(movimiento);
+  return movimiento;
 }
 
 function _mesadaQuitarSalidaEncargo(oe) {
   const api = _mesadaApiEncargos();
-  const enc = api && oe ? api.get(oe.encargoId) : null;
-  if (!enc || !enc.movimientos) return false;
-  const antes = enc.movimientos.length;
-  enc.movimientos = enc.movimientos.filter(m => m.id !== oe.movId);
-  return enc.movimientos.length < antes;
+  const encargo = api && oe ? api.get(oe.encargoId) : null;
+  if (!encargo || !encargo.movimientos) return false;
+  const antes = encargo.movimientos.length;
+  encargo.movimientos = encargo.movimientos.filter(m => m.id !== oe.movId);
+  return encargo.movimientos.length < antes;
 }
 
 // Valida que el encargo exista y tenga plata suficiente. NO muta nada.
 function _mesadaValidarEncargo(encargo, monto) {
   const d = mesadaDisponibleEncargo(encargo.id, encargo.cuentaSel);
   if (!d) return { ok: false, motivo: 'encargo-invalido' };
-  if (monto > d.disponible + 0.5) return { ok: false, motivo: 'encargo-insuficiente', disponible: d.disponible, encNombre: d.enc.nombre };
-  return { ok: true, enc: d.enc, disponible: d.disponible };
+  if (monto > d.disponible + 0.5) return { ok: false, motivo: 'encargo-insuficiente', disponible: d.disponible, encargoNombre: d.encargo.nombre };
+  return { ok: true, encargo: d.encargo, disponible: d.disponible };
 }
 
 // Aplica UN abono y devuelve su registro, con la misma forma para el pago original y
@@ -238,8 +238,8 @@ function _mesadaValidarEncargo(encargo, monto) {
 function _mesadaAplicarEntrada(b, desc, encargo) {
   const reg = { monto: b.monto, fecha: b.fecha, nota: b.nota };
   if (encargo) {
-    const mov = _mesadaCrearSalidaEncargo(encargo.enc, b.monto, encargo.cuentaSel, b.fecha, desc, encargo.nota);
-    reg.origenEncargo = { encargoId: encargo.enc.id, movId: mov.id, nombre: encargo.enc.nombre };
+    const movimiento = _mesadaCrearSalidaEncargo(encargo.encargo, b.monto, encargo.cuentaSel, b.fecha, desc, encargo.nota);
+    reg.origenEncargo = { encargoId: encargo.encargo.id, movId: movimiento.id, nombre: encargo.encargo.nombre };
   }
   if (b.splits) {
     reg.destino = '';
@@ -309,7 +309,7 @@ function mesadaRegistrarPago(p) {
   const reg = _mesadaAplicarEntrada(
     { monto, fecha, nota: p.nota || '', destino: p.destino, splits },
     desc,
-    val ? { enc: val.enc, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada' } : null
+    val ? { encargo: val.encargo, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada' } : null
   );
   const cuotaDelMes = mesadaCuotaDeKey(p.parent, p.key);
   const pendiente = p.quedaDebiendo ? Math.max(0, cuotaDelMes - monto) : 0;
@@ -339,7 +339,7 @@ function mesadaAbonarPendiente(p) {
   const reg = _mesadaAplicarEntrada(
     { monto, fecha, nota: p.nota || '', destino: p.destino, splits: null },
     desc,
-    val ? { enc: val.enc, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada (pendiente)' } : null
+    val ? { encargo: val.encargo, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada (pendiente)' } : null
   );
   if (!info.pendienteHistorial) info.pendienteHistorial = [];
   info.pendienteHistorial.push(reg);
@@ -489,10 +489,10 @@ function _crearEncargoPicker(p, f, onCambio) {
       const sub = _msEl(p + 'EncargoSub');
       if (sub) sub.textContent = 'Tienes ' + fmt(cands.reduce((a, x) => a + x.saldo, 0)) + ' guardados de ' + mesadaNombrePadre(parent) + ' en encargos';
       const sel = _msEl(p + 'EncargoSel');
-      if (sel) sel.innerHTML = cands.map(x => html`<option value="${x.enc.id}">${x.enc.nombre} (${fmt(x.saldo)})</option>`).join('');
+      if (sel) sel.innerHTML = cands.map(x => html`<option value="${x.encargo.id}">${x.encargo.nombre} (${fmt(x.saldo)})</option>`).join('');
       const wrap = _msEl(p + 'EncargoSelWrap');
       if (wrap) wrap.style.display = cands.length > 1 ? '' : 'none';
-      f.encargoId = cands[0].enc.id;
+      f.encargoId = cands[0].encargo.id;
       picker.poblarCuentas();
     },
 
@@ -656,7 +656,7 @@ function _previewDisponible(prev, picker, v) {
   const sel = picker.seleccion();
   const d = mesadaDisponibleEncargo(sel.id, sel.cuentaSel);
   if (!d) { prev.textContent = ''; return null; }
-  if (v > d.disponible + 0.5) { prev.textContent = 'Ahí solo tienes ' + fmt(d.disponible) + ' de ' + d.enc.nombre; prev.style.color = 'var(--red)'; return null; }
+  if (v > d.disponible + 0.5) { prev.textContent = 'Ahí solo tienes ' + fmt(d.disponible) + ' de ' + d.encargo.nombre; prev.style.color = 'var(--red)'; return null; }
   return d;
 }
 
@@ -669,8 +669,8 @@ function actualizarMpPreview() {
   if (f.usarEncargo) {
     const d = _previewDisponible(prev, _msPickers.mp, v);
     if (!d) return;
-    if (mpSplitMode) { _previewSplit(prev, v, splitGetData('mp'), d.enc.nombre); return; }
-    prev.textContent = 'Se descuenta de lo que le tenías guardado a ' + d.enc.nombre + ' · queda ' + fmt(d.disponible - v);
+    if (mpSplitMode) { _previewSplit(prev, v, splitGetData('mp'), d.encargo.nombre); return; }
+    prev.textContent = 'Se descuenta de lo que le tenías guardado a ' + d.encargo.nombre + ' · queda ' + fmt(d.disponible - v);
     prev.style.color = 'var(--blue)';
     return;
   }
@@ -705,7 +705,7 @@ function _syncMpDebeWrap(v) {
 // y toast() inserta con innerHTML: se escapa acá.
 function _mesadaMostrarError(r, previewId) {
   if (r.motivo === 'encargo-invalido') toast('Selecciona un encargo válido', 'err');
-  else if (r.motivo === 'encargo-insuficiente') toast('Ahí solo hay ' + fmt(r.disponible) + ' guardados de ' + r.encNombre, 'err');
+  else if (r.motivo === 'encargo-insuficiente') toast('Ahí solo hay ' + fmt(r.disponible) + ' guardados de ' + r.encargoNombre, 'err');
   else if (r.motivo === 'split-excede') {
     const prev = _msEl(previewId);
     prev.textContent = 'El total dividido supera el monto recibido';
@@ -862,7 +862,7 @@ function actualizarMesadaPagoPendientePreview() {
   if (f.usarEncargo) { d = _previewDisponible(prev, _msPickers.mpp, v); if (!d) return; }
   const restante = info.pendiente - v;
   prev.textContent = (restante > 0 ? 'Quedaría debiendo ' + fmt(restante) + ' más' : 'Con esto queda saldado')
-    + (d ? ' · se descuenta de lo guardado de ' + d.enc.nombre : '');
+    + (d ? ' · se descuenta de lo guardado de ' + d.encargo.nombre : '');
   prev.style.color = restante > 0 ? 'var(--amber)' : 'var(--accent)';
 }
 

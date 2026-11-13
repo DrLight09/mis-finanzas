@@ -858,8 +858,8 @@ describe('ingreso-real', () => {
   const cuentas = (custom = []) => [
     { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, ...custom,
   ];
-  const mov = (id, monto, extra = {}) => ({ id, tipo: 'entrada', clase: 'ingreso', monto, fecha: '2026-10-05', fuente: 'cuenta:nequi', desc: 'x', ...extra });
-  const neutro = (id, monto, extra = {}) => mov(id, monto, { clase: 'neutro', ...extra });
+  const movimiento = (id, monto, extra = {}) => ({ id, tipo: 'entrada', clase: 'ingreso', monto, fecha: '2026-10-05', fuente: 'cuenta:nequi', desc: 'x', ...extra });
+  const neutro = (id, monto, extra = {}) => movimiento(id, monto, { clase: 'neutro', ...extra });
 
   function app(archivos = BASE, estado = {}) {
     const a = loadApp(archivos, { permissive: true });
@@ -871,18 +871,18 @@ describe('ingreso-real', () => {
 
   describe('qué cuenta como ingreso real (S.movimientos)', () => {
     test('sueldo, regalo y entradas a cuenta o cajita cuentan', () => {
-      const a = app(BASE, { movimientos: [mov('a', 1), mov('b', 2, { fuente: 'cuenta:efectivo' }), mov('c', 3, { fuente: 'cajita:k' }), mov('d', 4, { fuente: 'cuenta:z' })] });
+      const a = app(BASE, { movimientos: [movimiento('a', 1), movimiento('b', 2, { fuente: 'cuenta:efectivo' }), movimiento('c', 3, { fuente: 'cajita:k' }), movimiento('d', 4, { fuente: 'cuenta:z' })] });
       assert.deepEqual(ids(a), ['a', 'b', 'c', 'd']);
     });
     test('SIN cuenta ni bandera cuenta (regla única: no depende de la cuenta)', () => {
-      const a = app(BASE, { movimientos: [mov('a', 11, { fuente: '' }), mov('b', 12, { fuente: undefined })] });
+      const a = app(BASE, { movimientos: [movimiento('a', 11, { fuente: '' }), movimiento('b', 12, { fuente: undefined })] });
       assert.deepEqual(ids(a), ['a', 'b']);
     });
     test('perdón recibido y extra/margen de préstamo (espejos que SÍ son plata nueva) cuentan', () => {
       const a = app(BASE, { movimientos: [
-        mov('perdon', 1, { fuente: '', _origenSeccion: 'Prestado · Yo debo', _esPerdonRecibido: true }),
-        mov('extra', 2, { _secundario: true, _esEspejo: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true }),
-        mov('dif', 3, { _encMovId: 'e1', _esDiferencialEncargo: true }),
+        movimiento('perdon', 1, { fuente: '', _origenSeccion: 'Prestado · Yo debo', _esPerdonRecibido: true }),
+        movimiento('extra', 2, { _secundario: true, _esEspejo: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true }),
+        movimiento('dif', 3, { _encMovId: 'e1', _esDiferencialEncargo: true }),
       ] });
       assert.deepEqual(ids(a), ['dif', 'extra', 'perdon']);
     });
@@ -899,14 +899,14 @@ describe('ingreso-real', () => {
       neutro('intercambio', 8, { _esIntercambioEncargo: true }),
       neutro('encmov', 9, { _encMovId: 'e1' }),
       neutro('alcancia', 10, { desc: 'Alcancía destapada' }),
-      mov('salida', 11, { tipo: 'salida' }),
-      mov('apertura', 13, { tipo: 'apertura', clase: 'ajuste' }),
+      movimiento('salida', 11, { tipo: 'salida' }),
+      movimiento('apertura', 13, { tipo: 'apertura', clase: 'ajuste' }),
       sinClase,
     ] });
     assert.deepEqual(ids(a), [], 'ningún ingreso');
   });
   test('la clase manda, no las etiquetas: un movimiento con etiqueta de espejo pero clase "ingreso" cuenta', () => {
-    const a = app(BASE, { movimientos: [mov('x', 1, { _esEspejo: true, _origenSeccion: 'Mesada' })] });
+    const a = app(BASE, { movimientos: [movimiento('x', 1, { _esEspejo: true, _origenSeccion: 'Mesada' })] });
     assert.deepEqual(ids(a), ['x']);
   });
 });
@@ -914,18 +914,18 @@ describe('ingreso-real', () => {
   describe('cuentas personalizadas (su historial vive en S.movimientos, con fuente "custom:<id>")', () => {
     const custom = () => cuentas([{ id: 'z', tipo: 'banco', saldo: 0 }]);
     test('un ingreso a una cuenta personalizada cuenta', () => {
-      const a = app(BASE, { cuentas: custom(), movimientos: [mov('c1', 5, { fuente: 'cuenta:z', fecha: '2026-10-03' })] });
+      const a = app(BASE, { cuentas: custom(), movimientos: [movimiento('c1', 5, { fuente: 'cuenta:z', fecha: '2026-10-03' })] });
       assert.deepEqual(ids(a), ['c1']);
     });
     test('espejo en la cuenta no cuenta; espejo con extra de ingreso sí', () => {
       const a = app(BASE, { cuentas: custom(), movimientos: [
         neutro('e1', 5, { fuente: 'cuenta:z', _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
-        mov('e2', 6, { fuente: 'cuenta:z', _esEspejo: true, _esExtraIngreso: true }),
+        movimiento('e2', 6, { fuente: 'cuenta:z', _esEspejo: true, _esExtraIngreso: true }),
       ] });
       assert.deepEqual(ids(a), ['e2']);
     });
     test('una entrada a "custom:" cuyo id NO está en las cuentas (cuenta borrada) cuenta igual', () => {
-      const a = app(BASE, { cuentas: custom(), movimientos: [mov('n', 9, { fuente: 'cuenta:borrada' })] });
+      const a = app(BASE, { cuentas: custom(), movimientos: [movimiento('n', 9, { fuente: 'cuenta:borrada' })] });
       assert.deepEqual(ids(a), ['n']);
     });
     test('una cuenta ya no tiene lista propia: lo que quede en cuenta.movimientos (datos de un esquema anterior) no se lee', () => {
@@ -936,14 +936,14 @@ describe('ingreso-real', () => {
 
   describe('ingresosRealesDelMes', () => {
     test('filtra por mes y suma montos', () => {
-      const a = app(BASE, { movimientos: [mov('a', 100), mov('b', 50, { fecha: '2026-09-30' }), mov('c', 5, { fecha: '2026-10-31' })] });
+      const a = app(BASE, { movimientos: [movimiento('a', 100), movimiento('b', 50, { fecha: '2026-09-30' }), movimiento('c', 5, { fecha: '2026-10-31' })] });
       assert.equal(a.ingresosRealesDelMes('2026-10'), 105);
       assert.equal(a.ingresosRealesDelMes('2026-09'), 50);
       assert.equal(a.ingresosRealesDelMes('2026-08'), 0);
     });
     test('acepta un estado distinto del global (Wrapped trabaja sobre el S que recibe)', () => {
-      const a = app(BASE, { movimientos: [mov('a', 100)] });
-      assert.equal(a.ingresosRealesDelMes(MES, { cuentas: cuentas(), movimientos: [mov('z', 7)] }), 7);
+      const a = app(BASE, { movimientos: [movimiento('a', 100)] });
+      assert.equal(a.ingresosRealesDelMes(MES, { cuentas: cuentas(), movimientos: [movimiento('z', 7)] }), 7);
     });
     test('estado vacío o sin listas no revienta', () => {
       const a = app(BASE);
@@ -951,11 +951,11 @@ describe('ingreso-real', () => {
     });
   });
 
-  describe('registrarMovEspejo: un espejo nuevo nace marcado', () => {
+  describe('registrarMovimientoEspejo: un espejo nuevo nace marcado', () => {
     test('espejo a Nequi/Efectivo, cajita y personalizada lleva _esEspejo, queda en S.movimientos con su fuente y no cuenta', () => {
       const a = app(BASE, { cajitas: [{ id: 'k' }], cuentas: cuentas([{ id: 'z', tipo: 'banco', saldo: 0 }]) });
       for (const cuenta of ['cuenta:nequi', 'cuenta:efectivo', 'cajita:k', 'cuenta:z']) {
-        const id = a.registrarMovEspejo({ cuenta, flujo: 'entrada', monto: 10, fecha: '2026-10-05', desc: 'abono', origen: 'Modulo Nuevo' });
+        const id = a.registrarMovimientoEspejo({ cuenta, flujo: 'entrada', monto: 10, fecha: '2026-10-05', desc: 'abono', origen: 'Modulo Nuevo' });
         assert.ok(id, cuenta);
       }
       assert.deepEqual(Array.from(a.S.movimientos, m => m.fuente), ['cuenta:nequi', 'cuenta:efectivo', 'cajita:k', 'cuenta:z']);
@@ -964,8 +964,8 @@ describe('ingreso-real', () => {
     });
     test('con extra de ingreso (extra/perdón/diferencial) sí cuenta, aunque lleve _esEspejo', () => {
       const a = app(BASE, { cuentas: cuentas([{ id: 'z', tipo: 'banco', saldo: 0 }]) });
-      a.registrarMovEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 10, fecha: '2026-10-05', desc: 'extra', origen: 'Prestado · Me deben', extra: { _esExtraIngreso: true } });
-      a.registrarMovEspejo({ cuenta: 'cuenta:z', flujo: 'entrada', monto: 20, fecha: '2026-10-05', desc: 'extra', origen: 'Prestado · Me deben', extra: { _esExtraIngreso: true } });
+      a.registrarMovimientoEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 10, fecha: '2026-10-05', desc: 'extra', origen: 'Prestado · Me deben', extra: { _esExtraIngreso: true } });
+      a.registrarMovimientoEspejo({ cuenta: 'cuenta:z', flujo: 'entrada', monto: 20, fecha: '2026-10-05', desc: 'extra', origen: 'Prestado · Me deben', extra: { _esExtraIngreso: true } });
       assert.equal(a.ingresosRealesDelMes(MES), 30);
     });
   });
@@ -975,17 +975,17 @@ describe('ingreso-real', () => {
       const a = app(TODO, {
         cuentas: cuentas([{ id: 'ahorro', tipo: 'banco', saldo: 0 }]),
         movimientos: [
-          mov('m1', 100000, { fecha: '2026-10-01' }),
-          mov('m2', 20000, { fuente: 'cuenta:efectivo', fecha: '2026-10-01' }),
-          mov('c1', 1000, { fuente: 'cuenta:ahorro', fecha: '2026-10-02' }),
-          mov('c2', 2000, { fuente: 'cuenta:ahorro', fecha: '2026-10-03' }),
-          mov('c3', 3000, { fuente: 'cuenta:ahorro', fecha: '2026-10-04', _esEspejo: true, _esExtraIngreso: true }),
+          movimiento('m1', 100000, { fecha: '2026-10-01' }),
+          movimiento('m2', 20000, { fuente: 'cuenta:efectivo', fecha: '2026-10-01' }),
+          movimiento('c1', 1000, { fuente: 'cuenta:ahorro', fecha: '2026-10-02' }),
+          movimiento('c2', 2000, { fuente: 'cuenta:ahorro', fecha: '2026-10-03' }),
+          movimiento('c3', 3000, { fuente: 'cuenta:ahorro', fecha: '2026-10-04', _esEspejo: true, _esExtraIngreso: true }),
           neutro('c4', 4000, { fuente: 'cuenta:ahorro', fecha: '2026-10-05', _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
           neutro('m4', 8000, { _origenSeccion: 'Mesada' }),
           neutro('m5', 9000, { _esEspejo: true, _origenSeccion: 'Prestado · Me deben' }),
-          mov('m7', 700, { fuente: '', _esPerdonRecibido: true, _origenSeccion: 'Prestado · Yo debo' }),
-          mov('m10', 11, { fuente: '' }),
-          mov('m9', 900, { fecha: '2026-09-30' }),
+          movimiento('m7', 700, { fuente: '', _esPerdonRecibido: true, _origenSeccion: 'Prestado · Yo debo' }),
+          movimiento('m10', 11, { fuente: '' }),
+          movimiento('m9', 900, { fecha: '2026-09-30' }),
         ],
       });
       a.mesActual = () => MES; a.window.mesActual = a.mesActual;
@@ -1026,12 +1026,12 @@ describe('clase-movimientos', () => {
   }
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  test('registrarMovEspejo — por defecto el espejo nace "neutro"; con banderas de plata nueva, "ingreso"; `clase` explícita manda', () => {
+  test('registrarMovimientoEspejo — por defecto el espejo nace "neutro"; con banderas de plata nueva, "ingreso"; `clase` explícita manda', () => {
     const ctx = app();
-    const a = ctx.registrarMovEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 10, fecha: '2026-10-01', desc: 'x', origen: 'Prestado · Me deben' });
-    const b = ctx.registrarMovEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'extra', origen: 'Prestado', extra: { _esExtraIngreso: true } });
-    const c = ctx.registrarMovEspejo({ cuenta: 'cuenta:nequi', flujo: 'salida', monto: 3, fecha: '2026-10-01', desc: 's', origen: 'Prestado' });
-    const d = ctx.registrarMovEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 7, fecha: '2026-10-01', desc: 'y', origen: 'Z', clase: 'ingreso' });
+    const a = ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 10, fecha: '2026-10-01', desc: 'x', origen: 'Prestado · Me deben' });
+    const b = ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'extra', origen: 'Prestado', extra: { _esExtraIngreso: true } });
+    const c = ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:nequi', flujo: 'salida', monto: 3, fecha: '2026-10-01', desc: 's', origen: 'Prestado' });
+    const d = ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:nequi', flujo: 'entrada', monto: 7, fecha: '2026-10-01', desc: 'y', origen: 'Z', clase: 'ingreso' });
     const por = id => ctx.S.movimientos.find(m => m.id === id).clase;
     assert.deepEqual([por(a), por(b), por(c), por(d)], ['neutro', 'ingreso', 'neutro', 'ingreso']);
   });
@@ -1079,17 +1079,17 @@ describe('clase-movimientos', () => {
     assert.equal(ctx.Periodo.ingresosDelMes('2026-10').entradas, 10);
   });
 
-  test('registrarMovEspejo / borrarMovEspejo — toda cuenta (Nequi, personalizada, cajita) escribe y borra en S.movimientos con su `fuente`', () => {
+  test('registrarMovimientoEspejo / borrarMovimientoEspejo — toda cuenta (Nequi, personalizada, cajita) escribe y borra en S.movimientos con su `fuente`', () => {
     const ctx = app({ cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, { id: 'cu1', tipo: 'banco', nombre: 'Madre', saldo: 0 }],
       cajitas: [{ id: 'c1', nombre: 'Sobra', saldo: 0 }] });
-    const a = ctx.registrarMovEspejo({ cuenta: 'cuenta:cu1', flujo: 'entrada', monto: 10, fecha: '2026-10-01', desc: 'x', origen: 'Prestado' });
-    const b = ctx.registrarMovEspejo({ cuenta: 'cajita:c1', flujo: 'salida', monto: 4, fecha: '2026-10-01', desc: 'y', origen: 'Mesada' });
+    const a = ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:cu1', flujo: 'entrada', monto: 10, fecha: '2026-10-01', desc: 'x', origen: 'Prestado' });
+    const b = ctx.registrarMovimientoEspejo({ cuenta: 'cajita:c1', flujo: 'salida', monto: 4, fecha: '2026-10-01', desc: 'y', origen: 'Mesada' });
     const por = id => JSON.parse(JSON.stringify(ctx.S.movimientos.find(m => m.id === id)));
     assert.deepEqual([por(a).fuente, por(a).tipo, por(a).desc], ['cuenta:cu1', 'entrada', 'x']);
     assert.deepEqual([por(b).fuente, por(b).tipo, por(b).desc], ['cajita:c1', 'salida', 'y']);
-    assert.equal(ctx.registrarMovEspejo({ cuenta: 'cuenta:no-existe', flujo: 'entrada', monto: 1, fecha: '2026-10-01', desc: 'z', origen: 'P' }), null, 'cuenta que ya no existe: no se escribe');
-    assert.equal(ctx.borrarMovEspejo('cajita:c1', b), true);
-    assert.equal(ctx.borrarMovEspejo('cajita:c1', b), false);
+    assert.equal(ctx.registrarMovimientoEspejo({ cuenta: 'cuenta:no-existe', flujo: 'entrada', monto: 1, fecha: '2026-10-01', desc: 'z', origen: 'P' }), null, 'cuenta que ya no existe: no se escribe');
+    assert.equal(ctx.borrarMovimientoEspejo('cajita:c1', b), true);
+    assert.equal(ctx.borrarMovimientoEspejo('cajita:c1', b), false);
     assert.equal(ctx.S.movimientos.some(m => m.id === b), false);
   });
 
@@ -1444,11 +1444,11 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   // ── Punto 3: filtros de «Me lo regalaron» y «Mover entre cuentas» ───────────────────────────
-  const ENC = () => [{ id: 'e1', nombre: 'Carlos', movimientos: [{ id: 'm1', tipo: 'entrada', monto: 100000, cuenta: 'cuenta:nequi', fecha: '2026-10-01' }] }];
-  const HTML_ENC = '<select id="traspaso_destino"></select><select id="traspaso_origen"></select><select id="moverenc_destino"></select><select id="moverenc_origen"></select>';
+  const ENCARGO = () => [{ id: 'e1', nombre: 'Carlos', movimientos: [{ id: 'm1', tipo: 'entrada', monto: 100000, cuenta: 'cuenta:nequi', fecha: '2026-10-01' }] }];
+  const HTML_ENCARGO = '<select id="traspaso_destino"></select><select id="traspaso_origen"></select><select id="moverenc_destino"></select><select id="moverenc_origen"></select>';
 
   test('«Me lo regalaron»: el destino no ofrece tarjetas de crédito', () => {
-    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: HTML_ENC });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENCARGO(), htmlBase: HTML_ENCARGO });
     app.abrirEncargoDetalle('e1');
     app.abrirTraspasoEncargo();
     assert.deepEqual(app.abiertos.slice(-1), ['traspaso-encargo']);
@@ -1456,23 +1456,23 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Me lo regalaron»: al confirmar rechaza una TC como destino (aunque el selector no la ofrezca) y sigue funcionando con una cuenta', () => {
-    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="traspaso_destino"><input id="traspaso_origen">' });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENCARGO(), htmlBase: '<input id="traspaso_destino"><input id="traspaso_origen">' });
     app.abrirEncargoDetalle('e1');
-    const enc = app.S.encargos[0];
+    const encargo = app.S.encargos[0];
     ponerValores(app, { traspaso_monto: '40000', traspaso_desc: 'regalo', traspaso_fecha: '2026-10-24', traspaso_origen: '', traspaso_destino: 'tc:t1' });
     app.confirmarTraspasoEncargo();
     assert.deepEqual(app.toasts.pop(), ['Una tarjeta de crédito no puede recibir plata', 'err']);
-    assert.equal(enc.movimientos.length, 1);
+    assert.equal(encargo.movimientos.length, 1);
     assert.equal(app.S.tarjetasCredito[0].deuda, 0);
     ponerValores(app, { traspaso_destino: 'cuenta:nequi' });
     app.confirmarTraspasoEncargo();
-    assert.equal(enc.movimientos.length, 2);
+    assert.equal(encargo.movimientos.length, 2);
     assert.equal(app.S.cuentas[0].saldo, 90000);
   });
 
   test('«Mover entre cuentas»: ni origen ni destino ofrecen tarjetas de crédito', () => {
-    const enc = ENC(); enc[0].movimientos.push({ id: 'm2', tipo: 'entrada', monto: 5000, cuenta: 'tc:t1', fecha: '2026-10-01' }); // dato raro: plata "guardada" en una TC
-    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: enc, htmlBase: HTML_ENC });
+    const encargo = ENCARGO(); encargo[0].movimientos.push({ id: 'm2', tipo: 'entrada', monto: 5000, cuenta: 'tc:t1', fecha: '2026-10-01' }); // dato raro: plata "guardada" en una TC
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: encargo, htmlBase: HTML_ENCARGO });
     app.abrirEncargoDetalle('e1');
     app.abrirMoverEntreCuentasEncargo();
     assert.deepEqual(opciones(app.document, 'moverenc_destino'), ['', 'cuenta:nequi', 'cuenta:efectivo']);
@@ -1480,28 +1480,28 @@ describe('requisitos-y-filtros-de-sheets', () => {
   });
 
   test('«Mover entre cuentas»: al confirmar rechaza una TC como destino o como origen; entre cuentas sigue funcionando', () => {
-    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="moverenc_destino"><input id="moverenc_origen">' });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENCARGO(), htmlBase: '<input id="moverenc_destino"><input id="moverenc_origen">' });
     app.abrirEncargoDetalle('e1');
-    const enc = app.S.encargos[0];
+    const encargo = app.S.encargos[0];
     ponerValores(app, { moverenc_monto: '10000', moverenc_fecha: '2026-10-24', moverenc_origen: 'cuenta:nequi', moverenc_destino: 'tc:t1' });
-    app.confirmarMoverEncCuentas();
+    app.confirmarMoverEncargoCuentas();
     assert.deepEqual(app.toasts.pop(), ['No puedes mover plata a una tarjeta de crédito', 'err']);
     ponerValores(app, { moverenc_origen: 'tc:t1', moverenc_destino: 'cuenta:efectivo' });
-    app.confirmarMoverEncCuentas();
+    app.confirmarMoverEncargoCuentas();
     assert.deepEqual(app.toasts.pop(), ['Una tarjeta de crédito no puede ser cuenta de origen', 'err']);
-    assert.equal(enc.movimientos.length, 1);
+    assert.equal(encargo.movimientos.length, 1);
     ponerValores(app, { moverenc_origen: 'cuenta:nequi', moverenc_destino: 'cuenta:efectivo' });
-    app.confirmarMoverEncCuentas();
-    assert.equal(enc.movimientos.length, 3, 'salida + entrada internas');
+    app.confirmarMoverEncargoCuentas();
+    assert.equal(encargo.movimientos.length, 3, 'salida + entrada internas');
   });
 
   test('«Compra con TC» de un encargo: el destino de la plata no ofrece TC y al confirmar rechaza una', () => {
-    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<select id="ctc_destino"></select><select id="ctc_cuenta_enc"></select><select id="ctc_tarjeta"></select>' });
+    const app = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENCARGO(), htmlBase: '<select id="ctc_destino"></select><select id="ctc_cuenta_enc"></select><select id="ctc_tarjeta"></select>' });
     app.abrirEncargoDetalle('e1');
     app.abrirCompraConTC();
     assert.deepEqual(app.abiertos.slice(-1), ['compra-tc-encargo']);
     assert.deepEqual(opciones(app.document, 'ctc_destino'), ['', 'cuenta:nequi', 'cuenta:efectivo']);
-    const app2 = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENC(), htmlBase: '<input id="ctc_destino"><input id="ctc_tarjeta"><input id="ctc_cuenta_enc">' });
+    const app2 = entorno([core('split.js'), core('diferencial.js'), modulo('encargos.js')], { encargos: ENCARGO(), htmlBase: '<input id="ctc_destino"><input id="ctc_tarjeta"><input id="ctc_cuenta_enc">' });
     app2.abrirEncargoDetalle('e1');
     ponerValores(app2, { ctc_desc: 'Zapatos', ctc_monto: '1000', ctc_tarjeta: 't1', ctc_destino: 'tc:t1', ctc_nota: '', ctc_fecha: '2026-10-24' });
     app2.confirmarCompraConTC();
@@ -1711,13 +1711,13 @@ describe('historial-patrimonio', () => {
     assert.deepEqual(valores(app), antes);
   });
 
-  test('diaCreacionMov: ts, hora del id de uid(), y la fecha como último recurso', () => {
+  test('diaCreacionMovimiento: ts, hora del id de uid(), y la fecha como último recurso', () => {
     const app = entorno([]);
-    assert.equal(app.diaCreacionMov({ ts: ts(-3), id: 'x', fecha: '2020-01-01' }), dia(-3));
-    assert.equal(app.diaCreacionMov({ id: (ts(-2)).toString(36) + 'abc', fecha: '2020-01-01' }), dia(-2));
-    assert.equal(app.diaCreacionMov({ id: 'apertura:nequi', fecha: '2026-01-05' }), '2026-01-05');
-    assert.equal(app.diaCreacionMov({ fecha: '2026-01-05' }), '2026-01-05');
-    assert.equal(app.diaCreacionMov(null), '');
+    assert.equal(app.diaCreacionMovimiento({ ts: ts(-3), id: 'x', fecha: '2020-01-01' }), dia(-3));
+    assert.equal(app.diaCreacionMovimiento({ id: (ts(-2)).toString(36) + 'abc', fecha: '2020-01-01' }), dia(-2));
+    assert.equal(app.diaCreacionMovimiento({ id: 'apertura:nequi', fecha: '2026-01-05' }), '2026-01-05');
+    assert.equal(app.diaCreacionMovimiento({ fecha: '2026-01-05' }), '2026-01-05');
+    assert.equal(app.diaCreacionMovimiento(null), '');
   });
 });
 

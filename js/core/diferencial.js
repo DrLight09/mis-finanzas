@@ -74,7 +74,7 @@ var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests
  *     escribe en S.movimientos (margen e intercambios) se marcan _secundario:true + _origenSeccion, así
  *     eliminarMovimiento() (movimientos.js) NO los deja borrar sueltos y manda al usuario a borrar el
  *     movimiento principal. Definirlo SOLO si el módulo dueño revierte esos movimientos al borrar el
- *     principal (Encargos lo hace vía _encMovId en deleteMovEncargo). Sin definir = comportamiento anterior.
+ *     principal (Encargos lo hace vía _encMovId en deleteMovimientoEncargo). Sin definir = comportamiento anterior.
  *   permiteMiCuenta: bool — muestra selector de cuenta propia para el sobrante libre
  *   getDijo: () => number — de dónde sacar el monto "dijiste/correspondía"
  *   exigeMargenPositivo: bool — si true, margen<=0 se muestra como error (no permite "cobré de más")
@@ -375,7 +375,7 @@ function diffValidarMiCuenta(instId) {
  * existe — el préstamo, el abono, el movimiento del encargo, etc).
  * Genera el campo movimiento.diferencial = {dijo, real, margen, beneficiarios, miCuenta, yoMeQuedo}
  * y, si linkId está presente, encadena cada efecto secundario con _encMovId=linkId
- * para que deleteMovEncargo() pueda revertirlos (mismo contrato que usaba el código viejo).
+ * para que deleteMovimientoEncargo() pueda revertirlos (mismo contrato que usaba el código viejo).
  *
  * Si cfg.permiteMiCuenta es false (ej. "Préstamo con TC": el margen quedó
  * prestado directamente, nunca tocó una cuenta), el sobrante sin asignar se

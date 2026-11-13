@@ -391,8 +391,8 @@ describe('cierre — vista previa (analizar)', () => {
 
   test('una entidad con historia posterior al corte no se cierra aunque su saldo sea 0 («registros-posteriores»)', () => {
     const v = cargarApp(); generar(v, { dias: 900 });
-    const enc = v.S.encargos.find(x => x.id === 'encCerrado');
-    enc.movimientos.push({ id: 'z00001', tipo: 'entrada', monto: 10, fecha: '2026-05-05', cuenta: 'efectivo' }, { id: 'z00002', tipo: 'salida', monto: 10, fecha: '2026-05-06', cuenta: 'efectivo' });
+    const encargo = v.S.encargos.find(x => x.id === 'encCerrado');
+    encargo.movimientos.push({ id: 'z00001', tipo: 'entrada', monto: 10, fecha: '2026-05-05', cuenta: 'efectivo' }, { id: 'z00002', tipo: 'salida', monto: 10, fecha: '2026-05-06', cuenta: 'efectivo' });
     const r = v.Cierre.analizar(CORTE, v.S, { mesActual: MES_ACTUAL });
     assert.equal(r.entidades.find(x => x.id === 'encCerrado').motivo, 'registros-posteriores');
     assert.equal(r.porFuente.encargos.archivables.registros, informe.porFuente.encargos.archivables.registros - 2);

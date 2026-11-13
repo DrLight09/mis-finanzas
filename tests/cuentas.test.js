@@ -1870,9 +1870,9 @@ describe('nu-acciones', () => {
   describe('Chequeo rápido con encargos: se muestra y se anota el TOTAL que marca Nu', () => {
     // Una cajita con plata propia y plata de encargos (física en la misma cajita). Nu muestra la suma; antes el chequeo mostraba
     // solo lo propio y obligaba a restar los encargos a mano (y adivinaba qué número había anotado el usuario).
-    const conEncargos = (propio = 100000, enc = 200000) => {
+    const conEncargos = (propio = 100000, encargo = 200000) => {
       const e = entorno({ cajitas: [caja('a', propio, hace(3))] });
-      e.app.S.encargos = [{ id: 'e1', nombre: 'Papá', saldoInicial: enc, cuentaInicial: 'cajita:a', movimientos: [] }];
+      e.app.S.encargos = [{ id: 'e1', nombre: 'Papá', saldoInicial: encargo, cuentaInicial: 'cajita:a', movimientos: [] }];
       e.app.dialogo = async () => true;
       return e;
     };
@@ -2137,7 +2137,7 @@ describe('cuentas-nu-archivos', () => {
     const usadas = usadasDe(sinComentarios(leer('js/modules/nu.js')), declaradas(leer('js/modules/cuentas.js')));
     assert.deepEqual(usadas, ['_MIN_RETIRO', '_aperturaToggleUI', '_descriptorDeCuenta', '_pintarAdministrarCuenta', '_setBtnEstado', '_setBtnTransferir', '_showCuentasPanel',
       '_tituloCuentaHtml', 'abrirAgregarDinero', 'abrirRestarDinero', 'abrirTransferir', 'actualizarBotonRetirar', 'actualizarBotonesTransferir',
-      'cuentaActual', 'getMovimientosCuenta', 'registrarEntradaConApertura', 'registrarSalida', 'renderMovsCuenta']);
+      'cuentaActual', 'getMovimientosCuenta', 'registrarEntradaConApertura', 'registrarSalida', 'renderMovimientosCuenta']);
   });
 
   test('todo botón data-action="cuentas:…" / "nu:…" (en index.html y en el HTML que arman los módulos) está registrado en su namespace', () => {
@@ -2187,7 +2187,7 @@ describe('cuentas-abono-con-extra', () => {
     .concat(['nu.js', 'cuentas.js'].map(f => path.join(RAIZ, 'js', 'modules', f)));
   const espejo = (id, fuente, monto, parte, extra = {}) => ({ id, tipo: 'entrada', fuente, monto, fecha: '2026-10-20', desc: parte === 'extra' ? 'Extra de pago — Ana' : 'Abono de deuda — Ana',
     clase: parte === 'extra' ? 'ingreso' : 'neutro', _abonoId: 'a1', _parteAbono: parte, _secundario: true, _origenSeccion: 'Prestado · Me deben', ...extra });
-  const cargar = movs => { const app = loadApp(ARCH, { permissive: true }); app.S.movimientos = movs; return app; };
+  const cargar = movimientos => { const app = loadApp(ARCH, { permissive: true }); app.S.movimientos = movimientos; return app; };
 
   test('abono y extra a la misma cuenta: una sola fila por el total', () => {
     const app = cargar([espejo('m1', 'cuenta:nequi', 50000, 'abono'), espejo('m2', 'cuenta:nequi', 5000, 'extra')]);
@@ -2237,7 +2237,7 @@ describe('nu-cambio-de-tasa', () => {
     app.S.cajitas = [{ id: 'k1', cuentaId: 'nu', nombre: 'Ahorros', saldo: 1000000, fecha: hace(20), cdts: [{ id: 'c1', monto: 500000, tasa: 11, fechaInicio: hace(10), dias: 90, rte: 7 }] }];
     return { app, hoy, hace };
   }
-  const foto = app => JSON.stringify({ val: app.calcC(app.S.cajitas[0]).val, cdt: app.calcCDT(app.S.cajitas[0].cdts[0]).val, saldo: app.S.cajitas[0].saldo, movs: (app.S.movimientos || []).length });
+  const foto = app => JSON.stringify({ val: app.calcC(app.S.cajitas[0]).val, cdt: app.calcCDT(app.S.cajitas[0].cdts[0]).val, saldo: app.S.cajitas[0].saldo, movimientos: (app.S.movimientos || []).length });
 
   test('una tasa nueva se anota desde hoy y no cambia saldos, intereses ya ganados ni el CDT', () => {
     const { app, hoy } = cargar(); const antes = foto(app);
@@ -2265,7 +2265,7 @@ describe('nu-cambio-de-tasa', () => {
     app.registrarTasaHistorial('nu', hace(8), 10.5);
     const despues = JSON.parse(foto(app));
     assert.ok(despues.val > antes.val, 'el interés pendiente se recalcula con la tasa corregida');
-    assert.equal(despues.saldo, antes.saldo); assert.equal(despues.movs, antes.movs); assert.equal(despues.cdt, antes.cdt);
+    assert.equal(despues.saldo, antes.saldo); assert.equal(despues.movimientos, antes.movimientos); assert.equal(despues.cdt, antes.cdt);
   });
 
   test('el mensaje del historial de tasas ya no existe en la pantalla ni en el código', () => {

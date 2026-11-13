@@ -1321,9 +1321,9 @@ test('A2. opcionesCuenta: una sola función para «¿de qué cuenta?» con la co
   const sale = val(ctx.opcionesCuenta({ sentido: 'sale' }));
   assert.ok(sale.includes('cuenta:nequi') && !sale.includes('cuenta:efectivo'), 'plata que sale: no se ofrece una cuenta vacía');
   assert.deepEqual(val(ctx.opcionesCuenta({ soloDe: [] })), [], 'soloDe vacío = ninguna cuenta (encargo sin plata)');
-  const delEnc = ctx.opcionesCuenta({ soloDe: [{ cuenta: 'cuenta:nequi', label: 'Nequi', saldo: 1000 }], mostrarSaldo: true });
-  assert.deepEqual(val(delEnc), ['cuenta:nequi']);
-  assert.match(delEnc, /Nequi \(\$\s?1\.000\)/);
+  const delEncargo = ctx.opcionesCuenta({ soloDe: [{ cuenta: 'cuenta:nequi', label: 'Nequi', saldo: 1000 }], mostrarSaldo: true });
+  assert.deepEqual(val(delEncargo), ['cuenta:nequi']);
+  assert.match(delEncargo, /Nequi \(\$\s?1\.000\)/);
   assert.match(ctx.opcionesCuenta({ placeholder: 'Selecciona…', placeholderDeshabilitado: true }), /<option value="" disabled selected>Selecciona…/);
   assert.match(ctx.opcionesCuenta({ selectedVal: 'cuenta:nequi', placeholder: 'X', placeholderDeshabilitado: true }), /<option value="" disabled>X/);
   assert.match(ctx.opcionesCuenta({ extra: sel => `<option value="g"${sel === 'g' ? ' selected' : ''}>G</option>`, selectedVal: 'g' }), /<option value="g" selected>G<\/option>$/);

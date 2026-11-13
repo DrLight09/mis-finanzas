@@ -246,7 +246,7 @@ window.alcanciaToggleDividir = function(){ if(typeof splitToggle === 'function')
 window.alcanciaAgregarOrigen = function(){ if(typeof splitAgregarRow === 'function') splitAgregarRow('alcancia'); };
 
 /* ─── COBRO DE DEUDA: selector de deudor/grupo dentro de Depositar ───────
-   Espejo simplificado de _initMovGrupoSelector (prestado.js): si la
+   Espejo simplificado de _initMovimientoGrupoSelector (prestado.js): si la
    persona elegida tiene ≥2 préstamos abiertos hay que preguntar a cuál
    corresponde el cobro (nunca se adivina); con 0 o 1 se resuelve solo.
    No hay opción de "préstamo aparte" acá — un cobro nunca abre un grupo
@@ -663,26 +663,26 @@ window.renderAlcancia = function(){
     // que debe seguir siendo sorpresa. Sin esta lista no hay forma de
     // corregir un depósito mal anotado, porque cuentas.js también los
     // esconde mientras la alcancía sigue activa.
-    const movsTitulo = document.getElementById('alcancia-movs-titulo');
-    const movsEl = document.getElementById('alcancia-movimientos-lista');
-    if(movsTitulo) movsTitulo.style.display = '';
-    if(movsEl){
-      movsEl.style.display = '';
-      const movs = (a.movimientos || []);
-      if(!movs.length){
-        movsEl.innerHTML = emptyInline('Aún no hay movimientos en esta alcancía.',{grande:true});
+    const movimientosTitulo = document.getElementById('alcancia-movs-titulo');
+    const movimientosEl = document.getElementById('alcancia-movimientos-lista');
+    if(movimientosTitulo) movimientosTitulo.style.display = '';
+    if(movimientosEl){
+      movimientosEl.style.display = '';
+      const movimientos = (a.movimientos || []);
+      if(!movimientos.length){
+        movimientosEl.innerHTML = emptyInline('Aún no hay movimientos en esta alcancía.',{grande:true});
       } else {
         const tipoIcon = { yo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro-deuda': '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
         const tipoColor = { yo: 'alc-c-accent', regalo: 'alc-c-amber', mandado: 'alc-c-amber', split: 'alc-c-amber', 'cobro-deuda': 'alc-c-accent' };
         // Orden por FECHA del depósito (más reciente arriba); si dos tienen la misma fecha, gana el que se
         // registró después (ts). Antes se usaba el orden de registro, así que un depósito olvidado y anotado
         // con fecha pasada quedaba arriba de otros más nuevos.
-        const movsOrdenados = [...movs].sort((x, y) => {
+        const movimientosOrdenados = [...movimientos].sort((x, y) => {
           const fx = x.fecha || '', fy = y.fecha || '';
           if(fx !== fy) return fy.localeCompare(fx);
           return (y.ts || 0) - (x.ts || 0);
         });
-        movsEl.innerHTML = movsOrdenados.map(m => {
+        movimientosEl.innerHTML = movimientosOrdenados.map(m => {
           const icon  = tipoIcon[m.tipo]  || '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
           const color = tipoColor[m.tipo] || 'alc-c-accent';
           const label = m.tipoLabel || (m.fuenteOrigen ? 'Propio' : 'Externo');
@@ -914,15 +914,15 @@ window.alcanciaConfirmarDeposito = function(){
   });
 
   // Cobro de deuda: abono en la persona (descuenta la deuda). No toca ninguna cuenta ni cuenta como ingreso.
-  let cobroAbonoMovId = null;
+  let cobroAbonoMovimientoId = null;
   if(esCobro){
     const d = Deudas.lista('favor').find(x => x.id === cobroDeudorId);
     if(d){
       if(!d.movimientos) d.movimientos = [];
-      const grupoIdFinal = cobroGrupoId || (typeof _autoGrupoIdMov === 'function' ? _autoGrupoIdMov(d, fecha) : undefined);
-      cobroAbonoMovId = uidF();
+      const grupoIdFinal = cobroGrupoId || (typeof _autoGrupoIdMovimiento === 'function' ? _autoGrupoIdMovimiento(d, fecha) : undefined);
+      cobroAbonoMovimientoId = uidF();
       d.movimientos.push({
-        id: cobroAbonoMovId,
+        id: cobroAbonoMovimientoId,
         tipo: 'abono',
         monto,
         fecha,
@@ -942,34 +942,34 @@ window.alcanciaConfirmarDeposito = function(){
   a.saldoRegistrado = (a.saldoRegistrado || 0) + monto;
   a.depositos = (a.depositos || 0) + 1;
   a.movimientos = a.movimientos || [];
-  const movEntry = { id: entryId, monto, fecha, fuenteOrigen: null, ts: Date.now() };
+  const movimientoEntry = { id: entryId, monto, fecha, fuenteOrigen: null, ts: Date.now() };
   if(unica){
     const p = partes[0];
     if(p.origen === 'cuenta'){
-      movEntry.tipo = 'yo-cuenta'; movEntry.tipoLabel = 'Propio (de cuenta)'; movEntry.fuenteOrigen = p.fuente;
-      movEntry.desc = descVal || 'Depósito en alcancía';
+      movimientoEntry.tipo = 'yo-cuenta'; movimientoEntry.tipoLabel = 'Propio (de cuenta)'; movimientoEntry.fuenteOrigen = p.fuente;
+      movimientoEntry.desc = descVal || 'Depósito en alcancía';
     } else if(p.origen === 'deuda'){
-      movEntry.tipo = 'cobro-deuda'; movEntry.tipoLabel = 'Cobro de deuda';
-      movEntry.desc = descVal || ('Cobro de deuda — ' + cobroDeudorNombre);
-      movEntry._prestamoDeudorId = cobroDeudorId;
-      movEntry._prestamoMovId = cobroAbonoMovId;
+      movimientoEntry.tipo = 'cobro-deuda'; movimientoEntry.tipoLabel = 'Cobro de deuda';
+      movimientoEntry.desc = descVal || ('Cobro de deuda — ' + cobroDeudorNombre);
+      movimientoEntry._prestamoDeudorId = cobroDeudorId;
+      movimientoEntry._prestamoMovId = cobroAbonoMovimientoId;
     } else {
       const info = _ALCANCIA_INFO_ORIGEN[p.origen];
-      movEntry.tipo = info.tipo;
-      movEntry.tipoLabel = { propio: 'Propio (directo)', regalo: 'Regalo mamá', mandado: 'Mandado mamá' }[p.origen];
-      movEntry.desc = descVal || info.desc;
+      movimientoEntry.tipo = info.tipo;
+      movimientoEntry.tipoLabel = { propio: 'Propio (directo)', regalo: 'Regalo mamá', mandado: 'Mandado mamá' }[p.origen];
+      movimientoEntry.desc = descVal || info.desc;
     }
   } else {
-    movEntry.tipo = 'multi';
-    movEntry.tipoLabel = partes.map(p => p.origen === 'cuenta' ? _alcanciaNombreFuente(p.fuente) : _ALCANCIA_INFO_ORIGEN[p.origen].corto).join(' + ');
-    movEntry.desc = descVal || 'Depósito de varias fuentes';
-    movEntry.partes = partes.map(p => {
+    movimientoEntry.tipo = 'multi';
+    movimientoEntry.tipoLabel = partes.map(p => p.origen === 'cuenta' ? _alcanciaNombreFuente(p.fuente) : _ALCANCIA_INFO_ORIGEN[p.origen].corto).join(' + ');
+    movimientoEntry.desc = descVal || 'Depósito de varias fuentes';
+    movimientoEntry.partes = partes.map(p => {
       const o = { origen: p.origen, monto: p.monto, movId: p.movId };
       if(p.fuente) o.fuente = p.fuente;
       return o;
     });
   }
-  a.movimientos.push(movEntry);
+  a.movimientos.push(movimientoEntry);
   _setSaldoOfuscado(a.saldoRegistrado);
 
   if(typeof save==='function') save();
@@ -1214,7 +1214,7 @@ function _sumarASaldo(fuente, monto){
    mantiene oculto ("$??"). El monto real nunca se guarda en el HTML antes
    de que el usuario lo pida: se busca en window.S.alcancia recién al
    tocar, y solo para esa fila. */
-window.alcanciaToggleMontoDeposito = function(movId, el){
+window.alcanciaToggleMontoDeposito = function(movimientoId, el){
   if(!el || el.dataset.movId === undefined) return;
   const montoEl = el;
   const shown = montoEl.dataset.shown === '1';
@@ -1225,7 +1225,7 @@ window.alcanciaToggleMontoDeposito = function(movId, el){
   } else {
     _initA();
     const a = window.S.alcancia;
-    const entry = a && (a.movimientos || []).find(m => m.id === movId);
+    const entry = a && (a.movimientos || []).find(m => m.id === movimientoId);
     montoEl.textContent = entry ? '+' + (typeof fmt==='function'?fmt(entry.monto):entry.monto) : '?';
     montoEl.dataset.shown = '1';
     montoEl.style.color = 'var(--amber)';
@@ -1243,11 +1243,11 @@ window.alcanciaToggleMontoDeposito = function(movId, el){
    No usa eliminarMovimiento() de movimientos.js porque esos registros ya
    quedan marcados _secundario (ver arriba), así que esa función los
    bloquea a propósito — este es el único camino real para deshacerlos. */
-window.alcanciaEliminarDeposito = async function(movId){
+window.alcanciaEliminarDeposito = async function(movimientoId){
   _initA();
   const a = window.S.alcancia;
   if(!a || !a.movimientos) return;
-  const idx = a.movimientos.findIndex(m => m.id === movId);
+  const idx = a.movimientos.findIndex(m => m.id === movimientoId);
   if(idx === -1){ if(typeof toast==='function') toast('No se encontró ese depósito', 'err'); return; }
   const entry = a.movimientos[idx];
 
@@ -1346,11 +1346,11 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
    al deudor — para cuando el borrado se inició desde Préstamos
    (eliminarMovDeudor ya revirtió/confirmó ese lado). Sin diálogo de
    confirmación propio: quien llama ya confirmó una sola vez. */
-window._alcanciaQuitarPorCobroDeuda = function(alcanciaMovId){
+window._alcanciaQuitarPorCobroDeuda = function(alcanciaMovimientoId){
   _initA();
   const a = window.S.alcancia;
   if(!a || !a.movimientos) return false;
-  const idx = a.movimientos.findIndex(m => m.id === alcanciaMovId);
+  const idx = a.movimientos.findIndex(m => m.id === alcanciaMovimientoId);
   if(idx === -1) return false;
   const entry = a.movimientos[idx];
   a.movimientos.splice(idx, 1);

@@ -89,7 +89,7 @@ const _diferencial_prestamoDiferencial = diffRegistrarInstancia('prestamoDif', {
   labelMargenNegativo: 'El valor real debe ser menor que lo que le cobras',
   flagIngresoFantasma: '_prestadoDirectamente',
   getDijo: () => parseMoney(document.getElementById('mov_monto')?.value) || 0,
-  descMargen: (mov) => `Margen préstamo — ${mov._deudorNombre || ''}: `,
+  descMargen: (movimiento) => `Margen préstamo — ${movimiento._deudorNombre || ''}: `,
   // Con el split de cuentas abierto, "lo que falta repartir" depende del valor real.
   onToggle: () => { if (_prestSplitMode) _updatePrestSplitResumen(); },
   onResumen: () => { if (_prestSplitMode) _updatePrestSplitResumen(); }
@@ -160,7 +160,7 @@ function _updatePrestSplitResumen(){
 /* ---- FIN METAS / SPLIT ---- */
 /* ---- DEUDORES (Personas a quienes les presté dinero) ---- */
 let deudorActualId = null;
-let movTipo = 'prestamo'; // 'prestamo' | 'abono'
+let movimientoTipo = 'prestamo'; // 'prestamo' | 'abono'
 
 // getDeudorSaldo() se movió a js/core/calc-helpers.js (2026-09-20): es un
 // reduce puro sobre d.movimientos y "Necesita atención" (inicio.js) lo necesita
@@ -241,9 +241,9 @@ const _enReversion = (ref, fn) => Libro.conOrigen({ modulo: 'prestado', ref, rev
 // historial y descuenta el saldo que había sumado. Si el abono guardó el id del espejo
 // pero el espejo ya no existe, el saldo NO se descuenta otra vez (evita doble descuento).
 // Sin id (abono antiguo, anterior al espejo) se descuenta igual.
-function _revertirDestinoAbono(destino, movId, monto) {
+function _revertirDestinoAbono(destino, movimientoId, monto) {
   if (!destino) return;
-  const existe = movId ? borrarMovEspejo(destino, movId) : true;
+  const existe = movimientoId ? borrarMovimientoEspejo(destino, movimientoId) : true;
   if (existe) descontarFuente(destino, monto);
 }
 // Igual, para un abono repartido entre varias cuentas (m.destinos[]).
@@ -264,7 +264,7 @@ function _revertirDestinosAbono(destinos) {
 // Es el balde por defecto: mientras el usuario no abra un grupo aparte a
 // propósito (checkbox/selector), todo movimiento cae acá. Nunca se cierra
 // solo por saldo — ver _autoCerrarGruposEnCero — así que una vez creado
-// sigue contando como "1 grupo abierto" para siempre, y _autoGrupoIdMov no
+// sigue contando como "1 grupo abierto" para siempre, y _autoGrupoIdMovimiento no
 // vuelve a crear otro por defecto.
 function _getOrCrearHistorico(d, fecha) {
   if (!d.grupos) d.grupos = [];
@@ -292,7 +292,7 @@ function _gruposAbiertos(d) {
 // "grupos abiertos" limpia sin pedirle al usuario que cierre nada a mano.
 // Excepción: "_historico" nunca se cierra solo, así llegue a $0 — es el
 // balde por defecto y debe seguir contando como grupo abierto para que
-// _autoGrupoIdMov nunca tenga que crear uno nuevo sin que el usuario lo pida.
+// _autoGrupoIdMovimiento nunca tenga que crear uno nuevo sin que el usuario lo pida.
 function _autoCerrarGruposEnCero(d) {
   if (!d || !d.grupos) return;
   d.grupos.forEach(g => {
@@ -320,15 +320,15 @@ function _crearGrupoDeudor(d, fecha, nombre) {
 // - ≥2 grupos abiertos → esto solo pasa si igual no hubo selector visible
 //   (ambigüedad real sin cómo resolverla sola); crea uno nuevo para no
 //   adivinar a cuál de varios pertenece.
-function _autoGrupoIdMov(d, fecha) {
+function _autoGrupoIdMovimiento(d, fecha) {
   const abiertos = _gruposAbiertos(d);
   if (abiertos.length === 1) return abiertos[0].id;
   if (abiertos.length === 0) return _getOrCrearHistorico(d, fecha).id;
   return _crearGrupoDeudor(d, fecha).id;
 }
 
-// Resolución de grupoId para el sheet "Registrar movimiento" (initMovSheet /
-// confirmarMovimiento). Dos caminos posibles según lo que _initMovGrupoSelector
+// Resolución de grupoId para el sheet "Registrar movimiento" (initMovimientoSheet /
+// confirmarMovimiento). Dos caminos posibles según lo que _initMovimientoGrupoSelector
 // haya mostrado:
 // 1. Selector visible (≥2 grupos abiertos): respeta lo elegido, incluyendo
 //    crear uno nuevo si escogió "Es un préstamo nuevo".
@@ -336,11 +336,11 @@ function _autoGrupoIdMov(d, fecha) {
 //    usuario lo marcó, crea un grupo aparte en vez de fusionar con el único
 //    abierto.
 // Si ninguno de los dos se mostró, no hay nada que preguntar: automático.
-function _resolverGrupoIdMov(d, fecha) {
+function _resolverGrupoIdMovimiento(d, fecha) {
   return _resolverGrupoIdSel('mov', d, fecha);
 }
 
-// Versión genérica de _resolverGrupoIdMov, parametrizada por el prefijo de
+// Versión genérica de _resolverGrupoIdMovimiento, parametrizada por el prefijo de
 // los ids en el DOM (ej. 'mov' para "Registrar movimiento", 'prtc' para
 // "Préstamo con TC"). Así ambos sheets comparten la misma lógica de elegir
 // a cuál préstamo abierto va el movimiento, o si arranca uno aparte.
@@ -361,7 +361,7 @@ function _resolverGrupoIdSel(prefix, d, fecha) {
     const nombreInput = document.getElementById(prefix + '_grupo_nombre');
     return _crearGrupoDeudor(d, fecha, nombreInput ? nombreInput.value : '').id;
   }
-  return _autoGrupoIdMov(d, fecha);
+  return _autoGrupoIdMovimiento(d, fecha);
 }
 
 /* ── Lista de personas (Me deben / Yo debo): un solo render ─────────────
@@ -420,7 +420,7 @@ function _renderListaDeudas(dir) {
   el.innerHTML = html`${list.map(d => {
     const saldo = Deudas.saldo(d);
     const initials = d.nombre.substring(0, 2).toUpperCase();
-    const ultimoMov = (d.movimientos || []).slice(-1)[0];
+    const ultimoMovimiento = (d.movimientos || []).slice(-1)[0];
     const tienePerfil = !!d.personaId;
     const color = _colorDeuda(d);
     const [accionAvatar, argAvatar] = ui.avatarAccion(d);
@@ -436,7 +436,7 @@ function _renderListaDeudas(dir) {
           </div>
           <div class="pr-fila-sb pr-mt-3">
             <div class="row-sub">${ui.sub(saldo)}</div>
-            ${ultimoMov ? html`<span class="pr-fecha">${ultimoMov.fecha}</span>` : ''}
+            ${ultimoMovimiento ? html`<span class="pr-fecha">${ultimoMovimiento.fecha}</span>` : ''}
           </div>
         </div>
         <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pr-chevron" ${raw(Events.attr(ui.abrir, d.id))}><polyline points="9 18 15 12 9 6"/></svg>
@@ -516,13 +516,13 @@ function abrirDeudor(id) {
     saldo > 0 ? 'var(--amber)' : saldo < 0 ? 'var(--red)' : 'var(--accent)', totalPrestado, totalAbonado);
 
   // Render historial
-  const movs = [...(d.movimientos || [])].sort((a,b)=>{
+  const movimientos = [...(d.movimientos || [])].sort((a,b)=>{
     const fechaDiff = (b.fecha||'').localeCompare(a.fecha||'');
     if (fechaDiff !== 0) return fechaDiff;
     return (b.ts || 0) - (a.ts || 0);
   });
   const histEl = document.getElementById('ddHistorial');
-  if (!movs.length) {
+  if (!movimientos.length) {
     histEl.innerHTML = emptyInline('Sin movimientos aún.');
   } else {
     let saldoCorriente = saldo; // saldo de deuda ANTES de descontar la entry actual (al iterar desc, arranca en el saldo actual = saldo "después" del primer item)
@@ -531,7 +531,7 @@ function abrirDeudor(id) {
     // través del tiempo (igual que antes de los grupos). El agrupamiento por
     // grupoId es solo de presentación: cada card cae en el balde de su grupo.
     const _porGrupo = {}; // grupoId -> [cardHtml (fragmento html``), ...]
-    movs.forEach(m => {
+    movimientos.forEach(m => {
       const esPrestamo = m.tipo === 'prestamo';
       const esPagoCompleto = m.tipo === 'pago-completo';
       const efectoDeuda = esPrestamo ? +m.monto : -m.monto; // cuánto sumó/restó esta entry a la deuda
@@ -692,8 +692,8 @@ async function _prEnsureAlcancia() {
 // TC, salidas del encargo, extras, gasto del perdón, margen) y lo quita de la deuda. No pregunta ni valida nada: todo
 // lo que puede impedir el borrado (antigüedad, confirmación, que Alcancía cargue) se resuelve ANTES, en eliminarMovDeudor,
 // así que acá no hay ningún `return` que pueda dejar la reversión a medias. También la usa movimientos.js (desdeFeed).
-function _revertirMovDeudor(d, m) { return _enReversion(m.id, () => _revertirMovDeudorImpl(d, m)); }
-function _revertirMovDeudorImpl(d, m) {
+function _revertirMovimientoDeudor(d, m) { return _enReversion(m.id, () => _revertirMovimientoDeudorImpl(d, m)); }
+function _revertirMovimientoDeudorImpl(d, m) {
   const esPrestamo = m.tipo === 'prestamo';
   // Efecto en las cuentas
   if (esPrestamo) {
@@ -719,13 +719,13 @@ function _revertirMovDeudorImpl(d, m) {
       // Abono vía encargo: revertir la salida del encargo (abono principal y extra si hubo).
       // Si el abono salió de varias cuentas del encargo (_encMovIds), hay que
       // eliminar TODAS esas salidas, no solo la primera.
-      const enc = (S.encargos || []).find(e => e.id === m._encId);
-      if (enc) {
+      const encargo = (S.encargos || []).find(e => e.id === m._encId);
+      if (encargo) {
         const idsAEliminar = (m._encMovIds && m._encMovIds.length) ? m._encMovIds : [m._encMovId];
-        enc.movimientos = (enc.movimientos || []).filter(x => !idsAEliminar.includes(x.id));
+        encargo.movimientos = (encargo.movimientos || []).filter(x => !idsAEliminar.includes(x.id));
         // Si el abono tenía extra, también eliminar su salida del encargo
         if (m._encExtraMovId) {
-          enc.movimientos = (enc.movimientos || []).filter(x => x.id !== m._encExtraMovId);
+          encargo.movimientos = (encargo.movimientos || []).filter(x => x.id !== m._encExtraMovId);
         }
       }
       // Revertir el saldo de la cuenta destino del abono y su movimiento de historial
@@ -749,7 +749,7 @@ function _revertirMovDeudorImpl(d, m) {
           // Quitar el saldo que se sumó
           descontarFuente(p.cuenta, p.monto);
           // Eliminar el movimiento de historial asociado
-          if (p.movExtraId) borrarMovEspejo(p.cuenta, p.movExtraId);
+          if (p.movExtraId) borrarMovimientoEspejo(p.cuenta, p.movExtraId);
         } else if (p.tipo === 'gastar' && p.gastoId) {
           if (S.gastosVar) S.gastosVar = S.gastosVar.filter(x => x.id !== p.gastoId);
           if (p.ingresoId && S.movimientos) S.movimientos = S.movimientos.filter(x => x.id !== p.ingresoId);
@@ -768,11 +768,11 @@ function _revertirMovDeudorImpl(d, m) {
   d.movimientos = (d.movimientos || []).filter(x => x.id !== m.id);
 }
 
-async function eliminarMovDeudor(deudorId, movId, opts) {
+async function eliminarMovimientoDeudor(deudorId, movimientoId, opts) {
   const desdeFeed = !!(opts && opts.desdeFeed === true);
   const d = Deudas.lista('favor').find(x => x.id === deudorId);
   if (!d) return;
-  const m = (d.movimientos || []).find(x => x.id === movId);
+  const m = (d.movimientos || []).find(x => x.id === movimientoId);
   if (!m) return;
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
@@ -839,7 +839,7 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
     window._alcanciaQuitarPorCobroDeuda(m._alcanciaMovId);
   }
 
-  _revertirMovDeudor(d, m);
+  _revertirMovimientoDeudor(d, m);
   _autoCerrarGruposEnCero(d); // el grupo pudo saldarse (o reabrirse) al borrar este movimiento
   _verificarIntegridadSaldoDeudor(d, _saldoAntesDel, _deltaEsperadoDel);
   purgarEfectoEnHistorial(_histAntes, m);
@@ -848,9 +848,9 @@ async function eliminarMovDeudor(deudorId, movId, opts) {
   toast(`${esPrestamo ? 'Préstamo' : esPerdon ? 'Perdón' : 'Abono'} eliminado — ${esPerdon ? 'la deuda y el gasto se revirtieron' : 'saldo revertido'}`, 'ok');
 }
 
-function initMovSheet(tipo) {
+function initMovimientoSheet(tipo) {
   // Preservar 'pago-completo' para distinguirlo de un abono normal
-  movTipo = tipo; // 'prestamo' | 'abono' | 'pago-completo'
+  movimientoTipo = tipo; // 'prestamo' | 'abono' | 'pago-completo'
   // incluirTC=false (3er parámetro de poblarFuente): en ninguno de los dos selects
   // (modo simple) puede aparecer una tarjeta de crédito.
   //  - mov_destino: una TC nunca recibe plata entrante (pagarle a una TC es otro flujo).
@@ -940,39 +940,39 @@ function initMovSheet(tipo) {
   if (extRes) extRes.innerHTML = '';
   // Reset desde-encargo
   _abonoDesdeEncargo = false;
-  _abonoEncId = '';
-  _abonoEncCuenta = '';
-  _abonoEncCuentaSplitMode = false;
-  const encCuentaSimpleReset = document.getElementById('mov_enc_cuenta_simple');
-  const encCuentaSplitReset  = document.getElementById('mov_enc_cuenta_split');
-  const encCuentaSplitRowsReset = document.getElementById('mov_enc_cuenta_split_rows');
-  if (encCuentaSimpleReset) encCuentaSimpleReset.style.display = '';
-  if (encCuentaSplitReset)  encCuentaSplitReset.style.display = 'none';
-  if (encCuentaSplitRowsReset) encCuentaSplitRowsReset.innerHTML = '';
-  _resetEncCuentaSplitToggleStyle();
-  const encWrap = document.getElementById('mov_enc_wrap');
-  const encChk  = document.getElementById('mov_desde_encargo');
-  const encBody = document.getElementById('mov_enc_body');
-  const encSel  = document.getElementById('mov_enc_sel');
-  const encCuentaWrap = document.getElementById('mov_enc_cuenta_wrap');
-  const encPreview    = document.getElementById('mov_enc_saldo_preview');
+  _abonoEncargoId = '';
+  _abonoEncargoCuenta = '';
+  _abonoEncargoCuentaSplitMode = false;
+  const encargoCuentaSimpleReset = document.getElementById('mov_enc_cuenta_simple');
+  const encargoCuentaSplitReset  = document.getElementById('mov_enc_cuenta_split');
+  const encargoCuentaSplitRowsReset = document.getElementById('mov_enc_cuenta_split_rows');
+  if (encargoCuentaSimpleReset) encargoCuentaSimpleReset.style.display = '';
+  if (encargoCuentaSplitReset)  encargoCuentaSplitReset.style.display = 'none';
+  if (encargoCuentaSplitRowsReset) encargoCuentaSplitRowsReset.innerHTML = '';
+  _resetEncargoCuentaSplitToggleStyle();
+  const encargoWrap = document.getElementById('mov_enc_wrap');
+  const encargoChk  = document.getElementById('mov_desde_encargo');
+  const encargoBody = document.getElementById('mov_enc_body');
+  const encargoSel  = document.getElementById('mov_enc_sel');
+  const encargoCuentaWrap = document.getElementById('mov_enc_cuenta_wrap');
+  const encargoPreview    = document.getElementById('mov_enc_saldo_preview');
   // Solo tiene sentido ofrecer "¿Viene de un encargo?" si la persona vinculada
   // a este deudor tiene al menos un encargo con saldo disponible.
-  const _tieneEncargoVinculado = esAbono && _movTieneEncargoVinculado();
-  if (encWrap)      encWrap.style.display = (esAbono && _tieneEncargoVinculado) ? '' : 'none';
-  if (encChk)       encChk.checked = false;
-  if (encBody)      encBody.style.display = 'none';
-  if (encCuentaWrap) encCuentaWrap.style.display = 'none';
-  if (encPreview)   encPreview.textContent = '';
-  if (encSel)       encSel.innerHTML = '<option value="">Seleccionar encargo</option>';
+  const _tieneEncargoVinculado = esAbono && _movimientoTieneEncargoVinculado();
+  if (encargoWrap)      encargoWrap.style.display = (esAbono && _tieneEncargoVinculado) ? '' : 'none';
+  if (encargoChk)       encargoChk.checked = false;
+  if (encargoBody)      encargoBody.style.display = 'none';
+  if (encargoCuentaWrap) encargoCuentaWrap.style.display = 'none';
+  if (encargoPreview)   encargoPreview.textContent = '';
+  if (encargoSel)       encargoSel.innerHTML = '<option value="">Seleccionar encargo</option>';
   // ── Selector de grupo de préstamo ──────────────────────────────────
   // Solo se muestra cuando de verdad hay ambigüedad (≥2 grupos abiertos
   // con esta persona). Con 0 o 1 grupo abierto no se pregunta nada — se
-  // resuelve solo en confirmarMovimiento() vía _resolverGrupoIdMov.
-  _initMovGrupoSelector();
+  // resuelve solo en confirmarMovimiento() vía _resolverGrupoIdMovimiento.
+  _initMovimientoGrupoSelector();
 }
 
-function _movTieneEncargoVinculado() {
+function _movimientoTieneEncargoVinculado() {
   const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
   return !!(d && d.personaId && (S.encargos || []).some(e => e.personaId === d.personaId && encargoLibre(e) > 0));
 }
@@ -983,24 +983,24 @@ function _movTieneEncargoVinculado() {
 // por lo perdonado en S.gastosVar (fuente '', _secundario, _esPerdonDeuda), enlazado por _gastoPerdonId /
 // _deudorMovId. En "Registrar abono" el monto es libre (hasta lo que debe); en "Pagar préstamo completo" queda
 // fijo en lo que falta. Ver CHANGELOG 2026-09-19 y 2026-10-03.
-function _movEsPerdon() {
+function _movimientoEsPerdon() {
   const chk = document.getElementById('mov_perdon');
-  return (movTipo === 'pago-completo' || movTipo === 'abono') && !!(chk && chk.checked);
+  return (movimientoTipo === 'pago-completo' || movimientoTipo === 'abono') && !!(chk && chk.checked);
 }
-function toggleMovPerdon() {
-  const perdon = _movEsPerdon();
+function toggleMovimientoPerdon() {
+  const perdon = _movimientoEsPerdon();
   if (perdon) {
     // Lo que deja de aplicar se apaga, para que no quede un estado oculto.
-    const encChk = document.getElementById('mov_desde_encargo');
-    if (encChk && encChk.checked) { encChk.checked = false; toggleDesdeEncargo(); }
+    const encargoChk = document.getElementById('mov_desde_encargo');
+    if (encargoChk && encargoChk.checked) { encargoChk.checked = false; toggleDesdeEncargo(); }
     const extChk = document.getElementById('mov_tiene_extra');
     if (extChk && extChk.checked) { extChk.checked = false; toggleExtraSection(); }
   }
   document.getElementById('mov_destino_wrap').style.display = perdon ? 'none' : '';
   document.getElementById('mov_extra_wrap').style.display = perdon ? 'none' : '';
-  const encWrap = document.getElementById('mov_enc_wrap');
-  if (encWrap) encWrap.style.display = (!perdon && _movTieneEncargoVinculado()) ? '' : 'none';
-  const completo = movTipo === 'pago-completo';
+  const encargoWrap = document.getElementById('mov_enc_wrap');
+  if (encargoWrap) encargoWrap.style.display = (!perdon && _movimientoTieneEncargoVinculado()) ? '' : 'none';
+  const completo = movimientoTipo === 'pago-completo';
   document.getElementById('movSheetTitle').textContent = perdon
     ? (completo ? 'Perdonar deuda' : 'Perdonar parte de la deuda')
     : (completo ? 'Pagar préstamo completo' : 'Registrar abono');
@@ -1009,11 +1009,11 @@ function toggleMovPerdon() {
     : (completo ? 'Confirmar pago total' : 'Guardar abono');
 }
 
-function _initMovGrupoSelector() {
-  _initGrupoSelector('mov', movTipo === 'prestamo');
+function _initMovimientoGrupoSelector() {
+  _initGrupoSelector('mov', movimientoTipo === 'prestamo');
 }
 
-// Versión genérica de _initMovGrupoSelector, parametrizada por el prefijo de
+// Versión genérica de _initMovimientoGrupoSelector, parametrizada por el prefijo de
 // los ids en el DOM. `esPrestamoNuevo` indica si el movimiento que se está
 // creando en este sheet es siempre/puede-ser un préstamo (y por tanto tiene
 // sentido ofrecer el checkbox "préstamo aparte" cuando hay 1 solo abierto).
@@ -1074,17 +1074,17 @@ function _initGrupoSelector(prefix, esPrestamoNuevo, deuda) {
 // movTipo se promueve solo durante este guardado y se restaura al terminar: si una validación
 // aborta, el sheet sigue siendo "abono" y el siguiente intento se evalúa de nuevo desde cero.
 function confirmarMovimiento() {
-  const tipoOriginal = movTipo;
+  const tipoOriginal = movimientoTipo;
   try {
-    if (movTipo === 'abono') {
+    if (movimientoTipo === 'abono') {
       const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
       const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
       const saldo = d ? getDeudorSaldo(d) : 0;
-      if (d && saldo > 0 && monto > 0 && Math.abs(monto - saldo) <= Deudas.TOL_FINO) movTipo = 'pago-completo';
+      if (d && saldo > 0 && monto > 0 && Math.abs(monto - saldo) <= Deudas.TOL_FINO) movimientoTipo = 'pago-completo';
     }
     return _confirmarMovimientoInterno();
   } finally {
-    movTipo = tipoOriginal;
+    movimientoTipo = tipoOriginal;
   }
 }
 
@@ -1125,13 +1125,13 @@ function _planMovimiento() {
   const d = Deudas.porId('favor', deudorActualId);
   if (!d) return { silencio: true };
   const base = {
-    d, monto, tipo: movTipo,
+    d, monto, tipo: movimientoTipo,
     fecha: document.getElementById('mov_fecha').value || hoy(),
     nota: document.getElementById('mov_nota').value.trim(),
-    perdon: _movEsPerdon(),
+    perdon: _movimientoEsPerdon(),
     // Para verificar al final que el cambio real coincidió con el esperado (_verificarIntegridadSaldoDeudor).
     saldoAntes: getDeudorSaldo(d),
-    deltaEsperado: movTipo === 'prestamo' ? monto : -monto
+    deltaEsperado: movimientoTipo === 'prestamo' ? monto : -monto
   };
   if (base.perdon) {
     // Solo se puede perdonar lo que la persona todavía debe: perdonar de más no tiene sentido (sería un gasto inventado).
@@ -1139,16 +1139,16 @@ function _planMovimiento() {
     if (monto > base.saldoAntes + Deudas.TOL_FINO) return _planErr(`Solo te debe ${fmt(base.saldoAntes)}: no puedes perdonar más`, 4000);
     return base;
   }
-  if (movTipo === 'prestamo') return _planPrestamo(base);
+  if (movimientoTipo === 'prestamo') return _planPrestamo(base);
   return _abonoDesdeEncargo ? _planAbonoEncargo(base) : _planAbonoNormal(base);
 }
 
 function _aplicarMovimiento(p) {
-  // A qué grupo de préstamo pertenece — ver _resolverGrupoIdMov. Puede crear un grupo, así que va acá.
-  p.grupoId = _resolverGrupoIdMov(p.d, p.fecha);
+  // A qué grupo de préstamo pertenece — ver _resolverGrupoIdMovimiento. Puede crear un grupo, así que va acá.
+  p.grupoId = _resolverGrupoIdMovimiento(p.d, p.fecha);
   if (p.perdon) return _aplicarPerdon(p);
   if (p.tipo === 'prestamo') return _aplicarPrestamo(p);
-  return p.enc ? _aplicarAbonoEncargo(p) : _aplicarAbonoNormal(p);
+  return p.encargo ? _aplicarAbonoEncargo(p) : _aplicarAbonoNormal(p);
 }
 
 /* ── Perdón: le regalas una parte de la deuda, o todo lo que falta ──── */
@@ -1161,16 +1161,16 @@ function _aplicarPerdon(p) {
   const { d, monto, fecha, nota } = p;
   const esTodo = Math.abs(monto - getDeudorSaldo(d)) <= Deudas.TOL_FINO;
   if (!S.gastosVar) S.gastosVar = [];
-  const perdonMovId = uid();
+  const perdonMovimientoId = uid();
   const gastoPerdonId = uid();
   S.gastosVar.push({
     id: gastoPerdonId, monto, fecha, cat: 'Otro',
     desc: esTodo ? `Perdoné deuda — ${d.nombre}` : `Perdoné parte de la deuda — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
     _secundario: true, _origenSeccion: 'Prestado · Me deben',
-    clase: 'gasto', _esPerdonDeuda: true, _deudorId: d.id, _deudorMovId: perdonMovId
+    clase: 'gasto', _esPerdonDeuda: true, _deudorId: d.id, _deudorMovId: perdonMovimientoId
   });
   d.movimientos.push({
-    id: perdonMovId, tipo: esTodo ? 'pago-completo' : 'abono', monto, fecha, destino: '', nota,
+    id: perdonMovimientoId, tipo: esTodo ? 'pago-completo' : 'abono', monto, fecha, destino: '', nota,
     grupoId: p.grupoId, ts: Date.now(), _perdon: true, _gastoPerdonId: gastoPerdonId
   });
 }
@@ -1208,31 +1208,31 @@ function _planPrestamo(base) {
 
 function _aplicarPrestamo(p) {
   const { d, monto, fecha, nota, montoSalio, hayMargen, fuentes, fuente } = p;
-  const movId = uid();
-  let movObj;
+  const movimientoId = uid();
+  let movimientoObj;
   if (fuentes) {
-    fuentes.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto, _og(movId)); });
+    fuentes.forEach(r => { if (r.fuente) descontarFuente(r.fuente, r.monto, _og(movimientoId)); });
     const gananciaVirtual = fuentes.filter(r => r.fuente === 'ganancia').reduce((a, r) => a + r.monto, 0);
-    movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r => ({ fuente: r.fuente, monto: r.monto })), nota, _gananciaVirtual: gananciaVirtual || undefined, grupoId: p.grupoId, ts: Date.now() };
+    movimientoObj = { id: movimientoId, tipo: 'prestamo', monto, fecha, fuentes: fuentes.map(r => ({ fuente: r.fuente, monto: r.monto })), nota, _gananciaVirtual: gananciaVirtual || undefined, grupoId: p.grupoId, ts: Date.now() };
   } else {
     if (hayMargen && fuente) {
       // Con margen, de la cuenta sale `montoSalio`, no `monto`. Se guarda como `fuentes`
       // (misma forma que el préstamo dividido) para que revertir, el historial de la cuenta
       // y el detalle usen el monto real sin ningún caso especial.
-      movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuentes: [{ fuente, monto: montoSalio }], nota, grupoId: p.grupoId, ts: Date.now() };
+      movimientoObj = { id: movimientoId, tipo: 'prestamo', monto, fecha, fuentes: [{ fuente, monto: montoSalio }], nota, grupoId: p.grupoId, ts: Date.now() };
     } else {
-      movObj = { id: movId, tipo: 'prestamo', monto, fecha, fuente, nota, grupoId: p.grupoId, ts: Date.now() };
-      // Sin cuenta de origen + "¿Es plata nueva?": regalo recibido como deuda = ingreso del mes (ver _movsDeudaSinCuenta).
-      if (p.regalo && !fuente) movObj.clase = 'ingreso';
+      movimientoObj = { id: movimientoId, tipo: 'prestamo', monto, fecha, fuente, nota, grupoId: p.grupoId, ts: Date.now() };
+      // Sin cuenta de origen + "¿Es plata nueva?": regalo recibido como deuda = ingreso del mes (ver _movimientosDeudaSinCuenta).
+      if (p.regalo && !fuente) movimientoObj.clase = 'ingreso';
     }
-    descontarFuente(fuente, montoSalio, _og(movId));
+    descontarFuente(fuente, montoSalio, _og(movimientoId));
   }
-  d.movimientos.push(movObj);
+  d.movimientos.push(movimientoObj);
   // El margen queda como ingreso (fantasma, sin cuenta) enlazado a este préstamo (linkId = movId)
   // para que eliminarMovDeudor() lo borre junto con él.
   if (hayMargen) {
-    const diferencial = diffAplicar('prestamoDif', { desc: nota || 'Préstamo', fecha, _deudorNombre: d.nombre }, movId);
-    if (diferencial) movObj.diferencial = diferencial;
+    const diferencial = diffAplicar('prestamoDif', { desc: nota || 'Préstamo', fecha, _deudorNombre: d.nombre }, movimientoId);
+    if (diferencial) movimientoObj.diferencial = diferencial;
   }
 }
 
@@ -1259,16 +1259,16 @@ function _planExtra(exigirMonto) {
 // para revertirlas. `v` distingue las dos ramas, que escriben descripciones distintas:
 //   v.desc(p)    descripción base · v.extraIngreso  marca _esExtraIngreso en lo guardado (solo la rama normal:
 //   el extra/propina de un pago SÍ es ingreso real, ver _esEntradaEspejoNoIngreso()) · v.notaPendiente
-function _aplicarExtraPartes(p, mov, v) {
+function _aplicarExtraPartes(p, movimiento, v) {
   const { d, fecha, extPartes } = p;
-  mov._extPartes = [];
+  movimiento._extPartes = [];
   for (const x of extPartes) {
     if (!x.monto || x.monto <= 0) continue;
     if (x.tipo === 'guardar') {
       if (!x.cuenta) continue;
-      sumarFuente(x.cuenta, x.monto, _og(mov.id));
-      const movExtraId = registrarMovEspejo({ cuenta: x.cuenta, flujo: 'entrada', monto: x.monto, fecha, desc: v.descGuardar, origen: 'Prestado · Me deben', clase: v.extraIngreso ? 'ingreso' : 'neutro', extra: { _abonoId: mov.id, _parteAbono: 'extra', ...(v.extraIngreso ? { _esExtraIngreso: true } : {}) } });
-      mov._extPartes.push({ tipo: 'guardar', cuenta: x.cuenta, monto: x.monto, movExtraId });
+      sumarFuente(x.cuenta, x.monto, _og(movimiento.id));
+      const movimientoExtraId = registrarMovimientoEspejo({ cuenta: x.cuenta, flujo: 'entrada', monto: x.monto, fecha, desc: v.descGuardar, origen: 'Prestado · Me deben', clase: v.extraIngreso ? 'ingreso' : 'neutro', extra: { _abonoId: movimiento.id, _parteAbono: 'extra', ...(v.extraIngreso ? { _esExtraIngreso: true } : {}) } });
+      movimiento._extPartes.push({ tipo: 'guardar', cuenta: x.cuenta, monto: x.monto, movExtraId: movimientoExtraId });
     } else if (x.tipo === 'gastar') {
       if (!S.gastosVar) S.gastosVar = [];
       const gastoId = uid();
@@ -1290,15 +1290,15 @@ function _aplicarExtraPartes(p, mov, v) {
         clase: v.extraIngreso ? 'gasto' : 'neutro', _esExtraPrestamo: true,
         ...(v.extraIngreso ? { _secundario: true, _origenSeccion: 'Prestado · Me deben' } : {})
       });
-      mov._extPartes.push({ tipo: 'gastar', gastoId, ingresoId, monto: x.monto });
+      movimiento._extPartes.push({ tipo: 'gastar', gastoId, ingresoId, monto: x.monto });
     } else if (x.tipo === 'regalar') {
       // No entra a ninguna cuenta — solo queda registrado en el abono del deudor
-      mov._extPartes.push({ tipo: 'regalar', monto: x.monto });
+      movimiento._extPartes.push({ tipo: 'regalar', monto: x.monto });
     } else if (x.tipo === 'pendiente') {
       if (!S.ingresosExtra) S.ingresosExtra = [];
       const ingrId = uid();
       S.ingresosExtra.push({ id: ingrId, monto: x.monto, fecha, nota: v.notaPendiente, ts: Date.now() });
-      mov._extPartes.push({ tipo: 'pendiente', ingrId, monto: x.monto });
+      movimiento._extPartes.push({ tipo: 'pendiente', ingrId, monto: x.monto });
     }
   }
 }
@@ -1306,17 +1306,17 @@ function _aplicarExtraPartes(p, mov, v) {
 /* ── Abono desde un encargo ───────────────────────────────────────── */
 function _planAbonoEncargo(base) {
   const { monto } = base;
-  if (!_abonoEncId) return _planErr('Selecciona un encargo');
-  const enc = (S.encargos || []).find(e => e.id === _abonoEncId);
-  if (!enc) return _planErr('Encargo no encontrado');
-  const saldoTotal = encargoLibre(enc);
+  if (!_abonoEncargoId) return _planErr('Selecciona un encargo');
+  const encargo = (S.encargos || []).find(e => e.id === _abonoEncargoId);
+  if (!encargo) return _planErr('Encargo no encontrado');
+  const saldoTotal = encargoLibre(encargo);
   if (monto > saldoTotal + Deudas.TOL_FINO) {
     return _planErr(`El encargo solo tiene ${fmt(saldoTotal)} disponible (el resto ya está comprometido)`);
   }
   // ¿La plata del encargo sale de VARIAS cuentas a la vez?
-  let encCuentaSplits = null;
-  if (_abonoEncCuentaSplitMode) {
-    const splits = _spotify_abonoEncCuenta.data().filter(s => s.fuente && s.monto > 0);
+  let encargoCuentaSplits = null;
+  if (_abonoEncargoCuentaSplitMode) {
+    const splits = _spotify_abonoEncargoCuenta.data().filter(s => s.fuente && s.monto > 0);
     if (!splits.length) return _planErr('Agrega al menos una cuenta del encargo con monto');
     const totalSplit = splits.reduce((a, s) => a + s.monto, 0);
     if (Math.abs(totalSplit - monto) > Deudas.TOL) {
@@ -1326,17 +1326,17 @@ function _planAbonoEncargo(base) {
     const porCuenta = {};
     splits.forEach(s => { porCuenta[s.fuente] = (porCuenta[s.fuente] || 0) + s.monto; });
     for (const cuenta in porCuenta) {
-      const saldoEnCuenta = _getEncargoSaldoEnCuenta(enc, cuenta);
+      const saldoEnCuenta = _getEncargoSaldoEnCuenta(encargo, cuenta);
       if (porCuenta[cuenta] > saldoEnCuenta + Deudas.TOL_FINO) {
         return _planErr(`En ${fuenteHtml(cuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`);
       }
     }
-    encCuentaSplits = Object.entries(porCuenta).map(([fuente, m]) => ({ fuente, monto: m }));
-  } else if (_abonoEncCuenta) {
-    const esSinEsp = _abonoEncCuenta === '__sinesp__';
-    const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+    encargoCuentaSplits = Object.entries(porCuenta).map(([fuente, m]) => ({ fuente, monto: m }));
+  } else if (_abonoEncargoCuenta) {
+    const esSinEsp = _abonoEncargoCuenta === '__sinesp__';
+    const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(encargo) : _getEncargoSaldoEnCuenta(encargo, _abonoEncargoCuenta);
     if (monto > saldoEnCuenta + Deudas.TOL_FINO) {
-      return _planErr(`En ${esSinEsp ? 'la parte sin especificar' : fuenteHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`);
+      return _planErr(`En ${esSinEsp ? 'la parte sin especificar' : fuenteHtml(_abonoEncargoCuenta)} solo hay ${fmt(saldoEnCuenta)} de este encargo`);
     }
   }
   // Extra: reparto y saldo del encargo para abono + extra (saldo antes de cualquier escritura)
@@ -1346,11 +1346,11 @@ function _planAbonoEncargo(base) {
     if (monto + ex.extraMonto > saldoTotal + Deudas.TOL_FINO) {
       return _planErr(`El encargo solo tiene ${fmt(saldoTotal)} disponible — no alcanza para el abono (${fmt(monto)}) más el extra (${fmt(ex.extraMonto)})`, 4500);
     }
-    if (_abonoEncCuenta) {
-      const esSinEsp2 = _abonoEncCuenta === '__sinesp__';
-      const saldoEnCuenta2 = esSinEsp2 ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+    if (_abonoEncargoCuenta) {
+      const esSinEsp2 = _abonoEncargoCuenta === '__sinesp__';
+      const saldoEnCuenta2 = esSinEsp2 ? _getEncargoSaldoSinCuenta(encargo) : _getEncargoSaldoEnCuenta(encargo, _abonoEncargoCuenta);
       if (monto + ex.extraMonto > saldoEnCuenta2 + Deudas.TOL_FINO) {
-        return _planErr(`En ${esSinEsp2 ? 'la parte sin especificar' : fuenteHtml(_abonoEncCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 4500);
+        return _planErr(`En ${esSinEsp2 ? 'la parte sin especificar' : fuenteHtml(_abonoEncargoCuenta)} solo hay ${fmt(saldoEnCuenta2)} — no alcanza para abono + extra`, 4500);
       }
     }
   }
@@ -1365,88 +1365,88 @@ function _planAbonoEncargo(base) {
   } else {
     destino = document.getElementById('mov_destino').value;
   }
-  return { ...base, enc, encCuentaSplits, encCuenta: _abonoEncCuenta, destinos, destino, ...ex };
+  return { ...base, encargo, encargoCuentaSplits, encargoCuenta: _abonoEncargoCuenta, destinos, destino, ...ex };
 }
 
 function _aplicarAbonoEncargo(p) {
-  const { d, monto, fecha, nota, enc, encCuentaSplits, encCuenta, destinos, destino, tieneExtra, extraMonto } = p;
+  const { d, monto, fecha, nota, encargo, encargoCuentaSplits, encargoCuenta, destinos, destino, tieneExtra, extraMonto } = p;
   // 1. Registrar salida del abono en el encargo (descuenta su saldo). Si sale de varias cuentas del
   // encargo a la vez, se registra un movimiento de salida POR CADA cuenta (mismo _grupoAbonoId) — así
   // el saldo por cuenta del encargo cuadra y el conjunto se puede revertir o eliminar como una unidad.
-  if (!enc.movimientos) enc.movimientos = [];
-  let encMovId, encMovIds;
-  if (encCuentaSplits) {
+  if (!encargo.movimientos) encargo.movimientos = [];
+  let encargoMovimientoId, encargoMovimientoIds;
+  if (encargoCuentaSplits) {
     const grupoAbonoId = uid();
-    encMovIds = encCuentaSplits.map(s => {
+    encargoMovimientoIds = encargoCuentaSplits.map(s => {
       const id = uid();
-      enc.movimientos.push({
+      encargo.movimientos.push({
         id, tipo: 'salida', monto: s.monto, cuenta: s.fuente,
         desc: `Pago de deuda — ${d.nombre}`, fecha, nota, ts: Date.now(),
         _esAbonoDeudor: true, _deudorId: d.id, _grupoAbonoId: grupoAbonoId
       });
       return id;
     });
-    encMovId = encMovIds[0];
+    encargoMovimientoId = encargoMovimientoIds[0];
   } else {
-    encMovId = uid();
-    encMovIds = [encMovId];
-    enc.movimientos.push({
-      id: encMovId, tipo: 'salida', monto,
-      cuenta: encCuenta === '__sinesp__' ? '' : (encCuenta || ''),
+    encargoMovimientoId = uid();
+    encargoMovimientoIds = [encargoMovimientoId];
+    encargo.movimientos.push({
+      id: encargoMovimientoId, tipo: 'salida', monto,
+      cuenta: encargoCuenta === '__sinesp__' ? '' : (encargoCuenta || ''),
       desc: `Pago de deuda — ${d.nombre}`, fecha, nota, ts: Date.now(),
       _esAbonoDeudor: true, _deudorId: d.id
     });
   }
 
   // 2. El dinero llega a una cuenta del usuario
-  const abonMovId = uid();
+  const abonMovimientoId = uid();
   const esPagoCompleto = p.tipo === 'pago-completo';
   const tipoGuardar = esPagoCompleto ? 'pago-completo' : 'abono';
   const descDestino = esPagoCompleto
-    ? `Pago de deuda completo — ${d.nombre} (vía encargo ${enc.nombre})`
-    : `Abono de deuda — ${d.nombre} (vía encargo ${enc.nombre})`;
-  let mov;
+    ? `Pago de deuda completo — ${d.nombre} (vía encargo ${encargo.nombre})`
+    : `Abono de deuda — ${d.nombre} (vía encargo ${encargo.nombre})`;
+  let movimiento;
   if (destinos) {
-    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(abonMovId)); });
+    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(abonMovimientoId)); });
     // Movimiento visible en el historial de cada cuenta destino (igual que el destino simple)
     destinos.forEach(r => {
-      r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc: descDestino, origen: 'Prestado · Me deben', extra: { _abonoId: abonMovId, _parteAbono: 'abono' } });
+      r._movId = registrarMovimientoEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc: descDestino, origen: 'Prestado · Me deben', extra: { _abonoId: abonMovimientoId, _parteAbono: 'abono' } });
     });
-    mov = {
-      id: abonMovId, tipo: tipoGuardar, monto, fecha, nota,
+    movimiento = {
+      id: abonMovimientoId, tipo: tipoGuardar, monto, fecha, nota,
       destinos: destinos.map(r => ({ fuente: r.fuente, monto: r.monto, _movId: r._movId })),
-      _viaEncargo: true, _encId: enc.id, _encNombre: enc.nombre, _encMovId: encMovId, _encMovIds: encMovIds,
+      _viaEncargo: true, _encId: encargo.id, _encNombre: encargo.nombre, _encMovId: encargoMovimientoId, _encMovIds: encargoMovimientoIds,
       grupoId: p.grupoId, ts: Date.now()
     };
   } else {
-    if (destino) sumarFuente(destino, monto, _og(abonMovId));
+    if (destino) sumarFuente(destino, monto, _og(abonMovimientoId));
     // Movimiento visible en el historial de la cuenta destino
-    const abonoDestinoMovId = destino
-      ? registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc: descDestino, origen: 'Prestado · Me deben', extra: { _abonoId: abonMovId, _parteAbono: 'abono' } })
+    const abonoDestinoMovimientoId = destino
+      ? registrarMovimientoEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc: descDestino, origen: 'Prestado · Me deben', extra: { _abonoId: abonMovimientoId, _parteAbono: 'abono' } })
       : null;
-    mov = {
-      id: abonMovId, tipo: tipoGuardar, monto, fecha, nota, destino,
-      _viaEncargo: true, _encId: enc.id, _encNombre: enc.nombre, _encMovId: encMovId, _encMovIds: encMovIds,
-      _abonoDestinoMovId: abonoDestinoMovId, grupoId: p.grupoId, ts: Date.now()
+    movimiento = {
+      id: abonMovimientoId, tipo: tipoGuardar, monto, fecha, nota, destino,
+      _viaEncargo: true, _encId: encargo.id, _encNombre: encargo.nombre, _encMovId: encargoMovimientoId, _encMovIds: encargoMovimientoIds,
+      _abonoDestinoMovId: abonoDestinoMovimientoId, grupoId: p.grupoId, ts: Date.now()
     };
   }
-  d.movimientos.push(mov);
+  d.movimientos.push(movimiento);
 
   // 3. Extra (también sale del encargo). Reparto y saldo ya validados en _planAbonoEncargo.
   if (tieneExtra && extraMonto > 0) {
     // Salida del extra en el encargo (movimiento separado y descriptivo)
-    const encExtraMovId = uid();
-    enc.movimientos.push({
-      id: encExtraMovId, tipo: 'salida', monto: extraMonto,
-      cuenta: encCuenta === '__sinesp__' ? '' : (encCuenta || ''),
+    const encargoExtraMovimientoId = uid();
+    encargo.movimientos.push({
+      id: encargoExtraMovimientoId, tipo: 'salida', monto: extraMonto,
+      cuenta: encargoCuenta === '__sinesp__' ? '' : (encargoCuenta || ''),
       desc: `Extra / propina — ${d.nombre} (parte del pago de deuda)`, fecha, ts: Date.now(),
-      _esExtraAbonoDeudor: true, _deudorId: d.id, _abonoEncMovId: encMovId
+      _esExtraAbonoDeudor: true, _deudorId: d.id, _abonoEncMovId: encargoMovimientoId
     });
-    mov._encExtraMovId = encExtraMovId;
-    _aplicarExtraPartes(p, mov, {
-      descGuardar: `Extra del pago de ${d.nombre} — vía encargo ${enc.nombre}`,
-      descGastar: `Extra del pago de ${d.nombre} — vía encargo ${enc.nombre}`,
-      notaPendiente: `Extra sin asignar — ${d.nombre} vía encargo ${enc.nombre}`,
+    movimiento._encExtraMovId = encargoExtraMovimientoId;
+    _aplicarExtraPartes(p, movimiento, {
+      descGuardar: `Extra del pago de ${d.nombre} — vía encargo ${encargo.nombre}`,
+      descGastar: `Extra del pago de ${d.nombre} — vía encargo ${encargo.nombre}`,
+      notaPendiente: `Extra sin asignar — ${d.nombre} vía encargo ${encargo.nombre}`,
       extraIngreso: false
     });
   }
@@ -1468,7 +1468,7 @@ function _planAbonoNormal(base) {
   } else {
     destino = document.getElementById('mov_destino').value;
   }
-  return { ...base, enc: null, destinos, destino, ...ex };
+  return { ...base, encargo: null, destinos, destino, ...ex };
 }
 
 function _aplicarAbonoNormal(p) {
@@ -1476,27 +1476,27 @@ function _aplicarAbonoNormal(p) {
   const esPagoCompleto = p.tipo === 'pago-completo';
   const tipoGuardar = esPagoCompleto ? 'pago-completo' : 'abono';
   const desc = esPagoCompleto ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
-  let mov;
+  let movimiento;
   if (destinos) {
-    const idMov = uid();
-    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(idMov)); });
+    const idMovimiento = uid();
+    destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _og(idMovimiento)); });
     // Movimiento visible en cada cuenta destino
     destinos.forEach(r => {
-      r._movId = registrarMovEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc, origen: 'Prestado · Me deben', extra: { _abonoId: idMov, _parteAbono: 'abono' } });
+      r._movId = registrarMovimientoEspejo({ cuenta: r.fuente, flujo: 'entrada', monto: r.monto, fecha, desc, origen: 'Prestado · Me deben', extra: { _abonoId: idMovimiento, _parteAbono: 'abono' } });
     });
-    mov = { id: idMov, tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r => ({ fuente: r.fuente, monto: r.monto, _movId: r._movId })), nota, grupoId: p.grupoId, ts: Date.now() };
+    movimiento = { id: idMovimiento, tipo: tipoGuardar, monto, fecha, destinos: destinos.map(r => ({ fuente: r.fuente, monto: r.monto, _movId: r._movId })), nota, grupoId: p.grupoId, ts: Date.now() };
   } else {
-    const abonoMovId = uid();
-    sumarFuente(destino, monto, _og(abonoMovId));
+    const abonoMovimientoId = uid();
+    sumarFuente(destino, monto, _og(abonoMovimientoId));
     // Movimiento visible en la cuenta destino (null si no hay cuenta rastreable)
-    const abonoDestinoMovId = registrarMovEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Prestado · Me deben', extra: { _abonoId: abonoMovId, _parteAbono: 'abono' } });
-    mov = { id: abonoMovId, tipo: tipoGuardar, monto, fecha, destino, nota, _abonoDestinoMovId: abonoDestinoMovId, grupoId: p.grupoId, ts: Date.now() };
+    const abonoDestinoMovimientoId = registrarMovimientoEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Prestado · Me deben', extra: { _abonoId: abonoMovimientoId, _parteAbono: 'abono' } });
+    movimiento = { id: abonoMovimientoId, tipo: tipoGuardar, monto, fecha, destino, nota, _abonoDestinoMovId: abonoDestinoMovimientoId, grupoId: p.grupoId, ts: Date.now() };
   }
-  d.movimientos.push(mov);
+  d.movimientos.push(movimiento);
   // Extra (sistema de partes libres; ya validado en _planAbonoNormal). Se guarda un snapshot de las partes en el abono
   // para poder revertirlas si se elimina.
   if (tieneExtra) {
-    _aplicarExtraPartes(p, mov, {
+    _aplicarExtraPartes(p, movimiento, {
       descGuardar: `Extra de pago — ${d.nombre}`,
       descGastar: `Extra de pago — ${d.nombre}`,
       notaPendiente: `Extra sin asignar — ${d.nombre}`,
@@ -1509,22 +1509,22 @@ function _confirmarMovimientoInterno() {
   const plan = _planMovimiento();
   if (plan.silencio) return;
   if (plan.error) { _mostrarErrorPlan(plan.error); return; }
-  const { d, monto, perdon, tipo, enc, extraMonto } = plan;
+  const { d, monto, perdon, tipo, encargo, extraMonto } = plan;
   const perdonTodo = perdon && Math.abs(monto - plan.saldoAntes) <= Deudas.TOL_FINO;
   _aplicarMovimiento(plan);
 
   // Log cambio
   if (window.logCambio) {
-    if (enc) logCambio(`Abono de ${escHtml(d.nombre)} vía encargo de ${escHtml(enc.nombre)}`, d.nombre, monto, 'abono');
+    if (encargo) logCambio(`Abono de ${escHtml(d.nombre)} vía encargo de ${escHtml(encargo.nombre)}`, d.nombre, monto, 'abono');
     else logCambio(tipo === 'prestamo' ? 'Prestaste a ' + d.nombre : (perdon ? (perdonTodo ? 'Perdonaste la deuda de ' : 'Perdonaste parte de la deuda de ') + d.nombre : 'Registraste abono de ' + d.nombre), d.nombre, monto, tipo === 'prestamo' ? 'prestamo' : 'abono');
   }
   _autoCerrarGruposEnCero(d);
   _verificarIntegridadSaldoDeudor(d, plan.saldoAntes, plan.deltaEsperado);
   save(); refresh(); closeSheet('registrar-movimiento');
   abrirDeudor(deudorActualId);
-  if (enc) {
+  if (encargo) {
     const msgExtra = extraMonto > 0 ? ` + ${fmt(extraMonto)} de extra` : '';
-    toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${enc.nombre}`, 'ok', 3500);
+    toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${encargo.nombre}`, 'ok', 3500);
   } else if (perdon) {
     toast(perdonTodo
       ? `Deuda de ${d.nombre} perdonada — quedó como gasto de ${fmt(monto)}`
@@ -1545,13 +1545,13 @@ function toggleDesdeEncargo() {
   if (destWrap) destWrap.style.display = '';
 
   if (!_abonoDesdeEncargo) {
-    _abonoEncId = '';
-    _abonoEncCuenta = '';
-    _abonoEncCuentaSplitMode = false;
+    _abonoEncargoId = '';
+    _abonoEncargoCuenta = '';
+    _abonoEncargoCuentaSplitMode = false;
     document.getElementById('mov_enc_cuenta_simple').style.display = '';
     document.getElementById('mov_enc_cuenta_split').style.display = 'none';
     document.getElementById('mov_enc_cuenta_split_rows').innerHTML = '';
-    _resetEncCuentaSplitToggleStyle();
+    _resetEncargoCuentaSplitToggleStyle();
     document.getElementById('mov_enc_saldo_preview').textContent = '';
     document.getElementById('mov_enc_cuenta_wrap').style.display = 'none';
     return;
@@ -1588,21 +1588,21 @@ function toggleDesdeEncargo() {
   // Auto-seleccionar si solo hay uno vinculado a la misma persona
   if (mismaPersona.length === 1) {
     sel.value = mismaPersona[0].id;
-    onChangeMov_enc_sel();
+    onChangeMovimiento_encargo_sel();
   } else {
-    _abonoEncId = '';
-    _abonoEncCuenta = '';
+    _abonoEncargoId = '';
+    _abonoEncargoCuenta = '';
     document.getElementById('mov_enc_cuenta_wrap').style.display = 'none';
     document.getElementById('mov_enc_saldo_preview').textContent = '';
   }
 }
 
-function onChangeMov_enc_sel() {
+function onChangeMovimiento_encargo_sel() {
   const sel = document.getElementById('mov_enc_sel');
-  _abonoEncId = sel.value;
-  _abonoEncCuenta = '';
+  _abonoEncargoId = sel.value;
+  _abonoEncargoCuenta = '';
   // Cambiar de encargo invalida cualquier división que hubiera armado antes
-  _abonoEncCuentaSplitMode = false;
+  _abonoEncargoCuentaSplitMode = false;
   const splitSimpleEl = document.getElementById('mov_enc_cuenta_simple');
   const splitDivEl    = document.getElementById('mov_enc_cuenta_split');
   const splitRowsEl   = document.getElementById('mov_enc_cuenta_split_rows');
@@ -1610,28 +1610,28 @@ function onChangeMov_enc_sel() {
   if (splitSimpleEl) splitSimpleEl.style.display = '';
   if (splitDivEl)    splitDivEl.style.display = 'none';
   if (splitRowsEl)   splitRowsEl.innerHTML = '';
-  _resetEncCuentaSplitToggleStyle();
-  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
+  _resetEncargoCuentaSplitToggleStyle();
+  const encargo = _abonoEncargoId ? (S.encargos || []).find(e => e.id === _abonoEncargoId) : null;
   const cuentaWrap = document.getElementById('mov_enc_cuenta_wrap');
   const preview    = document.getElementById('mov_enc_saldo_preview');
   const cuentaSel  = document.getElementById('mov_enc_cuenta');
-  if (!enc) {
+  if (!encargo) {
     if (cuentaWrap) cuentaWrap.style.display = 'none';
     if (preview) preview.textContent = '';
     return;
   }
   // Poblar cuentas del encargo con saldo
-  const cuentasConSaldo = _getEncargoSaldoPorCuenta(enc);
-  const saldoSinCuenta = _getEncargoSaldoSinCuenta(enc);
+  const cuentasConSaldo = _getEncargoSaldoPorCuenta(encargo);
+  const saldoSinCuenta = _getEncargoSaldoSinCuenta(encargo);
   // Solo tiene sentido "dividir" si la plata del encargo está repartida en 2+ cuentas
   if (splitToggleEl) splitToggleEl.style.display = cuentasConSaldo.length >= 2 ? '' : 'none';
   if (cuentasConSaldo.length === 0) {
     if (cuentaWrap) cuentaWrap.style.display = 'none';
     if (preview) {
       preview.style.color = 'var(--accent)';
-      preview.textContent = `Saldo disponible: ${fmt(encargoLibre(enc))} (sin cuenta especificada)`;
+      preview.textContent = `Saldo disponible: ${fmt(encargoLibre(encargo))} (sin cuenta especificada)`;
     }
-    _abonoEncCuenta = '';
+    _abonoEncargoCuenta = '';
     return;
   }
   if (cuentaSel) {
@@ -1645,31 +1645,31 @@ function onChangeMov_enc_sel() {
     cuentaSel.innerHTML = html`${optsHtml}`;
     // Pre-seleccionar la de mayor saldo
     cuentaSel.value = cuentasConSaldo[0].cuenta;
-    _abonoEncCuenta = cuentasConSaldo[0].cuenta;
+    _abonoEncargoCuenta = cuentasConSaldo[0].cuenta;
   }
   if (cuentaWrap) cuentaWrap.style.display = '';
-  _actualizarEncPreview(enc);
+  _actualizarEncargoPreview(encargo);
 }
 
-function onChangeMov_enc_cuenta() {
+function onChangeMovimiento_encargo_cuenta() {
   const sel = document.getElementById('mov_enc_cuenta');
-  _abonoEncCuenta = sel ? sel.value : '';
-  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
-  if (enc) _actualizarEncPreview(enc);
+  _abonoEncargoCuenta = sel ? sel.value : '';
+  const encargo = _abonoEncargoId ? (S.encargos || []).find(e => e.id === _abonoEncargoId) : null;
+  if (encargo) _actualizarEncargoPreview(encargo);
 }
 
-function _actualizarEncPreview(enc) {
+function _actualizarEncargoPreview(encargo) {
   const preview = document.getElementById('mov_enc_saldo_preview');
   const monto   = parseMoney(document.getElementById('mov_monto').value) || 0;
   const hint    = document.getElementById('mov_enc_cuenta_hint');
-  if (!enc || !preview) return;
-  const saldoTotal = encargoLibre(enc);
-  if (_abonoEncCuenta) {
-    const esSinEsp = _abonoEncCuenta === '__sinesp__';
-    const labelCuenta = esSinEsp ? 'Sin especificar' : fuenteLabel(_abonoEncCuenta);
-    const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(enc) : _getEncargoSaldoEnCuenta(enc, _abonoEncCuenta);
+  if (!encargo || !preview) return;
+  const saldoTotal = encargoLibre(encargo);
+  if (_abonoEncargoCuenta) {
+    const esSinEsp = _abonoEncargoCuenta === '__sinesp__';
+    const labelCuenta = esSinEsp ? 'Sin especificar' : fuenteLabel(_abonoEncargoCuenta);
+    const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(encargo) : _getEncargoSaldoEnCuenta(encargo, _abonoEncargoCuenta);
     // El hint estático ("Disponible en X: $Y") es redundante: el <option> de
-    // mov_enc_cuenta ya muestra ese mismo monto en su texto (ver onChangeMov_enc_sel
+    // mov_enc_cuenta ya muestra ese mismo monto en su texto (ver onChangeMovimiento_encargo_sel
     // más arriba). Se deja oculto — ver reglas-visuales.md#selectores-con-saldo.
     if (hint) hint.style.display = 'none';
     preview.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--accent)';
@@ -1685,12 +1685,12 @@ function _actualizarEncPreview(enc) {
   }
 }
 
-function _onMovMontoInput() {
-  if (_abonoDesdeEncargo && _abonoEncId) {
-    const enc = (S.encargos || []).find(e => e.id === _abonoEncId);
-    if (enc) _actualizarEncPreview(enc);
+function _onMovimientoMontoInput() {
+  if (_abonoDesdeEncargo && _abonoEncargoId) {
+    const encargo = (S.encargos || []).find(e => e.id === _abonoEncargoId);
+    if (encargo) _actualizarEncargoPreview(encargo);
   }
-  if (_abonoEncCuentaSplitMode) _abonoEncCuentaSplitPreview();
+  if (_abonoEncargoCuentaSplitMode) _abonoEncargoCuentaSplitPreview();
 }
 
 // ── ABONO: split destino + extra ───────────────────────────────────────────
@@ -1708,8 +1708,8 @@ function _onMovMontoInput() {
 // igual que documenta split.js, así que no hace falta tocar esas lecturas.
 let _abonoSplitMode    = false;
 let _abonoDesdeEncargo = false;
-let _abonoEncId        = '';
-let _abonoEncCuenta    = '';
+let _abonoEncargoId        = '';
+let _abonoEncargoCuenta    = '';
 let _extPartes         = []; // sistema de partes libres del extra
 
 const _spotify_abonoDestino = crearSplitWidget('abonoDestino', {
@@ -1919,17 +1919,17 @@ function abrirMiDeuda(id) {
   const mdChip = document.getElementById('md-perfil-chip');
   if (mdChip) mdChip.style.display = d.personaId ? '' : 'none';
 
-  const movs = [...(d.movimientos || [])].sort((a, b) => {
+  const movimientos = [...(d.movimientos || [])].sort((a, b) => {
     const fechaDiff = (b.fecha || '').localeCompare(a.fecha || '');
     if (fechaDiff !== 0) return fechaDiff;
     return (b.ts || 0) - (a.ts || 0);
   });
   const histEl = document.getElementById('mdHistorial');
-  if (!movs.length) {
+  if (!movimientos.length) {
     histEl.innerHTML = emptyInline('Sin movimientos aún.');
   } else {
     const _porGrupo = {}; // grupoId -> [tarjetas html``]
-    movs.forEach(m => {
+    movimientos.forEach(m => {
       const esRecibido = m.tipo === 'recibido';
       const esPerdon = !esRecibido && !!m._perdon;
       const cuentasRef = _deudaCuentasDe(m);
@@ -1986,10 +1986,10 @@ function volverMisDeudas() {
      el extra sale de la cuenta pero NO baja la deuda, así que es un gasto real
      (`S.gastosVar`, enlazado por `extra.gastoId`). Las cuentas descuentan
      monto + extra.
-   Todo el movimiento se valida ANTES de escribir nada (_planMovMiDeuda); aplicar
-   (_aplicarMovMiDeuda) no tiene ningún `return` de validación, así que un error
+   Todo el movimiento se valida ANTES de escribir nada (_planMovimientoMiDeuda); aplicar
+   (_aplicarMovimientoMiDeuda) no tiene ningún `return` de validación, así que un error
    no puede dejar la deuda a medias. */
-let _mdMovTipo = 'recibido';
+let _mdMovimientoTipo = 'recibido';
 let _mdSplitMode = false;
 
 
@@ -1997,19 +1997,19 @@ const _spotify_mdSplit = crearSplitWidget('mdSplit', {
   simpleId: 'md_cuenta_simple', splitId: 'md_cuenta_split', toggleId: 'md_split_toggle', rowsId: 'md_split_rows',
   getModo: () => _mdSplitMode, setModo: v => { _mdSplitMode = v; },
   // 'recibido' = plata que entra: sin tarjetas ni filtro de saldo. 'pago' = plata que sale: cuentas con saldo y tarjetas con cupo.
-  fuentes: () => _mdMovTipo === 'recibido' ? { placeholder: 'Elige cuenta' } : { sentido: 'sale', tarjetas: true, placeholder: 'Elige cuenta' },
+  fuentes: () => _mdMovimientoTipo === 'recibido' ? { placeholder: 'Elige cuenta' } : { sentido: 'sale', tarjetas: true, placeholder: 'Elige cuenta' },
   onPreview: _updateMdSplitResumen
 });
 
 function _mdEl(id) { return document.getElementById(id); }
 function _mdEsPerdon() {
   const c = _mdEl('md_perdon');
-  return _mdMovTipo === 'pago' && !!(c && c.checked);
+  return _mdMovimientoTipo === 'pago' && !!(c && c.checked);
 }
 // Extra pagado de más (solo en pagos, y nunca junto con un perdón).
 function _mdExtra() {
   const c = _mdEl('md_tiene_extra');
-  if (_mdMovTipo !== 'pago' || _mdEsPerdon() || !c || !c.checked) return 0;
+  if (_mdMovimientoTipo !== 'pago' || _mdEsPerdon() || !c || !c.checked) return 0;
   return parseMoney((_mdEl('md_extra_monto') || {}).value) || 0;
 }
 // Plata que pasa por las cuentas: el monto, más el extra si lo hay.
@@ -2032,7 +2032,7 @@ function _updateMdSplitResumen() {
 
 function _mdTitulo() {
   if (_mdEsPerdon()) return 'Perdonar deuda';
-  return _mdMovTipo === 'recibido' ? 'Nueva deuda' : 'Registrar pago';
+  return _mdMovimientoTipo === 'recibido' ? 'Nueva deuda' : 'Registrar pago';
 }
 function toggleMdExtra() {
   const c = _mdEl('md_tiene_extra');
@@ -2053,12 +2053,12 @@ function toggleMdPerdon() {
     if (!_mdEl('md_monto').value) _mdEl('md_monto').value = fmtInput(saldo > 0 ? saldo : 0);
   }
   _mdEl('md_cuenta_wrap').style.display = perdon ? 'none' : '';
-  _mdEl('md_extra_wrap').style.display = (perdon || _mdMovTipo !== 'pago') ? 'none' : '';
+  _mdEl('md_extra_wrap').style.display = (perdon || _mdMovimientoTipo !== 'pago') ? 'none' : '';
   _mdEl('mdMovSheetTitle').textContent = _mdTitulo();
 }
 
-function abrirMovMiDeuda(tipo) {
-  _mdMovTipo = tipo;
+function abrirMovimientoMiDeuda(tipo) {
+  _mdMovimientoTipo = tipo;
   splitReset('mdSplit');
   const pago = tipo === 'pago';
   const perdon = _mdEl('md_perdon'); if (perdon) perdon.checked = false;
@@ -2085,10 +2085,10 @@ function abrirMovMiDeuda(tipo) {
 }
 
 // Lee el formulario y devuelve { error } o el plan completo. NO escribe nada.
-function _planMovMiDeuda() {
+function _planMovimientoMiDeuda() {
   const d = Deudas.porId('contra', miDeudaActualId);
   if (!d) return null;
-  const tipo = _mdMovTipo;
+  const tipo = _mdMovimientoTipo;
   const monto = parseMoney(_mdEl('md_monto').value) || 0;
   if (!monto) return _errMonto('md_monto');
   const fecha = _mdEl('md_fecha').value || hoy();
@@ -2141,32 +2141,32 @@ function _planMovMiDeuda() {
 }
 
 // Aplica un plan ya validado. Sin returns de validación: no puede quedar a medias.
-function _aplicarMovMiDeuda(p) {
+function _aplicarMovimientoMiDeuda(p) {
   const { d, tipo, monto, fecha, nota, perdon, extra, cuentas, partido } = p;
   const origen = 'Prestado · Yo debo';
   // A qué préstamo pertenece. Puede crear un grupo, por eso se resuelve acá (al aplicar) y no al validar.
   const grupoId = _resolverGrupoIdSel('md', d, fecha);
   const entra = tipo === 'recibido';
   const desc = entra ? `Me prestó — ${d.nombre}` : `Pago de deuda — ${d.nombre}`;
-  const movId = uid();
+  const movimientoId = uid();
   const efectos = cuentas.map(c => {
-    if (entra) sumarFuente(c.cuenta, c.monto, _og(movId)); else descontarFuente(c.cuenta, c.monto, _og(movId));
+    if (entra) sumarFuente(c.cuenta, c.monto, _og(movimientoId)); else descontarFuente(c.cuenta, c.monto, _og(movimientoId));
     if (Fuente.esTC(c.cuenta)) {
       // Pago con tarjeta: sube la deuda de la TC. descontarFuente ya la subió; falta el cargo que la respalda
       // (tcRecalcular reconstruye tc.deuda desde sus registros en cada refresh). Es deuda PROPIA, no ajena.
-      const tcMovId = uid();
+      const tcMovimientoId = uid();
       if (!S.tcMovimientos) S.tcMovimientos = [];
-      S.tcMovimientos.push({ id: tcMovId, tcId: c.cuenta.split(':')[1], tipo: 'cargo_deuda', desc, monto: c.monto, fecha,
-        nota: 'Pago de una deuda propia con la tarjeta — no es un gasto', miDeudaId: d.id, _miDeudaMovId: movId });
-      return { fuente: c.cuenta, monto: c.monto, _tcMovId: tcMovId };
+      S.tcMovimientos.push({ id: tcMovimientoId, tcId: c.cuenta.split(':')[1], tipo: 'cargo_deuda', desc, monto: c.monto, fecha,
+        nota: 'Pago de una deuda propia con la tarjeta — no es un gasto', miDeudaId: d.id, _miDeudaMovId: movimientoId });
+      return { fuente: c.cuenta, monto: c.monto, _tcMovId: tcMovimientoId };
     }
-    return { fuente: c.cuenta, monto: c.monto, _movId: registrarMovEspejo({ cuenta: c.cuenta, flujo: entra ? 'entrada' : 'salida', monto: c.monto, fecha, desc, origen }) || undefined };
+    return { fuente: c.cuenta, monto: c.monto, _movId: registrarMovimientoEspejo({ cuenta: c.cuenta, flujo: entra ? 'entrada' : 'salida', monto: c.monto, fecha, desc, origen }) || undefined };
   });
   const unica = (!partido && efectos.length === 1) ? efectos[0] : null;
-  const mov = entra
-    ? { id: movId, tipo, monto, fecha, destino: unica ? unica.fuente : undefined, nota, grupoId, ts: Date.now(), _movSecId: unica ? unica._movId : undefined }
-    : { id: movId, tipo, monto, fecha, fuente: unica ? unica.fuente : undefined, nota, grupoId, ts: Date.now(), _movSecId: unica ? unica._movId : undefined, _tcMovId: unica ? unica._tcMovId : undefined };
-  if (partido) mov[entra ? 'destinos' : 'fuentes'] = efectos;
+  const movimiento = entra
+    ? { id: movimientoId, tipo, monto, fecha, destino: unica ? unica.fuente : undefined, nota, grupoId, ts: Date.now(), _movSecId: unica ? unica._movId : undefined }
+    : { id: movimientoId, tipo, monto, fecha, fuente: unica ? unica.fuente : undefined, nota, grupoId, ts: Date.now(), _movSecId: unica ? unica._movId : undefined, _tcMovId: unica ? unica._tcMovId : undefined };
+  if (partido) movimiento[entra ? 'destinos' : 'fuentes'] = efectos;
   if (perdon) {
     // Ingreso real que no tocó ninguna cuenta: fuente '' (mismo criterio que el margen de un préstamo).
     if (!S.movimientos) S.movimientos = [];
@@ -2178,10 +2178,10 @@ function _aplicarMovMiDeuda(p) {
       // (ver el filtro de ingresosMes en inicio.js); es la misma que usa el margen de un préstamo (diferencial.js).
       _prestadoDirectamente: true,
       clase: 'ingreso',
-      _secundario: true, _origenSeccion: origen, _esPerdonRecibido: true, _deudaId: d.id, _deudaMovId: mov.id, ts: Date.now()
+      _secundario: true, _origenSeccion: origen, _esPerdonRecibido: true, _deudaId: d.id, _deudaMovId: movimiento.id, ts: Date.now()
     });
-    mov._perdon = true;
-    mov._ingresoPerdonId = ingresoId;
+    movimiento._perdon = true;
+    movimiento._ingresoPerdonId = ingresoId;
   }
   if (extra > 0) {
     // El extra salió de las cuentas pero no bajó la deuda: gasto real, no descuenta ningún saldo
@@ -2190,21 +2190,21 @@ function _aplicarMovMiDeuda(p) {
     const gastoId = uid();
     S.gastosVar.push({
       id: gastoId, monto: extra, fecha, cat: 'Otro', desc: `Pagué de más — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
-      clase: 'gasto', _secundario: true, _origenSeccion: origen, _esExtraDeuda: true, _deudaId: d.id, _deudaMovId: mov.id
+      clase: 'gasto', _secundario: true, _origenSeccion: origen, _esExtraDeuda: true, _deudaId: d.id, _deudaMovId: movimiento.id
     });
-    mov.extra = { monto: extra, gastoId };
+    movimiento.extra = { monto: extra, gastoId };
   }
-  d.movimientos.push(mov);
+  d.movimientos.push(movimiento);
   _autoCerrarGruposEnCero(d);
-  return mov;
+  return movimiento;
 }
 
-function confirmarMovMiDeuda() {
-  const plan = _planMovMiDeuda();
+function confirmarMovimientoMiDeuda() {
+  const plan = _planMovimientoMiDeuda();
   if (!plan) return;
   if (plan.error) { _mostrarErrorPlan(plan.error); return; }
   const saldoAntes = Deudas.saldo(plan.d);
-  _aplicarMovMiDeuda(plan);
+  _aplicarMovimientoMiDeuda(plan);
   _verificarIntegridadSaldoDeudor(plan.d, saldoAntes, plan.tipo === 'recibido' ? plan.monto : -plan.monto);
   save(); refresh(); closeSheet('mov-mi-deuda');
   abrirMiDeuda(plan.d.id);
@@ -2212,9 +2212,9 @@ function confirmarMovMiDeuda() {
   toast(plan.perdon ? (perdonTodo ? 'Deuda perdonada' : `Te perdonaron ${fmt(plan.monto)} — todavía debes ${fmt(saldoAntes - plan.monto)}`) : 'Movimiento registrado', 'ok');
 }
 
-// Revierte EXACTAMENTE lo que hizo _aplicarMovMiDeuda (o el registro antiguo, de una sola cuenta).
-function _revertirMovMiDeuda(m) { return _enReversion(m.id, () => _revertirMovMiDeudaImpl(m)); }
-function _revertirMovMiDeudaImpl(m) {
+// Revierte EXACTAMENTE lo que hizo _aplicarMovimientoMiDeuda (o el registro antiguo, de una sola cuenta).
+function _revertirMovimientoMiDeuda(m) { return _enReversion(m.id, () => _revertirMovimientoMiDeudaImpl(m)); }
+function _revertirMovimientoMiDeudaImpl(m) {
   const entra = m.tipo === 'recibido';
   const total = (m.monto || 0) + (m.extra ? m.extra.monto : 0);
   let filas;
@@ -2230,7 +2230,7 @@ function _revertirMovMiDeudaImpl(m) {
       return;
     }
     // Si el movimiento espejo ya no existe, el saldo no se toca otra vez (evita doble reversión).
-    const existe = r._movId ? borrarMovEspejo(r.fuente, r._movId) : true;
+    const existe = r._movId ? borrarMovimientoEspejo(r.fuente, r._movId) : true;
     if (!existe) return;
     if (entra) descontarFuente(r.fuente, r.monto); else sumarFuente(r.fuente, r.monto);
   });
@@ -2238,10 +2238,10 @@ function _revertirMovMiDeudaImpl(m) {
   if (m.extra && m.extra.gastoId) S.gastosVar = (S.gastosVar || []).filter(x => x.id !== m.extra.gastoId);
 }
 
-async function eliminarMovMiDeuda(deudaId, movId) {
+async function eliminarMovimientoMiDeuda(deudaId, movimientoId) {
   const d = Deudas.porId('contra', deudaId);
   if (!d) return;
-  const m = (d.movimientos || []).find(x => x.id === movId);
+  const m = (d.movimientos || []).find(x => x.id === movimientoId);
   if (!m) return;
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
@@ -2264,8 +2264,8 @@ async function eliminarMovMiDeuda(deudaId, movId) {
 
   const saldoAntes = Deudas.saldo(d);
   const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este movimiento
-  _revertirMovMiDeuda(m);
-  d.movimientos = d.movimientos.filter(x => x.id !== movId);
+  _revertirMovimientoMiDeuda(m);
+  d.movimientos = d.movimientos.filter(x => x.id !== movimientoId);
   _autoCerrarGruposEnCero(d); // el grupo pudo saldarse (o reabrirse) al borrar este movimiento
   _verificarIntegridadSaldoDeudor(d, saldoAntes, m.tipo === 'recibido' ? -m.monto : m.monto);
   purgarEfectoEnHistorial(_histAntes, m);
@@ -2299,7 +2299,7 @@ const _diferencial_prestamoConTc = diffRegistrarInstancia('prtc', {
   permiteMiCuenta: false, // el margen quedó prestado directamente — nunca tocó una cuenta tuya
   flagIngresoFantasma: '_prestadoDirectamente',
   getDijo: () => parseMoney(document.getElementById('prtc_monto')?.value) || 0,
-  descMargen: (mov) => `Margen préstamo TC — ${mov._deudorNombre || ''}: `
+  descMargen: (movimiento) => `Margen préstamo TC — ${movimiento._deudorNombre || ''}: `
 });
 
 // Wrappers con los nombres viejos — el HTML del sheet sigue llamándolos igual
@@ -2378,9 +2378,9 @@ function confirmarPrestamoTC() {
 
   // 1. Registrar el préstamo en el deudor con el monto que le dijiste
   if (!d.movimientos) d.movimientos = [];
-  const movId = uid();
-  const movObj = {
-    id: movId,
+  const movimientoId = uid();
+  const movimientoObj = {
+    id: movimientoId,
     tipo: 'prestamo',
     monto: dijo,
     fecha,
@@ -2392,7 +2392,7 @@ function confirmarPrestamoTC() {
     grupoId: _resolverGrupoIdSel('prtc', d, fecha),
     ts: Date.now()
   };
-  d.movimientos.push(movObj);
+  d.movimientos.push(movimientoObj);
 
   // 2. La TC se carga solo con lo que realmente costó
   tc.deuda = (tc.deuda || 0) + montoTC;
@@ -2408,15 +2408,15 @@ function confirmarPrestamoTC() {
     fecha,
     nota: nota || 'Compra a nombre propio para prestarle a alguien — no es gasto tuyo',
     deudorId: d.id,
-    _deudorMovId: movId
+    _deudorMovId: movimientoId
   });
 
   // 4. El margen es un ingreso real — solo que quedó prestado directamente, nunca tocó una cuenta.
   //    El motor lo registra como ingreso fantasma (fuente:'', flag _prestadoDirectamente) y
-  //    deja el resumen en movObj.diferencial para futuro uso en el historial.
+  //    deja el resumen en movimientoObj.diferencial para futuro uso en el historial.
   if (margen > Deudas.TOL_FINO) {
-    const diferencial = diffAplicar('prtc', { desc, fecha, _deudorNombre: d.nombre }, movId); // movId enlaza el margen al préstamo: así _revertirMovDeudor lo quita con él
-    if (diferencial) movObj.diferencial = diferencial;
+    const diferencial = diffAplicar('prtc', { desc, fecha, _deudorNombre: d.nombre }, movimientoId); // movId enlaza el margen al préstamo: así _revertirMovimientoDeudor lo quita con él
+    if (diferencial) movimientoObj.diferencial = diferencial;
   }
 
   save(); refresh();
@@ -2427,14 +2427,14 @@ function confirmarPrestamoTC() {
 /* ── ABONO desde encargo: dividir entre VARIAS cuentas del encargo ──────────
    (ej: el encargo tiene 400mil en Nequi y 100mil en efectivo, y el abono de
    500mil sale de ambas a la vez). Reutiliza el motor genérico de splits. ── */
-let _abonoEncCuentaSplitMode = false;
+let _abonoEncargoCuentaSplitMode = false;
 
-const _spotify_abonoEncCuenta = crearSplitWidget('abonoEncCuenta', {
+const _spotify_abonoEncargoCuenta = crearSplitWidget('abonoEncCuenta', {
   simpleId: 'mov_enc_cuenta_simple', splitId: 'mov_enc_cuenta_split',
   toggleId: 'mov_enc_cuenta_split_toggle', rowsId: 'mov_enc_cuenta_split_rows',
-  getModo: () => _abonoEncCuentaSplitMode, setModo: v => { _abonoEncCuentaSplitMode = v; },
-  fuentes: () => { const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null; return { mostrarSaldo: true, soloDe: enc ? _getEncargoSaldoPorCuenta(enc) : [] }; },
-  onPreview: _abonoEncCuentaSplitPreview
+  getModo: () => _abonoEncargoCuentaSplitMode, setModo: v => { _abonoEncargoCuentaSplitMode = v; },
+  fuentes: () => { const encargo = _abonoEncargoId ? (S.encargos || []).find(e => e.id === _abonoEncargoId) : null; return { mostrarSaldo: true, soloDe: encargo ? _getEncargoSaldoPorCuenta(encargo) : [] }; },
+  onPreview: _abonoEncargoCuentaSplitPreview
 });
 
 
@@ -2442,7 +2442,7 @@ const _spotify_abonoEncCuenta = crearSplitWidget('abonoEncCuenta', {
 // (texto Y color). Antes había 3 resets parciales sueltos que solo tocaban el
 // texto y dejaban el botón pintado de ámbar si el usuario venía de estar en
 // modo "dividir" — ver docs/CHANGELOG.md.
-function _resetEncCuentaSplitToggleStyle() {
+function _resetEncargoCuentaSplitToggleStyle() {
   const btn = document.getElementById('mov_enc_cuenta_split_toggle');
   if (!btn) return;
   btn.textContent = 'Dividir';
@@ -2452,12 +2452,12 @@ function _resetEncCuentaSplitToggleStyle() {
 }
 
 
-function _abonoEncCuentaSplitPreview() {
+function _abonoEncargoCuentaSplitPreview() {
   const el = document.getElementById('mov_enc_cuenta_split_resumen');
   if (!el) return;
   const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
-  const enc = _abonoEncId ? (S.encargos || []).find(e => e.id === _abonoEncId) : null;
-  const splits = _spotify_abonoEncCuenta.data();
+  const encargo = _abonoEncargoId ? (S.encargos || []).find(e => e.id === _abonoEncargoId) : null;
+  const splits = _spotify_abonoEncargoCuenta.data();
   if (!splits.length) { el.textContent = ''; return; }
   const total = splits.reduce((a, s) => a + (s.monto || 0), 0);
   const restante = monto - total;
@@ -2465,11 +2465,11 @@ function _abonoEncCuentaSplitPreview() {
 
   // Validar que ninguna cuenta del encargo se pase de lo que tiene guardado
   let excedeCuenta = false;
-  if (enc) {
+  if (encargo) {
     const porCuenta = {};
     splits.forEach(s => { if (s.fuente) porCuenta[s.fuente] = (porCuenta[s.fuente] || 0) + s.monto; });
     for (const cuenta in porCuenta) {
-      if (porCuenta[cuenta] > _getEncargoSaldoEnCuenta(enc, cuenta) + Deudas.TOL_FINO) { excedeCuenta = true; break; }
+      if (porCuenta[cuenta] > _getEncargoSaldoEnCuenta(encargo, cuenta) + Deudas.TOL_FINO) { excedeCuenta = true; break; }
     }
   }
 
@@ -2523,7 +2523,7 @@ function _abrirPerfilDesdeDeudorActual() {
 
 function _abrirSheetNuevoPrestamo() {
   openSheet('registrar-movimiento');
-  initMovSheet('prestamo');
+  initMovimientoSheet('prestamo');
 }
 
 function _abrirSheetAbono() {
@@ -2532,7 +2532,7 @@ function _abrirSheetAbono() {
   const saldo = getDeudorSaldo(d);
   if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
   openSheet('registrar-movimiento');
-  initMovSheet('abono');
+  initMovimientoSheet('abono');
 }
 
 function _abrirSheetPagoCompleto() {
@@ -2541,7 +2541,7 @@ function _abrirSheetPagoCompleto() {
   const saldo = getDeudorSaldo(d);
   if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
   openSheet('registrar-movimiento');
-  initMovSheet('pago-completo');
+  initMovimientoSheet('pago-completo');
   document.getElementById('mov_monto').value = fmtInput(saldo);
 }
 
@@ -2550,16 +2550,16 @@ function _abrirSheetNuevaDeuda() {
   abrirSelPersona(_onSelPersonaYoDebo, '¿A quién le debes?', { excluir: pe => !!Deudas.porPersona('contra', pe.id) });
 }
 
-function _abrirMovMiDeudaRecibido() {
-  abrirMovMiDeuda('recibido');
+function _abrirMovimientoMiDeudaRecibido() {
+  abrirMovimientoMiDeuda('recibido');
 }
 
-function _abrirMovMiDeudaPago() {
+function _abrirMovimientoMiDeudaPago() {
   const d = Deudas.lista('contra').find(x => x.id === miDeudaActualId);
   if (!d) return;
   const saldo = getMiDeudaSaldo(d);
   if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
-  abrirMovMiDeuda('pago');
+  abrirMovimientoMiDeuda('pago');
 }
 
 // Antes vivía como función anónima inline sobre movBtnConfirm en
@@ -2597,8 +2597,8 @@ Events.registerAll('prestado', {
   volverDeudores: volverDeudores,
   eliminarDeudorActual: eliminarDeudorActual,
   editarDeudorActual: editarDeudorActual,
-  eliminarMovDeudor: eliminarMovDeudor,
-  abrirDetalleMov: (el, evt) => abrirDetalleMov(el, evt),
+  eliminarMovDeudor: eliminarMovimientoDeudor,
+  abrirDetalleMov: (el, evt) => abrirDetalleMovimiento(el, evt),
   abrirSheetNuevaPersona: _abrirSheetNuevaPersona,
 
   // Sheet "nuevo movimiento" (préstamo / abono / pago completo)
@@ -2615,8 +2615,8 @@ Events.registerAll('prestado', {
   abonoAddSplitRow: _spotify_abonoDestino.addRow,
   extAddParte: extAddParte,
   extDelParte: extDelParte,
-  abonoEncCuentaSplitToggle: _spotify_abonoEncCuenta.toggle,
-  abonoEncCuentaAgregarSplitRow: _spotify_abonoEncCuenta.addRow,
+  abonoEncCuentaSplitToggle: _spotify_abonoEncargoCuenta.toggle,
+  abonoEncCuentaAgregarSplitRow: _spotify_abonoEncargoCuenta.addRow,
 
   // Préstamo con TC
   abrirSheetPrestamoTC: abrirSheetPrestamoTC,
@@ -2629,27 +2629,27 @@ Events.registerAll('prestado', {
   eliminarMiDeuda: eliminarMiDeuda,
   abrirMiDeuda: abrirMiDeuda,
   abrirPerfilPersonaDeDeuda: (personaId) => abrirPerfilPersona(personaId),
-  eliminarMovMiDeuda: eliminarMovMiDeuda,
-  abrirMovMiDeudaRecibido: _abrirMovMiDeudaRecibido,
-  abrirMovMiDeudaPago: _abrirMovMiDeudaPago,
-  confirmarMovMiDeuda: confirmarMovMiDeuda,
+  eliminarMovMiDeuda: eliminarMovimientoMiDeuda,
+  abrirMovMiDeudaRecibido: _abrirMovimientoMiDeudaRecibido,
+  abrirMovMiDeudaPago: _abrirMovimientoMiDeudaPago,
+  confirmarMovMiDeuda: confirmarMovimientoMiDeuda,
 });
 
 /* Único listener que no es de click (Events solo despacha clicks): igual
    que antes, sigue como addEventListener directo — nunca fue un atributo
    inline, así que no aportaba nada al conteo de onclick pendientes ni a
    la CSP. Se preserva tal cual estaba en _initEventListeners.
-   Se le agregó _onMovMontoInput (antes un segundo listener aparte en
+   Se le agregó _onMovimientoMontoInput (antes un segundo listener aparte en
    index.html, sobre el mismo mov_monto) para no dejar dos addEventListener
    separados sobre el mismo campo. */
 {
-  const movMonto = document.getElementById('mov_monto');
-  if (movMonto) movMonto.addEventListener('input', () => {
+  const movimientoMonto = document.getElementById('mov_monto');
+  if (movimientoMonto) movimientoMonto.addEventListener('input', () => {
     // Con "El valor era diferente" abierto, "dijiste" cambia con el monto: refresca el resumen
     // (que a su vez refresca el split si está abierto). Si no, solo el split.
     if (diffEstaAbierto('prestamoDif')) _diferencial_prestamoDiferencial.resumen();
     else if (_prestSplitMode) _updatePrestSplitResumen();
-    _onMovMontoInput();
+    _onMovimientoMontoInput();
   });
 }
 
@@ -2663,10 +2663,10 @@ Events.registerAll('prestado', {
    ═══════════════════════════════════════════════════════════════ */
 [
   ['mov_desde_encargo', 'change', toggleDesdeEncargo],
-  ['mov_enc_sel', 'change', onChangeMov_enc_sel],
-  ['mov_enc_cuenta', 'change', onChangeMov_enc_cuenta],
+  ['mov_enc_sel', 'change', onChangeMovimiento_encargo_sel],
+  ['mov_enc_cuenta', 'change', onChangeMovimiento_encargo_cuenta],
   ['mov_tiene_extra', 'change', toggleExtraSection],
-  ['mov_perdon', 'change', toggleMovPerdon],
+  ['mov_perdon', 'change', toggleMovimientoPerdon],
   ['md_perdon', 'change', toggleMdPerdon],
   ['md_tiene_extra', 'change', toggleMdExtra],
   ['md_monto', 'input', _updateMdSplitResumen],
@@ -2679,8 +2679,8 @@ Events.registerAll('prestado', {
   if (el) el.addEventListener(evt, fn);
 });
 
-const movFuente = document.getElementById('mov_fuente');
-if (movFuente) movFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));
+const movimientoFuente = document.getElementById('mov_fuente');
+if (movimientoFuente) movimientoFuente.addEventListener('change', () => mostrarAlertaFuente('mov'));
 
 /* ═══════════════════════════════════════════════════════════════
    INTEGRACIÓN CON EL SISTEMA DE PERSONAS

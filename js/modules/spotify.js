@@ -736,7 +736,7 @@ async function _borrarSpotifyHistorial(i,h){
     // Revertir el EXTRA (si dio de más): sale de su cuenta y se quita su movimiento espejo.
     if((h.extra||0)>0&&h.extraFuente){
       descontarFuente(h.extraFuente,h.extra,_ogSpotify(h.id,true));
-      if(h.extraMovId)borrarMovEspejo(h.extraFuente,h.extraMovId);
+      if(h.extraMovId)borrarMovimientoEspejo(h.extraFuente,h.extraMovId);
     }
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
     // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
@@ -769,14 +769,14 @@ async function _borrarSpotifyHistorial(i,h){
     // Revertir el movimiento secundario: la plata que salió de la cuenta al pagar Spotify,
     // o el cargo hecho a la tarjeta de crédito si se pagó con TC (ver confirmarPagarSpotify).
     if(h._tcMovId){
-      const mov=(S.tcMovimientos||[]).find(m=>m.id===h._tcMovId&&!m.eliminado);
-      if(mov){
+      const movimiento=(S.tcMovimientos||[]).find(m=>m.id===h._tcMovId&&!m.eliminado);
+      if(movimiento){
         // mov.eliminado se marca siempre (es solo un dato) aunque la carga de
         // tarjetas-credito.js falle o tarde — así el estado no queda a medias.
         // Solo tcRecalcular() (una función real del módulo) espera la carga.
-        mov.eliminado=true;
+        movimiento.eliminado=true;
         if(await _spotifyEnsureTC()){
-          const tc=getTCById(mov.tcId);
+          const tc=getTCById(movimiento.tcId);
           if(tc)tcRecalcular(tc);
         }
       }
@@ -1129,8 +1129,8 @@ function confirmarSpotifyDestino(){
       if(extraFuenteSpotify){
         sumarFuente(extraFuenteSpotify,extraSpotify,_ogSpotify(ultimoReg.id));
         ultimoReg.extraFuente=extraFuenteSpotify;
-        const movId=registrarMovEspejo({cuenta:extraFuenteSpotify,flujo:'entrada',monto:extraSpotify,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',clase:'ingreso',extra:{_esExtraIngreso:true}});
-        if(movId)ultimoReg.extraMovId=movId;
+        const movimientoId=registrarMovimientoEspejo({cuenta:extraFuenteSpotify,flujo:'entrada',monto:extraSpotify,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',clase:'ingreso',extra:{_esExtraIngreso:true}});
+        if(movimientoId)ultimoReg.extraMovId=movimientoId;
       }
     }
   }
@@ -1326,7 +1326,7 @@ async function confirmarPagarSpotify(){
   if(!monto){toast('Ingresa el monto a pagar','err');return;}
   const fechaPagoEl0=document.getElementById('spPagarFecha');
   const fechaPago0=(fechaPagoEl0&&fechaPagoEl0.value)?fechaPagoEl0.value:hoy();
-  let tcMovId=null;
+  let tcMovimientoId=null;
   let fuente='';
   let splits=null;
   let notaGasto=nota||'Pago mensual Spotify';
@@ -1360,8 +1360,8 @@ async function confirmarPagarSpotify(){
       const v=Plata.validarSalida(fuente,monto);
       if(!v.ok){toast(v.motivo,'err',3500);return;}
       if(!S.tcMovimientos)S.tcMovimientos=[];
-      tcMovId=uid();
-      S.tcMovimientos.push({id:tcMovId,tcId:tc.id,tipo:'cargo_spotify',monto,fecha:fechaPago0,nota:nota||'Pago Spotify',eliminado:false});
+      tcMovimientoId=uid();
+      S.tcMovimientos.push({id:tcMovimientoId,tcId:tc.id,tipo:'cargo_spotify',monto,fecha:fechaPago0,nota:nota||'Pago Spotify',eliminado:false});
       tcRecalcular(tc);
     } else if(fuente){
       const v=Plata.validarSalida(fuente,monto);
@@ -1449,7 +1449,7 @@ async function confirmarPagarSpotify(){
     if(pend>0)pendienteAlCerrar[x.id]=pend;
   });
 
-  const pagoObj={id:uid(),tipo:'pago',monto,fuente,splits:splits||undefined,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovId:tcMovId};
+  const pagoObj={id:uid(),tipo:'pago',monto,fuente,splits:splits||undefined,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovId:tcMovimientoId};
   S.spotify.historial=[...antesDelSegmento,...quedanCerrando,pagoObj,...pasanANuevo];
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe

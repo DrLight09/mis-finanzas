@@ -10,10 +10,10 @@
    mano las tres ramas según el tipo de cuenta (prestado.js lo hacía en 22
    sitios). Ahora hay un solo código:
 
-     registrarMovEspejo({cuenta, flujo, monto, fecha, desc, origen, extra})
+     registrarMovimientoEspejo({cuenta, flujo, monto, fecha, desc, origen, extra})
         → crea el espejo y devuelve su id (o null si no se pudo escribir:
           cuenta vacía, tipo desconocido o cuenta que ya no existe).
-     borrarMovEspejo(cuenta, id)
+     borrarMovimientoEspejo(cuenta, id)
         → lo quita; devuelve true si lo encontró y lo quitó.
 
    Estas funciones NO tocan saldos: el efecto sobre el saldo sigue siendo
@@ -48,7 +48,7 @@ function _espejoLista(cuenta, flujo, crear) {
   return { lista: S.movimientos, tipo: entra ? 'entrada' : 'salida', campoTexto: 'desc', conFuente: true };
 }
 
-function registrarMovEspejo(o) {
+function registrarMovimientoEspejo(o) {
   if (!o || !o.cuenta || !o.monto) return null;
   const dest = _espejoLista(o.cuenta, o.flujo, true);
   if (!dest) return null;
@@ -72,7 +72,7 @@ function registrarMovEspejo(o) {
   return id;
 }
 
-function borrarMovEspejo(cuenta, id) {
+function borrarMovimientoEspejo(cuenta, id) {
   if (!cuenta || !id) return false;
   const dest = _espejoLista(cuenta, 'entrada', false);
   if (!dest) return false;

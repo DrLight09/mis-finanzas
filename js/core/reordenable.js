@@ -106,8 +106,8 @@ const Reordenable = (function () {
       if (!d.items[0] || !d.items[0].isConnected) { _terminar(false, true); return; } // se repintó a mitad de arrastre
       const p = _aContenido(d, d.cx, d.cy);
       const dx = p.x - d.ini.x, dy = p.y - d.ini.y;
-      const mov = d.items[d.from];
-      mov.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04)';
+      const movimiento = d.items[d.from];
+      movimiento.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04)';
       const cx = d.slots[d.from].cx + dx, cy = d.slots[d.from].cy + dy;
       let mejor = d.to, dist = Infinity;
       d.slots.forEach((s, k) => {
@@ -158,7 +158,7 @@ const Reordenable = (function () {
       cancelAnimationFrame(d.raf);
       _limpiaListeners();
       try { d.items[d.from].releasePointerCapture(d.pointerId); } catch (_) {}
-      const mov = d.items[d.from];
+      const movimiento = d.items[d.from];
       const ids = (function () {
         const base = d.items.map(n => cfg.id(n));
         const idx = commit ? _ordenVirtual(d) : d.items.map((_, i) => i);
@@ -171,20 +171,20 @@ const Reordenable = (function () {
         drag = null;
         if (cambio && !abortado && typeof cfg.onOrden === 'function') cfg.onOrden(ids);
       };
-      if (abortado || !mov.isConnected) { limpiar(); return; }
+      if (abortado || !movimiento.isConnected) { limpiar(); return; }
       // Encaje: la ficha viaja a su hueco; las demás ya están en el suyo (se les quita el transform al repintar).
       const meta = commit ? d.to : d.from;
       const a = d.slots[d.from], b = d.slots[meta];
       const dx = b.x - a.x, dy = b.y - a.y;
       if (!commit) d.items.forEach((n, i) => { if (i !== d.from) n.style.transform = ''; });
       if (_menosMovimiento()) { limpiar(); return; }
-      mov.style.transition = 'transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s';
-      mov.classList.remove('reord-arrastrando');
-      mov.classList.add('reord-encaja');
-      mov.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
+      movimiento.style.transition = 'transform .2s cubic-bezier(.2,.8,.2,1), box-shadow .2s';
+      movimiento.classList.remove('reord-arrastrando');
+      movimiento.classList.add('reord-encaja');
+      movimiento.style.transform = 'translate(' + dx + 'px,' + dy + 'px)';
       let hecho = false;
-      const fin = function () { if (hecho) return; hecho = true; mov.classList.remove('reord-encaja'); limpiar(); };
-      mov.addEventListener('transitionend', fin, { once: true });
+      const fin = function () { if (hecho) return; hecho = true; movimiento.classList.remove('reord-encaja'); limpiar(); };
+      movimiento.addEventListener('transitionend', fin, { once: true });
       setTimeout(fin, 260);
     }
 

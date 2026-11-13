@@ -159,7 +159,7 @@ function _renderDetalleSimple(fuente) {
   // Encargos en esta cuenta
   if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-cuenta-encargos', fuente);
   // Movimientos. cuentaKey es la clave de los filtros y el valor que abrirDetalleMov() lee de data-cuenta-key: la propia fuente.
-  renderMovsCuenta('det-cuenta-movs', getMovimientosCuenta(fuente), d.color, d.cuentaKey, 'movs-filtros-cuenta');
+  renderMovimientosCuenta('det-cuenta-movs', getMovimientosCuenta(fuente), d.color, d.cuentaKey, 'movs-filtros-cuenta');
 }
 // renderEncargosEnCuenta() y abrirEncargoDesdeCuenta() migradas a js/modules/encargos.js (ver docs/encargos.md).
 
@@ -310,11 +310,11 @@ async function crearCuenta(){
   const nueva={id:uid(),tipo,nombre,icono:_ncIconoSel,color:_ncColorSel,movimientos:[],...(esAhorro?{tasaEA:null,historialTasas:[]}:{saldo})};
   const fuente=fuenteDeCuenta(nueva.id);
   // El saldo inicial es un movimiento de apertura en S.movimientos con `fuente` y su entrada en el libro.
-  const movApertura=saldo>0?crearMovimientoApertura(saldo,hoy(),'Saldo inicial'):null;
-  if(movApertura){movApertura.fuente=fuente;if(!S.movimientos)S.movimientos=[];S.movimientos.push(movApertura);}
+  const movimientoApertura=saldo>0?crearMovimientoApertura(saldo,hoy(),'Saldo inicial'):null;
+  if(movimientoApertura){movimientoApertura.fuente=fuente;if(!S.movimientos)S.movimientos=[];S.movimientos.push(movimientoApertura);}
   const eraLaPrimera=!cuentasTodas().some(c=>!esCuentaFija(c));
   _cuentasArr().push(nueva);
-  if(movApertura)_libroPata(fuente,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:movApertura.id}});
+  if(movimientoApertura)_libroPata(fuente,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:movimientoApertura.id}});
   save();refresh();
   closeSheet('nueva-cuenta');
   toast(`Cuenta "${nombre}" creada`,'ok');
@@ -491,16 +491,16 @@ function hexToRgb(hex){
 function _encargosConSaldoEn(fuentes){
   const claves=new Set(fuentes);
   const out=[];
-  (S.encargos||[]).forEach(enc=>{
+  (S.encargos||[]).forEach(encargo=>{
     const map={};
-    if(enc.saldoInicial>0){const k=enc.cuentaInicial||'__sin__';map[k]=(map[k]||0)+enc.saldoInicial;}
-    (enc.movimientos||[]).forEach(m=>{
+    if(encargo.saldoInicial>0){const k=encargo.cuentaInicial||'__sin__';map[k]=(map[k]||0)+encargo.saldoInicial;}
+    (encargo.movimientos||[]).forEach(m=>{
       const k=m.cuenta||'__sin__';
       map[k]=(map[k]||0)+(m.tipo==='entrada'?m.monto:-m.monto);
     });
     let saldo=0;
     Object.entries(map).forEach(([k,v])=>{if(claves.has(k))saldo+=v;});
-    if(saldo>0)out.push({nombre:enc.nombre,saldo});
+    if(saldo>0)out.push({nombre:encargo.nombre,saldo});
   });
   return out;
 }
@@ -537,8 +537,8 @@ function _motivoNoArchivar(c){
   if(cuentaSePuedeEliminar(c.id))return 'La cuenta "'+c.nombre+'" no tiene movimientos: no hace falta archivarla, puedes eliminarla.';
   const total=esCuentaAhorro(c)?ahorroTotal(c.id):(c.saldo||0);
   if(Math.abs(total)>=0.01)return 'Primero deja "'+c.nombre+'" en cero: mueve el saldo a otra cuenta (botón «Mover a otra cuenta»). Disponible: '+fmt(total)+'.';
-  const enc=_encargosConSaldoEn(_fuentesDeCuenta(c));
-  if(enc.length)return 'La cuenta "'+c.nombre+'" tiene plata de encargos guardada aquí:\n\n'+enc.map(e=>'• '+e.nombre+': '+fmt(e.saldo)).join('\n')+'\n\nPrimero devuelve o mueve ese dinero desde cada encargo.';
+  const encargo=_encargosConSaldoEn(_fuentesDeCuenta(c));
+  if(encargo.length)return 'La cuenta "'+c.nombre+'" tiene plata de encargos guardada aquí:\n\n'+encargo.map(e=>'• '+e.nombre+': '+fmt(e.saldo)).join('\n')+'\n\nPrimero devuelve o mueve ese dinero desde cada encargo.';
   const cdts=cajitasDeCuenta(c.id).reduce((a,x)=>a+(x.cdts||[]).length,0);
   if(cdts)return 'La cuenta "'+c.nombre+'" tiene '+cdts+' CDT sin cobrar. Cóbralos o libéralos primero.';
   return '';
@@ -690,7 +690,7 @@ function getMovimientosCuenta(tipo) {
   const tipoSalidaManual = 'salida_manual';
   const textoEntrada = 'Ingreso';
   const textoSalida = 'Retiro';
-  const movs = [];
+  const movimientos = [];
   let _idx = 0;
 
   // S.movimientos: entradas/salidas manuales, aperturas, intercambios de Encargos, espejos.
@@ -739,7 +739,7 @@ function getMovimientosCuenta(tipo) {
       else if (m._secundario && m._origenSeccion) { _origen = m._origenSeccion; }
       else { _origen = 'Cuentas · Movimiento manual'; }
       if (otrasDelAbono) _otrasCuentas = otrasDelAbono;
-      movs.push({
+      movimientos.push({
         tipo: tipoDisplay, fecha: m.fecha,
         desc: m.desc || (esApertura ? 'Saldo inicial' : esEntrada ? textoEntrada : esTransferencia ? 'Intercambio' : textoSalida),
         monto: montoDisplay, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _fuenteDestino: m._fuenteDestino || '',
@@ -759,13 +759,13 @@ function getMovimientosCuenta(tipo) {
       g.splits.forEach(spotify => {
         if (!spotify.fuente || !spotify.monto || !coincide(spotify.fuente)) return;
         const otras = g.splits.filter(o => o !== spotify && o.fuente).map(o => ({ fuente: o.fuente, monto: -o.monto }));
-        movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -spotify.monto, cat: g.cat, fuente: spotify.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: spotify.fuente, _origen: 'Gastos', _otrasCuentas: otras.length ? otras : null, _secundario: false, _origenSeccion: '', _alcanciaOculto: false });
+        movimientos.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -spotify.monto, cat: g.cat, fuente: spotify.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: spotify.fuente, _origen: 'Gastos', _otrasCuentas: otras.length ? otras : null, _secundario: false, _origenSeccion: '', _alcanciaOculto: false });
       });
       return;
     }
     if (!coincide(g.fuente)) return;
     const _origen = g._secundario && g._origenSeccion ? g._origenSeccion : g.esPagoGastoFijo ? 'Gastos fijos' : g._esPagoTC ? 'Tarjeta de crédito' : g._esExtraPrestamo ? 'Préstamos' : /encargo/i.test(g.nota || '') ? 'Encargos' : 'Gastos';
-    movs.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '', _alcanciaOculto: false });
+    movimientos.push({ tipo: 'gasto', fecha: g.fecha, desc: g.desc, monto: -g.monto, cat: g.cat, fuente: g.fuente, nota: g.nota, _idx: _idx++, _movId: g.id, _fuenteOrigen: g.fuente, _origen, _otrasCuentas: null, _secundario: !!g._secundario, _origenSeccion: g._origenSeccion || '', _alcanciaOculto: false });
   });
 
   // Préstamos dados desde esta cuenta (incluye los divididos entre varias cuentas).
@@ -776,13 +776,13 @@ function getMovimientosCuenta(tipo) {
         const _origenP = 'Préstamos · ' + d.nombre;
         if (matchFuente) {
           const otrasFuentesSplit = (m.fuentes || []).filter(f => f.fuente !== m.fuente).map(f => ({ fuente: f.fuente, monto: -f.monto }));
-          movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _origen: _origenP, _otrasCuentas: otrasFuentesSplit.length ? otrasFuentesSplit : null });
+          movimientos.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: m.fuente, _origen: _origenP, _otrasCuentas: otrasFuentesSplit.length ? otrasFuentesSplit : null });
         }
         (m.fuentes || []).forEach(f => {
           if (coincide(f.fuente) && f.monto) {
             const otras = (m.fuentes || []).filter(f2 => f2.fuente !== f.fuente).map(f2 => ({ fuente: f2.fuente, monto: -f2.monto }));
             if (m.fuente) otras.push({ fuente: m.fuente, monto: -m.monto });
-            movs.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: f.fuente, _origen: _origenP, _otrasCuentas: otras.length ? otras : null });
+            movimientos.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movId: m.id, _fuenteOrigen: f.fuente, _origen: _origenP, _otrasCuentas: otras.length ? otras : null });
           }
         });
       }
@@ -804,11 +804,11 @@ function getMovimientosCuenta(tipo) {
     const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
     const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
     if (coincide(h.fuente)) {
-      movs.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente: h.fuente, _idx: _idx++, _movId: h.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+      movimientos.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente: h.fuente, _idx: _idx++, _movId: h.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     }
     (h.pendienteHistorial || []).forEach(ab => {
       if (!coincide(ab.destino)) return;
-      movs.push({ tipo: 'ingreso', fecha: ab.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +ab.monto, fuente: ab.destino, _idx: _idx++, _movId: ab.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+      movimientos.push({ tipo: 'ingreso', fecha: ab.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +ab.monto, fuente: ab.destino, _idx: _idx++, _movId: ab.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     });
   });
 
@@ -818,7 +818,7 @@ function getMovimientosCuenta(tipo) {
   (S.transferencias || []).forEach(t => {
     const esAlcancia = t.destino === 'alcancia';
     if (coincide(t.origen)) {
-      movs.push({
+      movimientos.push({
         tipo: esAlcancia ? 'alcancia' : 'transferencia',
         fecha: t.fecha,
         desc: esAlcancia ? (t.desc || 'Depósito en alcancía') : 'Transferencia a ' + fuenteLabel(t.destino),
@@ -831,7 +831,7 @@ function getMovimientosCuenta(tipo) {
       });
     }
     if (coincide(t.destino)) {
-      movs.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia desde ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{ fuente: t.origen, monto: -t.monto }] });
+      movimientos.push({ tipo: 'transferencia', fecha: t.fecha, desc: 'Transferencia desde ' + fuenteLabel(t.origen), monto: +t.monto, nota: t.nota, fuente: t.destino, _idx: _idx++, _movId: t.id, _fuenteOrigen: t.origen, _fuenteDestino: t.destino, _origen: 'Cuentas · Transferencia', _otrasCuentas: [{ fuente: t.origen, monto: -t.monto }] });
     }
   });
 
@@ -840,7 +840,7 @@ function getMovimientosCuenta(tipo) {
   Libro.entradasVisibles().forEach(l => {
     if (!coincide(l.cuenta)) return;
     const etiqueta = l.tipo === 'rendimiento' ? 'Intereses' : l.tipo === 'cdt' ? 'CDT' : l.tipo === 'apertura' ? 'Saldo inicial' : 'Ajuste';
-    movs.push({
+    movimientos.push({
       tipo: l.tipo === 'apertura' ? 'apertura' : l.monto > 0 ? 'ingreso' : tipoSalidaManual,
       fecha: l.fecha, desc: l.desc || etiqueta, monto: l.monto, fuente: l.cuenta, _idx: _idx++, _movId: l.id,
       _fuenteOrigen: l.cuenta, _fuenteDestino: '', _origen: 'Libro · ' + etiqueta, _otrasCuentas: null,
@@ -851,7 +851,7 @@ function getMovimientosCuenta(tipo) {
   // Orden: fecha desc y luego por creación desc (_movId empieza con Date.now().toString(36), así que
   // comparar el id en texto da el orden de inserción). Sin id en alguno, va primero el que sí tiene
   // (timestamp confiable); si ninguno tiene, por orden de recolección.
-  movs.sort((a, b) => {
+  movimientos.sort((a, b) => {
     const dateCmp = (b.fecha || '').localeCompare(a.fecha || '');
     if (dateCmp !== 0) return dateCmp;
     const aId = a._movId || '';
@@ -861,26 +861,26 @@ function getMovimientosCuenta(tipo) {
     if (bId) return 1;
     return (b._idx || 0) - (a._idx || 0);
   });
-  return movs;
+  return movimientos;
 }
 
 /* ───────────────────────────────────────────────────────────────
    SECCIÓN: Motor de filtros de movimientos (búsqueda / tipo / fechas)
    ─────────────────────────────────────────────────────────────── */
-const _movsFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'' } }
+const _movimientosFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'' } }
 
-function _getMovsFilter(cuentaKey) {
-  if (!_movsFilters[cuentaKey]) _movsFilters[cuentaKey] = { q: '', tipo: 'todos', desde: '', hasta: '' };
-  return _movsFilters[cuentaKey];
+function _getMovimientosFilter(cuentaKey) {
+  if (!_movimientosFilters[cuentaKey]) _movimientosFilters[cuentaKey] = { q: '', tipo: 'todos', desde: '', hasta: '' };
+  return _movimientosFilters[cuentaKey];
 }
 
-function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
+function renderMovimientosFiltros(elId, cuentaKey, movimientos, accentColor) {
   const wrap = document.getElementById(elId);
   if (!wrap) return;
-  const f = _getMovsFilter(cuentaKey);
+  const f = _getMovimientosFilter(cuentaKey);
 
   // Tipos presentes en los movimientos
-  const tiposPresentes = new Set(movs.map(m => m.tipo));
+  const tiposPresentes = new Set(movimientos.map(m => m.tipo));
   const tiposConfig = [
     { val: 'todos', label: 'Todos' },
     { val: 'ingreso', label: 'Ingreso' },
@@ -912,49 +912,49 @@ function renderMovsFiltros(elId, cuentaKey, movs, accentColor) {
   // Reemplaza los oninput/onchange inline (CSP los bloquea). Delegado,
   // enganchado una sola vez por wrap. El wrap de la cuenta simple
   // (movs-filtros-cuenta) lo comparten Nequi, Efectivo y las personalizadas, así que su
-  // cuentaKey cambia entre renders: los listeners leen wrap._movsKey (se actualiza en cada
+  // cuentaKey cambia entre renders: los listeners leen wrap._movimientosKey (se actualiza en cada
   // render) en vez de cerrar sobre cuentaKey — igual que el bug de `items` en
   // renderAttencion() (Inicio), cerrar sobre un valor que cambia dejaría filtrando la cuenta
   // equivocada.
-  wrap._movsKey = cuentaKey;
-  if(!wrap._movsFiltrosHooked){
-    wrap._movsFiltrosHooked = true;
+  wrap._movimientosKey = cuentaKey;
+  if(!wrap._movimientosFiltrosHooked){
+    wrap._movimientosFiltrosHooked = true;
     wrap.addEventListener('input', (e)=>{
-      if(e.target.classList.contains('movs-search-input')) _movsOnSearch(e.target, wrap._movsKey);
+      if(e.target.classList.contains('movs-search-input')) _movimientosOnSearch(e.target, wrap._movimientosKey);
     });
     wrap.addEventListener('change', (e)=>{
-      if(e.target.classList.contains('movs-fecha-desde')) _movsOnFecha('desde', e.target.value, wrap._movsKey);
-      else if(e.target.classList.contains('movs-fecha-hasta')) _movsOnFecha('hasta', e.target.value, wrap._movsKey);
+      if(e.target.classList.contains('movs-fecha-desde')) _movimientosOnFecha('desde', e.target.value, wrap._movimientosKey);
+      else if(e.target.classList.contains('movs-fecha-hasta')) _movimientosOnFecha('hasta', e.target.value, wrap._movimientosKey);
     });
   }
 }
 
-function _movsOnSearch(input, cuentaKey) {
-  _getMovsFilter(cuentaKey).q = input.value;
-  _movsRefresh(cuentaKey);
+function _movimientosOnSearch(input, cuentaKey) {
+  _getMovimientosFilter(cuentaKey).q = input.value;
+  _movimientosRefresh(cuentaKey);
 }
-function _movsOnTipo(tipo, cuentaKey) {
-  _getMovsFilter(cuentaKey).tipo = tipo;
-  _movsRefresh(cuentaKey);
+function _movimientosOnTipo(tipo, cuentaKey) {
+  _getMovimientosFilter(cuentaKey).tipo = tipo;
+  _movimientosRefresh(cuentaKey);
 }
-function _movsOnFecha(campo, val, cuentaKey) {
-  _getMovsFilter(cuentaKey)[campo] = val;
-  _movsRefresh(cuentaKey);
+function _movimientosOnFecha(campo, val, cuentaKey) {
+  _getMovimientosFilter(cuentaKey)[campo] = val;
+  _movimientosRefresh(cuentaKey);
 }
-function _movsLimpiarFechas(cuentaKey) {
-  const f = _getMovsFilter(cuentaKey);
+function _movimientosLimpiarFechas(cuentaKey) {
+  const f = _getMovimientosFilter(cuentaKey);
   f.desde = ''; f.hasta = '';
-  _movsRefresh(cuentaKey);
+  _movimientosRefresh(cuentaKey);
 }
 
-function _movsRefresh(cuentaKey) {
+function _movimientosRefresh(cuentaKey) {
   // La clave de los filtros es la fuente de la cuenta ('cuenta:ID'): se vuelve a pintar su detalle.
   if (esFuenteCuenta(cuentaKey)) renderDetalleCuenta(cuentaKey);
 }
 
-function _movsAplicarFiltro(movs, cuentaKey) {
-  const f = _getMovsFilter(cuentaKey);
-  let res = movs;
+function _movimientosAplicarFiltro(movimientos, cuentaKey) {
+  const f = _getMovimientosFilter(cuentaKey);
+  let res = movimientos;
   if (f.tipo && f.tipo !== 'todos') res = res.filter(m => m.tipo === f.tipo);
   if (f.q && f.q.trim()) {
     const q = f.q.trim().toLowerCase();
@@ -965,22 +965,22 @@ function _movsAplicarFiltro(movs, cuentaKey) {
   return res;
 }
 
-function renderMovsCuenta(elId, movs, accentColor, cuentaKey, filtrosElIdExplicito) {
+function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filtrosElIdExplicito) {
   const el = document.getElementById(elId);
   if (!el) return;
 
   // Sin movimientos no hay nada que titular ni filtrar: el CSS oculta título y filtros del bloque y queda solo el estado vacío.
   const bloque = el.closest('.cuenta-movs-bloque');
-  if (bloque) bloque.classList.toggle('cuenta-movs-bloque-vacio', !movs.length);
+  if (bloque) bloque.classList.toggle('cuenta-movs-bloque-vacio', !movimientos.length);
 
   // Render filtros (aunque no haya movs: quedan ocultos por el bloque vacío, y listos cuando aparezca el primero)
   const filtrosElId = filtrosElIdExplicito || ('movs-filtros-' + (cuentaKey || ''));
-  if (cuentaKey) renderMovsFiltros(filtrosElId, cuentaKey, movs, accentColor);
+  if (cuentaKey) renderMovimientosFiltros(filtrosElId, cuentaKey, movimientos, accentColor);
 
   // Aplicar filtros
-  const filtrados = cuentaKey ? _movsAplicarFiltro(movs, cuentaKey) : movs;
+  const filtrados = cuentaKey ? _movimientosAplicarFiltro(movimientos, cuentaKey) : movimientos;
 
-  if (!movs.length) {
+  if (!movimientos.length) {
     el.innerHTML = emptyInline('No hay movimientos registrados en esta cuenta.');
     return;
   }
@@ -1102,18 +1102,18 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota,ext
   // (2026-08-22): el campo Nota de estos sheets existía en el HTML desde antes
   // pero nunca se leía ni se guardaba en el movimiento.
   if(!S.movimientos)S.movimientos=[];
-  let mov;
+  let movimiento;
   if(esApertura){
-    mov=crearMovimientoApertura(monto,fecha,desc);
-    mov.fuente=fuente;
+    movimiento=crearMovimientoApertura(monto,fecha,desc);
+    movimiento.fuente=fuente;
   } else {
-    mov={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto,fecha,desc:desc||''};
+    movimiento={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto,fecha,desc:desc||''};
   }
-  if(nota)mov.nota=nota;
-  if(extraordinario&&!esApertura)mov.extraordinario=true;
-  S.movimientos.push(mov);
-  sumarFuente(fuente,monto,_ogCta(mov.id)); // el saldo se aplica una vez creado el movimiento, para que el libro apunte a su id
-  return mov.desc;
+  if(nota)movimiento.nota=nota;
+  if(extraordinario&&!esApertura)movimiento.extraordinario=true;
+  S.movimientos.push(movimiento);
+  sumarFuente(fuente,monto,_ogCta(movimiento.id)); // el saldo se aplica una vez creado el movimiento, para que el libro apunte a su id
+  return movimiento.desc;
 }
 
 function registrarSalida(fuente,monto,fecha,desc,nota){
@@ -1125,11 +1125,11 @@ function registrarSalida(fuente,monto,fecha,desc,nota){
   if(!S.movimientos)S.movimientos=[];
   // clase 'gasto': plata que sale del patrimonio sin pasar por un gasto registrado (simétrico a sumar dinero = ingreso;
   // en la práctica se usa para cuadrar la diferencia entre lo registrado y lo real). Cuenta en Periodo.gastosDelMes.
-  const mov={id:uid(),tipo:'salida_manual',clase:'gasto',fuente,monto,fecha,desc:desc||''};
-  if(nota)mov.nota=nota;
-  S.movimientos.push(mov);
-  descontarFuente(fuente,monto,_ogCta(mov.id));
-  return mov.desc;
+  const movimiento={id:uid(),tipo:'salida_manual',clase:'gasto',fuente,monto,fecha,desc:desc||''};
+  if(nota)movimiento.nota=nota;
+  S.movimientos.push(movimiento);
+  descontarFuente(fuente,monto,_ogCta(movimiento.id));
+  return movimiento.desc;
 }
 
 function toggleAdApertura(){
@@ -1207,11 +1207,11 @@ function confirmarAgregarDineroMenu(){
   if(!v||!fuente)return;
   // Registrar movimiento de entrada
   if(!S.movimientos)S.movimientos=[];
-  const _movAdMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
-  if(nota)_movAdMenu.nota=nota;
-  if(document.getElementById('adMenuEsExtra')?.checked)_movAdMenu.extraordinario=true;
-  S.movimientos.push(_movAdMenu);
-  sumarFuente(fuente,v,_ogCta(_movAdMenu.id));
+  const _movimientoAdMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
+  if(nota)_movimientoAdMenu.nota=nota;
+  if(document.getElementById('adMenuEsExtra')?.checked)_movimientoAdMenu.extraordinario=true;
+  S.movimientos.push(_movimientoAdMenu);
+  sumarFuente(fuente,v,_ogCta(_movimientoAdMenu.id));
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
@@ -1223,7 +1223,7 @@ function confirmarAgregarDineroMenu(){
 /* ---- SALDO INICIAL / APERTURA ---- */
 let _eaFuente=''; // fuente de la cuenta cuyo saldo inicial se corrige
 
-function getAperturaMov(fuente){
+function getAperturaMovimiento(fuente){
   // Busca el movimiento de apertura de S.movimientos de la cuenta
   // (registrado desde el banner "Registrar saldo inicial" o desde el toggle
   // del sheet "Agregar dinero").
@@ -1243,13 +1243,13 @@ function renderBannerApertura(fuente,opts){
   // las cuentas" pero renderBannerApertura() no lo estaba chequeando —
   // se agrega acá, aplicando parejo a todas las cuentas.
   if(S.modulos?.corregirSaldo===false){el.innerHTML='';return;}
-  const mov=getAperturaMov(fuente);
-  if(mov){
+  const movimiento=getAperturaMovimiento(fuente);
+  if(movimiento){
     // Ya tiene saldo inicial — mostrar chip con valor y botón editar discreto
     el.innerHTML=html`<div class="cuenta-apertura">
       <div>
         <div class="cuenta-apertura-lbl">Saldo inicial registrado</div>
-        <div class="cuenta-apertura-monto">${fmt(mov.monto)}</div>
+        <div class="cuenta-apertura-monto">${fmt(movimiento.monto)}</div>
       </div>
       <button type="button" ${raw(Events.attr('cuentas:abrirEditarApertura', fuente))} class="cuenta-apertura-corregir">Corregir</button>
     </div>`;
@@ -1281,8 +1281,8 @@ function abrirRegistrarApertura(fuente){
 
 function abrirEditarApertura(fuente){
   _eaFuente=fuente;
-  const mov=getAperturaMov(fuente);
-  const actual=mov?mov.monto:0;
+  const movimiento=getAperturaMovimiento(fuente);
+  const actual=movimiento?movimiento.monto:0;
   const nombre=typeof fuenteLabel==='function'?fuenteLabel(fuente):fuente;
   document.getElementById('eaTitle').textContent='Corregir saldo inicial · '+nombre;
   document.getElementById('eaSaldoActual').textContent=fmt(actual);
@@ -1295,27 +1295,27 @@ function abrirEditarApertura(fuente){
 function confirmarEditarApertura(){
   const nuevo=parseMoney(document.getElementById('eaMonto').value)||0;
   if(!nuevo){toast('Ingresa el nuevo saldo inicial','err');return;}
-  const mov=getAperturaMov(_eaFuente);
-  const anterior=mov?mov.monto:0;
+  const movimiento=getAperturaMovimiento(_eaFuente);
+  const anterior=movimiento?movimiento.monto:0;
   const diff=nuevo-anterior;
   if(diff===0){toast('El valor es igual al actual','err');return;}
   // Ajustar saldo de la cuenta por la diferencia
-  if(diff>0) sumarFuente(_eaFuente,diff,_ogCta(mov?mov.id:'apertura:'+_eaFuente));
-  else descontarFuente(_eaFuente,Math.abs(diff),_ogCta(mov?mov.id:'apertura:'+_eaFuente,true));
+  if(diff>0) sumarFuente(_eaFuente,diff,_ogCta(movimiento?movimiento.id:'apertura:'+_eaFuente));
+  else descontarFuente(_eaFuente,Math.abs(diff),_ogCta(movimiento?movimiento.id:'apertura:'+_eaFuente,true));
   // Actualizar o crear el movimiento de apertura
-  if(mov){
-    mov.monto=nuevo;
+  if(movimiento){
+    movimiento.monto=nuevo;
     // No cambiamos mov.fecha (preserva la fecha original de creación de la cuenta),
     // pero registramos cuándo y por cuánto se ajustó: snapshotPatrimonio() usa esto
     // para que el cambio de patrimonio de HOY (el día de la corrección) también se
     // reste del cálculo de tendencia, igual que una apertura nueva.
-    mov._ajustes=mov._ajustes||[];
-    mov._ajustes.push({fecha:hoy(),monto:diff});
+    movimiento._ajustes=movimiento._ajustes||[];
+    movimiento._ajustes.push({fecha:hoy(),monto:diff});
   } else {
     if(!S.movimientos)S.movimientos=[];
-    const movNuevo=crearMovimientoApertura(nuevo,hoy(),'Saldo inicial');
-    movNuevo.fuente=_eaFuente;
-    S.movimientos.push(movNuevo);
+    const movimientoNuevo=crearMovimientoApertura(nuevo,hoy(),'Saldo inicial');
+    movimientoNuevo.fuente=_eaFuente;
+    S.movimientos.push(movimientoNuevo);
   }
   save();refresh();
   closeSheet('editar-apertura');
@@ -1324,8 +1324,8 @@ function confirmarEditarApertura(){
 
 document.addEventListener('input',function(e){
   if(e.target.id==='eaMonto'){
-    const mov=getAperturaMov(_eaFuente);
-    const anterior=mov?mov.monto:0;
+    const movimiento=getAperturaMovimiento(_eaFuente);
+    const anterior=movimiento?movimiento.monto:0;
     const nuevo=parseMoney(e.target.value)||0;
     const prev=document.getElementById('eaPreview');
     if(nuevo>0){
@@ -1598,8 +1598,8 @@ function confirmarTransferir() {
   // Perform transfer
   const _trId = uid();
   // Plata.transferir valida ambos lados ANTES de tocar saldos (cuenta que ya no existe, archivada, de ahorro…): o se mueve todo o nada.
-  const _mov = Plata.transferir(origen, destino, monto, { og: _ogCta(_trId) });
-  if (!_mov.ok) { toast(_mov.motivo, 'err', 3500); return; }
+  const _movimiento = Plata.transferir(origen, destino, monto, { og: _ogCta(_trId) });
+  if (!_movimiento.ok) { toast(_movimiento.motivo, 'err', 3500); return; }
 
   // Save transfer record
   if (!S.transferencias) S.transferencias = [];
@@ -1636,8 +1636,8 @@ Events.registerAll('cuentas', {
   reactivarCuenta,
   resetSheetNuevaCuenta: _resetSheetNuevaCuenta,
   // Motor de filtros de movimientos
-  movsOnTipo: _movsOnTipo,
-  movsLimpiarFechas: _movsLimpiarFechas,
+  movsOnTipo: _movimientosOnTipo,
+  movsLimpiarFechas: _movimientosLimpiarFechas,
   // Saldo inicial / apertura
   abrirEditarApertura,
   abrirRegistrarApertura,
@@ -1750,7 +1750,7 @@ if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
    criterio ya usado en configuracion.js para data-modulo/inputs de archivo,
    en vez de pasar por el despachador de data-action.
    El 'change' de cada checkbox (antes onchange="toggleAdApertura()" /
-   onchange="_nuMovToggleApertura()" inline en el HTML; el de Nu vive en nu.js) se agrega acá mismo. */
+   onchange="_nuMovimientoToggleApertura()" inline en el HTML; el de Nu vive en nu.js) se agrega acá mismo. */
 [['adAperturaWrap','adEsApertura',toggleAdApertura]].forEach(([wrapId,chkId,onChangeFn])=>{
   const wrap=document.getElementById(wrapId);
   const chk=document.getElementById(chkId);

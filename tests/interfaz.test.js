@@ -53,7 +53,7 @@ const CONVERTIDOS = [
   { f: 'js/modules/alcancia.js', prefijos: ['alc-'], armadas: ['alc-c-', 'alc-dif-'], sinCss: ['alc-hist-chevron', 'alc-dep-monto'], permitidos: ['display:none;'] },
   // tarjetas: solo quedan los anchos de barra (porcentaje calculado) y el cursor del fragmento de atributos _tcAttrs (se inserta en etiquetas ajenas, no puede llevar class)
   { f: 'js/modules/tarjetas-credito.js', prefijos: ['tc-', 'badge-xs'], permitidos: [/^width:\$\{/, 'cursor:pointer;'] },
-  // encargos: quedan el display:none del avatar del selector de persona (JS lo conmuta) y el cursor del fragmento de atributos _encAttrs (se inserta en etiquetas ajenas)
+  // encargos: quedan el display:none del avatar del selector de persona (JS lo conmuta) y el cursor del fragmento de atributos _encargoAttrs (se inserta en etiquetas ajenas)
   { f: 'js/modules/encargos.js', prefijos: ['enc-'], permitidos: ['display:none;', 'cursor:pointer;', /^color:\$\{/] },
   // personas: quedan solo valores calculados — el ancho de las barras de progreso, el color elegido por el usuario para cada avatar (color/fondo/borde con ${color}) y el fondo de cada muestra de la paleta
   { f: 'js/modules/personas.js', prefijos: ['pe-'], permitidos: [/^width:\$\{/, /^(color|background):\$\{/] },
@@ -289,13 +289,13 @@ test('eliminar cuenta: el botón de confirmar es rojo con una regla que gana a l
 // oculta sin movimientos, dejando solo el estado vacío).
 test('detalle de cuenta: Encargos antes que el bloque de Movimientos, y el bloque se oculta sin movimientos', () => {
   const html = leer('index.html');
-  for (const [enc, titulo] of [['det-cuenta-encargos', 'Movimientos registrados</div>'], ['det-nu-encargos', 'Movimientos de la cuenta</div>']]) {
-    const iEnc = html.indexOf('id="' + enc + '"'), iBloque = html.indexOf('class="cuenta-movs-bloque"', iEnc);
-    assert.ok(iEnc > 0 && iBloque > iEnc, enc + ' va antes de su bloque de movimientos');
+  for (const [encargo, titulo] of [['det-cuenta-encargos', 'Movimientos registrados</div>'], ['det-nu-encargos', 'Movimientos de la cuenta</div>']]) {
+    const iEncargo = html.indexOf('id="' + encargo + '"'), iBloque = html.indexOf('class="cuenta-movs-bloque"', iEncargo);
+    assert.ok(iEncargo > 0 && iBloque > iEncargo, encargo + ' va antes de su bloque de movimientos');
     assert.ok(html.slice(iBloque, iBloque + 400).includes(titulo), 'el título vive dentro del bloque');
   }
   assert.ok(/\.cuenta-movs-bloque-vacio > \.sec-title[^{]*\{display:none/.test(CSS));
-  assert.ok(leer('js/modules/cuentas.js').includes("classList.toggle('cuenta-movs-bloque-vacio', !movs.length)"));
+  assert.ok(leer('js/modules/cuentas.js').includes("classList.toggle('cuenta-movs-bloque-vacio', !movimientos.length)"));
 });
 });
 

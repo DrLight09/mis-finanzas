@@ -20,7 +20,7 @@
    Carga: grupo lazy 'cuentas', junto con js/modules/cuentas.js.
    Regla de dependencia (UN solo sentido): este módulo se apoya en cuentas.js, nunca al revés. Una cuenta de ahorro es una cuenta
    más y reutiliza lo genérico de esa capa — _descriptorCuenta, _pintarAdministrarCuenta, _tituloCuentaHtml, _showCuentasPanel, _setBtnEstado,
-   _setBtnTransferir, _MIN_RETIRO, getMovimientosCuenta, renderMovsCuenta, abrirAgregarDinero, abrirRestarDinero,
+   _setBtnTransferir, _MIN_RETIRO, getMovimientosCuenta, renderMovimientosCuenta, abrirAgregarDinero, abrirRestarDinero,
    abrirTransferir, actualizarBotonRetirar, actualizarBotonesTransferir, registrarEntradaConApertura, registrarSalida,
    _aperturaToggleUI — únicamente cuando una función corre. cuentas.js no nombra nada de este archivo: la clase 'ahorro' se le
    presenta registrándose en CuentaPantallas (js/core/cuentas-fuentes.js) al cargar. La prueba 'cuentas-nu-archivos' (tests/cuentas.test.js)
@@ -231,10 +231,10 @@ async function guardarChequeoNu(){
   // La lectura es el total de Nu: no puede ser menor que el dinero de encargos que hay en esa cajita (el saldo propio
   // saldría negativo). Casi siempre es haber anotado solo lo propio: se corrige antes de guardar nada.
   for(const l of lecturas){
-    const enc=_saldoEncargosEnCajita(l.cajitaId);
-    if(l.val<enc){
+    const encargo=_saldoEncargosEnCajita(l.cajitaId);
+    if(l.val<encargo){
       const c=(S.cajitas||[]).find(cc=>cc.id===l.cajitaId);
-      toast('En "'+((c&&c.nombre)||'la cajita')+'" anotaste '+fmt(l.val)+', pero ahí hay '+fmt(enc)+' de encargos. Pon el total que ves en la app de '+_nombreAhorro(cuentaId)+' (encargos incluidos).','err',5000);
+      toast('En "'+((c&&c.nombre)||'la cajita')+'" anotaste '+fmt(l.val)+', pero ahí hay '+fmt(encargo)+' de encargos. Pon el total que ves en la app de '+_nombreAhorro(cuentaId)+' (encargos incluidos).','err',5000);
       return;
     }
   }
@@ -1010,7 +1010,7 @@ function renderDetalleAhorro(){
   // Encargos en esta cuenta (cualquier cajita suya)
   if(typeof renderEncargosEnCuenta==='function') renderEncargosEnCuenta('det-nu-encargos',dAh.fuente);
   // Movimientos de la cuenta (cajitas)
-  renderMovsCuenta('det-nu-movs',getMovimientosCuenta(dAh.fuente),dAh.color,dAh.fuente,'movs-filtros-nu');
+  renderMovimientosCuenta('det-nu-movs',getMovimientosCuenta(dAh.fuente),dAh.color,dAh.fuente,'movs-filtros-nu');
 }
 
 // Pantalla de ahorro: activo si alguna cajita (no CDT) de la cuenta tiene saldo movible; y el "Mover" de la cajita abierta.
@@ -1270,15 +1270,15 @@ function _refreshCajitaDet(){
 }
 
 /* ---- ENTRÓ / SALIÓ PLATA EN NU ---- */
-let _nuMovTipo = 'entrada'; // 'entrada' | 'salida'
-let _nuMovCajitaSel = null; // fuente seleccionada: 'cajita:id'
+let _nuMovimientoTipo = 'entrada'; // 'entrada' | 'salida'
+let _nuMovimientoCajitaSel = null; // fuente seleccionada: 'cajita:id'
 
 function abrirNuMovimiento(tipo) {
   const motivo = _motivoNuMovimiento(tipo);
   if (motivo) { toast(motivo, 'err', 4000); return; } // los botones ya salen deshabilitados; esto cubre cualquier otra vía
   save();
-  _nuMovTipo = tipo;
-  _nuMovCajitaSel = null;
+  _nuMovimientoTipo = tipo;
+  _nuMovimientoCajitaSel = null;
   const esEntrada = tipo === 'entrada';
 
   document.getElementById('nuMovTitle').textContent = esEntrada ? 'Agregar a ' + _nombreAhorro() : 'Retirar de ' + _nombreAhorro();
@@ -1307,18 +1307,18 @@ function abrirNuMovimiento(tipo) {
   document.getElementById('nuMovDesc').value = '';
   document.getElementById('nuMovMonto').value = '';
   document.getElementById('nuMovFecha').value = hoy();
-  const nuMovNotaEl = document.getElementById('nuMovNota');
-  if (nuMovNotaEl) nuMovNotaEl.value = '';
+  const nuMovimientoNotaEl = document.getElementById('nuMovNota');
+  if (nuMovimientoNotaEl) nuMovimientoNotaEl.value = '';
   document.getElementById('nuMovPreview').textContent = '';
 
   // Renderizar selector de cajitas
-  _nuMovRenderCajitas();
+  _nuMovimientoRenderCajitas();
 
   openSheet('nu-movimiento');
   focusSheetField('nuMovDesc');
 }
 
-function _nuMovRenderCajitas() {
+function _nuMovimientoRenderCajitas() {
   const wrap = document.getElementById('nuMovCajitasWrap');
   if (!wrap) return;
   const cajitas = _cajitasAhorroActual();
@@ -1340,7 +1340,7 @@ function _nuMovRenderCajitas() {
 
   wrap.querySelectorAll('[data-nu-cajita]').forEach(el => {
     el.addEventListener('click', function() {
-      _nuMovCajitaSel = this.dataset.nuCajita;
+      _nuMovimientoCajitaSel = this.dataset.nuCajita;
       // Resaltar selección
       wrap.querySelectorAll('[data-nu-cajita]').forEach(e => {
         e.style.borderColor = 'var(--border2)';
@@ -1351,10 +1351,10 @@ function _nuMovRenderCajitas() {
       });
       this.style.borderColor = 'var(--nu-light)';
       this.style.background = 'rgba(192,96,240,.08)';
-      const selId = _nuMovCajitaSel.split(':')[1];
+      const selId = _nuMovimientoCajitaSel.split(':')[1];
       const chkEl = document.getElementById('_nuMovCheck_'+selId);
       if (chkEl) chkEl.innerHTML = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
-      _nuMovActualizarPreview();
+      _nuMovimientoActualizarPreview();
     });
   });
 
@@ -1365,20 +1365,20 @@ function _nuMovRenderCajitas() {
   }
 }
 
-function _nuMovToggleApertura() {
+function _nuMovimientoToggleApertura() {
   _aperturaToggleUI({chk:'nuMovEsApertura',lbl:'nuMovDescLabel',inp:'nuMovDesc',descPlaceholder:'Ej: Salario, mesada, bono...'});
 }
 
-function _nuMovActualizarPreview() {
+function _nuMovimientoActualizarPreview() {
   const prev = document.getElementById('nuMovPreview');
-  if (!prev || !_nuMovCajitaSel) return;
+  if (!prev || !_nuMovimientoCajitaSel) return;
   const v = parseMoney(document.getElementById('nuMovMonto').value) || 0;
   if (!v) { prev.textContent = ''; return; }
-  const cid = _nuMovCajitaSel.split(':')[1];
+  const cid = _nuMovimientoCajitaSel.split(':')[1];
   const cajita = (S.cajitas || []).find(x => x.id === cid);
   if (!cajita) return;
   const saldoActual = calcC(cajita).val;
-  if (_nuMovTipo === 'entrada') {
+  if (_nuMovimientoTipo === 'entrada') {
     prev.textContent = fmt(saldoActual) + ' + ' + fmt(v) + ' = ' + fmt(saldoActual + v);
     prev.style.color = 'var(--accent)';
   } else {
@@ -1393,16 +1393,16 @@ function confirmarNuMovimiento() {
   const desc = document.getElementById('nuMovDesc').value.trim();
   const fecha = document.getElementById('nuMovFecha').value || hoy();
   const nota = document.getElementById('nuMovNota')?.value.trim() || '';
-  const esApertura = _nuMovTipo === 'entrada' && (document.getElementById('nuMovEsApertura')?.checked || false);
+  const esApertura = _nuMovimientoTipo === 'entrada' && (document.getElementById('nuMovEsApertura')?.checked || false);
 
-  if (!_nuMovCajitaSel) { toast('Selecciona una cajita', 'err'); return; }
+  if (!_nuMovimientoCajitaSel) { toast('Selecciona una cajita', 'err'); return; }
   if (!v) { toast('Ingresa el monto', 'err'); return; }
   if (!esApertura && !desc) {
-    toast(_nuMovTipo === 'entrada' ? 'Describe de dónde viene la plata' : 'Describe en qué se gastó', 'err');
+    toast(_nuMovimientoTipo === 'entrada' ? 'Describe de dónde viene la plata' : 'Describe en qué se gastó', 'err');
     return;
   }
 
-  const cid = _nuMovCajitaSel.split(':')[1];
+  const cid = _nuMovimientoCajitaSel.split(':')[1];
   const cajita = (S.cajitas || []).find(x => x.id === cid);
   if (!cajita) { toast('Cajita no encontrada', 'err'); return; }
 
@@ -1410,20 +1410,20 @@ function confirmarNuMovimiento() {
   // saldo en 0 pero registrarSalida() guarda el monto completo; sacar más de lo que hay dejaba el
   // historial desfasado y borrar el movimiento devolvía de más. Se comprueba ANTES de materializar los
   // intereses para no dejar la cajita modificada a medias si se rechaza.
-  if (_nuMovTipo !== 'entrada') {
-    const val = Plata.validarSalida(_nuMovCajitaSel, v);
+  if (_nuMovimientoTipo !== 'entrada') {
+    const val = Plata.validarSalida(_nuMovimientoCajitaSel, v);
     if (!val.ok) { toast(val.motivo, 'err', 3500); return; }
   }
 
   // Materializar intereses antes de tocar el saldo
   if (typeof materializarIntereses === 'function') materializarIntereses(cajita);
 
-  if (_nuMovTipo === 'entrada') {
-    const descFinal = registrarEntradaConApertura(_nuMovCajitaSel, v, fecha, desc, esApertura, nota);
+  if (_nuMovimientoTipo === 'entrada') {
+    const descFinal = registrarEntradaConApertura(_nuMovimientoCajitaSel, v, fecha, desc, esApertura, nota);
     if (window.logCambio) logCambio('Agregaste dinero en ' + (cajita.nombre || 'cajita'), descFinal, v, 'ingreso', cid);
     toast(fmt(v) + (esApertura ? ' registrado como saldo inicial en ' : ' agregado a ') + (cajita.nombre || 'cajita'), 'ok');
   } else {
-    registrarSalida(_nuMovCajitaSel, v, fecha, desc, nota);
+    registrarSalida(_nuMovimientoCajitaSel, v, fecha, desc, nota);
     if (window.logCambio) logCambio('Retiraste dinero de ' + (cajita.nombre || 'cajita'), desc, v, 'gasto', cid);
     toast('− ' + fmt(v) + ' de ' + (cajita.nombre || 'cajita') + ' — ' + desc, 'salida');
   }
@@ -1431,7 +1431,7 @@ function confirmarNuMovimiento() {
   save();
   closeSheet('nu-movimiento');
   refresh();
-  _nuMovCajitaSel = null;
+  _nuMovimientoCajitaSel = null;
 }
 
 /* ---- Acciones de Nu que dependen de la tasa y de las cajitas ----
@@ -1517,10 +1517,10 @@ const btnNuEntro = document.getElementById('btn-nu-entro');
 if (btnNuEntro) btnNuEntro.addEventListener('click', () => abrirNuMovimiento('entrada'));
 const btnNuSalio = document.getElementById('btn-nu-salio');
 if (btnNuSalio) btnNuSalio.addEventListener('click', () => abrirNuMovimiento('salida'));
-const btnNuMovConf = document.getElementById('btn-confirmar-nu-mov');
-if (btnNuMovConf) btnNuMovConf.addEventListener('click', confirmarNuMovimiento);
+const btnNuMovimientoConf = document.getElementById('btn-confirmar-nu-mov');
+if (btnNuMovimientoConf) btnNuMovimientoConf.addEventListener('click', confirmarNuMovimiento);
 document.addEventListener('input', function(e) {
-  if (e.target.id === 'nuMovMonto') _nuMovActualizarPreview();
+  if (e.target.id === 'nuMovMonto') _nuMovimientoActualizarPreview();
 });
 
 // --- Cajita: agregar ---
@@ -1600,7 +1600,7 @@ Events.registerAll('nu', {
   if(wrap&&chk){
     wrap.addEventListener('click', () => chk.click());
     chk.addEventListener('click', e => e.stopPropagation());
-    chk.addEventListener('change', _nuMovToggleApertura);
+    chk.addEventListener('change', _nuMovimientoToggleApertura);
   }
 })();
 

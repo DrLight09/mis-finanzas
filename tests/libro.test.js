@@ -131,12 +131,12 @@ describe('libro', () => {
     assert.deepEqual(plano(ctx.Libro.entradasVisibles(st).map(l => l.tipo)), ['rendimiento', 'ajuste', 'cdt']);
   });
 
-  test('espejo y libro van juntos: registrarMovEspejo escribe en S.movimientos con `fuente` para cualquier cuenta', () => {
+  test('espejo y libro van juntos: registrarMovimientoEspejo escribe en S.movimientos con `fuente` para cualquier cuenta', () => {
     const ctx = app();
-    const a = ctx.registrarMovEspejo({ cuenta: 'cajita:c1', flujo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'x', origen: 'Prestado' });
+    const a = ctx.registrarMovimientoEspejo({ cuenta: 'cajita:c1', flujo: 'entrada', monto: 5, fecha: '2026-10-01', desc: 'x', origen: 'Prestado' });
     assert.deepEqual(plano(ctx.S.movimientos.find(m => m.id === a)), plano({ ...ctx.S.movimientos[0] }));
     assert.equal(ctx.S.movimientos[0].fuente, 'cajita:c1');
-    assert.equal(ctx.borrarMovEspejo('cajita:c1', a), true);
+    assert.equal(ctx.borrarMovimientoEspejo('cajita:c1', a), true);
     assert.equal(ctx.S.movimientos.length, 0);
   });
 });
@@ -163,16 +163,16 @@ describe('libro-modulos', () => {
   test('Sumar dinero (cuentas.js) — la entrada del libro apunta al movimiento que crea', () => {
     const app = cargar();
     app.registrarEntradaConApertura('cuenta:efectivo', 1000, '2026-10-11', 'Sueldo', false, '');
-    const mov = plano(app.S.movimientos[app.S.movimientos.length - 1]), e = ultima(app);
-    assert.deepEqual([e.monto, e.origen.modulo, e.origen.ref], [1000, 'cuentas', mov.id]);
+    const movimiento = plano(app.S.movimientos[app.S.movimientos.length - 1]), e = ultima(app);
+    assert.deepEqual([e.monto, e.origen.modulo, e.origen.ref], [1000, 'cuentas', movimiento.id]);
     assert.equal(app.Libro.verificar().ok, true);
   });
 
   test('Restar dinero (cuentas.js) — salida registrada completa y apuntando a su movimiento', () => {
     const app = cargar();
     app.registrarSalida('cuenta:efectivo', 400, '2026-10-11', 'Ajuste', '');
-    const mov = plano(app.S.movimientos[app.S.movimientos.length - 1]), e = ultima(app);
-    assert.deepEqual([e.monto, e.origen.modulo, e.origen.ref], [-400, 'cuentas', mov.id]);
+    const movimiento = plano(app.S.movimientos[app.S.movimientos.length - 1]), e = ultima(app);
+    assert.deepEqual([e.monto, e.origen.modulo, e.origen.ref], [-400, 'cuentas', movimiento.id]);
     assert.equal(app.S.cuentas.find(c => c.id === 'efectivo').saldo, -400, 'sin recorte: la cuenta queda negativa y se ve');
     assert.equal(app.Libro.verificar().ok, true);
   });
@@ -201,7 +201,7 @@ describe('libro-modulos', () => {
     app.S.cuentas.find(c => c.id === 'nequi').saldo = 0; app.sumarFuente('cuenta:nequi', 1000, { origen: { modulo: 't', ref: 'x' } });
     app.S.encargos = [{ id: 'e1', nombre: 'Ana', saldoInicial: 300, cuentaInicial: 'cuenta:nequi', movimientos: [] }];
     const antes = app.S.libro.length;
-    await app.deleteMovEncargo('e1', '__saldo_ini__');
+    await app.deleteMovimientoEncargo('e1', '__saldo_ini__');
     assert.equal(app.S.cuentas.find(c => c.id === 'nequi').saldo, 1000, 'el saldo propio queda intacto');
     assert.equal(app.S.libro.length, antes, 'sin entrada nueva en el libro');
     assert.equal(app.S.encargos[0].saldoInicial, 0);

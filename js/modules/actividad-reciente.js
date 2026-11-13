@@ -326,8 +326,8 @@
     //   - reubicaciones internas entre cuentas (_parteId sin desc real, nota 'Movimiento interno...')
     //   - movimientos de abono a deudor (_esAbonoDeudor) — ya aparecen en _normDeudores
     var items = [];
-    (S.encargos || []).forEach(function(enc){
-      (enc.movimientos || []).forEach(function(m){
+    (S.encargos || []).forEach(function(encargo){
+      (encargo.movimientos || []).forEach(function(m){
         // Saltar movimientos internos de reubicación
         if (m._esAbonoDeudor) return;
         var nota = (m.nota || '').toLowerCase();
@@ -336,13 +336,13 @@
 
         var esEntrada = m.tipo === 'entrada';
         items.push({
-          id:        'enc_' + enc.id + '_' + m.id,
+          id:        'enc_' + encargo.id + '_' + m.id,
           fecha:     m.fecha || '0000-00-00',
           ts:        m.ts || 0,
           tipo:      'encargo',
           signo:     esEntrada ? '+' : '-',
           monto:     m.monto || 0,
-          titulo:    (esEntrada ? 'Entrada encargo' : 'Salida encargo') + ' · ' + (enc.nombre || ''),
+          titulo:    (esEntrada ? 'Entrada encargo' : 'Salida encargo') + ' · ' + (encargo.nombre || ''),
           subtitulo: m.desc || m.nota || '',
           fuente:    'encargos',
         });

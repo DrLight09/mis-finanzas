@@ -1,6 +1,6 @@
 // js/core/ingresos.js
 //
-// Mes actual, clases de movimiento e ingreso real: mesActual/gastosMes, CLASES_MOV, la ÚNICA definición de «ingreso real» (Inicio, Análisis y Wrapped) y _esGastoVarNoReal.
+// Mes actual, clases de movimiento e ingreso real: mesActual/gastosMes, CLASES_MOVIMIENTO, la ÚNICA definición de «ingreso real» (Inicio, Análisis y Wrapped) y _esGastoVarNoReal.
 // Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
@@ -18,8 +18,8 @@ function getIngresosFijosMes(mesK){ return Periodo.ingresosFijosDelMes(mesK); }
 // Cada movimiento nace con `clase`: 'ingreso' (sube el patrimonio), 'gasto' (lo baja), 'neutro' (mueve plata sin cambiar el
 // patrimonio: el "espejo" de Mesada, Préstamos, Encargos, plata comprometida…) o 'ajuste' (corrección de datos, ej. la apertura
 // de una cuenta). Todo lector pasa por claseEfectivaMovimiento(): no hay otro camino que mire etiquetas ni textos.
-const CLASES_MOV = ['ingreso', 'gasto', 'neutro', 'ajuste'];
-const _claseValida = c => CLASES_MOV.indexOf(c) !== -1;
+const CLASES_MOVIMIENTO = ['ingreso', 'gasto', 'neutro', 'ajuste'];
+const _claseValida = c => CLASES_MOVIMIENTO.indexOf(c) !== -1;
 
 // ¿Esta entrada NO cuenta como ingreso real? Solo cuenta la que tiene `clase: 'ingreso'`; una sin clase no cuenta (y save() avisa).
 function _esEntradaEspejoNoIngreso(m){
@@ -49,7 +49,7 @@ function entradasIngresoReal(estado){
     lista.push(m);
   });
   // Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben"): plata nueva.
-  _movsDeudaSinCuenta(st).forEach(x=>{ if(x.clase==='ingreso'&&x.monto>0) lista.push({id:x.m.id,tipo:'entrada',monto:x.monto,fecha:x.fecha,desc:x.m.nota||('Ingreso vía '+(x.deuda.nombre||'deuda')),clase:'ingreso',_esDeudaSinCuenta:true}); });
+  _movimientosDeudaSinCuenta(st).forEach(x=>{ if(x.clase==='ingreso'&&x.monto>0) lista.push({id:x.m.id,tipo:'entrada',monto:x.monto,fecha:x.fecha,desc:x.m.nota||('Ingreso vía '+(x.deuda.nombre||'deuda')),clase:'ingreso',_esDeudaSinCuenta:true}); });
   return lista;
 }
 

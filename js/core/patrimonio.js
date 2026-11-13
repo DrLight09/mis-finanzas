@@ -285,7 +285,7 @@ function recalcularMontoBaseHistorial(){
     // Destapes de alcancía ya hechos (sobrante/faltante): mismo tratamiento que una apertura — ver _ajusteAlcanciaPorFecha().
     const _ajAlcancia=_ajusteAlcanciaPorFecha();
     Object.keys(_ajAlcancia).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajAlcancia[f]; });
-    // Deudas sin pata de caja (ver _movsDeudaSinCuenta): ajuste de base, no crecimiento. Vale hacia atrás: se recalcula en cada carga.
+    // Deudas sin pata de caja (ver _movimientosDeudaSinCuenta): ajuste de base, no crecimiento. Vale hacia atrás: se recalcula en cada carga.
     const _ajDeu=_ajusteDeudasSinCuentaPorFecha();
     Object.keys(_ajDeu).forEach(f=>{ montoAperturaPorFecha[f]=(montoAperturaPorFecha[f]||0)+_ajDeu[f]; });
     S.patrimonioHistorial.forEach(h=>{
@@ -305,7 +305,7 @@ function recalcularMontoBaseHistorial(){
 // Quedan fuera: los perdones (ya cuentan como gasto/ingreso), lo pagado con TC (`_viaTC`: la tarjeta es la otra
 // pata) y los movimientos con `fuentes`/`destinos` repartidos (la diferencia puede ser un margen ya registrado).
 // Si el movimiento trae `clase:'ingreso'` es plata nueva (p. ej. un regalo): cuenta como ingreso del mes y NO como base.
-function _movsDeudaSinCuenta(estado){
+function _movimientosDeudaSinCuenta(estado){
   const st=estado||S, out=[];
   const veces=(lista,abre,reduce)=>(lista||[]).forEach(d=>(d.movimientos||[]).forEach(m=>{
     if(!m||!m.fecha||!(m.monto>0)||m._perdon||m._viaTC) return;
@@ -322,7 +322,7 @@ function _movsDeudaSinCuenta(estado){
 const ME_DEBEN_ABRE=['prestamo'], YO_DEBO_ABRE=['recibido'];
 function _ajusteDeudasSinCuentaPorFecha(){
   const r={};
-  _movsDeudaSinCuenta().forEach(x=>{ if(x.clase!=='ingreso') r[x.fecha]=(r[x.fecha]||0)+x.monto; });
+  _movimientosDeudaSinCuenta().forEach(x=>{ if(x.clase!=='ingreso') r[x.fecha]=(r[x.fecha]||0)+x.monto; });
   return r;
 }
 
@@ -374,7 +374,7 @@ function snapshotPatrimonio(){
   // MONTO exacto (no solo un flag) para que el cálculo de tendencia pueda restar únicamente
   // esa parte del cambio del día y conservar cualquier ingreso real que haya ocurrido el
   // mismo día (ej. apertura + mesada el mismo día).
-  const sumarAperturasYAjustesDeHoy = (movs)=> (movs||[]).reduce((a,m)=>{
+  const sumarAperturasYAjustesDeHoy = (movimientos)=> (movimientos||[]).reduce((a,m)=>{
     let t = 0;
     if(m.tipo==='apertura'&&m.fecha===hoyStr) t += (m.monto||0);
     if(m._ajustes) t += m._ajustes.filter(aj=>aj.fecha===hoyStr).reduce((b,aj)=>b+(aj.monto||0),0);
@@ -420,7 +420,7 @@ function medirPatrimonioParaHistorial(){
 
 // Día (YYYY-MM-DD) en que el movimiento entró al patrimonio: el de su creación (ts, o la hora que lleva su id de uid()),
 // no la fecha que el usuario le puso, que puede ser pasada. Sin ninguno de los dos, su fecha.
-function diaCreacionMov(item){
+function diaCreacionMovimiento(item){
   if(!item) return '';
   let ms=Number(item.ts);
   if(!Number.isFinite(ms)||ms<=0){
@@ -460,7 +460,7 @@ function purgarEfectoEnHistorial(antes, item){
   if(!antes||!despues) return;
   const d=despues.val-antes.val, dv=despues.vis-antes.vis;
   if(Math.abs(d)<0.005&&Math.abs(dv)<0.005) return;
-  quitarDeHistorial(diaCreacionMov(item), d, dv);
+  quitarDeHistorial(diaCreacionMovimiento(item), d, dv);
 }
 
 // Un saldo inicial entró por partes: el monto original el día que se creó la cuenta y cada corrección (`_ajustes`, que
@@ -469,7 +469,7 @@ function purgarAperturaDelHistorial(m){
   if(!m) return;
   const ajustes=m._ajustes||[];
   const original=(m.monto||0)-ajustes.reduce((a,x)=>a+(x.monto||0),0);
-  quitarDeHistorial(diaCreacionMov(m), -original);
+  quitarDeHistorial(diaCreacionMovimiento(m), -original);
   ajustes.forEach(x=>quitarDeHistorial(x.fecha, -(x.monto||0)));
 }
 
@@ -480,13 +480,13 @@ function purgarAperturaDelHistorial(m){
 function _saldoEncargosEnCuenta(cuentaKey){
   if(!S||!S.encargos||!cuentaKey)return 0;
   let total=0;
-  (S.encargos||[]).forEach(enc=>{
+  (S.encargos||[]).forEach(encargo=>{
     const map={};
-    if((enc.saldoInicial||0)>0){
-      const k=enc.cuentaInicial||'__sin__';
-      map[k]=(map[k]||0)+(enc.saldoInicial||0);
+    if((encargo.saldoInicial||0)>0){
+      const k=encargo.cuentaInicial||'__sin__';
+      map[k]=(map[k]||0)+(encargo.saldoInicial||0);
     }
-    (enc.movimientos||[]).forEach(m=>{
+    (encargo.movimientos||[]).forEach(m=>{
       const k=m.cuenta||'__sin__';
       if(m.tipo==='entrada')map[k]=(map[k]||0)+(m.monto||0);
       else map[k]=(map[k]||0)-(m.monto||0);

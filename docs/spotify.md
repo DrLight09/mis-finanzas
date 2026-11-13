@@ -307,7 +307,7 @@ Pago:
   restaurar el estado Pagó/Pendiente guardado en _estadoAntes
 ```
 
-Al borrar un cobro con `extra`, también se revierte el extra (`descontarFuente` exacto sobre `extraFuente` + `borrarMovEspejo`).
+Al borrar un cobro con `extra`, también se revierte el extra (`descontarFuente` exacto sobre `extraFuente` + `borrarMovimientoEspejo`).
 
 Las reversiones de saldo (cobro, abonos del pendiente y "Deshacer abono") usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
 
@@ -411,7 +411,7 @@ A veces la cuota es $5.100 y la persona entrega $5.500. Esos $400 **no son parte
 
 - `confirmarSpotifyDestino()` ya no rechaza pagar de más: `extra = recibido − (períodos × cuota)` (con tolerancia de $1) y el cobro guarda `monto = períodos × cuota`.
 - El extra tiene su propio destino, obligatorio y explícito (misma cuenta del cobro, otra, o "Sin especificar"). En modo dividido el split reparte solo la cuota.
-- La plata entra con `sumarFuente()` y deja un movimiento espejo (`registrarMovEspejo`, `_esExtraIngreso: true`, `_origenSeccion: 'Spotify'`): visible en el historial de la cuenta, protegido contra borrado directo, y contado como **ingreso real independiente** (Análisis, Salud financiera, Wrapped).
+- La plata entra con `sumarFuente()` y deja un movimiento espejo (`registrarMovimientoEspejo`, `_esExtraIngreso: true`, `_origenSeccion: 'Spotify'`): visible en el historial de la cuenta, protegido contra borrado directo, y contado como **ingreso real independiente** (Análisis, Salud financiera, Wrapped).
 - No toca ciclos: no entra a `spotifyAsignarPeriodos`, a "Recaudado", a "Total cobrado", a la ganancia ni al promedio. Se ve en el historial (línea "+ extra") y en la tarjeta "Extras recibidos".
 - Con "Sin especificar" el extra queda anotado en el cobro pero no mueve plata ni cuenta como ingreso.
 

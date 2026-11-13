@@ -225,10 +225,10 @@ const Reglas = (() => {
   // Partes comprometidas de un encargo: desde 1 día antes avisa en ámbar; si la fecha ya pasó y no se marcó «ya la usé», en rojo.
   registrar({ id: 'encargos-comprometidos', canales: AP, evaluar(ctx) {
     const S = ctx.S || {}, f = _fmt(ctx), out = [];
-    (S.encargos || []).forEach(enc => (enc.partes || []).filter(p => !p.usada && p.fecha).forEach(p => {
+    (S.encargos || []).forEach(encargo => (encargo.partes || []).filter(p => !p.usada && p.fecha).forEach(p => {
       const d = dias(ctx.hoy, p.fecha);
-      if (d < 0) out.push({ tipo: 'red', texto: enc.nombre + ': "' + p.desc + '" (' + f(p.monto) + ') venció hace ' + Math.abs(d) + 'd sin usarse — sigue comprometida', ir: 'encargos' });
-      else if (d <= 1) out.push({ tipo: 'amber', texto: enc.nombre + ': "' + p.desc + '" (' + f(p.monto) + ') es ' + (d === 0 ? 'hoy' : 'mañana') + ' — esa plata ya está comprometida', ir: 'encargos' });
+      if (d < 0) out.push({ tipo: 'red', texto: encargo.nombre + ': "' + p.desc + '" (' + f(p.monto) + ') venció hace ' + Math.abs(d) + 'd sin usarse — sigue comprometida', ir: 'encargos' });
+      else if (d <= 1) out.push({ tipo: 'amber', texto: encargo.nombre + ': "' + p.desc + '" (' + f(p.monto) + ') es ' + (d === 0 ? 'hoy' : 'mañana') + ' — esa plata ya está comprometida', ir: 'encargos' });
     }));
     return out;
   } });

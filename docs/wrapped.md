@@ -180,7 +180,7 @@ Agrega cinco slides nuevos, cada uno condicionado a que su módulo dueño tenga 
 | Dominio | Lee de | Qué muestra | Función |
 |---|---|---|---|
 | Encargos | `S.encargos[].movimientos` (`tipo:'entrada'`) | Total que te encargaron cuidar en el período, sobre todos los encargos, cuántas personas distintas y cuál fue el mayor | `_wrappedCalcularEncargos` |
-| Prestado — Me deben | `S.deudores[].movimientos` (`tipo:'prestamo'`/`'abono'`/`'pago-completo'`) | Cuánto prestaste y cuánto te devolvieron en el período; quién recibió más de ti ese período (no la deuda total pendiente, que puede venir de antes) | `_wrappedCalcularPrestado` |
+| Prestado — Me deben | `S.deudores[].movimientos` (`tipo:'prestamo'`/`'abono'`/`'pago_completo'`) | Cuánto prestaste y cuánto te devolvieron en el período; quién recibió más de ti ese período (no la deuda total pendiente, que puede venir de antes) | `_wrappedCalcularPrestado` |
 | Prestado — Yo debo | `S.misDeudas[].movimientos` (`tipo:'recibido'`/`'pago'`) | Cuánto te prestaron y cuánto pagaste en el período | `_wrappedCalcularMisDeudas` |
 | Mesada | `S.mesadas.{papa,mama}.pagos` | Total recibido de papá + mamá en el período | `_wrappedCalcularMesada` |
 | Spotify | `S.spotify.historial` (`tipo:'cobro'`/`'pago'`) | Cobrado menos pagado en el período | `_wrappedCalcularSpotify` |

@@ -1723,7 +1723,7 @@ async function _plataComprometidaEliminar(id){
       });
     }
     if(fechaRef && typeof nivelAntiguedadMovimiento==='function'){
-      const nivel=nivelAntiguedadMovimiento(fechaRef,operacionesPosteriores,'plata_comprometida');
+      const nivel=nivelAntiguedadMovimiento(fechaRef,operacionesPosteriores,'plataComprometida');
       if(nivel==='bloqueado'){
         if(typeof avisarMovimientoBloqueado==='function') await avisarMovimientoBloqueado();
         return;

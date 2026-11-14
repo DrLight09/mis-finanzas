@@ -100,7 +100,7 @@ describe('medeben', () => {
 
   test('Me deben — perdón = gasto real: la deuda queda en 0, ninguna cuenta se mueve, el patrimonio baja lo perdonado', () => {
     const ctx = freshApp(); const p0 = ctx.calcPatrimonioTotal();
-    const movimiento = aplicar(ctx, { tipo: 'pago-completo', monto: 100000, perdon: true });
+    const movimiento = aplicar(ctx, { tipo: 'pago_completo', monto: 100000, perdon: true });
     assert.equal(debe(ctx), 0);
     assert.equal(saldo(ctx, 'cuenta:nequi'), 200000);
     assert.equal(ctx.calcPatrimonioTotal() - p0, -100000, 'lo que te debían deja de ser un activo');
@@ -194,7 +194,7 @@ describe('medeben', () => {
     assert.equal(ctx.calcPatrimonioTotal() - p0, -30000);
     // perdonar lo que queda = pago completo
     const resto = aplicar(ctx, { tipo: 'abono', monto: 70000, perdon: true });
-    assert.equal(resto.tipo, 'pago-completo');
+    assert.equal(resto.tipo, 'pago_completo');
     assert.equal(debe(ctx), 0);
     assert.equal(ctx.S.gastosVar.length, 2);
     // revertir solo la primera
@@ -208,7 +208,7 @@ describe('medeben', () => {
     const ctx = freshApp();
     aplicar(ctx, { tipo: 'abono', monto: 30000, perdon: true });
     const d = ctx.S.deudores[0];
-    const recibido = d.movimientos.filter((m) => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon);
+    const recibido = d.movimientos.filter((m) => (m.tipo === 'abono' || m.tipo === 'pago_completo') && !m._perdon);
     assert.equal(recibido.length, 0);
   });
 });
@@ -314,7 +314,7 @@ describe('deudas-sin-cuenta', () => {
   test('Me deben — un abono o pago recibido sin cuenta destino es ajuste (−); con destino/destinos o perdón no', () => {
     const ctx = app({ deudores: d([
       { id: 'a', tipo: 'abono', monto: 600, fecha: '2026-09-17' },
-      { id: 'b', tipo: 'pago-completo', monto: 1000, fecha: '2026-09-18', destino: '' },
+      { id: 'b', tipo: 'pago_completo', monto: 1000, fecha: '2026-09-18', destino: '' },
       { id: 'c', tipo: 'abono', monto: 5000, fecha: '2026-09-19', destino: 'cuenta:efectivo' },
       { id: 'e', tipo: 'abono', monto: 308000, fecha: '2026-10-03', destinos: [{ fuente: 'cajita:x', monto: 308000 }] },
       { id: 'f', tipo: 'abono', monto: 7000, fecha: '2026-10-04', _perdon: true },
@@ -743,7 +743,7 @@ describe('totalPrestadoPendiente', () => {
 
   test('getDeudorSaldo / getMiDeudaSaldo — una sola fórmula para las dos direcciones (Deudas.saldo)', () => {
     const ctx = freshApp();
-    const meDeben = { movimientos: [{ tipo: 'prestamo', monto: 300 }, { tipo: 'abono', monto: 100 }, { tipo: 'pago-completo', monto: 50 }] };
+    const meDeben = { movimientos: [{ tipo: 'prestamo', monto: 300 }, { tipo: 'abono', monto: 100 }, { tipo: 'pago_completo', monto: 50 }] };
     const yoDebo = { movimientos: [{ tipo: 'recibido', monto: 300 }, { tipo: 'pago', monto: 100 }] };
     assert.equal(ctx.getDeudorSaldo(meDeben), 150);
     assert.equal(ctx.getMiDeudaSaldo(yoDebo), 200);

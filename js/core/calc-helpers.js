@@ -93,7 +93,7 @@ function tcCupoDisponible(tc){
 
    Dirección:  'favor'  = me deben (S.deudores)   — abre con 'prestamo'
                'contra' = yo debo (S.misDeudas)   — abre con 'recibido'
-   El resto de tipos ('abono', 'pago-completo', 'pago') reducen la deuda. Los
+   El resto de tipos ('abono', 'pago_completo', 'pago') reducen la deuda. Los
    nombres de tipo son disjuntos, así que el saldo no necesita saber la
    dirección: saldo = lo que abre − lo que reduce, en la propia dirección de
    esa deuda (positivo = queda algo pendiente).

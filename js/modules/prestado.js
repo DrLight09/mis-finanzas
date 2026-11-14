@@ -168,11 +168,11 @@ let movimientoTipo = 'prestamo'; // 'prestamo' | 'abono'
 // aparecían recién al cargarlo y empujaban todo Inicio hacia abajo (CLS).
 // Sigue siendo global: el resto de este archivo lo usa igual que antes.
 // Cuenta(s) realmente afectadas por un movimiento de deudor — la(s) fuente(s)
-// si fue un préstamo dado, el destino si fue un abono/pago-completo recibido.
+// si fue un préstamo dado, el destino si fue un abono/pago_completo recibido.
 // Cuentas que tocó un movimiento de deuda, de cualquier dirección. Los tipos son
 // disjuntos, así que no hace falta saber la dirección:
 //   prestamo → sale de fuente(s) · recibido → entra a destino
-//   abono / pago-completo → entra a destino · pago → sale de fuente
+//   abono / pago_completo → entra a destino · pago → sale de fuente
 function _deudaCuentasDe(m) {
   if (m.tipo === 'prestamo') return (m.fuentes && m.fuentes.length) ? m.fuentes.map(f => f.fuente).filter(Boolean) : (m.fuente ? [m.fuente] : []);
   if (m.tipo === 'pago') return (m.fuentes && m.fuentes.length) ? m.fuentes.map(f => f.fuente).filter(Boolean) : (m.fuente ? [m.fuente] : []);
@@ -214,7 +214,7 @@ function _deudaTieneCuentaAfectada(m) {
     if (m.fuentes && m.fuentes.length) return m.fuentes.some(f => f.fuente && f.fuente !== 'ganancia');
     return !!(m.fuente && m.fuente !== 'ganancia');
   }
-  // Abono / pago-completo
+  // Abono / pago_completo
   if (m._viaEncargo && m._encargoId && m._encargoMovimientoId) return true;
   if (m.destinos && m.destinos.length) return m.destinos.some(r => r.fuente);
   if (m.destino) return true;
@@ -509,7 +509,7 @@ function abrirDeudor(id) {
   const saldo = getDeudorSaldo(d);
   const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
   // Lo perdonado (_perdon) NO es plata que pagó: no entra en "Pagado" (queda en el historial como "Perdonado").
-  const totalAbonado = (d.movimientos || []).filter(m => (m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon).reduce((a, m) => a + m.monto, 0);
+  const totalAbonado = (d.movimientos || []).filter(m => (m.tipo === 'abono' || m.tipo === 'pago_completo') && !m._perdon).reduce((a, m) => a + m.monto, 0);
 
   _pintarEncabezadoDeuda({ avatar: 'ddAvatar', nombre: 'ddNombre', saldo: 'ddSaldoLabel', total1: 'ddDebe', total2: 'ddPago' }, d,
     saldo > 0 ? 'Te debe ' + fmt(saldo) : saldo < 0 ? 'Saldo a su favor: ' + fmt(-saldo) : 'Está al día',
@@ -533,7 +533,7 @@ function abrirDeudor(id) {
     const _porGrupo = {}; // grupoId -> [cardHtml (fragmento html``), ...]
     movimientos.forEach(m => {
       const esPrestamo = m.tipo === 'prestamo';
-      const esPagoCompleto = m.tipo === 'pago-completo';
+      const esPagoCompleto = m.tipo === 'pago_completo';
       const efectoDeuda = esPrestamo ? +m.monto : -m.monto; // cuánto sumó/restó esta entry a la deuda
       const saldoDespuesDeuda = saldoCorriente;
       const saldoAntesDeuda = saldoCorriente - efectoDeuda;
@@ -849,8 +849,8 @@ async function eliminarMovimientoDeudor(deudorId, movimientoId, opts) {
 }
 
 function initMovimientoSheet(tipo) {
-  // Preservar 'pago-completo' para distinguirlo de un abono normal
-  movimientoTipo = tipo; // 'prestamo' | 'abono' | 'pago-completo'
+  // Preservar 'pago_completo' para distinguirlo de un abono normal
+  movimientoTipo = tipo; // 'prestamo' | 'abono' | 'pago_completo'
   // incluirTC=false (3er parámetro de poblarFuente): en ninguno de los dos selects
   // (modo simple) puede aparecer una tarjeta de crédito.
   //  - mov_destino: una TC nunca recibe plata entrante (pagarle a una TC es otro flujo).
@@ -869,7 +869,7 @@ function initMovimientoSheet(tipo) {
   FuentesFiltro.podar('mov_fuente', FuentesFiltro.PRESET.SALIDA);
   // ext selects se pueblan dinámicamente en extRenderPartes()
   const esPrestamo = tipo === 'prestamo';
-  const esPagoCompleto = tipo === 'pago-completo';
+  const esPagoCompleto = tipo === 'pago_completo';
   const esAbono = tipo === 'abono' || esPagoCompleto;
   document.getElementById('movSheetTitle').textContent = esPrestamo ? 'Nuevo préstamo' : esPagoCompleto ? 'Pagar préstamo completo' : 'Registrar abono';
   document.getElementById('movBtnConfirm').textContent = esPrestamo ? 'Guardar préstamo' : esPagoCompleto ? 'Confirmar pago total' : 'Guardar abono';
@@ -978,14 +978,14 @@ function _movimientoTieneEncargoVinculado() {
 }
 
 // ── Perdonar ("se lo regalé"): una parte de la deuda o todo lo que falta ──
-// Se registra como un 'abono' con _perdon:true (o 'pago-completo' si lo perdonado es todo lo que faltaba), así
+// Se registra como un 'abono' con _perdon:true (o 'pago_completo' si lo perdonado es todo lo que faltaba), así
 // saldo, grupos y reversión funcionan igual que siempre. NO entra plata a ninguna cuenta y registra un gasto real
 // por lo perdonado en S.gastosVar (fuente '', _secundario, _esPerdonDeuda), enlazado por _gastoPerdonId /
 // _deudorMovimientoId. En "Registrar abono" el monto es libre (hasta lo que debe); en "Pagar préstamo completo" queda
 // fijo en lo que falta. Ver CHANGELOG 2026-09-19 y 2026-10-03.
 function _movimientoEsPerdon() {
   const checkbox = document.getElementById('mov_perdon');
-  return (movimientoTipo === 'pago-completo' || movimientoTipo === 'abono') && !!(checkbox && checkbox.checked);
+  return (movimientoTipo === 'pago_completo' || movimientoTipo === 'abono') && !!(checkbox && checkbox.checked);
 }
 function toggleMovimientoPerdon() {
   const perdon = _movimientoEsPerdon();
@@ -1000,7 +1000,7 @@ function toggleMovimientoPerdon() {
   document.getElementById('mov_extra_wrap').style.display = perdon ? 'none' : '';
   const encargoWrap = document.getElementById('mov_enc_wrap');
   if (encargoWrap) encargoWrap.style.display = (!perdon && _movimientoTieneEncargoVinculado()) ? '' : 'none';
-  const completo = movimientoTipo === 'pago-completo';
+  const completo = movimientoTipo === 'pago_completo';
   document.getElementById('movSheetTitle').textContent = perdon
     ? (completo ? 'Perdonar deuda' : 'Perdonar parte de la deuda')
     : (completo ? 'Pagar préstamo completo' : 'Registrar abono');
@@ -1069,7 +1069,7 @@ function _initGrupoSelector(prefix, esPrestamoNuevo, deuda) {
 }
 
 // Un abono que cubre TODO lo que la persona debe es, en la práctica, un pago completo: si abrieron
-// "Registrar abono" pero el monto iguala el saldo, se guarda como 'pago-completo' (mismo tipo,
+// "Registrar abono" pero el monto iguala el saldo, se guarda como 'pago_completo' (mismo tipo,
 // descripción del movimiento secundario y etiqueta en el historial que si hubieran abierto ese sheet).
 // movimientoTipo se promueve solo durante este guardado y se restaura al terminar: si una validación
 // aborta, el sheet sigue siendo "abono" y el siguiente intento se evalúa de nuevo desde cero.
@@ -1080,7 +1080,7 @@ function confirmarMovimiento() {
       const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
       const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
       const saldo = d ? getDeudorSaldo(d) : 0;
-      if (d && saldo > 0 && monto > 0 && Math.abs(monto - saldo) <= Deudas.TOL_FINO) movimientoTipo = 'pago-completo';
+      if (d && saldo > 0 && monto > 0 && Math.abs(monto - saldo) <= Deudas.TOL_FINO) movimientoTipo = 'pago_completo';
     }
     return _confirmarMovimientoInterno();
   } finally {
@@ -1156,7 +1156,7 @@ function _aplicarMovimiento(p) {
 // gasto real del mes por lo perdonado: la plata ya había salido de tus cuentas cuando prestaste y ahora
 // la das por perdida. El gasto no descuenta ningún saldo (fuente ''), es _secundario (solo se borra desde acá)
 // y _esGastoVarNoReal() no lo excluye, así que entra a Gastos/Análisis/salud. Si lo perdonado es todo lo que
-// faltaba queda como 'pago-completo'; si es una parte, como 'abono' (ambos con _perdon:true).
+// faltaba queda como 'pago_completo'; si es una parte, como 'abono' (ambos con _perdon:true).
 function _aplicarPerdon(p) {
   const { d, monto, fecha, nota } = p;
   const esTodo = Math.abs(monto - getDeudorSaldo(d)) <= Deudas.TOL_FINO;
@@ -1170,7 +1170,7 @@ function _aplicarPerdon(p) {
     clase: 'gasto', _esPerdonDeuda: true, _deudorId: d.id, _deudorMovimientoId: perdonMovimientoId
   });
   d.movimientos.push({
-    id: perdonMovimientoId, tipo: esTodo ? 'pago-completo' : 'abono', monto, fecha, destino: '', nota,
+    id: perdonMovimientoId, tipo: esTodo ? 'pago_completo' : 'abono', monto, fecha, destino: '', nota,
     grupoId: p.grupoId, ts: Date.now(), _perdon: true, _gastoPerdonId: gastoPerdonId
   });
 }
@@ -1400,8 +1400,8 @@ function _aplicarAbonoEncargo(p) {
 
   // 2. El dinero llega a una cuenta del usuario
   const abonMovimientoId = uid();
-  const esPagoCompleto = p.tipo === 'pago-completo';
-  const tipoGuardar = esPagoCompleto ? 'pago-completo' : 'abono';
+  const esPagoCompleto = p.tipo === 'pago_completo';
+  const tipoGuardar = esPagoCompleto ? 'pago_completo' : 'abono';
   const descDestino = esPagoCompleto
     ? `Pago de deuda completo — ${d.nombre} (vía encargo ${encargo.nombre})`
     : `Abono de deuda — ${d.nombre} (vía encargo ${encargo.nombre})`;
@@ -1473,8 +1473,8 @@ function _planAbonoNormal(base) {
 
 function _aplicarAbonoNormal(p) {
   const { d, monto, fecha, nota, destinos, destino, tieneExtra } = p;
-  const esPagoCompleto = p.tipo === 'pago-completo';
-  const tipoGuardar = esPagoCompleto ? 'pago-completo' : 'abono';
+  const esPagoCompleto = p.tipo === 'pago_completo';
+  const tipoGuardar = esPagoCompleto ? 'pago_completo' : 'abono';
   const desc = esPagoCompleto ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
   let movimiento;
   if (destinos) {
@@ -2541,7 +2541,7 @@ function _abrirSheetPagoCompleto() {
   const saldo = getDeudorSaldo(d);
   if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
   openSheet('registrar-movimiento');
-  initMovimientoSheet('pago-completo');
+  initMovimientoSheet('pago_completo');
   document.getElementById('mov_monto').value = fmtInput(saldo);
 }
 

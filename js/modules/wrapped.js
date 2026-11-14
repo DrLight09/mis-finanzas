@@ -2162,7 +2162,7 @@ function _wrappedCalcularEncargos(S, tipo, mesK, anioK){
 /* ─── PRESTADO — Me deben (S.deudores) ────────────────────────────────
    Cuánto prestaste este período (movimientos 'prestamo', dinero que
    sale de una cuenta tuya, ver prestado.md §2.2) y cuánto te devolvieron
-   ('abono'/'pago-completo'). El deudor "del año" se elige por cuánto le
+   ('abono'/'pago_completo'). El deudor "del año" se elige por cuánto le
    prestaste en el período — no por su deuda pendiente total, que puede
    venir de años anteriores y no sería un dato de "este año". */
 function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
@@ -2178,9 +2178,9 @@ function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
     movimientos.forEach(m => {
       if(!m || !_wrappedEnRango(m.fecha, tipo, mesK, anioK)) return;
       if(m.tipo === 'prestamo'){ totalPrestado += (m.monto||0); prestadoAEsta += (m.monto||0); nPrestamosAEsta++; }
-      // Un perdón de deuda ("¿Se lo regalas?", m._perdon) es un 'pago-completo' que NO
+      // Un perdón de deuda ("¿Se lo regalas?", m._perdon) es un 'pago_completo' que NO
       // devolvió plata: no cuenta como devuelto (ya cuenta como gasto real, ver gastos.md).
-      else if((m.tipo === 'abono' || m.tipo === 'pago-completo') && !m._perdon){ totalDevuelto += (m.monto||0); }
+      else if((m.tipo === 'abono' || m.tipo === 'pago_completo') && !m._perdon){ totalDevuelto += (m.monto||0); }
     });
     if(prestadoAEsta > 0 && (!topDeudor || prestadoAEsta > topDeudor.monto)){
       topDeudor = { nombre: d.nombre, personaId: d.personaId || null, monto: prestadoAEsta, n: nPrestamosAEsta };
@@ -2895,7 +2895,7 @@ function _wrappedRecuperacionMasRapida(S, anioK){
     if(movimientos.length !== 2) return;
     const [primero, segundo] = movimientos;
     if(primero.tipo !== 'prestamo') return;
-    if(!(segundo.tipo === 'abono' || segundo.tipo === 'pago-completo')) return;
+    if(!(segundo.tipo === 'abono' || segundo.tipo === 'pago_completo')) return;
     if(segundo._perdon) return; // perdonada ≠ recuperada: no es una devolución rápida
     if((segundo.monto||0) < (primero.monto||0)) return;
     if(primero.fecha.slice(0,4) !== anioK) return;

@@ -51,47 +51,19 @@ function movimientosSinClase(estado){
 
 /* ---- VERSIÓN DEL MODELO DE DATOS ----
    Esta versión de la app nació limpia en el esquema 9 (2026-10-18): NO migra datos de versiones anteriores y no arrastra
-   migraciones antiguas (las de las versiones 8 y 9 se plegaron en el modelo actual: una sola tasa de Nu, y todo
-   Spotify en S.spotify; la v11, que dio nombre completo a nueve campos guardados, se plegó el 2026-11-13; la v12, que hizo lo mismo con 21 campos de movimiento, encargo y operaciones, sigue en MIGRACIONES). Quien trae datos
+   migraciones antiguas. Las de las versiones 8 y 9 (una sola tasa de Nu, todo Spotify en S.spotify) y las de la 11 y la 12 (nombres
+   completos en campos guardados) se plegaron en el modelo actual: SCHEMA_BASE es la 12 y MIGRACIONES está vacía. Quien trae datos
    de un esquema menor los ve marcados (S._esquemaAnterior) y empieza de cero (Configuración → Borrar todo); un backup de esa
    versión se rechaza al importar.
 
-   Para cambiar la forma de los datos guardados en el futuro: sumar { v: N+1, nombre, fn(d) } al final de MIGRACIONES. `fn`
-   recibe el objeto de datos y lo modifica en sitio; debe ser idempotente. Nunca editar ni reordenar una existente. Corren UNA
-   vez, en orden, sobre el estado cargado de Firestore y, vía aplicarMigraciones(), sobre un backup JSON antes de importarlo.
-   La versión guardada vive en S.schemaVersion. */
-const SCHEMA_BASE = 11;    // primera versión compatible; la actual es la de la última migración de MIGRACIONES (hoy 12)
+   Para cambiar la forma de los datos guardados en el futuro: sumar { v: N+1, nombre, fn(d) } al final de MIGRACIONES (con N = SCHEMA_BASE
+   mientras esté vacía). `fn` recibe el objeto de datos y lo modifica en sitio; debe ser idempotente. Nunca editar ni reordenar una
+   existente. Corren UNA vez, en orden, sobre el estado cargado de Firestore y, vía aplicarMigraciones(), sobre un backup JSON antes de
+   importarlo. La versión guardada vive en S.schemaVersion. Si la migración solo renombra claves en todo el árbol, el recorrido que
+   lo hacía (_renombrarClavesEnArbol) está en la historia de git (commit que plegó la v12): se recupera de ahí. */
+const SCHEMA_BASE = 12;    // primera versión compatible; la actual es la de la última migración de MIGRACIONES (si la hay) o esta misma
 
-// Renombra claves en TODO el árbol de datos (arreglos y objetos anidados, sin importar dónde vivan). Si el nombre nuevo ya existe
-// en ese objeto se conserva y se descarta el viejo. Idempotente: tras la primera pasada ya no queda ninguna clave vieja.
-function _renombrarClavesEnArbol(raiz, mapa) {
-  const pila = [raiz];
-  while (pila.length) {
-    const x = pila.pop();
-    if (Array.isArray(x)) { x.forEach(v => { if (v && typeof v === 'object') pila.push(v); }); continue; }
-    for (const k of Object.keys(x)) {
-      const v = x[k];
-      if (Object.prototype.hasOwnProperty.call(mapa, k)) { const nuevo = mapa[k]; if (!(nuevo in x)) x[nuevo] = v; delete x[k]; }
-      if (v && typeof v === 'object') pila.push(v);
-    }
-  }
-}
-
-const MIGRACIONES = [
-  // v12 (2026-11-14): 21 campos guardados que llevaban «mov», «enc» u «ops» pasan a su nombre completo (docs/glosario-dominio.md).
-  // Cuando los datos de la nube y los backups ya estén en la v12 se puede plegar: SCHEMA_BASE = 12 y MIGRACIONES = [].
-  { v: 12, nombre: 'campos guardados de movimiento, encargo y operaciones con nombre completo', fn(d) {
-    _renombrarClavesEnArbol(d, {
-      '_movId': '_movimientoId', '_movSecId': '_movimientoSecId', 'movId': 'movimientoId',
-      '_encMovId': '_encargoMovimientoId', '_encMovIds': '_encargoMovimientoIds', '_encNombre': '_encargoNombre', '_encId': '_encargoId',
-      '_tcMovId': '_tcMovimientoId', '_abonoDestinoMovId': '_abonoDestinoMovimientoId', '_alcanciaMovId': '_alcanciaMovimientoId',
-      '_deudorMovId': '_deudorMovimientoId', '_deudaMovId': '_deudaMovimientoId', '_miDeudaMovId': '_miDeudaMovimientoId',
-      '_abonoEncMovId': '_abonoEncargoMovimientoId', '_encExtraMovId': '_encargoExtraMovimientoId', '_prestamoMovId': '_prestamoMovimientoId',
-      '_encargoOrigenMovId': '_encargoOrigenMovimientoId', 'extraMovId': 'extraMovimientoId', 'movExtraId': 'movimientoExtraId',
-      'opsAviso': 'operacionesAviso', 'opsBloqueo': 'operacionesBloqueo',   // umbrales de config.proteccionAntiguedad
-    });
-  } },
-];
+const MIGRACIONES = [];
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
 
 function aplicarMigraciones(d) {
@@ -174,9 +146,9 @@ function load(){
   // módulo tuviera su propia entrada) sin pisar valores que el usuario haya
   // ajustado a mano en los que ya existen. Antes esto solo corría si
   // proteccionAntiguedad faltaba por completo, así que agregar un módulo
-  // nuevo (ver alcancia/plata_comprometida, 2026-09-01) nunca llegaba a una
+  // nuevo (ver alcancia/plataComprometida, 2026-09-01) nunca llegaba a una
   // cuenta con datos ya guardados — ver CHANGELOG.md#alcancía.
-  const _paDefaults={spotify:{operacionesAviso:2,operacionesBloqueo:5},mesada:{operacionesAviso:2,operacionesBloqueo:5},prestamos:{operacionesAviso:2,operacionesBloqueo:5},encargos:{operacionesAviso:2,operacionesBloqueo:5},tarjetas:{operacionesAviso:2,operacionesBloqueo:5},cuentas:{operacionesAviso:2,operacionesBloqueo:5},gastos:{operacionesAviso:2,operacionesBloqueo:5},alcancia:{operacionesAviso:2,operacionesBloqueo:5},plata_comprometida:{operacionesAviso:2,operacionesBloqueo:5}};
+  const _paDefaults={spotify:{operacionesAviso:2,operacionesBloqueo:5},mesada:{operacionesAviso:2,operacionesBloqueo:5},prestamos:{operacionesAviso:2,operacionesBloqueo:5},encargos:{operacionesAviso:2,operacionesBloqueo:5},tarjetas:{operacionesAviso:2,operacionesBloqueo:5},cuentas:{operacionesAviso:2,operacionesBloqueo:5},gastos:{operacionesAviso:2,operacionesBloqueo:5},alcancia:{operacionesAviso:2,operacionesBloqueo:5},plataComprometida:{operacionesAviso:2,operacionesBloqueo:5}};
   Object.keys(_paDefaults).forEach(k=>{ if(!S.config.proteccionAntiguedad[k])S.config.proteccionAntiguedad[k]=_paDefaults[k]; });
   // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
   // load() puede correr antes de que calc-helpers.js (donde vive Deudas) haya cargado: guard.

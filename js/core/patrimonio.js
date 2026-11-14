@@ -315,8 +315,8 @@ function _movimientosDeudaSinCuenta(estado){
     else if(reduce.indexOf(m.tipo)!==-1) signo=abre===ME_DEBEN_ABRE?-1:1;
     if(signo) out.push({m,deuda:d,fecha:m.fecha,monto:signo*m.monto,clase:m.clase});
   }));
-  veces(estadoActual.deudores,ME_DEBEN_ABRE,['abono','pago-completo']);
-  veces(estadoActual.misDeudas,YO_DEBO_ABRE,['pago','abono','pago-completo']);
+  veces(estadoActual.deudores,ME_DEBEN_ABRE,['abono','pago_completo']);
+  veces(estadoActual.misDeudas,YO_DEBO_ABRE,['pago','abono','pago_completo']);
   return out;
 }
 const ME_DEBEN_ABRE=['prestamo'], YO_DEBO_ABRE=['recibido'];

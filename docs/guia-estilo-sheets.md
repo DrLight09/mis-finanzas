@@ -266,11 +266,11 @@ El sheet "Depositar" **no tiene selector de tipo**: cada depósito se arma con *
 
 | Origen | Tipo guardado (un origen) | ¿Descuenta cuenta? | ¿Ingreso del mes? | Dónde queda |
 |---|---|---|---|---|
-| Una cuenta real | `yo-cuenta` | **Sí** | No (traslado) | `S.transferencias`, `origen: cuenta`, `destino: 'alcancia'`, `_esAlcancia: true` |
-| Plata mía (no estaba en ninguna cuenta) | `yo-directo` | No | **Sí** | `S.movimientos` tipo `'entrada'` con `_esAlcanciaIngreso: true` |
-| Regalo de mamá | `regalo` | No | **Sí** | Igual que `yo-directo` |
-| Pago de mamá por un mandado | `mandado` | No | **Sí** | Igual que `yo-directo` |
-| Me pagaron una deuda (solo con un origen) | `cobro-deuda` | No | No (reduce la deuda de la persona) | `d.movimientos[]` del deudor (Prestado) |
+| Una cuenta real | `yo_cuenta` | **Sí** | No (traslado) | `S.transferencias`, `origen: cuenta`, `destino: 'alcancia'`, `_esAlcancia: true` |
+| Plata mía (no estaba en ninguna cuenta) | `yo_directo` | No | **Sí** | `S.movimientos` tipo `'entrada'` con `_esAlcanciaIngreso: true` |
+| Regalo de mamá | `regalo` | No | **Sí** | Igual que `yo_directo` |
+| Pago de mamá por un mandado | `mandado` | No | **Sí** | Igual que `yo_directo` |
+| Me pagaron una deuda (solo con un origen) | `cobro_deuda` | No | No (reduce la deuda de la persona) | `d.movimientos[]` del deudor (Prestado) |
 
 **Regla mnemotécnica:** si la plata ya estaba en una cuenta tuya → traslado (no ingreso). Si viene de afuera (efectivo sin cuenta, regalo, mandado) → ingreso del mes.
 
@@ -307,7 +307,7 @@ Al destapar se generan hasta 3 movimientos automáticos, y **no son intercambiab
 - En `S.movimientos`, `tipo` solo toma estos valores: `'entrada'`, `'salida'`, `'salida_manual'`, `'apertura'` y `'transferencia'`. **Cualquier otro valor (incluido `'ingreso'`) cae por descarte en la rama de "salida"** dentro de `getMovimientosCuenta()` y se muestra con signo negativo aunque el dinero esté entrando. Si un movimiento cuenta como ingreso o gasto del mes lo decide su `clase`, no el `tipo`.
 - Las cuentas personalizadas **no tienen convención propia**: su historial vive en `S.movimientos` con `fuente: 'custom:ID'` y los mismos `tipo` que Nequi o Efectivo (desde 2026-10-12; no existe `c.movimientos`). `_sumarASaldo()` solo mueve `c.saldo`; ver `cuentas.md`.
 - `_esAlcancia: true` oculta movimientos del feed general (`_normMovimientos`) — **no decide** si cuentan como ingreso; eso lo decide la `clase` guardada.
-- `_esAlcanciaIngreso: true` identifica los ingresos reales generados al momento del depósito (regalo, mandado, yo-directo, partes sin cuenta de un depósito dividido). Son tipo `'entrada'` y **sí aparecen** en el feed porque son ingresos reales visibles.
+- `_esAlcanciaIngreso: true` identifica los ingresos reales generados al momento del depósito (regalo, mandado, yo_directo, partes sin cuenta de un depósito dividido). Son tipo `'entrada'` y **sí aparecen** en el feed porque son ingresos reales visibles.
 - Al destapar, `S.alcancia.saldoRegistrado` se resetea a `0` — necesario porque `calcPatrimonioTotal()` suma ese campo mientras está activa; si no se reseteara, el dinero quedaría contado dos veces.
 - El historial (`entradaHistorial`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `_alcanciaDesgloseHtml` no tendría de dónde sacar el desglose de los ciclos anteriores.
 

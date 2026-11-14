@@ -200,7 +200,7 @@
         if (m._encargoMovimientoId && !esIngresoReal) return false; // generado como efecto secundario de un encargo
         if (espejoDeudores[m.id]) return false; // espejo de un abono de "Me deben"
         if (m._esAlcancia && !esExtraAlcancia) return false; // movimientos internos de alcancía oculta (destape)
-        // Ingresos neto-cero de depósitos sin cuenta de origen (yo-directo/regalo/mandado/split): antes se
+        // Ingresos neto-cero de depósitos sin cuenta de origen (yo_directo/regalo/mandado/split): antes se
         // colaban acá como "+ $X Ingreso" con el monto a la vista — mismo criterio que los gastos
         // `_esAlcancia` de _normGastos(), que ya se excluían.
         if (m._esAlcanciaIngreso) return false;

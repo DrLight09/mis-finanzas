@@ -92,14 +92,14 @@ function _alcanciaDesgloseHtml(movimientos, fmtFn){
   const f = typeof fmtFn === 'function' ? fmtFn : fmt;
 
   // Acumular por categoría
-  let yo      = 0; // yo-directo + yo-cuenta + tu parte del split + cobro-deuda (es plata tuya)
+  let yo      = 0; // yo_directo + yo_cuenta + tu parte del split + cobro_deuda (es plata tuya)
   let mandado = 0; // tipo === 'mandado'
   let mama    = 0; // regalo de mamá (tipo === 'regalo') + parte de mamá en splits
 
   movimientos.forEach(m => {
     const tipo = m.tipo || '';
     const monto = m.monto || 0;
-    if(tipo === 'yo-directo' || tipo === 'yo-cuenta' || tipo === 'cobro-deuda'){
+    if(tipo === 'yo_directo' || tipo === 'yo_cuenta' || tipo === 'cobro_deuda'){
       yo += monto;
     } else if(tipo === 'mandado'){
       mandado += monto;
@@ -141,18 +141,18 @@ function _alcanciaDesgloseHtml(movimientos, fmtFn){
 }
 
 /* ─── ORÍGENES DEL DEPÓSITO ──────────────────────────────────────────────
-   Antes había un selector de "tipo" (yo-directo / yo-cuenta / regalo / mandado /
-   split / cobro-deuda). Ahora cada depósito se arma con UNO o VARIOS orígenes:
+   Antes había un selector de "tipo" (yo_directo / yo_cuenta / regalo / mandado /
+   split / cobro_deuda). Ahora cada depósito se arma con UNO o VARIOS orígenes:
    una cuenta real (resta saldo), o uno de tres orígenes "sin cuenta" (plata que
    nunca estuvo en ninguna cuenta → ingreso registrado, sin tocar saldos), o el
    cobro de una deuda (solo en modo de un único origen). "Dividir" reparte el
    monto entre varios orígenes con el motor genérico js/core/split.js.
    Con UN solo origen el registro guardado es idéntico al de siempre (tipo
-   yo-cuenta / yo-directo / regalo / mandado / cobro-deuda); con varios se guarda
+   yo_cuenta / yo_directo / regalo / mandado / cobro_deuda); con varios se guarda
    tipo 'multi' con `partes[]`.  */
 const _ALCANCIA_VALOR_DEUDA = '@deuda';
 const _ALCANCIA_ORIGENES_SIN_CUENTA = {
-  '@propio':  { origen: 'propio',  tipo: 'yo-directo', label: 'Plata mía (no estaba en ninguna cuenta)', corto: 'Propio',        desc: 'Depósito en alcancía', nota: 'Ingreso registrado al guardar en alcancía (dinero directo)' },
+  '@propio':  { origen: 'propio',  tipo: 'yo_directo', label: 'Plata mía (no estaba en ninguna cuenta)', corto: 'Propio',        desc: 'Depósito en alcancía', nota: 'Ingreso registrado al guardar en alcancía (dinero directo)' },
   '@regalo':  { origen: 'regalo',  tipo: 'regalo',     label: 'Regalo de mamá',                          corto: 'Regalo mamá',   desc: 'Regalo de mamá',       nota: 'Ingreso: regalo de mamá guardado en alcancía' },
   '@mandado': { origen: 'mandado', tipo: 'mandado',    label: 'Pago de mamá por un mandado',             corto: 'Mandado mamá',  desc: 'Mandado de mamá',      nota: 'Ingreso: pago de mandado guardado en alcancía' }
 };
@@ -672,8 +672,8 @@ window.renderAlcancia = function(){
       if(!movimientos.length){
         movimientosEl.innerHTML = emptyInline('Aún no hay movimientos en esta alcancía.',{grande:true});
       } else {
-        const tipoIcon = { yo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro-deuda': '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
-        const tipoColor = { yo: 'alc-c-accent', regalo: 'alc-c-amber', mandado: 'alc-c-amber', split: 'alc-c-amber', 'cobro-deuda': 'alc-c-accent' };
+        const tipoIcon = { yo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>', regalo: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>', mandado: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>', split: '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><path d="M17 11H9l-2-2H3v8h4l2 2h8l4-4v-4h-4z"/><path d="M9 11V7l4-4 4 4v4"/></svg>', 'cobro_deuda': '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="alc-ico-v"><circle cx="12" cy="12" r="10"/><polyline points="8 12 12 16 16 12"/><line x1="12" y1="8" x2="12" y2="16"/></svg>' };
+        const tipoColor = { yo: 'alc-c-accent', regalo: 'alc-c-amber', mandado: 'alc-c-amber', split: 'alc-c-amber', 'cobro_deuda': 'alc-c-accent' };
         // Orden por FECHA del depósito (más reciente arriba); si dos tienen la misma fecha, gana el que se
         // registró después (ts). Antes se usaba el orden de registro, así que un depósito olvidado y anotado
         // con fecha pasada quedaba arriba de otros más nuevos.
@@ -688,7 +688,7 @@ window.renderAlcancia = function(){
           const label = m.tipoLabel || (m.fuenteOrigen ? 'Propio' : 'Externo');
           const fmtFuente = m.fuenteOrigen
             ? _alcanciaNombreFuente(m.fuenteOrigen) // misma resolución de nombre que el resto del módulo
-            : (m.tipo === 'cobro-deuda' && m._prestamoDeudorId
+            : (m.tipo === 'cobro_deuda' && m._prestamoDeudorId
                 ? (() => { const dd=Deudas.lista('favor').find(x=>x.id===m._prestamoDeudorId); return dd?dd.nombre:null; })()
                 : null);
           return `
@@ -811,7 +811,7 @@ window.alcanciaIniciarNueva = function(){
                          saldo: es plata que nunca estuvo en una cuenta. (Antes se sumaba y
                          restaba el mismo monto a Efectivo para "cancelarlo".)
      · deuda           → abono en el deudor (solo con un único origen)
-   Un único origen guarda el mismo registro de siempre (tipo yo-cuenta/yo-directo/...);
+   Un único origen guarda el mismo registro de siempre (tipo yo_cuenta/yo_directo/...);
    varios orígenes guardan tipo 'multi' con partes[]. */
 window.alcanciaConfirmarDeposito = function(){
   const fecha  = (document.getElementById('alc_dep_fecha')||{}).value  || (typeof hoy==='function'?hoy():'');
@@ -887,7 +887,7 @@ window.alcanciaConfirmarDeposito = function(){
         desc: descVal || 'Depósito en alcancía',
         nota: (unica ? 'Guardado en alcancía oculta' : 'Guardado en alcancía oculta (depósito dividido)') + (descVal ? ': ' + descVal : ''),
         _esAlcancia: true,
-        _alcanciaTipo: unica ? 'yo-cuenta' : 'multi',
+        _alcanciaTipo: unica ? 'yo_cuenta' : 'multi',
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
@@ -946,10 +946,10 @@ window.alcanciaConfirmarDeposito = function(){
   if(unica){
     const p = partes[0];
     if(p.origen === 'cuenta'){
-      movimientoEntry.tipo = 'yo-cuenta'; movimientoEntry.tipoLabel = 'Propio (de cuenta)'; movimientoEntry.fuenteOrigen = p.fuente;
+      movimientoEntry.tipo = 'yo_cuenta'; movimientoEntry.tipoLabel = 'Propio (de cuenta)'; movimientoEntry.fuenteOrigen = p.fuente;
       movimientoEntry.desc = descVal || 'Depósito en alcancía';
     } else if(p.origen === 'deuda'){
-      movimientoEntry.tipo = 'cobro-deuda'; movimientoEntry.tipoLabel = 'Cobro de deuda';
+      movimientoEntry.tipo = 'cobro_deuda'; movimientoEntry.tipoLabel = 'Cobro de deuda';
       movimientoEntry.desc = descVal || ('Cobro de deuda — ' + cobroDeudorNombre);
       movimientoEntry._prestamoDeudorId = cobroDeudorId;
       movimientoEntry._prestamoMovimientoId = cobroAbonoMovimientoId;
@@ -1234,11 +1234,11 @@ window.alcanciaToggleMontoDeposito = function(movimientoId, el){
 
 /* ─── ELIMINAR UN DEPÓSITO ───────────────────────────────────────────────
    Revierte según el tipo del depósito (ver depositAlcancia() arriba):
-   - 'yo-directo' / 'regalo' / 'mandado':
+   - 'yo_directo' / 'regalo' / 'mandado':
      fueron un ingreso neto-cero en S.movimientos (sumarFuente(+) seguido
      de sumarFuente(-)) — no tocan saldo real, así que basta con quitar el
      registro, sin revertir ningún saldo.
-   - 'yo-cuenta': fue un traslado a la alcancía en S.transferencias que sí
+   - 'yo_cuenta': fue un traslado a la alcancía en S.transferencias que sí
      descontó saldo — hay que devolver la plata con sumarFuente().
    No usa eliminarMovimiento() de movimientos.js porque esos registros ya
    quedan marcados _secundario (ver arriba), así que esa función los
@@ -1260,7 +1260,7 @@ window.alcanciaEliminarDeposito = async function(movimientoId){
   // posteriores" se cuenta contra la alcancía completa (mismo criterio que
   // se usa en Encargos desde 2026-09-01 — ver CHANGELOG.md#encargos).
   let deudorParaAviso = null;
-  if(entry.tipo === 'cobro-deuda' && entry._prestamoDeudorId){
+  if(entry.tipo === 'cobro_deuda' && entry._prestamoDeudorId){
     deudorParaAviso = Deudas.lista('favor').find(x => x.id === entry._prestamoDeudorId) || null;
   }
   if(typeof nivelAntiguedadMovimiento === 'function'){
@@ -1272,9 +1272,9 @@ window.alcanciaEliminarDeposito = async function(movimientoId){
     }
     if(nivel === 'viejo' && typeof confirmarBorrarMovimientoViejo === 'function'){
       let nombreCuenta, direccion;
-      if(entry.tipo === 'yo-cuenta' && entry.fuenteOrigen){ nombreCuenta = fuenteLabel(entry.fuenteOrigen); direccion = 'sube'; }
+      if(entry.tipo === 'yo_cuenta' && entry.fuenteOrigen){ nombreCuenta = fuenteLabel(entry.fuenteOrigen); direccion = 'sube'; }
       else if(entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')){ nombreCuenta = entry.partes.filter(pt => pt.origen === 'cuenta').map(pt => _alcanciaNombreFuente(pt.fuente)).join(' y '); direccion = 'sube'; }
-      else if(entry.tipo === 'cobro-deuda' && deudorParaAviso){ nombreCuenta = 'la deuda de ' + deudorParaAviso.nombre; direccion = 'sube'; }
+      else if(entry.tipo === 'cobro_deuda' && deudorParaAviso){ nombreCuenta = 'la deuda de ' + deudorParaAviso.nombre; direccion = 'sube'; }
       else { nombreCuenta = 'tu alcancía'; direccion = 'baja'; }
       const ok = await confirmarBorrarMovimientoViejo(nombreCuenta, entry.monto || 0, direccion);
       if(!ok) return;
@@ -1285,7 +1285,7 @@ window.alcanciaEliminarDeposito = async function(movimientoId){
     }
   }
 
-  const dialogoDetalle = entry.tipo === 'cobro-deuda'
+  const dialogoDetalle = entry.tipo === 'cobro_deuda'
     ? 'Se le volverá a sumar esa plata a la deuda de la persona.'
     : (entry.fuenteOrigen || (entry.tipo === 'multi' && (entry.partes||[]).some(pt => pt.origen === 'cuenta')) ? 'Se devolverá el dinero a la cuenta de origen.' : 'No afecta ningún saldo (fue un ingreso registrado sin mover plata real).');
   const ok = await confirmarEliminar({ titulo: 'Eliminar depósito', objeto: `este depósito de ${fmt(entry.monto)} del ${entry.fecha}`, detalle: dialogoDetalle });
@@ -1302,7 +1302,7 @@ function _alcanciaQuitarMirrorCuenta(id){
 
 async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   // Revertir el/los registro(s) reales según el tipo
-  if(entry.tipo === 'yo-cuenta'){
+  if(entry.tipo === 'yo_cuenta'){
     _alcanciaQuitarMirrorCuenta(entry.id);
     if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto, _origenLibroAlcancia(entry.id, true));
   } else if(entry.tipo === 'multi'){
@@ -1315,7 +1315,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
         window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== pt.movimientoId);
       }
     });
-  } else if(entry.tipo === 'cobro-deuda'){
+  } else if(entry.tipo === 'cobro_deuda'){
     // No hay cuenta real ni movimiento en S.movimientos que revertir — el
     // rastro real es el abono en el deudor. Quitarlo de ahí reabre la deuda.
     if(entry._prestamoDeudorId && entry._prestamoMovimientoId){
@@ -1326,7 +1326,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
       }
     }
   } else {
-    // 'yo-directo' / 'regalo' / 'mandado' — ingreso neto-cero
+    // 'yo_directo' / 'regalo' / 'mandado' — ingreso neto-cero
     window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== entry.id);
   }
 
@@ -1342,7 +1342,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   if(typeof toast==='function') toast('Depósito eliminado', 'ok');
 }
 
-/* Quita SOLO el lado de la alcancía de un depósito 'cobro-deuda', sin tocar
+/* Quita SOLO el lado de la alcancía de un depósito 'cobro_deuda', sin tocar
    al deudor — para cuando el borrado se inició desde Préstamos
    (eliminarMovimientoDeudor ya revirtió/confirmó ese lado). Sin diálogo de
    confirmación propio: quien llama ya confirmó una sola vez. */

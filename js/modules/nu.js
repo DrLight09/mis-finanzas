@@ -487,7 +487,7 @@ function _calcPrestadoMeta(cajitaId){
         }
       }
       // restar abonos que pueden haber regresado a la cajita
-      if(m.tipo==='abono' || m.tipo==='pago-completo'){
+      if(m.tipo==='abono' || m.tipo==='pago_completo'){
         // destino simple
         if(m.destino==='cajita:'+cajitaId) total -= m.monto;
         // destino dividido

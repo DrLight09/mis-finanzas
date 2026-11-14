@@ -1,3 +1,10 @@
+## Mejora 12 (parte 9): se pliega la migración v12 (2026-11-14, SW v131)
+
+- **`SCHEMA_BASE` pasa de 11 a 12 y `MIGRACIONES` vuelve a quedar vacía.** Los 21 campos guardados con nombre completo (`_movimientoId`, `_encargoMovimientoId`, `_encargoNombre`, `_tcMovimientoId`, `operacionesAviso`/`operacionesBloqueo`…) son ahora parte del modelo. Se quitó `_renombrarClavesEnArbol`, que solo servía a esa migración (queda en la historia de git por si un renombre futuro la necesita).
+- **Consecuencia:** datos o backups del esquema 11 ya no se migran: la app los marca como «versión anterior» (`S._esquemaAnterior`) y un backup de esa versión se rechaza al importar. Como nadie usa la app no se pierde nada.
+- **Tests:** se quitó el bloque «migración v12» (5 pruebas) y se agregaron 2 (la base 12 pasa intacta; el esquema 11 se marca como anterior y no se renombra nada). Las validaciones de backup usan el esquema 12 como válido y el 11 entra en la lista de «versión anterior».
+- **Docs y scripts:** `configuracion.md`, `libro-de-movimientos.md` y los comentarios de `scripts/equivalencia.js` y `scripts/conciliacion.js` (el backup de prueba debe ser del esquema 12).
+
 ## Mejora 12 (parte 8): lo que había quedado pendiente (2026-11-14, SW v130)
 
 - **Abreviaturas ambiguas, una por una:** `md` → `misDeudas` (es «mis deudas», `S.misDeudas`; el glosario decía «me deben» y estaba mal) y `cpd` → `destinoNuevo` (el destino que se arma en la hoja de plata comprometida); `reg` se renombró identificador por identificador (`saldoReg` → `saldoRegistrado`, `swReg` → `swRegistration`, `ultimoReg` → `ultimoRegistro`, `_reg` → `_registro` y la variable local según el archivo). `dd` no se tocó: son variables locales sin relación entre sí.

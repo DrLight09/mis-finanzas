@@ -319,7 +319,7 @@ describe('mesada-reglas', () => {
     pago(ctx, { key: '2026-3', fecha: '2026-04-05', destino: 'cuenta:efectivo' });
     pago(ctx, { parent: 'mama', key: '2026-3', fecha: '2026-04-06', destino: 'cuenta:nequi' });
     const info = ctx.getMesadaData('papa')['2026-1'];
-    assert.equal(ctx.mesadaOpsPosteriores('papa', '2026-1', info), 2);
+    assert.equal(ctx.mesadaOperacionesPosteriores('papa', '2026-1', info), 2);
   });
 
   /* ── Pantalla principal: estados y vencimientos ───────────────────── */

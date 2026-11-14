@@ -34,7 +34,7 @@ Las tres últimas se confunden fácil: están en la misma pantalla, con botones 
 
 **Borrar todos los datos**
 - Es una acción destructiva con confirmación explícita.
-- Entre la confirmación y el `location.reload()` final **la app tiene que quedar bloqueada** (overlay `#fb-loading-screen`). `borrarTodo()` no vacía `S` en memoria: solo escribe el estado vacío en la nube. Si en esa ventana se pudiera tocar "Cerrar sesión", el guardado final de `_fbSignOut()` volvería a subir el `S` viejo y anularía el borrado.
+- Entre la confirmación y el `location.reload()` final **la app tiene que quedar bloqueada** (overlay `#fb-loading-screen`). `borrarTodo()` no vacía `S` en memoria: solo escribe el estado vacío en la nube. Si en esa ventana se pudiera tocar "Cerrar sesión", el guardado final de `_firebaseSignOut()` volvería a subir el `S` viejo y anularía el borrado.
 - Si no se pudo confirmar el borrado en la nube, el usuario tiene que enterarse antes del reload.
 - El PIN y la huella (`mf_pin`, `mf_bio_enabled`, `mf_bio_cred`) se quitan con los datos, **pero solo si el borrado en la nube se confirmó**: si falló, los datos viejos pueden volver al reabrir y tienen que seguir protegidos. Se hace con `window._pinReset()` (definida en `pin-bio.js`); este módulo no toca esas claves.
 
@@ -48,7 +48,7 @@ Las tres últimas se confunden fácil: están en la misma pantalla, con botones 
 - El estado de cada interruptor vive en `S.modulos`; el interruptor no guarda estado propio.
 
 **Reparto de responsabilidades (núcleo compartido)**
-- Este archivo **no define** y no debe reimplementar: `applyModulos()`, `_fbSignOut()`, `_abrirEliminarCuenta()` / `_fbDeleteAccount()`, el gate de PIN y biometría, ni `getCatsVar()` / `getCatsFijo()` / los `*_DEFAULT`. Solo los invoca. Son de toda la app, no de esta pantalla.
+- Este archivo **no define** y no debe reimplementar: `applyModulos()`, `_firebaseSignOut()`, `_abrirEliminarCuenta()` / `_firebaseDeleteAccount()`, el gate de PIN y biometría, ni `getCatsVar()` / `getCatsFijo()` / los `*_DEFAULT`. Solo los invoca. Son de toda la app, no de esta pantalla.
 
 **Datos propios**
 - Configuración no introduce estado nuevo fuera de `S.modulos`, `S.catsVar` y `S.catsFijo`. Todo lo demás se lee o se deriva de `S`.
@@ -96,7 +96,7 @@ Botón "Importar JSON" → se abre el selector de archivo → se lee el texto
   → se vacía S y se le asigna el contenido del archivo
   → refresh() inmediato (la UI ya muestra lo importado)
   → se marca _lastSavedAt / mf_lastSavedAt y _importing = true (5 s)
-  → _fbSaveToCloud() y se espera su resultado real
+  → _firebaseSaveToCloud() y se espera su resultado real
       ├─ ok:true  → toast de éxito → location.reload() a los 0,8 s
       └─ ok:false → toast de error con el motivo → NO recarga
 ```
@@ -141,7 +141,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`js/core/persistencia.j
 - **Validación de estructura (deliberadamente laxa).** Un backup es válido si es un objeto y trae **al menos uno** de `nuRate`, `cajitas`, `nequiSaldo`, `efectivoSaldo`, `deudores`, `gastosFijos`, `gastosVar`, `modulos`; y si están presentes, `cajitas`/`gastosVar`/`deudores` son arrays y `nuRate` es número. El resto de `S` (tarjetas, encargos, mesadas, personas, alcancía…) no se valida: un backup que solo tenga `modulos` pasa.
 - **El JSON `null`** pasa el chequeo de tipo (`typeof null === 'object'`) y revienta al buscar campos; lo atrapa el `catch` genérico y muestra "Error al procesar el archivo…" en vez del mensaje de formato.
 - **Importar reemplaza, no fusiona.** Lo que no esté en el archivo desaparece de `S` en ese momento. Los valores por defecto de las claves ausentes se recuperan en el reload posterior, porque la carga desde la nube reasigna sobre el `S` por defecto.
-- **Importar sin poder guardar.** Si `_fbSaveToCloud` no existe, o devuelve `not-loaded` (la app todavía en modo lectura), los datos quedan cargados solo en memoria y el aviso pide **no recargar**.
+- **Importar sin poder guardar.** Si `_firebaseSaveToCloud` no existe, o devuelve `not-loaded` (la app todavía en modo lectura), los datos quedan cargados solo en memoria y el aviso pide **no recargar**.
 - **Importar el mismo contenido que ya está guardado** resuelve como `ok` sin escribir (el guardado detecta "sin cambios").
 - **Categorías: lista congelada.** Una vez que `S.catsVar`/`S.catsFijo` dejan de estar vacías, las predeterminadas que se agreguen al código más adelante **no aparecen solas** para ese usuario: la lista guardada manda. Una categoría predeterminada también podría faltar de una lista guardada (backup viejo) sin que nada la restituya.
 - **Guardado bloqueado.** `save()` no hace nada mientras `_dataLoaded` sea falso (app en modo lectura): agregar/quitar categorías o mover un interruptor cambia `S` en memoria y la pantalla, pero no se sube a la nube. Es el comportamiento general del guardado, no algo propio de este módulo.
@@ -152,7 +152,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`js/core/persistencia.j
   - Los gastos variables se exportan sin pasar por `_esGastoVarNoReal()`: el CSV refleja todo lo que hay en `S.gastosVar`.
   - Los gastos fijos salen con su monto **actual** (`g.monto`), no con lo que se pagó en ese mes, y con fecha `AAAA-MM-01`; la columna Cuenta va vacía.
   - El ordenamiento de los gastos variables se hace sobre `S.gastosVar` mismo (`.sort()` in situ), así que exportar deja ese arreglo ordenado por fecha descendente en memoria, sin llamar a `save()`.
-- **Borrar todos sin conexión o sin sesión.** Sin `_fbUser`, no se toca la nube y solo se limpia lo local (el PIN y la huella se quitan). Sin conexión, el `setDoc` falla y el usuario ve el aviso; al recargar con conexión, la nube todavía puede traer los datos viejos.
+- **Borrar todos sin conexión o sin sesión.** Sin `_firebaseUser`, no se toca la nube y solo se limpia lo local (el PIN y la huella se quitan). Sin conexión, el `setDoc` falla y el usuario ve el aviso; al recargar con conexión, la nube todavía puede traer los datos viejos.
 - **Datos de módulos desactivados.** Se siguen guardando, exportando e importando como cualquier otra parte de `S`.
 
 ---
@@ -161,7 +161,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`js/core/persistencia.j
 
 - **Import y borrado verifican antes de recargar.** El diseño anterior mostraba "importado correctamente" y recargaba a los 4 s pasara lo que pasara; si el guardado no había llegado a escribir, el reload traía de vuelta el dato viejo y el aviso había mentido. Por eso el guardado devuelve una promesa con resultado real y todo lo demás depende de él.
 - **`borrarTodo()` escribe `{}` y no vacía `S` en memoria.** El payload vacío es la señal de "empezar de cero": la carga lo trata como estado por defecto y lo verifica contra el servidor antes de habilitar el guardado. Como `S` en memoria queda intacto hasta el reload, el bloqueo con overlay no es opcional (ver §3).
-- **El overlay de `borrarTodo()` reutiliza `#fb-loading-screen`** (ya cubre toda la pantalla) en vez de crear otro, con el mismo criterio que `_fbSignOut()` y `_fbDeleteAccount()`.
+- **El overlay de `borrarTodo()` reutiliza `#fb-loading-screen`** (ya cubre toda la pantalla) en vez de crear otro, con el mismo criterio que `_firebaseSignOut()` y `_firebaseDeleteAccount()`.
 - **`applyModulos()`, sesión, PIN/biometría y categorías por defecto se quedan en el núcleo.** `applyModulos()` toca el nav, Mesada, los banners de Cuentas e Inicio; sesión y PIN son de toda la app; las categorías las comparte Gastos. Moverlos acá crearía dependencias en sentido contrario (núcleo → módulo lazy).
 - **Interruptores y botones de backup usan `addEventListener` directo, no `data-action`.** `Events` solo despacha clicks; los checkbox son `change` y los botones de backup tienen id fijo y ningún argumento variable. Lo que sí es click con argumentos (agregar/eliminar categoría, `irA`, sesión) va por `Events`.
 - **Respaldos automáticos: se listan y restauran acá, se crean en el guardado.** Un respaldo es «lo que había antes de pisar», y solo `firebase-sync.js` sabe cuándo se pisa. Restaurar comparte `_reemplazarDatos` con Importar a propósito: misma validación, mismo PIN, mismo guardado verificado antes de recargar. `borrarTodo()` escribe el `{}` con `sinRespaldo` (no tiene sentido guardar «lo que se está borrando») y borra los respaldos solo después de confirmar el vaciado. Detalle completo en `respaldos-automaticos.md`.
@@ -197,7 +197,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`js/core/persistencia.j
 | Acción | Va a |
 |---|---|
 | `config:agregarCat` / `config:eliminarCat` | `agregarCat` / `eliminarCat` |
-| `config:signOut` | `window._fbSignOut()` (firebase-sync.js) |
+| `config:signOut` | `window._firebaseSignOut()` (firebase-sync.js) |
 | `config:abrirEliminarCuenta` | `window._abrirEliminarCuenta()` (firebase-sync.js) |
 | `config:irA` | `showScreen(pantalla)`; lo usan Personas, Actividad reciente y la tarjeta de Wrapped |
 | `config:verRespaldos` / `config:restaurarRespaldo` | `verRespaldos` / `restaurarRespaldo(id)` |
@@ -210,7 +210,7 @@ Al importar un backup se ejecuta `aplicarMigraciones()` (`js/core/persistencia.j
 
 | Símbolo | Vive en | Verificado |
 |---|---|---|
-| `_fbSaveToCloud`, `_fbSignOut`, `_abrirEliminarCuenta`, `_fbDeleteAccount`, `_importing`, `_lastSavedAt` | `firebase-sync.js` | Sí |
+| `_firebaseSaveToCloud`, `_firebaseSignOut`, `_abrirEliminarCuenta`, `_firebaseDeleteAccount`, `_importing`, `_lastSavedAt` | `firebase-sync.js` | Sí |
 | `Events.registerAll` / `Events.attr` | `events.js` | Sí (`attr` escapa los argumentos; `Events` solo despacha `click`) |
 | `getCatsVar` / `getCatsFijo` / `CATS_*_DEFAULT`, `save`, `toast`, `dialogo`, `refresh`, `fuenteLabel`, `escHtml`, `S.modulos` por defecto | `el núcleo` | Sí |
 | `html\`\`` / `raw()` | `html-tag.js` | Sí |

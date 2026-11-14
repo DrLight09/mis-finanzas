@@ -109,14 +109,14 @@ function _wrappedVentana(){
 const WRAPPED_MIN_DIAS = UMBRALES.wrapped.minDias, WRAPPED_MIN_MESES = UMBRALES.wrapped.minMeses; // los valores viven en umbrales.js
 
 function _wrappedDatosAnio(anioK, estado){
-  const st = estado || S, fechas = new Set(), meses = new Set();
+  const estadoActual = estado || S, fechas = new Set(), meses = new Set();
   let registros = 0;
   const marcar = f => {
     if(typeof f === 'string' && f.slice(0,4) === String(anioK)){ fechas.add(f.slice(0,10)); meses.add(f.slice(0,7)); registros++; }
   };
-  for(let m = 1; m <= 12; m++) Periodo.gastosVarRealesDelMes(String(anioK) + '-' + String(m).padStart(2,'0'), st).forEach(g => marcar(g.fecha));
-  Periodo.pagosFijos(st).forEach(p => marcar(p.fecha));
-  entradasIngresoReal(st).forEach(e => marcar(e.fecha));
+  for(let m = 1; m <= 12; m++) Periodo.gastosVarRealesDelMes(String(anioK) + '-' + String(m).padStart(2,'0'), estadoActual).forEach(g => marcar(g.fecha));
+  Periodo.pagosFijos(estadoActual).forEach(p => marcar(p.fecha));
+  entradasIngresoReal(estadoActual).forEach(e => marcar(e.fecha));
   const orden = Array.from(fechas).sort();
   const tier = registros === 0 ? 'nada'
     : (fechas.size >= WRAPPED_MIN_DIAS && meses.size >= WRAPPED_MIN_MESES ? 'suficiente' : 'poco');

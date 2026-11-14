@@ -26,7 +26,7 @@ const CONVERTIDOS = [
   { f: 'js/core/busqueda-global.js', prefijos: ['busqueda-'], permitidos: [/^(background|color):\$\{/] },
   { f: 'js/modules/configuracion.js', prefijos: ['cat-chip', 'cfg-tamano', 'cfg-wrapped', 'cfg-resp'], permitidos: [] },
   { f: 'js/modules/gastos.js', prefijos: ['gasto-', 'badge-xs', 'row-name-13'], permitidos: [] },
-  // inicio: solo queda el display:none del tooltip de la proyección, que JS conmuta (showTT)
+  // inicio: solo queda el display:none del tooltip de la proyección, que JS conmuta (showTooltip)
   { f: 'js/modules/inicio.js', prefijos: ['inicio-'], armadas: ['inicio-estado-', 'inicio-pilar-'], permitidos: ['display:none;'] },
   // sueltos de 1-6 estilos
   { f: 'js/modules/mesada.js', prefijos: ['badge-xs'], permitidos: [] },
@@ -198,8 +198,8 @@ test('styles.css: un parser real (jsdom) lee tantas reglas como bloques de nivel
   const css = leer('css/styles.css');
   const limpio = css.replace(/\/\*[\s\S]*?\*\//g, '');
   let d = 0, bloques = 0; for (const c of limpio) { if (c === '{') { if (d === 0) bloques++; d++; } if (c === '}') d--; }
-  const st = new JSDOM('<style></style>').window.document.querySelector('style'); st.textContent = css;
-  assert.equal(st.sheet.cssRules.length, bloques);
+  const estadoActual = new JSDOM('<style></style>').window.document.querySelector('style'); estadoActual.textContent = css;
+  assert.equal(estadoActual.sheet.cssRules.length, bloques);
 });
 
 test('la app habla de tú en todo el texto (sin voseo) — index.html y js/', () => {

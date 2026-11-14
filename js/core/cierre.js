@@ -53,7 +53,7 @@ const Cierre = (() => {
     if (!def || typeof def.clave !== 'string' || !Array.isArray(def.raiz) || typeof def.registros !== 'function') throw new Error('Cierre.registrarFuente: definición inválida');
     _fuentes.set(def.clave, def);
   }
-  const _plana = (clave, etiqueta, raiz) => registrarFuente({ clave, etiqueta, raiz: [raiz], registros: st => _lst(st[raiz]).map((x, i) => _R(x, x && x.fecha, clave + '#' + i)) });
+  const _plana = (clave, etiqueta, raiz) => registrarFuente({ clave, etiqueta, raiz: [raiz], registros: estadoActual => _lst(estadoActual[raiz]).map((x, i) => _R(x, x && x.fecha, clave + '#' + i)) });
   _plana('libro', 'Libro de movimientos', 'libro');
   _plana('movimientos', 'Movimientos de cuentas', 'movimientos');
   _plana('gastosVar', 'Gastos variables', 'gastosVar');
@@ -61,34 +61,34 @@ const Cierre = (() => {
   _plana('ingresosExtra', 'Ingresos extra', 'ingresosExtra');
   _plana('chequeosAhorro', 'Chequeos de ahorro', 'chequeosAhorro');
   _plana('patrimonioHistorial', 'Historial de patrimonio', 'patrimonioHistorial');
-  registrarFuente({ clave: 'patrimonioCierres', etiqueta: 'Cierres mensuales de patrimonio', raiz: ['patrimonioCierres'], registros: st =>
-    Object.keys(_obj(st.patrimonioCierres)).map(k => ({ obj: _obj(st.patrimonioCierres[k]), id: 'pc:' + k, entidad: null, fecha: k + '-01' })) });
-  registrarFuente({ clave: 'pagosGastosFijos', etiqueta: 'Pagos de gastos fijos', raiz: ['pagosGastosFijos'], registros: st =>
-    Object.keys(_obj(st.pagosGastosFijos)).map(k => { const p = _obj(st.pagosGastosFijos[k]); return { obj: p, id: 'gf:' + k, entidad: null, fecha: p.fecha || (k.split('_').pop() + '-01') }; }) });
-  registrarFuente({ clave: 'tcMovimientos', etiqueta: 'Cargos de tarjetas', raiz: ['tcMovimientos'], sonda: 'tarjetas', registros: st =>
-    _lst(st.tcMovimientos).map((m, i) => _R(m, m && m.fecha, 'tcm#' + i, m && m.tcId)) });
-  registrarFuente({ clave: 'tarjetas', etiqueta: 'Compras y pagos de tarjetas', raiz: ['tarjetasCredito'], sonda: 'tarjetas', registros: st => {
+  registrarFuente({ clave: 'patrimonioCierres', etiqueta: 'Cierres mensuales de patrimonio', raiz: ['patrimonioCierres'], registros: estadoActual =>
+    Object.keys(_obj(estadoActual.patrimonioCierres)).map(k => ({ obj: _obj(estadoActual.patrimonioCierres[k]), id: 'pc:' + k, entidad: null, fecha: k + '-01' })) });
+  registrarFuente({ clave: 'pagosGastosFijos', etiqueta: 'Pagos de gastos fijos', raiz: ['pagosGastosFijos'], registros: estadoActual =>
+    Object.keys(_obj(estadoActual.pagosGastosFijos)).map(k => { const p = _obj(estadoActual.pagosGastosFijos[k]); return { obj: p, id: 'gf:' + k, entidad: null, fecha: p.fecha || (k.split('_').pop() + '-01') }; }) });
+  registrarFuente({ clave: 'tcMovimientos', etiqueta: 'Cargos de tarjetas', raiz: ['tcMovimientos'], sonda: 'tarjetas', registros: estadoActual =>
+    _lst(estadoActual.tcMovimientos).map((m, i) => _R(m, m && m.fecha, 'tcm#' + i, m && m.tcId)) });
+  registrarFuente({ clave: 'tarjetas', etiqueta: 'Compras y pagos de tarjetas', raiz: ['tarjetasCredito'], sonda: 'tarjetas', registros: estadoActual => {
     const out = [];
-    _lst(st.tarjetasCredito).forEach(tc => {
+    _lst(estadoActual.tarjetasCredito).forEach(tc => {
       if (tc && tc.saldoInicial) out.push(_R(tc.saldoInicial, tc.saldoInicial.fecha, 'tcsi:' + tc.id, tc.id));
       _lst(tc && tc.compras).forEach((c, i) => out.push(_R(c, c && c.fecha, 'tcc:' + tc.id + i, tc.id)));
       _lst(tc && tc.pagos).forEach((p, i) => out.push(_R(p, p && p.fecha, 'tcp:' + tc.id + i, tc.id)));
     });
     return out;
   } });
-  registrarFuente({ clave: 'deudas', etiqueta: 'Movimientos de deudas', raiz: ['deudores', 'misDeudas'], sonda: 'deudas', registros: st => {
+  registrarFuente({ clave: 'deudas', etiqueta: 'Movimientos de deudas', raiz: ['deudores', 'misDeudas'], sonda: 'deudas', registros: estadoActual => {
     const out = [];
-    [['favor', 'deudores'], ['contra', 'misDeudas']].forEach(([dir, k]) => _lst(st[k]).forEach(d =>
+    [['favor', 'deudores'], ['contra', 'misDeudas']].forEach(([dir, k]) => _lst(estadoActual[k]).forEach(d =>
       _lst(d && d.movimientos).forEach((m, i) => out.push(_R(m, m && m.fecha, 'dm:' + d.id + i, dir + ':' + d.id)))));
     return out;
   } });
-  registrarFuente({ clave: 'encargos', etiqueta: 'Movimientos de encargos', raiz: ['encargos'], sonda: 'encargos', registros: st => {
+  registrarFuente({ clave: 'encargos', etiqueta: 'Movimientos de encargos', raiz: ['encargos'], sonda: 'encargos', registros: estadoActual => {
     const out = [];
-    _lst(st.encargos).forEach(encargo => _lst(encargo && encargo.movimientos).forEach((m, i) => out.push(_R(m, m && m.fecha, 'em:' + encargo.id + i, encargo.id))));
+    _lst(estadoActual.encargos).forEach(encargo => _lst(encargo && encargo.movimientos).forEach((m, i) => out.push(_R(m, m && m.fecha, 'em:' + encargo.id + i, encargo.id))));
     return out;
   } });
-  registrarFuente({ clave: 'alcancia', etiqueta: 'Alcancía (depósitos y ciclos)', raiz: ['alcancia', 'alcanciaSaldoOfuscado'], sonda: 'alcancia', registros: st => {
-    const a = _obj(st.alcancia), out = [];
+  registrarFuente({ clave: 'alcancia', etiqueta: 'Alcancía (depósitos y ciclos)', raiz: ['alcancia', 'alcanciaSaldoOfuscado'], sonda: 'alcancia', registros: estadoActual => {
+    const a = _obj(estadoActual.alcancia), out = [];
     _lst(a.movimientos).forEach((m, i) => out.push(_R(m, m && m.fecha, 'alm#' + i, 'alcancia')));
     // Un ciclo destapado ya es historia cerrada (no pertenece a la entidad activa); si todavía comparte ids con un depósito activo,
     // el grafo los une y el ciclo queda retenido igual.
@@ -96,23 +96,23 @@ const Cierre = (() => {
     return out;
   } });
   // Fuentes SIN sonda de saldo: sus entidades se reportan pero no se cierran (ver 3. ENTIDADES).
-  registrarFuente({ clave: 'spotify', etiqueta: 'Historial de Spotify', raiz: ['spotify'], registros: st =>
-    _lst(_obj(st.spotify).historial).map((h, i) => _R(h, h && h.fecha, 'sp#' + i, 'spotify')) });
-  registrarFuente({ clave: 'mesada', etiqueta: 'Pagos de mesada', raiz: ['mesadas'], registros: st => {
+  registrarFuente({ clave: 'spotify', etiqueta: 'Historial de Spotify', raiz: ['spotify'], registros: estadoActual =>
+    _lst(_obj(estadoActual.spotify).historial).map((h, i) => _R(h, h && h.fecha, 'sp#' + i, 'spotify')) });
+  registrarFuente({ clave: 'mesada', etiqueta: 'Pagos de mesada', raiz: ['mesadas'], registros: estadoActual => {
     const out = [];
-    Object.keys(_obj(st.mesadas)).forEach(padre => { const pagos = _obj(_obj(st.mesadas[padre]).pagos);
+    Object.keys(_obj(estadoActual.mesadas)).forEach(padre => { const pagos = _obj(_obj(estadoActual.mesadas[padre]).pagos);
       Object.keys(pagos).forEach(k => { const m = /^(\d{4})-(\d{1,2})$/.exec(k), p = _obj(pagos[k]);
         out.push({ obj: p, id: 'mes:' + padre + k, entidad: 'mesada:' + padre, fecha: p.fecha || (m ? m[1] + '-' + String(Number(m[2]) + 1).padStart(2, '0') + '-01' : '') }); }); });
     return out;
   } });
-  registrarFuente({ clave: 'ingresosFijos', etiqueta: 'Cobros de ingresos fijos', raiz: ['ingresosFijos'], registros: st => {
+  registrarFuente({ clave: 'ingresosFijos', etiqueta: 'Cobros de ingresos fijos', raiz: ['ingresosFijos'], registros: estadoActual => {
     const out = [];
-    _lst(st.ingresosFijos).forEach(ingreso => _lst(ingreso && ingreso.cobros).forEach((c, i) => out.push(_R(c, c && c.fecha, 'cf:' + ingreso.id + i, 'ingreso:' + ingreso.id))));
+    _lst(estadoActual.ingresosFijos).forEach(ingreso => _lst(ingreso && ingreso.cobros).forEach((c, i) => out.push(_R(c, c && c.fecha, 'cf:' + ingreso.id + i, 'ingreso:' + ingreso.id))));
     return out;
   } });
-  registrarFuente({ clave: 'cdts', etiqueta: 'CDTs de las cajitas', raiz: ['cajitas'], registros: st => {
+  registrarFuente({ clave: 'cdts', etiqueta: 'CDTs de las cajitas', raiz: ['cajitas'], registros: estadoActual => {
     const out = [];
-    _lst(st.cajitas).forEach(c => _lst(c && c.cdts).forEach((x, i) => out.push(_R(x, x && (x.inicio || x.fecha), 'cdt:' + c.id + i, 'cajita:' + c.id))));
+    _lst(estadoActual.cajitas).forEach(c => _lst(c && c.cdts).forEach((x, i) => out.push(_R(x, x && (x.inicio || x.fecha), 'cdt:' + c.id + i, 'cajita:' + c.id))));
     return out;
   } });
 
@@ -139,9 +139,9 @@ const Cierre = (() => {
     (Array.isArray(x) ? x : Object.keys(x).map(k => x[k])).forEach(v => _recorrerTextos(v, prof - 1, fn));
   }
 
-  function _grafo(st) {
+  function _grafo(estadoActual) {
     const regs = [];
-    _fuentes.forEach(f => f.registros(st).forEach(r => { if (r && r.obj && typeof r.obj === 'object') regs.push(Object.assign({ fuente: f.clave, sonda: f.sonda || null, bytes: JSON.stringify(r.obj).length }, r)); }));
+    _fuentes.forEach(f => f.registros(estadoActual).forEach(r => { if (r && r.obj && typeof r.obj === 'object') regs.push(Object.assign({ fuente: f.clave, sonda: f.sonda || null, bytes: JSON.stringify(r.obj).length }, r)); }));
     const padre = regs.map((_, i) => i);
     const raiz = i => { while (padre[i] !== i) { padre[i] = padre[padre[i]]; i = padre[i]; } return i; };
     const unir = (a, b) => { a = raiz(a); b = raiz(b); if (a !== b) padre[b] = a; };
@@ -169,13 +169,13 @@ const Cierre = (() => {
   // analizar(corte 'YYYY-MM', estado?, {huella?, mesActual?}) → informe. NO modifica nada. Si no se pasa `huella` la calcula con las
   // sondas registradas; `completo` indica si están TODAS las base y sin errores (si no, las entidades sin sonda quedan abiertas).
   function analizar(corte, estado, opciones) {
-    const op = opciones || {}, st = estado || S;
+    const op = opciones || {}, estadoActual = estado || S;
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(corte))) throw new Error('Cierre.analizar: el corte debe ser un mes «AAAA-MM»');
     if (corte >= (op.mesActual || _mesActual())) throw new Error('Cierre.analizar: el corte debe ser un mes ya terminado');
     const fechaCorte = corte + '-31'; // comparación de texto: cualquier día de ese mes es ≤
-    const huella = op.huella || Huella.calcular(st);
+    const huella = op.huella || Huella.calcular(estadoActual);
     const completo = Object.keys(huella.errores || {}).length === 0 && Huella.SONDAS_BASE.every(n => huella.sondas && n in huella.sondas);
-    const regs = conEstadoAislado(st, () => _grafo(st));
+    const regs = conEstadoAislado(estadoActual, () => _grafo(estadoActual));
 
     // Entidades: cerrada ⇔ saldo 0 (sonda) y ninguna fecha posterior ni ausente en su historia.
     const ents = new Map();
@@ -209,9 +209,9 @@ const Cierre = (() => {
     const anioActual = (op.mesActual || _mesActual()).slice(0, 4);
     const tocados = new Set();
     regs.forEach(r => { if (_fechaOk(r.fecha) && r.fecha.slice(0, 10) <= fechaCorte && r.fecha.slice(0, 4) < anioActual) tocados.add(r.fecha.slice(0, 4)); });
-    const hayWrapped = a => (typeof window !== 'undefined' && typeof window._wrappedDatosAnio === 'function' ? window._wrappedDatosAnio(a, st).tier === 'suficiente' : true);
+    const hayWrapped = a => (typeof window !== 'undefined' && typeof window._wrappedDatosAnio === 'function' ? window._wrappedDatosAnio(a, estadoActual).tier === 'suficiente' : true);
     const conWrapped = Array.from(tocados).sort().filter(hayWrapped);
-    const guardadosW = _obj(st.wrappedAnios);
+    const guardadosW = _obj(estadoActual.wrappedAnios);
     const wrappedSinGuardar = conWrapped.filter(a => !guardadosW[a]);
     if (wrappedSinGuardar.length) advertencias.push('wrapped-sin-guardar');
     const vacio = () => ({ registros: 0, bytes: 0 });
@@ -251,14 +251,14 @@ const Cierre = (() => {
   // tamano(estado?, {hoy?, comprimir?}) → bruto (caracteres del JSON), por clave, comprimido (mismo códec del guardado), antigüedad y
   // proyección. `comprimir(texto) → Promise<bytes>` se puede inyectar (pruebas); por defecto usa js/core/payload-codec.js.
   async function tamano(estado, opciones) {
-    const op = opciones || {}, st = estado || S, hoyStr = op.hoy || hoy();
-    const texto = JSON.stringify(st), bruto = texto.length;
-    const porClave = Object.keys(st).map(k => ({ clave: k, bytes: JSON.stringify(st[k] === undefined ? null : st[k]).length })).sort((a, b) => b.bytes - a.bytes);
+    const op = opciones || {}, estadoActual = estado || S, hoyStr = op.hoy || hoy();
+    const texto = JSON.stringify(estadoActual), bruto = texto.length;
+    const porClave = Object.keys(estadoActual).map(k => ({ clave: k, bytes: JSON.stringify(estadoActual[k] === undefined ? null : estadoActual[k]).length })).sort((a, b) => b.bytes - a.bytes);
     let comprimido = null, estimado = true;
     try { comprimido = await (op.comprimir || _comprimirReal)(texto); estimado = false; } catch (e) { /* sin códec (p. ej. navegador viejo): se estima abajo */ }
     if (comprimido == null) comprimido = Math.round(bruto * 0.14); // ≈ 7× (docs/libro-de-movimientos.md §6)
     const fechas = [];
-    _fuentes.forEach(f => f.registros(st).forEach(r => { if (_fechaOk(r.fecha)) fechas.push(r.fecha.slice(0, 10)); }));
+    _fuentes.forEach(f => f.registros(estadoActual).forEach(r => { if (_fechaOk(r.fecha)) fechas.push(r.fecha.slice(0, 10)); }));
     fechas.sort();
     const masAntigua = fechas[0] || null;
     const dias = masAntigua ? Math.max(1, Fecha.diasEntre(masAntigua, hoyStr) + 1) : 0;

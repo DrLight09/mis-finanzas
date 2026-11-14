@@ -381,7 +381,7 @@ let _cpdYaPagueVal = false;        // ¿ya pagó/cargó? (destino "Gasto"/"Otro"
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 // Origen de las patas de saldo de este módulo (libro-de-movimientos.md §3.3). `ref` es el id del destino que causó el
 // movimiento (o el del ingreso comprometido, para el sobrante); quien lo deshace pasa el mismo `ref` con rev=true.
-const _ogPlataComprometida = Libro.origen('plata-comprometida');
+const _origenLibroPlataComprometida = Libro.origen('plata-comprometida');
 
 function _plataComprometidaData(){
   if(!window.S) return [];
@@ -967,7 +967,7 @@ function _cpdConfirmar(){
   const yaSaque = tipo === 'reposicion' ? (_cpdYaSaqueVal === true) : false;
   const yaPague = (tipo === 'gasto' || tipo === 'otro') ? (_cpdYaPagueVal === true) : false;
   let _tcCompraIdInicial = '';
-  const destId = uid(); // id del destino: también es el `ref` de sus entradas del libro
+  const destinoId = uid(); // id del destino: también es el `ref` de sus entradas del libro
 
   // Saldo suficiente ANTES de mover nada: si ya sacó/pagó plata de una cuenta o cajita, esa fuente tiene que alcanzar (misma regla
   // que el resto de la app: Plata.validarSalidas). Antes el saldo podía quedar negativo y el error se tragaba en silencio.
@@ -985,7 +985,7 @@ function _cpdConfirmar(){
         const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
         if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
       }
-      sumarFuente(cuentaId, -monto, _ogPlataComprometida(destId));
+      sumarFuente(cuentaId, -monto, _origenLibroPlataComprometida(destinoId));
       if(!S.movimientos) S.movimientos = [];
       S.movimientos.push({ id:uid(), tipo:'salida', fuente:cuentaId, monto, fecha:hoy(), desc:'Adelanto comprometido: '+desc });
       if(window.logCambio) logCambio('Adelantaste plata de '+fuenteTexto(cuentaId), fmt(monto)+' — será repuesto al llegar el ingreso', monto, 'gasto');
@@ -1010,7 +1010,7 @@ function _cpdConfirmar(){
         const cajitaId2 = Fuente.esCajita(gastoCajita) ? gastoCajita.split(':')[1] : null;
         const cajita2 = cajitaId2 ? (S.cajitas||[]).find(x=>x.id===cajitaId2) : null;
         if(cajita2 && typeof materializarIntereses==='function') materializarIntereses(cajita2);
-        descontarFuente(gastoCajita, monto, _ogPlataComprometida(destId));
+        descontarFuente(gastoCajita, monto, _origenLibroPlataComprometida(destinoId));
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({ id:uid(), tipo:'salida', fuente:gastoCajita, monto, fecha:hoy(), desc:'Pago: '+desc });
         if(window.logCambio) logCambio('Pagaste '+desc, fmt(monto)+' de '+fuenteTexto(gastoCajita), monto, 'gasto');
@@ -1038,7 +1038,7 @@ function _cpdConfirmar(){
     fechaPago = fpEl ? (fpEl.value || '') : '';
   }
 
-  _plataComprometidaDestinosTmp.push({ id:destId, tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago, _tcCompraId:_tcCompraIdInicial||undefined });
+  _plataComprometidaDestinosTmp.push({ id:destinoId, tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago, _tcCompraId:_tcCompraIdInicial||undefined });
   closeSheet('cp-destino');
   _plataComprometidaRenderDestinosTmp();
 };
@@ -1189,18 +1189,18 @@ function _plataComprometidaAbrirRecibir(id){
           if(d.gastoOrigen==='tc' && d.gastoTcId){
             const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.gastoTcId);
             const tcNombre = tc ? tc.nombre : 'Tarjeta de crédito';
-            const cajitaDestLabel = d.gastoTcCajita && fuenteTexto(d.gastoTcCajita);
+            const cajitaDestinoLabel = d.gastoTcCajita && fuenteTexto(d.gastoTcCajita);
             if(d.yaPague){
               subLabel = html`Pagado con ${tcNombre}`;
               extraInfo = html`<div class="cp-int-caja-ok">
                 <i class="fa-solid fa-check cp-int-ok-ico"></i>
-                <span class="cp-int-ok-txt">Ya pagado${cajitaDestLabel ? html` · La plata va a "${cajitaDestLabel}"` : ''}</span>
+                <span class="cp-int-ok-txt">Ya pagado${cajitaDestinoLabel ? html` · La plata va a "${cajitaDestinoLabel}"` : ''}</span>
               </div>`;
             } else {
               subLabel = html`Pendiente · Se cargará a ${tcNombre}`;
               extraInfo = html`<div class="cp-int-caja-tc">
                 <i class="fa-solid fa-credit-card cp-int-tc-ico"></i>
-                <span class="cp-int-tc-txt">Se cargará a ${tcNombre}${cajitaDestLabel ? html` · plata a "${cajitaDestLabel}"` : ''}</span>
+                <span class="cp-int-tc-txt">Se cargará a ${tcNombre}${cajitaDestinoLabel ? html` · plata a "${cajitaDestinoLabel}"` : ''}</span>
               </div>`;
             }
           } else if(d.gastoOrigen==='cajita' && d.gastoCajita){
@@ -1313,7 +1313,7 @@ function _plataComprometidaConfirmarRecibir(){
               const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
               if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
             }
-            sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id));
+            sumarFuente(cuenta, d.monto, _origenLibroPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (no es ingreso nuevo, es devolución)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición: '+item.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
@@ -1328,7 +1328,7 @@ function _plataComprometidaConfirmarRecibir(){
               const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
               if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
             }
-            sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id));
+            sumarFuente(cuenta, d.monto, _origenLibroPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (devolución de plata que ya salió)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:cuenta, monto:d.monto, fecha, desc:'Reposición (adelantada): '+item.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
@@ -1362,18 +1362,18 @@ function _plataComprometidaConfirmarRecibir(){
               if(window.logCambio) logCambio('Gasto con TC "'+tc.nombre+'" registrado (favor)', fmt(d.monto)+' sumado a la deuda — cubierto por "'+item.desc+'"', d.monto, 'gasto');
             }
             // Llevar la plata a la cajita que el usuario eligió (gastoTcCajita)
-            const destCajita = d.gastoTcCajita;
-            if(destCajita && typeof sumarFuente === 'function'){
-              if(Fuente.esCajita(destCajita)){
-                const cajitaId = destCajita.split(':')[1];
+            const destinoCajita = d.gastoTcCajita;
+            if(destinoCajita && typeof sumarFuente === 'function'){
+              if(Fuente.esCajita(destinoCajita)){
+                const cajitaId = destinoCajita.split(':')[1];
                 const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
                 if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
               }
-              sumarFuente(destCajita, d.monto, _ogPlataComprometida(d.id));
+              sumarFuente(destinoCajita, d.monto, _origenLibroPlataComprometida(d.id));
               if(!S.movimientos) S.movimientos = [];
               // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (es plata del ingreso comprometido, no tuya)
-              S.movimientos.push({id:uid(), tipo:'entrada', fuente:destCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
-              if(window.logCambio) logCambio('Plata para pagar TC en '+fuenteTexto(destCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
+              S.movimientos.push({id:uid(), tipo:'entrada', fuente:destinoCajita, monto:d.monto, fecha, desc:'Para pagar TC ('+d.desc+'): '+item.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
+              if(window.logCambio) logCambio('Plata para pagar TC en '+fuenteTexto(destinoCajita), fmt(d.monto)+' por "'+d.desc+'"', d.monto, 'ingreso');
             }
           }
         } else if(d.gastoOrigen === 'cajita' && d.gastoCajita){
@@ -1384,7 +1384,7 @@ function _plataComprometidaConfirmarRecibir(){
               const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
               if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
             }
-            sumarFuente(d.gastoCajita, d.monto, _ogPlataComprometida(d.id));
+            sumarFuente(d.gastoCajita, d.monto, _origenLibroPlataComprometida(d.id));
             if(!S.movimientos) S.movimientos = [];
             // _esReposicionPlataComprometida:true → excluido del análisis de tendencia (repone cajita, no es ingreso nuevo)
             S.movimientos.push({id:uid(), tipo:'entrada', fuente:d.gastoCajita, monto:d.monto, fecha, desc:'Reposición gasto: '+d.desc, clase:'neutro', _esReposicionPlataComprometida:true, _plataComprometidaItemId:item.id});
@@ -1413,7 +1413,7 @@ function _plataComprometidaConfirmarRecibir(){
           const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
           if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
         }
-        sumarFuente(sobranteCuenta, ganancia, _ogPlataComprometida(item.id));
+        sumarFuente(sobranteCuenta, ganancia, _origenLibroPlataComprometida(item.id));
         item.sobrante = { cuenta: sobranteCuenta, monto: ganancia }; // para devolverlo si se elimina el ingreso
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:uid(), tipo:'entrada', fuente:sobranteCuenta, monto:ganancia, fecha,
@@ -1574,7 +1574,7 @@ function _plataComprometidaGuardarMarcados(){
             const cajita = (S.cajitas||[]).find(x=>x.id===cajitaId);
             if(cajita && typeof materializarIntereses === 'function') materializarIntereses(cajita);
           }
-          sumarFuente(cuentaId, -dNuevo.monto, _ogPlataComprometida(dNuevo.id));
+          sumarFuente(cuentaId, -dNuevo.monto, _origenLibroPlataComprometida(dNuevo.id));
           if(!S.movimientos) S.movimientos = [];
           S.movimientos.push({id:uid(),tipo:'salida',fuente:cuentaId,monto:dNuevo.monto,fecha:hoy(),desc:'Adelanto comprometido: '+dNuevo.desc});
           if(window.logCambio) logCambio('Adelantaste plata de '+fuenteTexto(cuentaId), fmt(dNuevo.monto)+' — será repuesto al llegar el ingreso', dNuevo.monto, 'gasto');
@@ -1588,8 +1588,8 @@ function _plataComprometidaGuardarMarcados(){
         const cajitaId2 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
         const cajita2 = cajitaId2 ? (S.cajitas||[]).find(x=>x.id===cajitaId2) : null;
         if(cajita2 && typeof materializarIntereses==='function') materializarIntereses(cajita2);
-        if(typeof descontarFuente==='function') descontarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogPlataComprometida(dNuevo.id));
-        else if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, -dNuevo.monto, _ogPlataComprometida(dNuevo.id));
+        if(typeof descontarFuente==='function') descontarFuente(dNuevo.gastoCajita, dNuevo.monto, _origenLibroPlataComprometida(dNuevo.id));
+        else if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, -dNuevo.monto, _origenLibroPlataComprometida(dNuevo.id));
         if(!S.movimientos) S.movimientos = [];
         S.movimientos.push({id:uid(), tipo:'salida', fuente:dNuevo.gastoCajita, monto:dNuevo.monto,
           fecha:hoy(), desc:'Pago: '+dNuevo.desc});
@@ -1602,7 +1602,7 @@ function _plataComprometidaGuardarMarcados(){
         const cajitaId3 = Fuente.esCajita(dNuevo.gastoCajita) ? dNuevo.gastoCajita.split(':')[1] : null;
         const cajita3 = cajitaId3 ? (S.cajitas||[]).find(x=>x.id===cajitaId3) : null;
         if(cajita3 && typeof materializarIntereses==='function') materializarIntereses(cajita3);
-        if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, dNuevo.monto, _ogPlataComprometida(dNuevo.id, true));
+        if(typeof sumarFuente==='function') sumarFuente(dNuevo.gastoCajita, dNuevo.monto, _origenLibroPlataComprometida(dNuevo.id, true));
         if(S.movimientos) S.movimientos = S.movimientos.filter(m=>!(
           m.tipo==='salida' && m.fuente===dNuevo.gastoCajita && m.monto===dNuevo.monto &&
           (m.desc||'').startsWith('Pago: '+dNuevo.desc)
@@ -1709,21 +1709,21 @@ async function _plataComprometidaEliminar(id){
         }
       }
     });
-    let opsPosteriores=0;
+    let operacionesPosteriores=0;
     if(fechaRef){
       cuentasAfectadas.forEach(c=>{
-        let ops=0;
+        let operaciones=0;
         if(Fuente.esTC(c)){
           const tc=(S.tarjetasCredito||[]).find(x=>x.id===c.slice(3));
-          if(tc && typeof _tcOpsPosteriores==='function') ops=_tcOpsPosteriores(tc,fechaRef,null);
-        } else if(typeof _cuentaOpsPosteriores==='function'){
-          ops=_cuentaOpsPosteriores(c,fechaRef,null);
+          if(tc && typeof _tcOperacionesPosteriores==='function') operaciones=_tcOperacionesPosteriores(tc,fechaRef,null);
+        } else if(typeof _cuentaOperacionesPosteriores==='function'){
+          operaciones=_cuentaOperacionesPosteriores(c,fechaRef,null);
         }
-        if(ops>opsPosteriores)opsPosteriores=ops;
+        if(operaciones>operacionesPosteriores)operacionesPosteriores=operaciones;
       });
     }
     if(fechaRef && typeof nivelAntiguedadMovimiento==='function'){
-      const nivel=nivelAntiguedadMovimiento(fechaRef,opsPosteriores,'plata_comprometida');
+      const nivel=nivelAntiguedadMovimiento(fechaRef,operacionesPosteriores,'plata_comprometida');
       if(nivel==='bloqueado'){
         if(typeof avisarMovimientoBloqueado==='function') await avisarMovimientoBloqueado();
         return;
@@ -1774,7 +1774,7 @@ async function _plataComprometidaEliminar(id){
                 const cajita=(S.cajitas||[]).find(x=>x.id===cuenta.split(':')[1]);
                 if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
               }
-              descontarFuente(cuenta, d.monto, _ogPlataComprometida(d.id, true));
+              descontarFuente(cuenta, d.monto, _origenLibroPlataComprometida(d.id, true));
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='tc' && d.gastoTcId){
             // Revertir deuda y compra de TC generada al recibir
@@ -1788,7 +1788,7 @@ async function _plataComprometidaEliminar(id){
                   const cajita=(S.cajitas||[]).find(x=>x.id===d.gastoTcCajita.split(':')[1]);
                   if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
                 }
-                descontarFuente(d.gastoTcCajita, d.monto, _ogPlataComprometida(d.id, true));
+                descontarFuente(d.gastoTcCajita, d.monto, _origenLibroPlataComprometida(d.id, true));
               }
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='cajita' && d.gastoCajita){
@@ -1798,7 +1798,7 @@ async function _plataComprometidaEliminar(id){
                 const cajita=(S.cajitas||[]).find(x=>x.id===d.gastoCajita.split(':')[1]);
                 if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
               }
-              descontarFuente(d.gastoCajita, d.monto, _ogPlataComprometida(d.id, true));
+              descontarFuente(d.gastoCajita, d.monto, _origenLibroPlataComprometida(d.id, true));
             }
           }
         } catch(e){ console.warn('[CP] Error revirtiendo destino al eliminar:', e); }
@@ -1810,13 +1810,13 @@ async function _plataComprometidaEliminar(id){
           if(d.tipo==='reposicion' && d.yaSaque){
             const cuenta = d.cuentaId || item.cuentaDestino;
             if(cuenta){
-              sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id, true));
+              sumarFuente(cuenta, d.monto, _origenLibroPlataComprometida(d.id, true));
               if(S.movimientos) S.movimientos = S.movimientos.filter(m => !(
                 m.tipo==='salida' && m.fuente===cuenta && m.monto===d.monto && (m.desc||'').includes(d.desc||item.desc)
               ));
             }
           } else if(d.tipo==='gasto' && d.gastoOrigen==='cajita' && d.gastoCajita && d.yaPague){
-            sumarFuente(d.gastoCajita, d.monto, _ogPlataComprometida(d.id, true));
+            sumarFuente(d.gastoCajita, d.monto, _origenLibroPlataComprometida(d.id, true));
             if(S.movimientos) S.movimientos = S.movimientos.filter(m => !(
               m.tipo==='salida' && m.fuente===d.gastoCajita && m.monto===d.monto && (m.desc||'').startsWith('Pago: '+d.desc)
             ));
@@ -1824,7 +1824,7 @@ async function _plataComprometidaEliminar(id){
         } catch(e){ console.warn('[CP] Error revirtiendo adelanto/pago al eliminar:', e); }
       });
       if(item.sobrante && item.sobrante.cuenta && item.sobrante.monto){
-        try { descontarFuente(item.sobrante.cuenta, item.sobrante.monto, _ogPlataComprometida(item.id, true)); }
+        try { descontarFuente(item.sobrante.cuenta, item.sobrante.monto, _origenLibroPlataComprometida(item.id, true)); }
         catch(e){ console.warn('[CP] Error revirtiendo el sobrante al eliminar:', e); }
       }
     } else {
@@ -1839,7 +1839,7 @@ async function _plataComprometidaEliminar(id){
                 if(cajita && typeof materializarIntereses==='function') materializarIntereses(cajita);
               }
               // Revertir el descuento que se hizo al adelantar (devolver la plata a la cajita)
-              sumarFuente(cuenta, d.monto, _ogPlataComprometida(d.id, true));
+              sumarFuente(cuenta, d.monto, _origenLibroPlataComprometida(d.id, true));
               // Quitar el movimiento de salida generado por el adelanto
               if(S.movimientos){
                 S.movimientos = S.movimientos.filter(m => !(
@@ -2030,9 +2030,9 @@ if(document.readyState === 'loading'){
 }
 
 // Arrancar también cuando Firebase termina de cargar los datos.
-// Usamos el evento 'appDataLoaded' en lugar de sobrescribir window._fbLoadData,
+// Usamos el evento 'appDataLoaded' en lugar de sobrescribir window._firebaseLoadData,
 // porque este script es inline y se ejecuta ANTES que los módulos (type="module"),
-// por lo que cualquier wrapper sobre _fbLoadData quedaría sobreescrito por el módulo.
+// por lo que cualquier wrapper sobre _firebaseLoadData quedaría sobreescrito por el módulo.
 window.addEventListener('appDataLoaded', function(){ setTimeout(_plataComprometidaInit, 800); });
 
 })();

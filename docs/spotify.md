@@ -480,7 +480,7 @@ Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene
 | `deleteSpotifyHistorial(id)` | Único punto válido para borrar un cobro o un pago; revierte plata, movimiento secundario y estado |
 | `resolverPendienteSpotifyHistorial(i)` | Abre el sheet para registrar un abono contra la deuda puntual (`pendiente`) de un cobro específico |
 | `confirmarSpotifyResolverPendiente()` | Aplica el abono: suma la plata al destino elegido y lo agrega a `pendienteHistorial` como movimiento propio (`id`, `_secundario`, `_origenSeccion`), reduce `pendiente` |
-| `deshacerAbonoPendienteSpotify(i, abIdx)` | Revierte un abono puntual (plata + `pendiente` + `pendienteHistorial`) sin borrar el resto del cobro |
+| `deshacerAbonoPendienteSpotify(i, abonoIdx)` | Revierte un abono puntual (plata + `pendiente` + `pendienteHistorial`) sin borrar el resto del cobro |
 | `spotifyTramosDeCobro(h)` | Divide un cobro en sus períodos (fecha de inicio y monto de cada uno). Registros viejos sin `periodos`/`proximoPagoAntes` son un solo tramo que nunca flota |
 | `spotifyAsignarPeriodos(hist)` | Asigna cada período de cada cobro a un ciclo (por posición el primero, por fecha de inicio los demás, con la regla del empate) y marca los flotantes |
 | `spotifyResumenCicloActual()` | `{recaudado, flotante}` del ciclo abierto; alimenta "Recaudado este ciclo" y el adelantado |

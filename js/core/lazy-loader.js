@@ -340,7 +340,7 @@ const Loader = (function () {
   // confirmar, con pin-bio.js + firebase-init.js + firebase-sync.js en
   // mano, que la hipótesis es imposible en la arquitectura actual:
   // appDataLoaded solo lo dispara _finishFirstLoad() (firebase-sync.js),
-  // que solo corre dentro del onSnapshot de _fbLoadData(), que solo se
+  // que solo corre dentro del onSnapshot de _firebaseLoadData(), que solo se
   // llama desde _launchApp() (pin-bio.js) — y ahí SIEMPRE después de
   // _hidePin() (que ya sacó la clase 'open'). No hay ningún camino de
   // código en el que este evento pueda disparar con el PIN todavía en

@@ -14,7 +14,7 @@ var Reversibles = (() => {
       const def = _reg.get(tipo);
       const p = def && def.proteccion ? def.proteccion(ref, ctx) : null;
       if (!p) return { ok: true, confirmado: false };
-      const nivel = nivelAntiguedadMovimiento(p.fecha, p.ops, p.modulo);
+      const nivel = nivelAntiguedadMovimiento(p.fecha, p.operaciones, p.modulo);
       if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return { ok: false, confirmado: false }; }
       if (nivel === 'viejo') {
         const si = p.dialogo ? await p.dialogo() : await confirmarBorrarMovimientoViejo(p.nombre, p.monto, p.direccion, p.campo || 'saldo');
@@ -48,11 +48,11 @@ window.addEventListener('beforeunload', function() {
   // los cambios recientes hechos desde otro dispositivo (ej: celular todo el día).
   if (!window._locallyModified) return;
   // Siempre intentar guardar al cerrar si hay datos cargados, haya o no timer pendiente
-  if (window._fbUser && window._fb && window.S) {
+  if (window._firebaseUser && window._firebase && window.S) {
     try {
       clearTimeout(_saveTimer); _saveTimer = null;
-      clearTimeout(window._fbSaveTimer); window._fbSaveTimer = null;
-      const {db, doc, setDoc} = window._fb;
+      clearTimeout(window._firebaseSaveTimer); window._firebaseSaveTimer = null;
+      const {db, doc, setDoc} = window._firebase;
       const data = JSON.parse(JSON.stringify(window.S));
       const closingTs = Date.now();
       // Persistir el timestamp ANTES de cerrar para que al reabrir
@@ -62,7 +62,7 @@ window.addEventListener('beforeunload', function() {
       window._lastSavedAt = closingTs;
       // Al cerrar no se puede esperar una transacción: se escribe con la revisión siguiente. Si otro dispositivo guardó en medio,
       // el próximo guardado de ese dispositivo lo detecta como conflicto y no se pierde nada sin aviso.
-      setDoc(doc(db,'usuarios',window._fbUser.uid,'data','finanzas'),
+      setDoc(doc(db,'usuarios',window._firebaseUser.uid,'data','finanzas'),
         {payload: JSON.stringify(data), updatedAt: closingTs, rev: (window._revNube || 0) + 1}
       ).catch(()=>{});
     } catch(e) {}

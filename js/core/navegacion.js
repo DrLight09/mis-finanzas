@@ -37,8 +37,8 @@ function closeSheet(id){
     // Si el foco (y con él el teclado) está dentro del sheet que se cierra, soltarlo
     // de forma explícita: así el teclado se cierra siempre a la vez que el sheet y
     // no depende de cuándo decida el navegador limpiar el foco de un nodo oculto.
-    const _csAe = document.activeElement;
-    if(_csAe && _csAe !== document.body && _csEl.contains(_csAe) && typeof _csAe.blur === 'function') _csAe.blur();
+    const _csElementoActivo = document.activeElement;
+    if(_csElementoActivo && _csElementoActivo !== document.body && _csEl.contains(_csElementoActivo) && typeof _csElementoActivo.blur === 'function') _csElementoActivo.blur();
     _csEl.classList.remove('open'); _csEl.classList.remove('sheet-background');
   }
   // Quitar de la pila

@@ -690,9 +690,9 @@ function abrirPerfilPersona(personaId) {
       : html`<span class="badge bg-red pe-fs9">Pendiente</span>`;
 
     // Stats Spotify de esta persona
-    const histSpotify = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && h.nombre === spotifyEntry.nombre);
-    const totalCobradoSpotify = histSpotify.reduce((a, h) => a + (h.monto || 0), 0);
-    const mayorCobroSpotify   = histSpotify.length ? histSpotify.reduce((mx, h) => h.monto > mx.monto ? h : mx, histSpotify[0]) : null;
+    const historialSpotify = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && h.nombre === spotifyEntry.nombre);
+    const totalCobradoSpotify = historialSpotify.reduce((a, h) => a + (h.monto || 0), 0);
+    const mayorCobroSpotify   = historialSpotify.length ? historialSpotify.reduce((mx, h) => h.monto > mx.monto ? h : mx, historialSpotify[0]) : null;
     const diasEnPlan     = spotifyEntry.fechaIngreso
       ? Fecha.diasEntre(spotifyEntry.fechaIngreso, hoy())
       : null;
@@ -718,7 +718,7 @@ function abrirPerfilPersona(personaId) {
         ${totalCobradoSpotify > 0 ? html`<div class="pe-celda">
           <div class="pe-celda-cap">Total cobrado</div>
           <div class="pe-val14-spotify">${fmt(totalCobradoSpotify)}</div>
-          <div class="pe-fecha10-mt1">${histSpotify.length} cobro${histSpotify.length !== 1 ? 's' : ''}</div>
+          <div class="pe-fecha10-mt1">${historialSpotify.length} cobro${historialSpotify.length !== 1 ? 's' : ''}</div>
         </div>` : ''}
         ${diasEnPlan !== null ? html`<div class="pe-celda">
           <div class="pe-celda-cap">En el plan</div>

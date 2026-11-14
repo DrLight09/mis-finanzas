@@ -154,9 +154,9 @@ describe('huella', () => {
       assert.equal(ctx.window.S, real);
       assert.equal(ctx.window._estadoAislado, undefined);
     });
-    test('save() y _fbSaveToCloud no escriben nada mientras dura: un estado de prueba nunca llega a la nube', () => {
+    test('save() y _firebaseSaveToCloud no escriben nada mientras dura: un estado de prueba nunca llega a la nube', () => {
       let guardados = 0;
-      ctx.window._fbSaveToCloud = () => { guardados++; return Promise.resolve({ ok: true }); };
+      ctx.window._firebaseSaveToCloud = () => { guardados++; return Promise.resolve({ ok: true }); };
       ctx.window._dataLoaded = true;
       const copia = plano(ctx.S);
       ctx.conEstadoAislado(copia, () => { ctx.save(); });
@@ -772,8 +772,8 @@ describe('wrapped — «no alcanzó el tiempo»: banco de frases y diapositivas'
     // y a través del armado real, con cada frase forzada: nunca queda una llave
     for (let anio = 2026; anio < 2060; anio++) {
       ['nada', 'poco'].forEach(tier => {
-        const sl = I._wrappedSlidesInsuficiente({ tier, registros: 1234, dias: 21, primera: '2026-10-18' }, String(anio));
-        sl.forEach(s => assert.doesNotMatch(s.html, /\{\w+\}/, 'marcador sin resolver en ' + anio + '/' + tier));
+        const slide = I._wrappedSlidesInsuficiente({ tier, registros: 1234, dias: 21, primera: '2026-10-18' }, String(anio));
+        slide.forEach(s => assert.doesNotMatch(s.html, /\{\w+\}/, 'marcador sin resolver en ' + anio + '/' + tier));
       });
     }
   });
@@ -792,9 +792,9 @@ describe('wrapped — «no alcanzó el tiempo»: banco de frases y diapositivas'
   });
 
   test('singular correcto: 1 día y 1 movimiento', () => {
-    const sl = I._wrappedSlidesInsuficiente({ tier: 'poco', registros: 1, dias: 1, primera: '2026-12-31' }, '2026');
-    assert.match(sl[1].html, /1 día con registros/);
-    assert.match(sl[1].html, /1 movimiento</);
+    const slide = I._wrappedSlidesInsuficiente({ tier: 'poco', registros: 1, dias: 1, primera: '2026-12-31' }, '2026');
+    assert.match(slide[1].html, /1 día con registros/);
+    assert.match(slide[1].html, /1 movimiento</);
   });
 
   test('determinista: el mismo año y nivel dan SIEMPRE las mismas frases; años distintos varían (el banco se aprovecha)', () => {
@@ -896,7 +896,7 @@ describe('wrapped — contrato de CSS del HTML guardado', () => {
   const fuentes = ['css/styles.css', 'js/modules/wrapped.js', 'index.html'].map(f => fs.readFileSync(path.join(RAIZ, !fs.existsSync(path.join(RAIZ, f)) && f === 'css/styles.css' ? 'styles.css' : f), 'utf8')).join('\n');
   const definida = cls => cls.startsWith('fa-') || new RegExp('\\.' + cls.replace(/[-]/g, '\\-') + '(?![\\w-])').test(fuentes); // fa-*: FontAwesome (externo)
   const fixture = JSON.parse(fs.readFileSync(path.join(__dirname, 'fixtures', 'wrapped-clases.json'), 'utf8'));
-  const clasesDe = sl => { const s = new Set(); sl.forEach(x => { for (const m of x.html.matchAll(/class="([^"]+)"/g)) m[1].split(/\s+/).forEach(k => s.add(k)); }); return s; };
+  const clasesDe = slide => { const s = new Set(); slide.forEach(x => { for (const m of x.html.matchAll(/class="([^"]+)"/g)) m[1].split(/\s+/).forEach(k => s.add(k)); }); return s; };
 
   test('cada clase que usa un Wrapped guardado (instantánea de referencia) sigue definida: renombrar o borrar una rompería los recuerdos viejos en silencio', () => {
     const rotas = fixture.filter(k => !definida(k));

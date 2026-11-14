@@ -27,9 +27,9 @@ function entorno({ getToken, permiso = 'granted', online = true, setDoc, ua = 'C
   ctx.navigator = { serviceWorker: { ready: Promise.resolve(swReg) }, onLine: online, userAgent: ua, ...(brave ? { brave: { isBrave: async () => true } } : {}) };
   ctx.window = ctx.window || ctx;
   ctx.window.Notification = ctx.Notification;
-  ctx.window._fbUser = { uid: 'u1' };
-  ctx.window._fb = { db: {}, doc: () => ({}), arrayUnion: t => ({ t }), setDoc: setDoc || (async () => { calls.setDoc++; }) };
-  ctx._fbUser = ctx.window._fbUser; ctx._fb = ctx.window._fb;
+  ctx.window._firebaseUser = { uid: 'u1' };
+  ctx.window._firebase = { db: {}, doc: () => ({}), arrayUnion: t => ({ t }), setDoc: setDoc || (async () => { calls.setDoc++; }) };
+  ctx._firebaseUser = ctx.window._firebaseUser; ctx._firebase = ctx.window._firebase;
   const sub = () => dom.document.getElementById('cfg-notificaciones-sub').textContent;
   return { ctx, toasts, calls, store, sub, dom };
 }

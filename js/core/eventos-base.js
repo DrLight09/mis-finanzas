@@ -45,8 +45,8 @@ function _initEventListeners() {
 
   const menuGastoFijo = document.getElementById('menu-gasto-fijo');
   if (menuGastoFijo) menuGastoFijo.addEventListener('click', () => { closeSheet('menu'); abrirNuevoGastoFijo(); });
-  const menuAD = document.getElementById('menu-agregar-dinero');
-  if (menuAD) menuAD.addEventListener('click', () => { closeSheet('menu'); openSheet('agregar-dinero-menu'); });
+  const menuAgregarDinero = document.getElementById('menu-agregar-dinero');
+  if (menuAgregarDinero) menuAgregarDinero.addEventListener('click', () => { closeSheet('menu'); openSheet('agregar-dinero-menu'); });
 
   const menuTransferir = document.getElementById('menu-transferir');
   if (menuTransferir) menuTransferir.addEventListener('click', () => { closeSheet('menu'); abrirTransferir(); });

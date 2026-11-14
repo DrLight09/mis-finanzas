@@ -306,7 +306,7 @@ function recalcularMontoBaseHistorial(){
 // pata) y los movimientos con `fuentes`/`destinos` repartidos (la diferencia puede ser un margen ya registrado).
 // Si el movimiento trae `clase:'ingreso'` es plata nueva (p. ej. un regalo): cuenta como ingreso del mes y NO como base.
 function _movimientosDeudaSinCuenta(estado){
-  const st=estado||S, out=[];
+  const estadoActual=estado||S, out=[];
   const veces=(lista,abre,reduce)=>(lista||[]).forEach(d=>(d.movimientos||[]).forEach(m=>{
     if(!m||!m.fecha||!(m.monto>0)||m._perdon||m._viaTC) return;
     if(m.fuente||m.destino||(m.fuentes&&m.fuentes.length)||(m.destinos&&m.destinos.length)) return;
@@ -315,8 +315,8 @@ function _movimientosDeudaSinCuenta(estado){
     else if(reduce.indexOf(m.tipo)!==-1) signo=abre===ME_DEBEN_ABRE?-1:1;
     if(signo) out.push({m,deuda:d,fecha:m.fecha,monto:signo*m.monto,clase:m.clase});
   }));
-  veces(st.deudores,ME_DEBEN_ABRE,['abono','pago-completo']);
-  veces(st.misDeudas,YO_DEBO_ABRE,['pago','abono','pago-completo']);
+  veces(estadoActual.deudores,ME_DEBEN_ABRE,['abono','pago-completo']);
+  veces(estadoActual.misDeudas,YO_DEBO_ABRE,['pago','abono','pago-completo']);
   return out;
 }
 const ME_DEBEN_ABRE=['prestamo'], YO_DEBO_ABRE=['recibido'];
@@ -397,7 +397,7 @@ function snapshotPatrimonio(){
   }
   _actualizarCierresPatrimonio();
   if(S.patrimonioHistorial.length>365)S.patrimonioHistorial=S.patrimonioHistorial.slice(-365);
-  // (No localStorage — Firebase lo guarda _fbSaveToCloud)
+  // (No localStorage — Firebase lo guarda _firebaseSaveToCloud)
 }
 
 // ── Eliminar un movimiento no deja rastro en el historial de patrimonio ─────────────────────────────────────────

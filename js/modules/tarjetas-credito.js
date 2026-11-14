@@ -122,10 +122,10 @@ const TC_MOTIVOS_CARGO = {
 // docs/proteccion-antiguedad-movimientos.md §4: sin ciclo natural como
 // Spotify, se cuenta contra la cuenta/tarjeta afectada en su lugar).
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
-// _ogTc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'tarjetas', ref:<id del pago de la tarjeta> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogTc = Libro.origen('tarjetas');
+// _origenLibroTc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'tarjetas', ref:<id del pago de la tarjeta> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _origenLibroTc = Libro.origen('tarjetas');
 
-function _tcOpsPosteriores(tc, fecha, excludeId){
+function _tcOperacionesPosteriores(tc, fecha, excludeId){
   if(!fecha)return 0;
   const compras=(tc.compras||[]).filter(c=>!c.eliminado&&c.id!==excludeId&&c.fecha>fecha).length;
   const pagos=(tc.pagos||[]).filter(p=>!p.eliminado&&p.id!==excludeId&&p.fecha>fecha).length;
@@ -175,9 +175,9 @@ function tcRecalcular(tc){
 }
 
 // Sonda de la huella: deuda calculada vs guardada, cupo y estado de cada tarjeta. `coherente` detecta un tc.deuda desactualizado.
-registrarSonda('tarjetas',st=>{
+registrarSonda('tarjetas',estadoActual=>{
   const entidades={};
-  (st.tarjetasCredito||[]).forEach(tc=>{
+  (estadoActual.tarjetasCredito||[]).forEach(tc=>{
     const calculada=tcDeudaCalculada(tc), guardada=tc.deuda||0;
     entidades[tc.id]={saldo:calculada,guardada,coherente:Math.abs(calculada-guardada)<0.01,cupo:tc.cupo||0,estado:tc.estado||'activa'};
   });
@@ -792,7 +792,7 @@ function confirmarPagarTC(){
   if(!_val.ok){toast(_val.motivo,'err');return;}
 
   const pago=tcCrearPago(tc,{monto,fecha,fuente,nota});
-  descontarFuente(fuente,monto,_ogTc(pago.id)); // después de crear el pago, para que el libro apunte a su id
+  descontarFuente(fuente,monto,_origenLibroTc(pago.id)); // después de crear el pago, para que el libro apunte a su id
 
   if(!S.gastosVar)S.gastosVar=[];
   S.gastosVar.push({
@@ -1001,8 +1001,8 @@ async function eliminarCompraTC(tcId,compraId){
   if(!compra)return;
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
-  const opsPosteriores=_tcOpsPosteriores(tc,compra.fecha,compraId);
-  const nivel=nivelAntiguedadMovimiento(compra.fecha,opsPosteriores,'tarjetas');
+  const operacionesPosteriores=_tcOperacionesPosteriores(tc,compra.fecha,compraId);
+  const nivel=nivelAntiguedadMovimiento(compra.fecha,operacionesPosteriores,'tarjetas');
   if(nivel==='bloqueado'){
     await avisarMovimientoBloqueado();
     return;
@@ -1011,10 +1011,10 @@ async function eliminarCompraTC(tcId,compraId){
     ? await confirmarBorrarMovimientoViejo(tc.nombre,compra.monto||0,'baja','deuda')
     : await confirmarEliminar({titulo:'Eliminar compra',objeto:'esta compra de '+fmt(compra.monto),detalle:'Se reducirá la deuda de la tarjeta.',irreversible:false});
   if(!ok)return;
-  const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar esta compra
+  const _historialAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar esta compra
   tcEliminarCompraInterna(tc,compraId);
   if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esCompraTC&&g._tcCompraId===compraId));
-  purgarEfectoEnHistorial(_histAntes,compra);
+  purgarEfectoEnHistorial(_historialAntes,compra);
   save();refresh();renderTCScreen();
   abrirDetalleTCSheet(tcId);
   toast('Compra eliminada — deuda actualizada','ok');
@@ -1027,8 +1027,8 @@ async function eliminarPagoTC(tcId,pagoId){
   if(!pago)return;
 
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
-  const opsPosteriores=_tcOpsPosteriores(tc,pago.fecha,pagoId);
-  const nivel=nivelAntiguedadMovimiento(pago.fecha,opsPosteriores,'tarjetas');
+  const operacionesPosteriores=_tcOperacionesPosteriores(tc,pago.fecha,pagoId);
+  const nivel=nivelAntiguedadMovimiento(pago.fecha,operacionesPosteriores,'tarjetas');
   if(nivel==='bloqueado'){
     await avisarMovimientoBloqueado();
     return;
@@ -1037,11 +1037,11 @@ async function eliminarPagoTC(tcId,pagoId){
     ? await confirmarBorrarMovimientoViejo(tc.nombre,pago.monto||0,'sube','deuda')
     : await confirmarEliminar({titulo:'Eliminar pago',objeto:'este pago de '+fmt(pago.monto),detalle:'Se devolverá el dinero a '+fuenteLabel(pago.fuente)+' y aumentará la deuda de la tarjeta.',irreversible:false});
   if(!ok)return;
-  const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
+  const _historialAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
   tcEliminarPagoInterna(tc,pagoId);
-  if(pago.fuente) sumarFuente(pago.fuente,pago.monto,_ogTc(pagoId,true));
+  if(pago.fuente) sumarFuente(pago.fuente,pago.monto,_origenLibroTc(pagoId,true));
   if(S.gastosVar)S.gastosVar=S.gastosVar.filter(g=>!(g._esPagoTC&&g._tcPagoId===pagoId));
-  purgarEfectoEnHistorial(_histAntes,pago);
+  purgarEfectoEnHistorial(_historialAntes,pago);
   save();refresh();renderTCScreen();
   abrirDetalleTCSheet(tcId);
   toast('Pago eliminado — deuda actualizada','ok');

@@ -39,11 +39,11 @@ function claseEfectivaMovimiento(m){
 // Movimientos y gastos que llegaron SIN clase válida (un módulo no la escribió). Las salidas de espejo no la necesitan:
 // ningún lector de ingreso o gasto las consulta. Lo usa save() para avisar, igual que Libro.verificar() con los saldos.
 function movimientosSinClase(estado){
-  const st = estado || S, out = [];
-  (st.movimientos || []).forEach(m => {
+  const estadoActual = estado || S, out = [];
+  (estadoActual.movimientos || []).forEach(m => {
     if(m && typeof m === 'object' && m.tipo !== 'salida' && !_claseValida(m.clase)) out.push({ lista: 'movimientos', id: m.id, tipo: m.tipo, desc: m.desc });
   });
-  (st.gastosVar || []).forEach(g => {
+  (estadoActual.gastosVar || []).forEach(g => {
     if(g && typeof g === 'object' && !_claseValida(g.clase)) out.push({ lista: 'gastosVar', id: g.id, desc: g.desc });
   });
   return out;
@@ -105,7 +105,7 @@ function registrarSonda(nombre, fn){
    conEstadoAislado(estado, fn) ejecuta `fn` SÍNCRONA con `estado` como el S global y lo restaura siempre al terminar. Existe para
    poder calcular la huella de invariantes (js/core/huella.js) y la vista previa del cierre (js/core/cierre.js) sobre una COPIA con
    las mismas funciones de la app (calcPatrimonioDesglose, Deudas, calcC… leen el S global): así no hay una segunda versión de
-   ninguna regla contable solo para comparar. Mientras dura, window._estadoAislado es true y save()/_fbSaveToCloud() no escriben
+   ninguna regla contable solo para comparar. Mientras dura, window._estadoAislado es true y save()/_firebaseSaveToCloud() no escriben
    nada: un estado de prueba nunca llega a la nube. Si `fn` devuelve una promesa lanza error (su continuación correría con el S real). */
 function conEstadoAislado(estado, fn){
   if(!estado||typeof estado!=='object')throw new Error('conEstadoAislado: se necesita un estado (objeto)');
@@ -121,7 +121,7 @@ function conEstadoAislado(estado, fn){
 }
 
 function load(){
-  // Firebase version: datos ya cargados en S por _fbLoadData()
+  // Firebase version: datos ya cargados en S por _firebaseLoadData()
   // Solo inicializamos campos faltantes y sincronizamos el DOM
   aplicarMigraciones(S);
   _ensureSpotify();
@@ -194,14 +194,14 @@ function parsePct(v){
   return parseFloat(s)||0;
 }
 
-// (window._fbSaveTimer lo gestiona el módulo Firebase — no declarar aquí)
+// (window._firebaseSaveTimer lo gestiona el módulo Firebase — no declarar aquí)
 
 function save(){
   // Estado aislado (conEstadoAislado): nunca se guarda un estado de prueba.
   if(window._estadoAislado)return;
   // PROTECCIÓN: no guardar si los datos aún no se han cargado desde Firebase.
   // Esto evita sobreescribir datos válidos con el estado inicial vacío.
-  if(window._fbLoadData && !window._dataLoaded) {
+  if(window._firebaseLoadData && !window._dataLoaded) {
     console.warn('[save] Bloqueado: datos de Firebase aún no cargados.');
     return;
   }
@@ -217,11 +217,11 @@ function save(){
   // La clase de cada movimiento la escribe el módulo que lo crea (no hay deducción de respaldo). Si alguno llega sin ella se
   // avisa UNA vez por sesión (consola; detalle en window._movimientosSinClase): sin clase un movimiento no cuenta como ingreso.
   {
-    const _sc = movimientosSinClase(S);
-    window._movimientosSinClase = _sc;
-    if(_sc.length && !window._claseAvisada){
+    const _scroller = movimientosSinClase(S);
+    window._movimientosSinClase = _scroller;
+    if(_scroller.length && !window._claseAvisada){
       window._claseAvisada = true;
-      console.warn('[clase] ' + _sc.length + ' movimiento(s) sin clase: revisar qué módulo los creó.', _sc);
+      console.warn('[clase] ' + _scroller.length + ' movimiento(s) sin clase: revisar qué módulo los creó.', _scroller);
     }
   }
   // Invariante del libro: saldo guardado == suma de S.libro. Un descuadre significa que algún código movió un saldo
@@ -237,7 +237,7 @@ function save(){
   }
   snapshotPatrimonio();
   // Guardar en Firebase con debounce de 1.5s
-  if(typeof window._fbSaveToCloud === 'function') {
-    window._fbSaveToCloud();
+  if(typeof window._firebaseSaveToCloud === 'function') {
+    window._firebaseSaveToCloud();
   }
 }

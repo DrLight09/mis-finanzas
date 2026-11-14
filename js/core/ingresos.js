@@ -42,14 +42,14 @@ function _esEntradaEspejoNoIngreso(m){
 //   · Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben").
 // `estado` es opcional (por defecto S): Wrapped recibe el estado como parámetro.
 function entradasIngresoReal(estado){
-  const st = estado || S;
+  const estadoActual = estado || S;
   const lista = [];
-  (st.movimientos||[]).forEach(m => {
+  (estadoActual.movimientos||[]).forEach(m => {
     if(!m || m.tipo!=='entrada' || _esEntradaEspejoNoIngreso(m)) return;
     lista.push(m);
   });
   // Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben"): plata nueva.
-  _movimientosDeudaSinCuenta(st).forEach(x=>{ if(x.clase==='ingreso'&&x.monto>0) lista.push({id:x.m.id,tipo:'entrada',monto:x.monto,fecha:x.fecha,desc:x.m.nota||('Ingreso vía '+(x.deuda.nombre||'deuda')),clase:'ingreso',_esDeudaSinCuenta:true}); });
+  _movimientosDeudaSinCuenta(estadoActual).forEach(x=>{ if(x.clase==='ingreso'&&x.monto>0) lista.push({id:x.m.id,tipo:'entrada',monto:x.monto,fecha:x.fecha,desc:x.m.nota||('Ingreso vía '+(x.deuda.nombre||'deuda')),clase:'ingreso',_esDeudaSinCuenta:true}); });
   return lista;
 }
 

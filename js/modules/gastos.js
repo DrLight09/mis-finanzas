@@ -93,8 +93,8 @@ let gastoVariableSplitMode = false;
 // Solo cuentas con saldo >= $1,00 (FuentesFiltro, js/core/fuentes-filtro.js): de una cuenta
 // vacía no puede salir plata. Sin TC en modo dividido (ver comentario de arriba).
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
-// _ogGastoVariable(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'gastos', ref:<id del gasto> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogGastoVariable = Libro.origen('gastos');
+// _origenLibroGastoVariable(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'gastos', ref:<id del gasto> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _origenLibroGastoVariable = Libro.origen('gastos');
 
 
 /* gv_fuente (modo simple, "¿De dónde salió la plata?"): lo puebla openSheet('gasto-var') en
@@ -144,14 +144,14 @@ let _gastoVariableGrandeManual = false;
 // después. Y sugiere marcar la casilla de compra grande cuando el monto lo amerita (sin pisar lo que el usuario ya eligió).
 function actualizarGastoVariableImpacto() {
   const el = document.getElementById('gv-impacto');
-  const chk = document.getElementById('gv_grande');
+  const checkbox = document.getElementById('gv_grande');
   if (!el || typeof calcImpactoCompra !== 'function') return;
   const monto = parseMoney(document.getElementById('gv_monto').value) || 0;
   const imp = calcImpactoCompra(monto);
   el.textContent = imp ? imp.texto : '';
   ['red', 'amber'].forEach(t => el.classList.remove('ix-gv-impacto-' + t));
   if (imp && (imp.nivel === 'red' || imp.nivel === 'amber')) el.classList.add('ix-gv-impacto-' + imp.nivel);
-  if (chk && !_gastoVariableGrandeManual) chk.checked = !!(imp && imp.grande);
+  if (checkbox && !_gastoVariableGrandeManual) checkbox.checked = !!(imp && imp.grande);
 }
 
 // Marcar o quitar «compra grande» a un gasto ya registrado (p. ej. la moto de hace dos semanas). Es una propiedad del propio gasto
@@ -172,7 +172,7 @@ function abrirNuevoGastoVar() {
   if (!FuentesFiltro.hayUtilizable(getFuentes(), FuentesFiltro.PRESET.SALIDA)) { toast(FuentesFiltro.MSG_SIN_SALDO, 'err'); return; }
   poblarCatSelect('gv_cat', getCatsVar());
   _gastoVariableGrandeManual = false;
-  const _gastoVariableChk = document.getElementById('gv_grande'); if (_gastoVariableChk) _gastoVariableChk.checked = false;
+  const _gastoVariableCheckbox = document.getElementById('gv_grande'); if (_gastoVariableCheckbox) _gastoVariableCheckbox.checked = false;
   const _gastoVariableImp = document.getElementById('gv-impacto'); if (_gastoVariableImp) _gastoVariableImp.textContent = '';
   // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js /
   // openSheet_pagarSpotify en spotify.js)
@@ -498,9 +498,9 @@ function addGastoVar() {
   const gastoObj = { id: compraId, desc, monto, fecha: fechaGasto, cat: catGasto, fuente, splits: splits || undefined, nota: notaGasto, clase: 'gasto' };
   // La decisión de la casilla se guarda explícita: true si la marcó; false si no la marcó en un gasto desde el monto mínimo (así la
   // detección automática no se la cambia después). En gastos pequeños no se guarda nada (no hay nada que decidir).
-  const _gastoVariableChkEl = document.getElementById('gv_grande');
-  if (_gastoVariableChkEl) {
-    if (_gastoVariableChkEl.checked) gastoObj.grande = true;
+  const _gastoVariableCheckboxEl = document.getElementById('gv_grande');
+  if (_gastoVariableCheckboxEl) {
+    if (_gastoVariableCheckboxEl.checked) gastoObj.grande = true;
     else if (monto >= Periodo.COMPRA_GRANDE_AUTO.minimo) gastoObj.grande = false;
   }
   // Si la fuente es TC, registrar la compra a través del mismo servicio que
@@ -520,19 +520,19 @@ function addGastoVar() {
     }
   } else if (splits) {
     S.gastosVar.push(gastoObj);
-    splits.forEach(s => descontarFuente(s.fuente, s.monto, _ogGastoVariable(gastoObj.id)));
+    splits.forEach(s => descontarFuente(s.fuente, s.monto, _origenLibroGastoVariable(gastoObj.id)));
     toast('Gasto registrado — dividido entre ' + splits.length + ' cuentas', 'salida');
     if (window.logCambio) { const _gvd = document.getElementById('gv_desc'); logCambio('Registraste un gasto', _gvd ? _gvd.value : '', monto, 'gasto'); }
   } else {
     S.gastosVar.push(gastoObj);
-    descontarFuente(fuente, monto, _ogGastoVariable(gastoObj.id));
+    descontarFuente(fuente, monto, _origenLibroGastoVariable(gastoObj.id));
     toast('Gasto registrado', 'salida');
     if (window.logCambio) { const _gvd = document.getElementById('gv_desc'); const _gvm = parseMoney(document.getElementById('gv_monto').value); logCambio('Registraste un gasto', _gvd ? _gvd.value : '', _gvm, 'gasto'); }
   }
   document.getElementById('gv_desc').value = '';
   document.getElementById('gv_monto').value = '';
   document.getElementById('gv_nota').value = '';
-  const _gastoVariableChk2 = document.getElementById('gv_grande'); if (_gastoVariableChk2) _gastoVariableChk2.checked = false;
+  const _gastoVariableCheckbox2 = document.getElementById('gv_grande'); if (_gastoVariableCheckbox2) _gastoVariableCheckbox2.checked = false;
   _gastoVariableGrandeManual = false;
   document.getElementById('gv_fecha').value = hoy();
   gastoVariableSplitMode = false;
@@ -562,7 +562,7 @@ async function deleteGastoVar(id) {
     const ok = await confirmarEliminar({ titulo: 'Eliminar gasto', objeto: 'este gasto' });
     if (!ok) return;
   }
-  const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este gasto
+  const _historialAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este gasto
   if (g) {
     if (g._esCompraTC && g._tcId) {
       // Revertir: marcar la compra como eliminada (nunca se borra físicamente) y recalcular
@@ -572,15 +572,15 @@ async function deleteGastoVar(id) {
       // Revertir pago: restaurar la deuda en la TC y devolver plata a la cuenta
       const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
       if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
-      if (g.fuente) sumarFuente(g.fuente, g.monto, _ogGastoVariable(g.id, true));
+      if (g.fuente) sumarFuente(g.fuente, g.monto, _origenLibroGastoVariable(g.id, true));
     } else {
       // Gasto normal: devolver el dinero a la cuenta origen (una sola cuenta,
       // o cada una de las cuentas del split si el gasto se dividió — ver
       // addGastoVar)
       if (g.splits && g.splits.length) {
-        g.splits.forEach(s => { if (s.fuente) sumarFuente(s.fuente, s.monto || 0, _ogGastoVariable(g.id, true)); });
+        g.splits.forEach(s => { if (s.fuente) sumarFuente(s.fuente, s.monto || 0, _origenLibroGastoVariable(g.id, true)); });
       } else if (g.fuente) {
-        sumarFuente(g.fuente, g.monto, _ogGastoVariable(g.id, true));
+        sumarFuente(g.fuente, g.monto, _origenLibroGastoVariable(g.id, true));
       }
     }
     // Bug fix: si era pago de gasto fijo, desmarcar como pagado
@@ -590,7 +590,7 @@ async function deleteGastoVar(id) {
     }
   }
   S.gastosVar = (S.gastosVar || []).filter(x => x.id !== id);
-  if (g) purgarEfectoEnHistorial(_histAntes, g);
+  if (g) purgarEfectoEnHistorial(_historialAntes, g);
   save(); refresh();
   toast('Gasto eliminado', 'ok');
   if (window.logCambio && g) logCambio('Eliminaste un gasto', g.desc || '', g.monto, 'eliminar');
@@ -776,7 +776,7 @@ function confirmarPagarGastoFijo() {
   } else {
     const vSal = Plata.validarSalida(fuente, gastoFijo.monto);
     if (!vSal.ok) { errEl.textContent = vSal.motivo; errEl.style.display = 'block'; return; }
-    descontarFuente(fuente, gastoFijo.monto, _ogGastoVariable(gastoObj.id));
+    descontarFuente(fuente, gastoFijo.monto, _origenLibroGastoVariable(gastoObj.id));
     S.gastosVar.push(gastoObj);
   }
   // Registrar pago del mes

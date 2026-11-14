@@ -13,7 +13,7 @@
        oculta/muestra la pestaña de Spotify en el nav, la pantalla de
        Mesada, los banners de saldo inicial en Cuentas y dispara
        renderAttencion() en Inicio. toggleModulo() (acá abajo) la llama.
-     - _fbSignOut() / _abrirEliminarCuenta() / _fbDeleteAccount(): viven
+     - _firebaseSignOut() / _abrirEliminarCuenta() / _firebaseDeleteAccount(): viven
        en el módulo de autenticación de Firebase (núcleo — gestiona toda
        la sesión, no solo esta pantalla). Este archivo solo las invoca.
      - pin-config-container / bio-config-container: el gate de PIN y
@@ -271,15 +271,15 @@ async function _reemplazarDatos(data,motivoPin,msgOk){
   window._importing = true;
   setTimeout(() => { window._importing = false; }, 5000);
   // El toast de éxito y el reload dependen del resultado REAL del guardado:
-  // _fbSaveToCloud() devuelve una promesa {ok, reason}. Si no llegó a escribir
+  // _firebaseSaveToCloud() devuelve una promesa {ok, reason}. Si no llegó a escribir
   // (p.ej. window._dataLoaded todavía en false), recargar traería de vuelta el
   // dato viejo de la nube y el aviso de éxito habría mentido.
-  if(!window._fbSaveToCloud){
+  if(!window._firebaseSaveToCloud){
     toast('Los datos se cargaron en la app pero no se pudo confirmar el guardado en la nube (función de guardado no disponible). No recargues la página todavía — avisa antes de seguir.','err',7000);
     return;
   }
   toast('Guardando en la nube…','info',3000);
-  const _saveResult = await window._fbSaveToCloud({ forzar: true }); // pisa la nube a propósito (no se trata como conflicto)
+  const _saveResult = await window._firebaseSaveToCloud({ forzar: true }); // pisa la nube a propósito (no se trata como conflicto)
   if(_saveResult && _saveResult.ok){
     toast(msgOk,'ok');
     // Recargar solo una vez confirmado el guardado (ya no hace falta
@@ -346,7 +346,7 @@ function _respDescripcion(fila){
 function renderRespaldos(){
   const el=document.getElementById('cfg-respaldos');
   if(!el)return;
-  const api=window._fbRespaldos;
+  const api=window._firebaseRespaldos;
   if(!api){el.innerHTML='';return;}
   const est=api.estado();
   let linea='Todavía no se ha creado ningún respaldo en este dispositivo.';
@@ -370,26 +370,26 @@ function _respBotonVer(abierto){
   b.setAttribute('aria-expanded',abierto?'true':'false');
 }
 async function verRespaldos(){
-  const api=window._fbRespaldos, cont=document.getElementById('cfg-respaldos-lista');
-  if(!api||!cont)return;
-  if(_respaldosVisibles){cont.innerHTML='';_respBotonVer(false);return;}
+  const api=window._firebaseRespaldos, contenedor=document.getElementById('cfg-respaldos-lista');
+  if(!api||!contenedor)return;
+  if(_respaldosVisibles){contenedor.innerHTML='';_respBotonVer(false);return;}
   _respBotonVer(true);
-  cont.innerHTML=html`<div class="cfg-resp-estado">Cargando respaldos…</div>`;
+  contenedor.innerHTML=html`<div class="cfg-resp-estado">Cargando respaldos…</div>`;
   let r;
   try{r=await api.listar();}catch(e){r={filas:[],errorNube:String((e&&e.message)||e)};}
   _respaldosFilas=r.filas;
   if(!r.filas.length){
-    cont.innerHTML=html`<div class="cfg-resp-estado">${r.errorNube?'No se pudo leer la lista de la nube ('+r.errorNube+') y en este dispositivo todavía no hay copias.':'Aún no hay respaldos. El primero se crea la próxima vez que se guarde algo en un día nuevo.'}</div>`;
+    contenedor.innerHTML=html`<div class="cfg-resp-estado">${r.errorNube?'No se pudo leer la lista de la nube ('+r.errorNube+') y en este dispositivo todavía no hay copias.':'Aún no hay respaldos. El primero se crea la próxima vez que se guarde algo en un día nuevo.'}</div>`;
     return;
   }
-  cont.innerHTML=html`${r.errorNube?html`<div class="cfg-resp-estado cfg-resp-aviso">No se pudo leer la lista de la nube (${r.errorNube}); se muestran solo las copias de este dispositivo.</div>`:''}
+  contenedor.innerHTML=html`${r.errorNube?html`<div class="cfg-resp-estado cfg-resp-aviso">No se pudo leer la lista de la nube (${r.errorNube}); se muestran solo las copias de este dispositivo.</div>`:''}
     <div class="cfg-resp-lista">${r.filas.map(f=>html`<div class="cfg-resp-fila">
       <div class="cfg-resp-info"><div class="cfg-resp-fecha">${_respFechaLarga(f)}</div><div class="cfg-resp-meta">${_respDescripcion(f)}</div></div>
       <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:restaurarRespaldo',f.id))}>Restaurar</button>
     </div>`)}</div>`;
 }
 async function restaurarRespaldo(id){
-  const api=window._fbRespaldos;
+  const api=window._firebaseRespaldos;
   const fila=_respaldosFilas.find(f=>f.id===id);
   if(!api||!fila){toast('No se encontró ese respaldo. Vuelve a abrir la lista.','err');return;}
   try{
@@ -440,8 +440,8 @@ function toggleModulo(nombre){
 // Entre la confirmación y el location.reload() final la app queda bloqueada con el
 // overlay #fb-loading-screen (cubre toda la pantalla, z-index 99999). Es obligatorio:
 // borrarTodo() no vacía window.S en memoria, solo escribe {} en Firestore; si en esa
-// ventana se pudiera tocar "Cerrar sesión", el guardado final de _fbSignOut() volvería
-// a subir el S viejo y pisaría el borrado. Mismo criterio en _fbSignOut/_fbDeleteAccount
+// ventana se pudiera tocar "Cerrar sesión", el guardado final de _firebaseSignOut() volvería
+// a subir el S viejo y pisaría el borrado. Mismo criterio en _firebaseSignOut/_firebaseDeleteAccount
 // (firebase-sync.js).
 async function borrarTodo(){
   const ok=await confirmarEliminar({titulo:'Borrar todos los datos',verbo:'Borrar',etiqueta:'Borrar todo',objeto:'TODOS tus datos',detalle:'Perderás toda tu información financiera, incluidos los respaldos automáticos.'});
@@ -452,15 +452,15 @@ async function borrarTodo(){
   // Borrar en Firebase: payload "{}" a propósito — la carga lo lee como "vacío", lo verifica
   // contra el servidor y arranca con el estado por defecto de S (ver firebase-sync.js).
   let _borradoFirebaseOk = true;
-  if(window._fbUser && window._fb){
+  if(window._firebaseUser && window._firebase){
     try{
       const resetTs = Date.now();
       try { localStorage.setItem('mf_lastSavedAt', String(resetTs)); } catch(_){}
       window._lastSavedAt = resetTs;
       // Escritura intencional (forzar): sube la revisión sobre la que haya en la nube, así los otros dispositivos la ven como nueva.
-      await window._fbEscribirDoc(JSON.stringify({}), resetTs, true, { sinRespaldo: true }); // los respaldos se borran justo después: es «borrar TODO»
+      await window._firebaseEscribirDoc(JSON.stringify({}), resetTs, true, { sinRespaldo: true }); // los respaldos se borran justo después: es «borrar TODO»
       // Recién con el documento ya vacío se borran los respaldos (si fallara antes, no se perdería la red de seguridad). Nunca lanza.
-      try { if(window._fbRespaldos) await window._fbRespaldos.borrarTodos(); } catch(_) {}
+      try { if(window._firebaseRespaldos) await window._firebaseRespaldos.borrarTodos(); } catch(_) {}
     }catch(e){
       console.error('Error borrando en Firebase:',e);
       _borradoFirebaseOk = false;
@@ -484,7 +484,7 @@ async function borrarTodo(){
 Events.registerAll('config', {
   agregarCat: agregarCat,
   eliminarCat: eliminarCat,
-  signOut: () => window._fbSignOut(),
+  signOut: () => window._firebaseSignOut(),
   abrirEliminarCuenta: () => window._abrirEliminarCuenta(),
   // Accesos directos de "Herramientas" (Personas, Actividad reciente)
   irA: (screen) => showScreen(screen),

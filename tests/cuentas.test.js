@@ -1529,7 +1529,7 @@ describe('cuenta-iconos-colores', () => {
     return { circulos, botones };
   }
 
-  test('index.html carga color-picker.js (sin ese <script>, selColorNC no existía en la página)', () => {
+  test('index.html carga color-picker.js (sin ese <script>, selColorNuevaCuenta no existía en la página)', () => {
     const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
     assert.match(html, /<script src="js\/core\/color-picker\.js" defer><\/script>/);
   });
@@ -1537,9 +1537,9 @@ describe('cuenta-iconos-colores', () => {
   test('elegir un color marca solo ese círculo', () => {
     const app = loadApp(ARCHIVOS, { permissive: true });
     const p = pantalla(app, { colores: ['#60b0f0', '#f06868', '#b090f0'] });
-    app.selColorNC('#f06868');
+    app.selColorNuevaCuenta('#f06868');
     assert.deepEqual(p.circulos.map(c => c.style.border), ['2px solid transparent', ACENTO, '2px solid transparent']);
-    app.selColorNC('#b090f0');
+    app.selColorNuevaCuenta('#b090f0');
     assert.deepEqual(p.circulos.map(c => c.style.border), ['2px solid transparent', '2px solid transparent', ACENTO]);
   });
 
@@ -1550,7 +1550,7 @@ describe('cuenta-iconos-colores', () => {
     const grid = { innerHTML: '' };
     const getReal = app.document.getElementById;
     app.document.getElementById = id => (id === 'nc-icon-grid' ? grid : getReal.call(app.document, id));
-    assert.doesNotThrow(() => app.selIconoNC('nequi'));
+    assert.doesNotThrow(() => app.selIconoNuevaCuenta('nequi'));
     const sel = [...String(grid.innerHTML).matchAll(/class="[^"]*cuenta-ico-op-sel[^"]*"\s+data-icono="([^"]+)"/g)].map(m => m[1]);
     assert.deepEqual(sel, ['nequi'], 'solo el ícono elegido queda marcado (no "Otra")');
     assert.equal(p.circulos[1].style.border, ACENTO, 'el color de la marca queda marcado');
@@ -2400,7 +2400,7 @@ describe('cuentas-modelo-unico', () => {
       const el = id => (campos[id] = campos[id] || { value: '', style: {}, dataset: {}, closest: () => null, textContent: '' });
       app.document.getElementById = el;
       app.document.querySelectorAll = () => [];
-      app.selIconoNC('cajasocial');
+      app.selIconoNuevaCuenta('cajasocial');
       assert.equal(campos.nc_nombre.value, 'Banco Caja Social');
     });
     test('el id de la cuenta creada sale del nombre y los repetidos no chocan', async () => {
@@ -2409,7 +2409,7 @@ describe('cuentas-modelo-unico', () => {
       e.app.document.getElementById = id => campos[id] || { value: '', style: {}, dataset: {}, closest: () => null };
       e.app.document.querySelectorAll = () => [];
       e.app.closeSheet = () => {};
-      e.app.selIconoNC('cajasocial');
+      e.app.selIconoNuevaCuenta('cajasocial');
       campos.nc_nombre.value = 'Banco Caja Social';
       await e.app.crearCuenta();
       assert.equal(e.app.cuentasTodas().length, 1);
@@ -2531,7 +2531,7 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
   test('al crear no se ofrece "Efectivo" como preset (y el tipo es un solo interruptor de ahorro); Caja Social usa el rojo y el azul de la marca', () => {
     const app = entorno();
     const src = fs.readFileSync(path.join(RAIZ, 'js/modules/cuentas.js'), 'utf8');
-    assert.ok(/filter\(ic=>_ncModoEdicion\|\|ic\.tipo!=='efectivo'\)/.test(src) && !/>Efectivo<\/button>/.test(src));
+    assert.ok(/filter\(ic=>_nuevaCuentaModoEdicion\|\|ic\.tipo!=='efectivo'\)/.test(src) && !/>Efectivo<\/button>/.test(src));
     const cs = app.getIconoData('cajasocial');
     assert.equal(cs.color, '#E2222E');
     assert.ok(cs.svg.includes('#008FD1') && cs.svg.includes('#E2222E'));
@@ -2563,7 +2563,7 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
     const bloque = { style: { display: '' } };
     app.document.getElementById = id => (id === 'nc-tipos' ? { closest: () => bloque, style: {} } : { value: '', style: {}, dataset: {}, closest: () => null, textContent: '' });
     app.document.querySelectorAll = () => [];
-    const visible = id => { app.selIconoNC(id); return bloque.style.display === ''; };
+    const visible = id => { app.selIconoNuevaCuenta(id); return bloque.style.display === ''; };
     assert.equal(visible('otro'), true);
     assert.equal(visible('cajasocial'), true);
     assert.equal(visible('nu'), false);

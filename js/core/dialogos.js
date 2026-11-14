@@ -125,7 +125,7 @@ function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora); }   /
 // Los umbrales de tiempo son globales; los de cantidad son por módulo.
 //
 // @param {string} fecha           Fecha del movimiento, 'YYYY-MM-DD'.
-// @param {number} opsPosteriores  Cantidad de operaciones posteriores ya
+// @param {number} operacionesPosteriores  Cantidad de operaciones posteriores ya
 //                                 registradas sobre la misma cuenta/ciclo
 //                                 (0 si el módulo aún no define este criterio).
 // @param {string} modulo          Clave dentro de S.config.proteccionAntiguedad
@@ -134,13 +134,13 @@ function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora); }   /
 //                                 no tiene esos umbrales definidos, el nivel
 //                                 se decide solo por tiempo.
 // @returns {'reciente'|'viejo'|'bloqueado'}
-function nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo){
+function nivelAntiguedadMovimiento(fecha, operacionesPosteriores, modulo){
   const cfg=S.config.proteccionAntiguedad;
   const modCfg=cfg[modulo]||{};
   const dias=Fecha.diasEntre(fecha,hoy());
-  const ops=opsPosteriores||0;
-  if(dias>cfg.diasBloqueo || (modCfg.opsBloqueo!=null && ops>=modCfg.opsBloqueo)) return 'bloqueado';
-  if(dias>cfg.diasAviso || (modCfg.opsAviso!=null && ops>=modCfg.opsAviso)) return 'viejo';
+  const operaciones=operacionesPosteriores||0;
+  if(dias>cfg.diasBloqueo || (modCfg.opsBloqueo!=null && operaciones>=modCfg.opsBloqueo)) return 'bloqueado';
+  if(dias>cfg.diasAviso || (modCfg.opsAviso!=null && operaciones>=modCfg.opsAviso)) return 'viejo';
   return 'reciente';
 }
 

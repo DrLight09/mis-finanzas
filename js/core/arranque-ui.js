@@ -23,7 +23,7 @@
 
   // ── Fade-in de la app ──
   // Animacion fade-in: se aplica cuando _finishFirstLoad oculta el loader.
-  // Ya no envolvemos _fbLoadData porque ahora usa onSnapshot (no es awaitable).
+  // Ya no envolvemos _firebaseLoadData porque ahora usa onSnapshot (no es awaitable).
   (function(){
     const app = document.querySelector('.app');
     const loadingEl = document.getElementById('fb-loading-screen');

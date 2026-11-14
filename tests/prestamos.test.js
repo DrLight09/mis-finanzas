@@ -369,11 +369,11 @@ describe('prestamo-margen', () => {
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
   const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'), core('diferencial.js'), core('split.js'), core('diferencial.js'), modulo('prestado.js')];
 
-  function cargar(inst) {
+  function cargar(instancia) {
     const app = loadApp(ARCHIVOS, { permissive: true });
     Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], deudores: [], misDeudas: [], tarjetasCredito: [{ id: 'tc1', nombre: 'TC', deuda: 0, cupo: 1e7 }],
       cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
-    const dom = createFakeDom({ [inst + '_monto']: { value: '700000' }, [inst + '_dif_real']: { value: '698000' }, [inst + '-dif-body']: { style: { display: '' } } });
+    const dom = createFakeDom({ [instancia + '_monto']: { value: '700000' }, [instancia + '_dif_real']: { value: '698000' }, [instancia + '-dif-body']: { style: { display: '' } } });
     app.document = dom.document;
     return app;
   }

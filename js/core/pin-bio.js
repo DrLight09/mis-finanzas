@@ -358,12 +358,12 @@ import { waitFor } from './wait-for-module.js';
   window._pinOlvide = async function() {
     const ok = await _pinDialogo('\u00bfOlvidaste el PIN?', 'Se cerrar\u00e1 la sesi\u00f3n y podr\u00e1s volver a entrar con Google.', 'Cerrar sesi\u00f3n');
     if(!ok) return;
-    if(!window._fb) return;
-    clearTimeout(window._fbSaveTimer);
+    if(!window._firebase) return;
+    clearTimeout(window._firebaseSaveTimer);
     _delPin();
     _delCred();
-    window._fbUser = null;
-    const {auth, signOut} = window._fb;
+    window._firebaseUser = null;
+    const {auth, signOut} = window._firebase;
     await signOut(auth);
     location.reload();
   };
@@ -440,21 +440,21 @@ import { waitFor } from './wait-for-module.js';
     _checkPendingPinGate();
   }
 
-  // `firebase-init.js` (que define window._fbLoadData) y este archivo cargan
+  // `firebase-init.js` (que define window._firebaseLoadData) y este archivo cargan
   // ambos como `type="module" async` (ver comentarios en index.html), así que
   // no hay garantía de orden de ejecución entre los dos: si pin-bio.js
   // termina de cargar/ejecutar primero, _launchApp() puede correr antes de
-  // que firebase-init.js haya llegado a definir window._fbLoadData, tronando
-  // con "window._fbLoadData is not a function". Mismo criterio que el guard
+  // que firebase-init.js haya llegado a definir window._firebaseLoadData, tronando
+  // con "window._firebaseLoadData is not a function". Mismo criterio que el guard
   // de window._pendingPinGate de más arriba: reintentar acotado en vez de
   // asumir que ya existe.
   function _launchApp(_intentos) {
-    if (typeof window._fbLoadData === 'function') {
-      window._fbLoadData();
+    if (typeof window._firebaseLoadData === 'function') {
+      window._firebaseLoadData();
     } else if ((_intentos || 0) < 100) { // hasta ~5s (100 x 50ms)
       setTimeout(() => _launchApp((_intentos || 0) + 1), 50);
     } else {
-      console.error('[pin-bio] window._fbLoadData nunca apareció tras 5s; firebase-init.js no cargó o falló.');
+      console.error('[pin-bio] window._firebaseLoadData nunca apareció tras 5s; firebase-init.js no cargó o falló.');
       if (window.toast) toast('No se pudo cargar tus datos. Recarga la página.', 'err');
     }
   }
@@ -468,7 +468,7 @@ import { waitFor } from './wait-for-module.js';
     const fuera = _ocultaDesde ? Date.now() - _ocultaDesde : 0;
     _ocultaDesde = 0;
     const pantalla = document.getElementById('pin-screen');
-    if(!_getPin() || !window._fbUser || fuera < AUTOBLOQUEO_MS || (pantalla && pantalla.classList.contains('open'))) return;
+    if(!_getPin() || !window._firebaseUser || fuera < AUTOBLOQUEO_MS || (pantalla && pantalla.classList.contains('open'))) return;
     _relock = true;
     _showPin('unlock','Ingresa tu PIN','Mis Finanzas');
     if(_bioEnabled() && _getCredId() && _bioAvailable()) setTimeout(window._pinBioTrigger, 400);

@@ -83,8 +83,18 @@ La columna «Equivalente en inglés» no se usa en el código: está para poder 
 | `prtc` | `prestamoConTc` | `movenc` | `movimientoEncargo` |
 | `mpp` | `mesadaPagoPendiente` | `rte` | `retencion` |
 | `ing` | `ingreso` | `dif` | `diferencial` |
+| `inst` | `instancia` | `hist` | `historial` |
+| `st` | `estadoActual` | `fb` | `firebase` |
+| `og` | `origenLibro` | `ops` | `operaciones` |
+| `chk` | `checkbox` | `dest` | `destino` |
+| `cont` | `contenedor` | `tt` | `tooltip` |
+| `ab` | `abono` | `liq` | `liquidez` |
+| `nc` | `nuevaCuenta` | `ad` | `agregarDinero` |
+| `mp` | `mesadaPago` | `sc` | `scroller` |
+| `sl` | `slide` | `ae` | `elementoActivo` |
+| `vk` | `tecladoVirtual` | | |
 
-**Verificadas, todavía no vigiladas** (se suman a la lista cuando se limpien): `og` (origen), `ops` (operaciones), `reg` (registrado), `ab` (abono), `st` (estado), `liq` (liquidez), `hist` (historial), `cont` (contenedor), `nc` (nueva cuenta), `ad` (agregar dinero), `dd` (deudor), `dest` (destino), `fb` (firebase), `chk` (checkbox), `tt` (tooltip), `ae` (elemento activo), `sl` (slide), `sc` (contenedor de scroll), `vk` (teclado virtual), `inst` (instancia), `mp` (mesada pago). **Por confirmar:** `md` (probable: «me deben»), `cpd`.
+**No se expanden de forma automática** (significan cosas distintas según el sitio): `reg` (registro, registrado o registration; `RegExp` no se toca) y `dd` (`const dd` es un deudor, pero `otrasCuentasDD` no está claro). **Por confirmar:** `md` (probable: «me deben») y `cpd`. `st` se escribe `estadoActual` y no `estado` porque `estado` ya es el parámetro de esas mismas funciones; `og` es el origen **del libro** (`Libro.origen(...)`), por eso `origenLibro` y no `origen`.
 
 ## 4. Nombres antiguos que siguen en el código
 
@@ -96,4 +106,5 @@ Se corrigen cuando se toca ese código, no en una campaña aparte:
 - **Nombres que además son texto en otro lugar** (acciones de los widgets de reparto, prefijos de ids, atributos): `difToggle`, `difAddBenef`, `difMiSplitToggle`, `difMiAgregarRow`, `ctcMiSplitToggle`, `ctcMiAgregarRow`, `ctcDifToggle`, `usarParteDifToggle`, `movDifToggle`, `prtcDifToggle`, la clave `mpp` del estado de Mesada (sale del prefijo de los ids), `barIng` (atributo `data-bar-ing`) y la clave `cp` del registro de módulos de los tests.
 - **Campos guardados con `enc` / `mov`** (migración al esquema 10, si se decide): `_movId`, `_encMovId`, `_encMovIds`, `_encNombre`, `_encId`, `_tcMovId`, `_movSecId`, `_abonoDestinoMovId`, `_alcanciaMovId`, `_deudorMovId`, `_deudaMovId`, `_miDeudaMovId`, `_abonoEncMovId`, `_encExtraMovId`, `_prestamoMovId`, `_encargoOrigenMovId`, `movId`, `extraMovId`, `movExtraId`.
 - **`enc` / `mov` que también son texto:** los atributos `data-mov-*` (se leen como `movFecha`, `movTipo`, `movFuente`, `movMonto`, `movDesc`, `movSaldoAntes`, `movSaldoDespues`, `movSaldoLabel`, `movOrigen`, `movOtras`, `movFuenteReal`, `movEncId`, `movDestino`), las acciones (`abrirMov`, `deleteMov`, `verMov`, `abrirDetalleMov`, `eliminarMovDeudor`, `eliminarMovMiDeuda`, `abrirMovMiDeudaRecibido`, `abrirMovMiDeudaPago`, `confirmarMovMiDeuda`, `movsOnTipo`, `movsLimpiarFechas`, `movSplitToggle`, `movAgregarSplitRow`, `moverEncSplitToggle`, `moverEncAgregarSplitRow`, `abonoEncCuentaSplitToggle`, `abonoEncCuentaAgregarSplitRow`, `movDifToggle`), las etiquetas de búsqueda `prestamo_mov` y `encargo_mov`, y los ids de datos de prueba `encCerrado` y `encAbierto`.
+- **Segundo lote de abreviaturas, lo que se dejó:** `opsAviso` y `opsBloqueo` (umbrales guardados en `S.config.proteccionAntiguedad`), la clave `mp` del estado de Mesada (sale del prefijo de los ids) y las acciones `selIconoNC`, `selColorNC`, `selTipoNC` y `alternarAhorroNC`, que son nombres de `data-action`.
 - Valores guardados con formatos mezclados (`pago-completo`, `abono_deuda`, `yo-cuenta`, `cargo_spotify`).

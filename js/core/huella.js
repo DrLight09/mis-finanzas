@@ -60,14 +60,14 @@ const Huella = (() => {
   }
 
   function calcular(estado, opciones) {
-    const op = opciones || {}, st = estado || S;
+    const op = opciones || {}, estadoActual = estado || S;
     const sondas = {}, errores = {};
     const nombres = op.solo || registradas();
-    conEstadoAislado(st, () => {
+    conEstadoAislado(estadoActual, () => {
       nombres.forEach(n => {
         const fn = _reg.get(n);
         if (!fn) { errores[n] = 'sonda no registrada'; return; }
-        try { sondas[n] = _plano(fn(st)); } catch (e) { errores[n] = String((e && e.message) || e); }
+        try { sondas[n] = _plano(fn(estadoActual)); } catch (e) { errores[n] = String((e && e.message) || e); }
       });
     });
     (op.requeridas || []).forEach(n => { if (!_reg.has(n)) errores[n] = 'sonda requerida no registrada (¿módulo sin cargar?)'; });
@@ -131,30 +131,30 @@ const Huella = (() => {
   /* ---- SONDAS DEL NÚCLEO ---- */
 
   // Saldo guardado y suma del libro de cada cuenta y cajita (Libro.verificar), más si todo cuadra.
-  registrar('saldos', st => {
-    const v = Libro.verificar(st), porCuenta = {};
+  registrar('saldos', estadoActual => {
+    const v = Libro.verificar(estadoActual), porCuenta = {};
     v.filas.forEach(f => { porCuenta[f.cuenta] = { guardado: f.guardado, libro: f.libro }; });
     return { libroOk: v.ok, porCuenta };
   });
 
   // Ingresos, gastos, balance y gasto por categoría de CADA mes con datos: lo que leen Inicio, Análisis, Salud y el cierre de mes.
   // Un cierre que dejara un mes sin resultado, o con otro, aparece aquí.
-  registrar('periodos', st => {
-    const meses = new Set(Object.keys(Periodo.ingresosPorMes(st)).concat(Object.keys(Periodo.gastosPorMes(st))));
+  registrar('periodos', estadoActual => {
+    const meses = new Set(Object.keys(Periodo.ingresosPorMes(estadoActual)).concat(Object.keys(Periodo.gastosPorMes(estadoActual))));
     const out = {};
     Array.from(meses).sort().forEach(mes => {
-      const b = Periodo.balanceDelMes(mes, st);
+      const b = Periodo.balanceDelMes(mes, estadoActual);
       out[mes] = {
         mesada: b.ingresos.mesada, fijos: b.ingresos.fijos, spotify: b.ingresos.spotify, entradas: b.ingresos.entradas, ingresos: b.ingresos.total,
         gastoVariableTotal: b.gastos.gastoVariableTotal, gastoFijoTotal: b.gastos.gastoFijoTotal, gastos: b.gastos.total, balance: b.balance,
-        porCategoria: Periodo.gastoPorCategoria(mes, st),
+        porCategoria: Periodo.gastoPorCategoria(mes, estadoActual),
       };
     });
     return out;
   });
 
   // Saldo pendiente de cada deuda (Me deben / Yo debo) y los totales de cada lado.
-  registrar('deudas', st => {
+  registrar('deudas', estadoActual => {
     const entidades = {};
     ['favor', 'contra'].forEach(dir => Deudas.lista(dir).forEach(d => { entidades[dir + ':' + d.id] = { saldo: Deudas.saldo(d), personaId: d.personaId || null }; }));
     return { entidades, totalFavor: Deudas.totalPendiente('favor'), totalContra: Deudas.totalPendiente('contra') };

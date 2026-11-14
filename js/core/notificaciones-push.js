@@ -16,7 +16,7 @@
    en paralelo a propósito, sin compartir estado entre sí.
 
    Requiere:
-     - Que window._fb (firebase-init.js) exponga también `arrayUnion`
+     - Que window._firebase (firebase-init.js) exponga también `arrayUnion`
        de 'firebase/firestore' (hoy solo expone db/doc/setDoc/etc. —
        hay que agregar esa línea ahí).
      - Reusa el Service Worker que YA registra la app (sw.js) para
@@ -101,12 +101,12 @@ async function activarNotificaciones() {
     if (typeof toast === 'function') toast('Este navegador no soporta notificaciones', 'err');
     return;
   }
-  if (!window._fbUser) {
+  if (!window._firebaseUser) {
     if (typeof toast === 'function') toast('Inicia sesión primero', 'err');
     return;
   }
   // Ya activadas en este dispositivo: no se vuelve a registrar ni a mostrar «Activando…»; solo se avisa.
-  if (_pushYaActivo(window._fbUser.uid)) {
+  if (_pushYaActivo(window._firebaseUser.uid)) {
     if (typeof toast === 'function') toast('Las notificaciones ya están activadas en este dispositivo', 'info');
     return;
   }
@@ -135,9 +135,9 @@ async function activarNotificaciones() {
     const token = await _obtenerTokenPush(messaging, swReg);
     if (!token) throw new Error('No se pudo generar el token de notificaciones');
 
-    const { db, doc, setDoc, arrayUnion } = window._fb;
+    const { db, doc, setDoc, arrayUnion } = window._firebase;
     const guardado = setDoc(
-      doc(db, 'usuarios', window._fbUser.uid, 'data', 'notificaciones'),
+      doc(db, 'usuarios', window._firebaseUser.uid, 'data', 'notificaciones'),
       { fcmTokens: arrayUnion(token) },
       { merge: true }
     );
@@ -147,7 +147,7 @@ async function activarNotificaciones() {
     const r = await Promise.race([guardado.then(() => 'ok'), new Promise((res) => setTimeout(() => res(pendiente), 3000))]);
     if (r === pendiente) guardado.catch((e) => { console.error('Guardado tardío del token falló:', e); if (typeof toast === 'function') toast('No se pudo guardar el aviso en la nube: ' + (e.message || e), 'err'); });
 
-    try { localStorage.setItem('mf_push_ok', window._fbUser.uid); } catch (_) {}
+    try { localStorage.setItem('mf_push_ok', window._firebaseUser.uid); } catch (_) {}
     _estadoPush('Activadas en este dispositivo');
     if (typeof toast === 'function') toast('Notificaciones activadas', 'ok');
   } catch (e) {

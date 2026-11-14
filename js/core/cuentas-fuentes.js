@@ -170,21 +170,21 @@ const Libro = (() => {
   const _id = () => 'l' + Date.now().toString(36) + (_seq++).toString(36);
   const esCuenta = k => typeof k === 'string' && (esFuenteCuenta(k) || Fuente.esCajita(k));
 
-  function _cuentasDe(st) {
+  function _cuentasDe(estadoActual) {
     const out = {};
     // Una cuenta de ahorro no tiene saldo propio (su plata está en las cajitas): solo las demás entran al libro por su cuenta.
-    _arr(st.cuentas).forEach(c => { if (c && c.id && c.tipo !== 'ahorro') out[FUENTE_CUENTA_PREFIJO + c.id] = { saldo: c.saldo || 0, nombre: c.nombre || c.id }; });
-    _arr(st.cajitas).forEach(c => {
+    _arr(estadoActual.cuentas).forEach(c => { if (c && c.id && c.tipo !== 'ahorro') out[FUENTE_CUENTA_PREFIJO + c.id] = { saldo: c.saldo || 0, nombre: c.nombre || c.id }; });
+    _arr(estadoActual.cajitas).forEach(c => {
       if (!c || !c.id) return;
-      const madre = _arr(st.cuentas).find(x => x && x.id === c.cuentaId);
+      const madre = _arr(estadoActual.cuentas).find(x => x && x.id === c.cuentaId);
       out['cajita:' + c.id] = { saldo: c.saldo || 0, nombre: (c.nombre || 'Cajita') + (madre ? ' (' + (madre.nombre || 'ahorro') + ')' : '') };
     });
     return out;
   }
 
-  // Fábrica del «origen» de las patas de saldo de un módulo: `const _ogGastoVariable = Libro.origen('gastos');` y después
-  // `_ogGastoVariable(ref)` → { origen:{ modulo:'gastos', ref } } al aplicar, `_ogGastoVariable(ref, true)` → { …, rev:true } al revertir (se pasa como
-  // `opts` de sumarFuente/descontarFuente). Antes cada módulo repetía su propia copia de esta función (11 `_og*` idénticas);
+  // Fábrica del «origen» de las patas de saldo de un módulo: `const _origenLibroGastoVariable = Libro.origen('gastos');` y después
+  // `_origenLibroGastoVariable(ref)` → { origen:{ modulo:'gastos', ref } } al aplicar, `_origenLibroGastoVariable(ref, true)` → { …, rev:true } al revertir (se pasa como
+  // `opts` de sumarFuente/descontarFuente). Antes cada módulo repetía su propia copia de esta función (11 `_origenLibro*` idénticas);
   // un módulo nuevo solo declara su nombre. `ref`/`rev` ausentes no dejan la clave en la entrada (nada de `rev: undefined`).
   function origen(modulo) {
     return (ref, rev) => ({ origen: { modulo, ...(ref ? { ref } : {}), ...(rev ? { rev: true } : {}) } });
@@ -196,28 +196,28 @@ const Libro = (() => {
   // Añade una entrada. `o`: { tipo, desc, origen, fecha }. Devuelve su id (o null si la cuenta no tiene saldo en el libro).
   function registrar(cuenta, monto, o, estado) {
     if (!esCuenta(cuenta) || !monto) return null;
-    const st = estado || S; if (!Array.isArray(st.libro)) st.libro = [];
+    const estadoActual = estado || S; if (!Array.isArray(estadoActual.libro)) estadoActual.libro = [];
     o = o || {};
-    const og = o.origen || _ctx || { modulo: 'sin-origen' };
-    const fecha = o.fecha || hoy(), tipo = o.tipo || (og.rev ? 'reversion' : 'movimiento');
+    const origenLibro = o.origen || _ctx || { modulo: 'sin-origen' };
+    const fecha = o.fecha || hoy(), tipo = o.tipo || (origenLibro.rev ? 'reversion' : 'movimiento');
     if (tipo === 'rendimiento') { // intereses: una entrada por cuenta y mes (evita ~1 entrada/día/cajita)
       const mes = fecha.slice(0, 7);
-      for (let i = st.libro.length - 1, n = 0; i >= 0 && n < 400; i--, n++) {
-        const l = st.libro[i];
+      for (let i = estadoActual.libro.length - 1, n = 0; i >= 0 && n < 400; i--, n++) {
+        const l = estadoActual.libro[i];
         if (l && l.cuenta === cuenta && l.tipo === 'rendimiento' && String(l.fecha).slice(0, 7) === mes) { l.monto += monto; if (fecha > l.fecha) l.fecha = fecha; return l.id; }
       }
     }
     const reg = { id: _id(), fecha, cuenta, monto, tipo };
     if (o.desc) reg.desc = o.desc;
-    reg.origen = og;
-    st.libro.push(reg);
+    reg.origen = origenLibro;
+    estadoActual.libro.push(reg);
     return reg.id;
   }
 
   // Saldo guardado vs suma del libro, por cuenta. ok=false → algún código movió un saldo sin pasar por la puerta única.
   function verificar(estado) {
-    const st = estado || S, cu = _cuentasDe(st), suma = {};
-    _arr(st.libro).forEach(l => { if (l && cu[l.cuenta]) suma[l.cuenta] = (suma[l.cuenta] || 0) + (l.monto || 0); });
+    const estadoActual = estado || S, cu = _cuentasDe(estadoActual), suma = {};
+    _arr(estadoActual.libro).forEach(l => { if (l && cu[l.cuenta]) suma[l.cuenta] = (suma[l.cuenta] || 0) + (l.monto || 0); });
     const filas = Object.keys(cu).map(k => ({ cuenta: k, nombre: cu[k].nombre, guardado: cu[k].saldo, libro: suma[k] || 0, diferencial: cu[k].saldo - (suma[k] || 0) }));
     const descuadres = filas.filter(f => Math.abs(f.diferencial) >= TOL);
     return { ok: descuadres.length === 0, filas, descuadres };
@@ -416,8 +416,8 @@ const Plata=(()=>{
     }
     if(!o.sinSaldo){const v=validarSalida(origen,monto);if(!v.ok)return{ok:false,motivo:v.motivo};}
     // Ambos lados existen y pueden operar: recién ahora se toca el saldo (los dos o ninguno).
-    descontarFuente(origen,monto,o.og);
-    sumarFuente(destino,monto,o.og);
+    descontarFuente(origen,monto,o.origenLibro);
+    sumarFuente(destino,monto,o.origenLibro);
     return{ok:true};
   }
   return{tipoDe,disponibilidad,validarSalida,validarSalidas,resumenSalida,transferir,centavos:cent};
@@ -502,11 +502,11 @@ function _clasePorCuenta(c){
   const clase='bg-cta-'+String(c.id).replace(/[^a-zA-Z0-9_-]/g,'');
   try{
     if(typeof document!=='undefined'&&document&&typeof document.createElement==='function'&&!_badgesInyectados.has(clase+hex)){
-      let st=document.getElementById('badges-cuentas');
-      if(!st){st=document.createElement('style');st.id='badges-cuentas';(document.head||document.documentElement).appendChild(st);}
+      let estadoActual=document.getElementById('badges-cuentas');
+      if(!estadoActual){estadoActual=document.createElement('style');estadoActual.id='badges-cuentas';(document.head||document.documentElement).appendChild(estadoActual);}
       const m=/^#?([0-9a-f]{6})$/i.exec(hex.trim());
       const rgb=m?[0,2,4].map(i=>parseInt(m[1].slice(i,i+2),16)).join(','):'136,136,128';
-      st.appendChild(document.createTextNode('.'+clase+'{background:rgba('+rgb+',.12);color:'+(m?'#'+m[1]:'var(--text2)')+';}'));
+      estadoActual.appendChild(document.createTextNode('.'+clase+'{background:rgba('+rgb+',.12);color:'+(m?'#'+m[1]:'var(--text2)')+';}'));
       _badgesInyectados.add(clase+hex);
     }
   }catch(e){/* sin DOM (tests): la clase se devuelve igual */}

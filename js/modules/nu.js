@@ -162,14 +162,14 @@ function verificarTasaAhorro(cuentaId){
 }
 
 function poblarChequeoNu(){
-  const cont=document.getElementById('chequeoNuLista');
-  if(!cont)return;
+  const contenedor=document.getElementById('chequeoNuLista');
+  if(!contenedor)return;
   // Solo las cajitas que ya generaron intereses un día completo (cada una por su cuenta): comparar el saldo real con un
   // cálculo de 0 días no dice nada de la tasa. Las nuevas aparecen solas cuando cumplen su primer día.
   const cuentaId=_ahorroActualId();
   const aptas=cajitasChequeables(cuentaId);
   const faltan=cajitasDeCuenta(cuentaId).length-aptas.length;
-  cont.innerHTML=html`${aptas.map(c=>{
+  contenedor.innerHTML=html`${aptas.map(c=>{
     const e=ahorroValorEsperadoCajita(c); // el total que debería mostrar el banco: propio + intereses + encargos guardados ahí
     return html`<div class="ig nu-chq-campo">
       <label class="il" for="chq-${c.id}">${c.nombre} <span class="nu-chq-debe">(debería verse: ${fmt(e.total)})</span></label>
@@ -986,10 +986,10 @@ function renderDetalleAhorro(){
   const cuenta=_ahorroActual();
   if(!cuenta)return;
   const dAh=_descriptorDeCuenta(cuenta);
-  const contAh=document.getElementById('cuentas-detalle-nu');
-  if(contAh){
-    contAh.style.setProperty('--cuenta',dAh.color);
-    contAh.style.setProperty('--cuenta-rgb',dAh.rgb);
+  const contenedorAh=document.getElementById('cuentas-detalle-nu');
+  if(contenedorAh){
+    contenedorAh.style.setProperty('--cuenta',dAh.color);
+    contenedorAh.style.setProperty('--cuenta-rgb',dAh.rgb);
     document.getElementById('det-nu-nombre').innerHTML=_tituloCuentaHtml(dAh);
     document.getElementById('det-nu-label').textContent=dAh.etiquetaDetalle;
   }
@@ -1300,8 +1300,8 @@ function abrirNuMovimiento(tipo) {
   const aperturaWrap = document.getElementById('nuMovAperturaWrap');
   const _mostrarApertura = esEntrada && (S.modulos?.corregirSaldo !== false);
   if (aperturaWrap) aperturaWrap.style.display = _mostrarApertura ? 'flex' : 'none';
-  const chk = document.getElementById('nuMovEsApertura');
-  if (chk) chk.checked = false;
+  const checkbox = document.getElementById('nuMovEsApertura');
+  if (checkbox) checkbox.checked = false;
 
   // Resetear campos
   document.getElementById('nuMovDesc').value = '';
@@ -1346,14 +1346,14 @@ function _nuMovimientoRenderCajitas() {
         e.style.borderColor = 'var(--border2)';
         e.style.background = 'var(--bg3)';
         const cid = e.dataset.nuCajita.split(':')[1];
-        const chkEl = document.getElementById('_nuMovCheck_'+cid);
-        if (chkEl) chkEl.innerHTML = '';
+        const checkboxEl = document.getElementById('_nuMovCheck_'+cid);
+        if (checkboxEl) checkboxEl.innerHTML = '';
       });
       this.style.borderColor = 'var(--nu-light)';
       this.style.background = 'rgba(192,96,240,.08)';
       const selId = _nuMovimientoCajitaSel.split(':')[1];
-      const chkEl = document.getElementById('_nuMovCheck_'+selId);
-      if (chkEl) chkEl.innerHTML = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
+      const checkboxEl = document.getElementById('_nuMovCheck_'+selId);
+      if (checkboxEl) checkboxEl.innerHTML = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
       _nuMovimientoActualizarPreview();
     });
   });
@@ -1366,7 +1366,7 @@ function _nuMovimientoRenderCajitas() {
 }
 
 function _nuMovimientoToggleApertura() {
-  _aperturaToggleUI({chk:'nuMovEsApertura',lbl:'nuMovDescLabel',inp:'nuMovDesc',descPlaceholder:'Ej: Salario, mesada, bono...'});
+  _aperturaToggleUI({checkbox:'nuMovEsApertura',lbl:'nuMovDescLabel',inp:'nuMovDesc',descPlaceholder:'Ej: Salario, mesada, bono...'});
 }
 
 function _nuMovimientoActualizarPreview() {
@@ -1596,11 +1596,11 @@ Events.registerAll('nu', {
 // El 'change' del toggle "es saldo inicial" del sheet de Agregar/Retirar de Nu (antes onchange inline en el HTML).
 (function(){
   const wrap=document.getElementById('nuMovAperturaWrap');
-  const chk=document.getElementById('nuMovEsApertura');
-  if(wrap&&chk){
-    wrap.addEventListener('click', () => chk.click());
-    chk.addEventListener('click', e => e.stopPropagation());
-    chk.addEventListener('change', _nuMovimientoToggleApertura);
+  const checkbox=document.getElementById('nuMovEsApertura');
+  if(wrap&&checkbox){
+    wrap.addEventListener('click', () => checkbox.click());
+    checkbox.addEventListener('click', e => e.stopPropagation());
+    checkbox.addEventListener('change', _nuMovimientoToggleApertura);
   }
 })();
 

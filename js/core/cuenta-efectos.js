@@ -50,14 +50,14 @@ function _espejoLista(cuenta, flujo, crear) {
 
 function registrarMovimientoEspejo(o) {
   if (!o || !o.cuenta || !o.monto) return null;
-  const dest = _espejoLista(o.cuenta, o.flujo, true);
-  if (!dest) return null;
+  const destino = _espejoLista(o.cuenta, o.flujo, true);
+  if (!destino) return null;
   const id = uid();
-  const reg = { id, tipo: dest.tipo };
-  if (dest.conFuente) reg.fuente = o.cuenta;
+  const reg = { id, tipo: destino.tipo };
+  if (destino.conFuente) reg.fuente = o.cuenta;
   reg.monto = o.monto;
   reg.fecha = o.fecha;
-  reg[dest.campoTexto] = o.desc;
+  reg[destino.campoTexto] = o.desc;
   reg._secundario = true;
   reg._esEspejo = true; // por defecto un espejo NO es ingreso; `extra` lo anula si es plata nueva (_esExtraIngreso, _esPerdonRecibido, _esDiferencialEncargo)
   reg._origenSeccion = o.origen;
@@ -68,16 +68,16 @@ function registrarMovimientoEspejo(o) {
   reg.clase = _claseValida(o.clase) ? o.clase
     : (o.flujo !== 'salida' && (reg._esExtraIngreso || reg._esPerdonRecibido || reg._esDiferencialEncargo)) ? 'ingreso'
     : 'neutro';
-  dest.lista.push(reg);
+  destino.lista.push(reg);
   return id;
 }
 
 function borrarMovimientoEspejo(cuenta, id) {
   if (!cuenta || !id) return false;
-  const dest = _espejoLista(cuenta, 'entrada', false);
-  if (!dest) return false;
-  if (!dest.lista.some(x => x.id === id && x.fuente === cuenta)) return false;
+  const destino = _espejoLista(cuenta, 'entrada', false);
+  if (!destino) return false;
+  if (!destino.lista.some(x => x.id === id && x.fuente === cuenta)) return false;
   // La lista se reasigna en su dueño (como hacía el código original), no se muta en sitio.
-  S.movimientos = dest.lista.filter(x => !(x.id === id && x.fuente === cuenta));
+  S.movimientos = destino.lista.filter(x => !(x.id === id && x.fuente === cuenta));
   return true;
 }

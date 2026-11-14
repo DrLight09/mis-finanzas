@@ -191,22 +191,22 @@ function renderAnalisis(){
       const old = document.getElementById('_bar-tt');
       if(old){ old.remove(); if(old._lastBar === bar){ return; } }
       if(!val&&!ingresoVal) return;
-      const tt = document.createElement('div');
-      tt.id = '_bar-tt';
-      tt._lastBar = bar;
-      tt.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);text-align:center;min-width:90px;';
-      tt.innerHTML = `<div class="an-tt-lbl">${label}</div><div class="an-tt-val ${val>0?'an-tt-val-pos':''}">Gasto ${fmt2(val)}</div><div class="an-tt-val">Ingreso ${fmt2(ingresoVal)}</div>`;
-      document.body.appendChild(tt);
+      const tooltip = document.createElement('div');
+      tooltip.id = '_bar-tt';
+      tooltip._lastBar = bar;
+      tooltip.style.cssText = 'position:fixed;background:#1a1a1a;border:1px solid #383838;border-radius:9px;padding:9px 13px;font-family:\'DM Mono\',monospace;z-index:99999;pointer-events:none;box-shadow:0 4px 24px rgba(0,0,0,.8);text-align:center;min-width:90px;';
+      tooltip.innerHTML = `<div class="an-tt-lbl">${label}</div><div class="an-tt-val ${val>0?'an-tt-val-pos':''}">Gasto ${fmt2(val)}</div><div class="an-tt-val">Ingreso ${fmt2(ingresoVal)}</div>`;
+      document.body.appendChild(tooltip);
       const rect = bar.getBoundingClientRect();
-      const ttW = tt.offsetWidth || 110;
-      let left = rect.left + rect.width/2 - ttW/2;
+      const tooltipW = tooltip.offsetWidth || 110;
+      let left = rect.left + rect.width/2 - tooltipW/2;
       if(left < 8) left = 8;
-      if(left + ttW > window.innerWidth - 8) left = window.innerWidth - ttW - 8;
-      const top = rect.top - tt.offsetHeight - 8;
-      tt.style.left = left + 'px';
-      tt.style.top = (top < 8 ? rect.bottom + 8 : top) + 'px';
-      clearTimeout(window._barTT_t);
-      window._barTT_t = setTimeout(()=>{ const t=document.getElementById('_bar-tt'); if(t) t.remove(); }, 2500);
+      if(left + tooltipW > window.innerWidth - 8) left = window.innerWidth - tooltipW - 8;
+      const top = rect.top - tooltip.offsetHeight - 8;
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = (top < 8 ? rect.bottom + 8 : top) + 'px';
+      clearTimeout(window._barTooltip_t);
+      window._barTooltip_t = setTimeout(()=>{ const t=document.getElementById('_bar-tt'); if(t) t.remove(); }, 2500);
     };
   }
 
@@ -344,9 +344,9 @@ function renderAnalisis(){
     const ventana=_opcionesVent.length?(_opcionesVent.includes(_anPatDias)?_anPatDias:_opcionesVent[0]):365;
     const corte=(()=>{const d=_fechaSafe(hoy());d.setDate(d.getDate()-ventana);return d;})();
     const todo=S.patrimonioHistorial||[];
-    let hist=todo.filter(h=>_fechaSafe(h.fecha)>=corte);
-    if(hist.length<2) hist=todo.slice(-Math.min(todo.length,Math.max(2,hist.length)));
-    if(hist.length<2){
+    let historial=todo.filter(h=>_fechaSafe(h.fecha)>=corte);
+    if(historial.length<2) historial=todo.slice(-Math.min(todo.length,Math.max(2,historial.length)));
+    if(historial.length<2){
       patriEl.innerHTML=emptyInline('Aún no hay suficiente historial. Vuelve mañana.',{centro:true});
     } else {
       // Serie «como si el saldo inicial siempre hubiera estado»: a cada punto se le suman los saldos iniciales (montoBase) registrados DESPUÉS.
@@ -354,7 +354,7 @@ function renderAnalisis(){
       // se le RESTABA a los puntos posteriores: la línea terminaba en −$2 M mientras el número decía $3.334 M). El cambio de la ventana
       // (último − primero) es exactamente el mismo: lo que entró como saldo inicial nunca es crecimiento ni pérdida.
       const _vp=h=>(h.valorVisible!=null)?h.valorVisible:h.valor;
-      const valsReales = hist.map((h,i)=>_vp(h)+hist.slice(i+1).reduce((a,x)=>a+(x.montoBase||0),0));
+      const valsReales = historial.map((h,i)=>_vp(h)+historial.slice(i+1).reduce((a,x)=>a+(x.montoBase||0),0));
       const maxV=Math.max(...valsReales);
       const minV=Math.min(...valsReales);
       const rng=maxV-minV||1;
@@ -362,17 +362,17 @@ function renderAnalisis(){
       // El eje X reparte los puntos por FECHA, no en partes iguales: un registro solo se guarda los días en que abres la app y
       // guardas algo, así que un salto de 10 días no debe verse igual que uno de 1 día. (Sin fechas distintas, partes iguales.)
       const _ms=h=>_fechaSafe(h.fecha).getTime(); // tolera «2026-9-26» (sin cero), igual que la Proyección
-      const _t0=_ms(hist[0]), _span=_ms(hist[hist.length-1])-_t0;
-      const _diasVentana=_span>0?Math.round(_span/Fecha.MS_DIA)+1:hist.length;
+      const _t0=_ms(historial[0]), _span=_ms(historial[historial.length-1])-_t0;
+      const _diasVentana=_span>0?Math.round(_span/Fecha.MS_DIA)+1:historial.length;
       const pts=valsReales.map((v,i)=>{
-        const px=PAD+(_span>0?(_ms(hist[i])-_t0)/_span:i/(hist.length-1))*(W-PAD*2);
+        const px=PAD+(_span>0?(_ms(historial[i])-_t0)/_span:i/(historial.length-1))*(W-PAD*2);
         const py=PAD+(1-(v-minV)/rng)*(H-PAD*2);
         return[px,py];
       });
       const polyline=pts.map(([x,y])=>x+','+y).join(' ');
       const areaPath='M '+pts[0][0]+','+H+' L '+pts.map(([x,y])=>x+','+y).join(' L ')+' L '+pts[pts.length-1][0]+','+H+' Z';
-      const primero=hist[0];
-      const ultimo2=hist[hist.length-1];
+      const primero=historial[0];
+      const ultimo2=historial[historial.length-1];
       // diffTotal: cambio real de patrimonio en la ventana, calculado sobre la serie ya
       // ajustada (valsReales) — no restando aperturas aparte del cambio crudo, porque eso
       // doble-cuenta el montoBase del primer punto (que ya forma parte de "primero.valor").
@@ -426,7 +426,7 @@ function renderAnalisis(){
             <line id="_pat-line" x1="0" y1="0" x2="0" y2="${H}" stroke="${diffColor}" stroke-width="1" stroke-dasharray="3,3" opacity="0" class="an-pe-none"/>
           </svg>
           <div id="_pat-tt" class="an-pat-tt" style="display:none;"></div>
-          <div id="_pat-overlay" class="an-pat-overlay" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:hist[i].fecha,valor:valsReales[i],valorReal:valsReales[i]})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
+          <div id="_pat-overlay" class="an-pat-overlay" data-pts='${JSON.stringify(pts.map(([px,py],i)=>({px,py,fecha:historial[i].fecha,valor:valsReales[i],valorReal:valsReales[i]})))}' data-W="${W}" data-H="${H}" data-diffcolor="${diffColor}"></div>
         </div>
         <div class="an-pat-pie">
           <span class="an-pat-fecha">${primero.fecha.slice(5)}</span>
@@ -436,10 +436,10 @@ function renderAnalisis(){
       // Bind touch/click on the transparent overlay
       (function(){
         const overlay = patriEl.querySelector('#_pat-overlay');
-        const tt = patriEl.querySelector('#_pat-tt');
+        const tooltip = patriEl.querySelector('#_pat-tt');
         const dot = patriEl.querySelector('#_pat-dot');
         const vline = patriEl.querySelector('#_pat-line');
-        if(!overlay||!tt||!dot||!vline) return;
+        if(!overlay||!tooltip||!dot||!vline) return;
         const ptsData = JSON.parse(overlay.dataset.pts);
         const svgW = parseInt(overlay.dataset.w);
         const svgH = parseInt(overlay.dataset.h);
@@ -453,7 +453,7 @@ function renderAnalisis(){
           ptsData.forEach((p,i)=>{ const d=Math.abs(p.px - svgX); if(d<bestD){bestD=d;best=i;} });
           return ptsData[best];
         }
-        function showTT(clientX){
+        function showTooltip(clientX){
           // Todas las LECTURAS de geometría primero (rect no se invalida
           // hasta que empecemos a escribir el DOM más abajo).
           const rect = overlay.getBoundingClientRect();
@@ -471,35 +471,35 @@ function renderAnalisis(){
           // reflow) en vez de leer tt.offsetWidth después de escribir el
           // innerHTML — eso era lo que causaba el forced reflow en cada
           // touchmove al arrastrar sobre la gráfica.
-          const ttW = Math.max(
+          const tooltipW = Math.max(
             medirAnchoTexto(fechaFmt, '9px "DM Mono", monospace'),
             medirAnchoTexto(valorTxt, '700 13px "DM Mono", monospace')
           ) + 24; // padding:8px 12px del tooltip
-          let ttLeft = leftPx;
+          let tooltipLeft = leftPx;
           const wrapW = rect.width;
-          if(ttLeft - ttW/2 < 0) ttLeft = ttW/2;
-          if(ttLeft + ttW/2 > wrapW) ttLeft = wrapW - ttW/2;
+          if(tooltipLeft - tooltipW/2 < 0) tooltipLeft = tooltipW/2;
+          if(tooltipLeft + tooltipW/2 > wrapW) tooltipLeft = wrapW - tooltipW/2;
           // Ahora sí, todas las ESCRITURAS juntas al final.
-          tt.innerHTML = `<div class="an-pt-fecha">${fechaFmt}</div><div class="an-pt-valor">${valorTxt}</div>`;
-          tt.style.display = 'block';
-          tt.style.left = ttLeft + 'px';
-          tt.style.top = '2px';
+          tooltip.innerHTML = `<div class="an-pt-fecha">${fechaFmt}</div><div class="an-pt-valor">${valorTxt}</div>`;
+          tooltip.style.display = 'block';
+          tooltip.style.left = tooltipLeft + 'px';
+          tooltip.style.top = '2px';
           dot.setAttribute('cx', p.px);
           dot.setAttribute('cy', p.py);
           vline.setAttribute('x1', p.px); vline.setAttribute('x2', p.px);
           vline.setAttribute('opacity','0.5');
         }
-        function hideTT(){
-          tt.style.display='none';
+        function hideTooltip(){
+          tooltip.style.display='none';
           vline.setAttribute('opacity','0');
           // Restaurar dot al último punto
           const last = ptsData[ptsData.length-1];
           dot.setAttribute('cx',last.px); dot.setAttribute('cy',last.py);
         }
-        overlay.addEventListener('touchstart', function(e){ e.stopPropagation(); showTT(e.touches[0].clientX); }, {passive:true});
-        overlay.addEventListener('touchmove', function(e){ showTT(e.touches[0].clientX); }, {passive:true});
-        overlay.addEventListener('touchend', function(){ clearTimeout(window._patTT_t); window._patTT_t=setTimeout(hideTT,2000); }, {passive:true});
-        overlay.addEventListener('click', function(e){ showTT(e.clientX); clearTimeout(window._patTT_t); window._patTT_t=setTimeout(hideTT,2500); });
+        overlay.addEventListener('touchstart', function(e){ e.stopPropagation(); showTooltip(e.touches[0].clientX); }, {passive:true});
+        overlay.addEventListener('touchmove', function(e){ showTooltip(e.touches[0].clientX); }, {passive:true});
+        overlay.addEventListener('touchend', function(){ clearTimeout(window._patTooltip_t); window._patTooltip_t=setTimeout(hideTooltip,2000); }, {passive:true});
+        overlay.addEventListener('click', function(e){ showTooltip(e.clientX); clearTimeout(window._patTooltip_t); window._patTooltip_t=setTimeout(hideTooltip,2500); });
       })();
     }
   }
@@ -662,10 +662,10 @@ async function eliminarIngresoFijo(id){
   const aviso=cobros.length?' Se quitarán también sus '+cobros.length+(cobros.length===1?' cobro registrado':' cobros registrados')+(cobros.some(c=>cobroFuentesDe(c).length)?' y la plata que entró a tus cuentas se descontará.':'.'):'';
   const ok=await confirmarEliminar({titulo:'Eliminar ingreso',objeto:'"'+ingreso.nombre+'"',detalle:aviso,irreversible:false});
   if(!ok)return;
-  const _histAntes=medirPatrimonioParaHistorial();
+  const _historialAntes=medirPatrimonioParaHistorial();
   cobros.forEach(c=>{cobroRevertir(c);});
   S.ingresosFijos=(S.ingresosFijos||[]).filter(x=>x.id!==id);
-  cobros.forEach(c=>purgarEfectoEnHistorial(_histAntes,c));
+  cobros.forEach(c=>purgarEfectoEnHistorial(_historialAntes,c));
   save();refresh();renderAnalisis();
 }
 
@@ -726,10 +726,10 @@ function actualizarCbPreview(){
     else{prev.textContent=lineas+' · Todo distribuido';prev.style.color='var(--accent)';}
     return;
   }
-  const dest=document.getElementById('cbDestino').value;
-  if(dest){
-    const actual=getSaldoFuente(dest);
-    prev.textContent=fuenteLabel(dest)+': '+fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);
+  const destino=document.getElementById('cbDestino').value;
+  if(destino){
+    const actual=getSaldoFuente(destino);
+    prev.textContent=fuenteLabel(destino)+': '+fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);
     prev.style.color='var(--accent)';
   }else{
     prev.textContent=fmt(v)+' registrados';
@@ -791,9 +791,9 @@ async function eliminarCobroIngresoFijo(id,cobroId){
       if(!await confirmarBorrarMovimientoViejo(nombre,c.monto||0,'baja'))return;
     }
   }else if(!await confirmarEliminar({titulo:'Borrar cobro',verbo:'Borrar',etiqueta:'Borrar',objeto:'este cobro de '+fmt(c.monto||0),detalle:'Dejará de contar como ingreso.',irreversible:false}))return;
-  const _histAntes=medirPatrimonioParaHistorial();
+  const _historialAntes=medirPatrimonioParaHistorial();
   cobroBorrar(id,cobroId);
-  purgarEfectoEnHistorial(_histAntes,c);
+  purgarEfectoEnHistorial(_historialAntes,c);
   save();refresh();renderAnalisis();
 }
 
@@ -838,7 +838,7 @@ function abrirPresupuestos(){
       if(!S.presupuestos) S.presupuestos = {};
       if(val > 0) S.presupuestos[cat] = val;
       else { delete S.presupuestos[cat]; this.value = ''; } // vacío o 0 = sin límite
-      if(window._fbSaveToCloud) window._fbSaveToCloud();
+      if(window._firebaseSaveToCloud) window._firebaseSaveToCloud();
       renderPresupuestos();
     });
   });

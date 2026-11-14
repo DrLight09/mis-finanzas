@@ -1291,12 +1291,12 @@ describe('borrar-todo-pin', () => {
     ls.setItem('mf_pin', '1234'); ls.setItem('mf_bio_enabled', 'true'); ls.setItem('mf_bio_cred', 'credencial'); ls.setItem('mf_auth_hint', '1');
     app.dialogo = async () => true; app.confirmarEliminar = async () => true; app.toast = () => {}; app.setTimeout = f => f();
     app.pedirPinAntesDe = async () => true; // el PIN de confirmación se escribió bien (pedirPinAntesDe vive en core-state.js, ver pin-confirmar-acciones-destructivas)
-    app._fbUser = { uid: 'u1' };
-    app._fb = { db: {}, doc: () => ({}), setDoc: async () => { if (!nubeOk) throw new Error('sin conexión'); } };
-    app._fbEscribirDoc = async (payload, ts) => app._fb.setDoc({}, { payload, updatedAt: ts }); // la capa de sync (firebase-sync.js) no se carga aquí: escribe por el setDoc simulado
+    app._firebaseUser = { uid: 'u1' };
+    app._firebase = { db: {}, doc: () => ({}), setDoc: async () => { if (!nubeOk) throw new Error('sin conexión'); } };
+    app._firebaseEscribirDoc = async (payload, ts) => app._firebase.setDoc({}, { payload, updatedAt: ts }); // la capa de sync (firebase-sync.js) no se carga aquí: escribe por el setDoc simulado
     app.location = { reload() { app.__recargado = true; }, href: '' };
     const lanzados = [];
-    app._fbLoadData = () => lanzados.push('app');
+    app._firebaseLoadData = () => lanzados.push('app');
     return { app, dom, ls, lanzados };
   }
 
@@ -1325,7 +1325,7 @@ describe('borrar-todo-pin', () => {
 
   test('si el PIN de confirmación se cancela o falla, no se borra nada (ni en la nube ni el PIN)', async () => {
     const { app, ls } = entorno();
-    let tocoNube = false; app._fb.setDoc = async () => { tocoNube = true; };
+    let tocoNube = false; app._firebase.setDoc = async () => { tocoNube = true; };
     app.pedirPinAntesDe = async () => false;
     await app.borrarTodo();
     assert.equal(tocoNube, false);
@@ -1532,7 +1532,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
       getFuentesFn: () => '<option value="">Elige cuenta</option><option value="nequi">nequi</option><option value="efectivo">efectivo</option>',
       onPreview() {},
     });
-    assert.deepEqual(Object.keys(api).sort(), ['addRow', 'data', 'instId', 'preview', 'reset', 'toggle']);
+    assert.deepEqual(Object.keys(api).sort(), ['addRow', 'data', 'instanciaId', 'preview', 'reset', 'toggle']);
     api.toggle();
     assert.equal(modo, true);
     assert.equal(app.document.getElementById('t_rows').children.length, 2);
@@ -1920,7 +1920,7 @@ describe('pin-confirmar-acciones-destructivas', () => {
 
   test('desbloquear la app también se escribe con el teclado del PC', async () => {
     const { w, escribir, espera } = entorno();
-    let lanzada = false; w._fbLoadData = () => { lanzada = true; };
+    let lanzada = false; w._firebaseLoadData = () => { lanzada = true; };
     w.document.getElementById('fb-loading-screen').style.display = 'flex';
     w._pinGate();
     escribir('1234');
@@ -1959,9 +1959,9 @@ describe('pin-confirmar-acciones-destructivas', () => {
     assert.ok(imp.includes('_reemplazarDatos(') && !imp.includes('aplicarMigraciones('), 'importar: reemplaza solo por _reemplazarDatos (la ruta con PIN)');
     const rest = cfg.slice(cfg.indexOf('async function restaurarRespaldo'));
     assert.ok(rest.includes('_reemplazarDatos(') && !rest.slice(0, rest.indexOf('_reemplazarDatos(')).includes('Object.assign(S'), 'restaurar: reemplaza solo por _reemplazarDatos (la ruta con PIN)');
-    const fb = leer('js', 'core', 'firebase-sync.js');
-    const del = fb.slice(fb.indexOf('window._fbDeleteAccount = async function'));
-    assert.ok(del.indexOf('pedirPinAntesDe(') > 0 && del.indexOf('pedirPinAntesDe(') < del.indexOf('_fbDeleteAccountEnCurso = true'), 'eliminar cuenta: el PIN va antes de borrar');
+    const firebase = leer('js', 'core', 'firebase-sync.js');
+    const del = firebase.slice(firebase.indexOf('window._firebaseDeleteAccount = async function'));
+    assert.ok(del.indexOf('pedirPinAntesDe(') > 0 && del.indexOf('pedirPinAntesDe(') < del.indexOf('_firebaseDeleteAccountEnCurso = true'), 'eliminar cuenta: el PIN va antes de borrar');
     const pin = leer('js', 'core', 'pin-bio.js');
     assert.ok(/ok && await window\._pinVerificar\('Para quitar el PIN/.test(pin) && /ok && await window\._pinVerificar\('Para quitar el desbloqueo con huella/.test(pin));
   });
@@ -2236,8 +2236,8 @@ describe('dinero y fechas — una sola función para formatear pesos y otra para
     assert.deepEqual(malos, []);
   });
 
-  test('guarda: cada módulo declara su origen con Libro.origen(...) — no se vuelven a copiar las funciones _og*', () => {
-    const re = /(?:const|let|var)\s+_og\w*\s*=\s*\(?\s*ref\b|function\s+_og\w*\s*\(\s*ref\b/;
+  test('guarda: cada módulo declara su origen con Libro.origen(...) — no se vuelven a copiar las funciones _origenLibro*', () => {
+    const re = /(?:const|let|var)\s+_origenLibro\w*\s*=\s*\(?\s*ref\b|function\s+_origenLibro\w*\s*\(\s*ref\b/;
     const malos = archivosJs().filter(f => re.test(sinComentarios(fs.readFileSync(f, 'utf8')))).map(f => path.relative(RAIZ, f));
     assert.deepEqual(malos, []);
   });

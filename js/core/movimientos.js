@@ -72,8 +72,8 @@
    ========================================================================== */
 
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
-// _ogMovimiento(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogMovimiento = Libro.origen('movimientos');
+// _origenLibroMovimiento(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _origenLibroMovimiento = Libro.origen('movimientos');
 
 /* ---- DETALLE DE MOVIMIENTO (sheet) ---- */
 // Abre un sheet con el detalle de un movimiento y el saldo de la cuenta
@@ -460,7 +460,7 @@ function abrirDetalleMovimiento(el){
 // docs/proteccion-antiguedad-movimientos.md §4). No cuenta movimientos de
 // módulos con su propio historial (Mesada, Spotify, etc.) ni de Alcancía/
 // CDT/Plata Comprometida, que llevan su propio registro aparte.
-function _cuentaOpsPosteriores(cuenta, fecha, excludeId) {
+function _cuentaOperacionesPosteriores(cuenta, fecha, excludeId) {
   if (!cuenta || !fecha) return 0;
   let count = 0;
   (S.movimientos || []).forEach(m => {
@@ -514,7 +514,7 @@ async function _eliminarMovimientoImpl(btn) {
     || (() => { for (const d of Deudas.lista('favor')) { const m=(d.movimientos||[]).find(x=>x.id===movimientoId); if(m) return m; } return null; })()
     || (S.gastosVar || []).find(x => x.id === movimientoId)
     || (S.spotify.historial || []).find(x => x.id === movimientoId)
-    || (() => { for (const h of (S.spotify.historial||[])) { const ab=(h.pendienteHistorial||[]).find(x=>x.id===movimientoId); if(ab) return ab; } return null; })();
+    || (() => { for (const h of (S.spotify.historial||[])) { const abono=(h.pendienteHistorial||[]).find(x=>x.id===movimientoId); if(abono) return abono; } return null; })();
   if (movimientoObj && movimientoObj._secundario) {
     const seccion = movimientoObj._origenSeccion || 'la sección de origen';
     await avisarNoSePuede('Movimiento vinculado', `Este movimiento fue generado automáticamente desde ${seccion}. Para eliminarlo, ve a ${seccion} y borra el movimiento principal — eso revertirá todo.`);
@@ -587,9 +587,9 @@ async function _eliminarMovimientoImpl(btn) {
   if (_movimientoExiste(movimientoTipoEl, movimientoId) === false) { _rerenderCuentaActiva(); return; }
 
   // Lo que cambie el patrimonio al revertir se quita también de las instantáneas del historial (el núcleo).
-  const _histAntes = medirPatrimonioParaHistorial();
-  const _histItem = movimientoObj || (S.transferencias || []).find(t => t.id === movimientoId) || { id: movimientoId, fecha: fechaItem };
-  let _histApertura = null;
+  const _historialAntes = medirPatrimonioParaHistorial();
+  const _historialItem = movimientoObj || (S.transferencias || []).find(t => t.id === movimientoId) || { id: movimientoId, fecha: fechaItem };
+  let _historialApertura = null;
 
   // Revertir según el tipo
   if (movimientoTipoEl === 'transferencia') {
@@ -599,7 +599,7 @@ async function _eliminarMovimientoImpl(btn) {
     if (tr) {
       // Se revierte con la misma regla única (los dos lados o ninguno). sinSaldo: revertir nunca se bloquea por saldo, y
       // permitirArchivada: una cuenta archivada igual debe poder deshacer su historial.
-      const rev = Plata.transferir(tr.destino, tr.origen, tr.monto, { og: _ogMovimiento(movimientoId, true), sinSaldo: true, permitirArchivada: true });
+      const rev = Plata.transferir(tr.destino, tr.origen, tr.monto, { origenLibro: _origenLibroMovimiento(movimientoId, true), sinSaldo: true, permitirArchivada: true });
       if (!rev.ok) { toast('No se pudo revertir la transferencia: ' + rev.motivo, 'err', 4500); _rerenderCuentaActiva(); return; }
       S.transferencias = S.transferencias.filter(t => t.id !== movimientoId);
     }
@@ -607,7 +607,7 @@ async function _eliminarMovimientoImpl(btn) {
     // Fue una salida manual (S.movimientos tipo 'salida_manual')
     const m = (S.movimientos || []).find(x => x.id === movimientoId);
     if (m) {
-      sumarFuente(m.fuente, m.monto, _ogMovimiento(movimientoId, true));
+      sumarFuente(m.fuente, m.monto, _origenLibroMovimiento(movimientoId, true));
       S.movimientos = S.movimientos.filter(x => x.id !== movimientoId);
     }
   } else if (movimientoTipoEl === 'ingreso' || movimientoTipoEl === 'apertura' || movimientoTipoEl === 'entrada') {
@@ -615,9 +615,9 @@ async function _eliminarMovimientoImpl(btn) {
     const m = (S.movimientos || []).find(x => x.id === movimientoId);
     if (m) {
       const fuente = m.fuente || fuenteOrigen;
-      if (fuente) descontarFuente(fuente, m.monto, _ogMovimiento(movimientoId, true));
-      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, _ogMovimiento(movimientoId, true));
-      if (m.tipo === 'apertura') _histApertura = m;
+      if (fuente) descontarFuente(fuente, m.monto, _origenLibroMovimiento(movimientoId, true));
+      else if (monto > 0 && fuenteOrigen) descontarFuente(fuenteOrigen, monto, _origenLibroMovimiento(movimientoId, true));
+      if (m.tipo === 'apertura') _historialApertura = m;
       S.movimientos = S.movimientos.filter(x => x.id !== movimientoId);
     }
   } else if (movimientoTipoEl === 'gasto') {
@@ -647,13 +647,13 @@ async function _eliminarMovimientoImpl(btn) {
         }
         const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
         if (tc && g._tcPagoId) tcEliminarPagoInterna(tc, g._tcPagoId);
-        if (g.fuente) sumarFuente(g.fuente, g.monto, _ogMovimiento(movimientoId, true));
+        if (g.fuente) sumarFuente(g.fuente, g.monto, _origenLibroMovimiento(movimientoId, true));
       } else if (g.fuente) {
-        sumarFuente(g.fuente, g.monto, _ogMovimiento(movimientoId, true)); // devolver el dinero
+        sumarFuente(g.fuente, g.monto, _origenLibroMovimiento(movimientoId, true)); // devolver el dinero
       } else if (g.splits && g.splits.length) {
         // Gasto dividido entre varias cuentas (`fuente` vacío): se devuelve cada parte a su cuenta, igual que deleteGastoVar() en
         // gastos.js. Antes esta rama no las devolvía y la plata se perdía al borrar desde la cuenta o desde el feed.
-        g.splits.forEach(spotify => { if (spotify.fuente) sumarFuente(spotify.fuente, spotify.monto || 0, _ogMovimiento(movimientoId, true)); });
+        g.splits.forEach(spotify => { if (spotify.fuente) sumarFuente(spotify.fuente, spotify.monto || 0, _origenLibroMovimiento(movimientoId, true)); });
       }
       // Bug fix: si era pago de gasto fijo, desmarcar como pagado
       if(g.esPagoGastoFijo && g.gastoFijoId){
@@ -681,9 +681,9 @@ async function _eliminarMovimientoImpl(btn) {
         if (info && info._id === movimientoId) {
           // Revertir destino(s)
           if (info.splits && info.splits.length) {
-            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, _ogMovimiento(movimientoId, true)); });
+            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, _origenLibroMovimiento(movimientoId, true)); });
           } else if (info.destino) {
-            descontarFuente(info.destino, info.monto, _ogMovimiento(movimientoId, true));
+            descontarFuente(info.destino, info.monto, _origenLibroMovimiento(movimientoId, true));
           }
           delete data[k];
           found = true;
@@ -692,8 +692,8 @@ async function _eliminarMovimientoImpl(btn) {
     });
   }
 
-  if (_histApertura) purgarAperturaDelHistorial(_histApertura);
-  else purgarEfectoEnHistorial(_histAntes, _histItem);
+  if (_historialApertura) purgarAperturaDelHistorial(_historialApertura);
+  else purgarEfectoEnHistorial(_historialAntes, _historialItem);
   save(); refresh();
   _rerenderCuentaActiva();
   toast('Movimiento eliminado y saldos revertidos', 'ok');
@@ -728,13 +728,13 @@ Events.on('core:toggleExtraordinario', toggleExtraordinario);
 Reversibles.registrar({ tipo: 'mesada', proteccion(t) {
   if (!t || !_mesadaTieneCuentaAfectada(t.info)) return null;
   const fuentes = _mesadaFuentesDe(t.info);
-  return { fecha: t.info.fecha, ops: _mesadaOpsPosteriores(t.parent, t.key, t.info), modulo: 'mesada',
+  return { fecha: t.info.fecha, operaciones: _mesadaOperacionesPosteriores(t.parent, t.key, t.info), modulo: 'mesada',
     nombre: fuentes.length > 1 ? `${fuentes.length} cuentas` : fuenteLabel(fuentes[0]), monto: t.info.monto || 0, direccion: 'baja' };
 } });
 Reversibles.registrar({ tipo: 'transferencia', proteccion(tr, c) {
   if (!tr) return null;
   const fecha = tr.fecha || (c && c.fechaItem);
-  return { fecha, ops: Math.max(_cuentaOpsPosteriores(tr.origen, fecha, tr.id), _cuentaOpsPosteriores(tr.destino, fecha, tr.id)), modulo: 'cuentas',
+  return { fecha, operaciones: Math.max(_cuentaOperacionesPosteriores(tr.origen, fecha, tr.id), _cuentaOperacionesPosteriores(tr.destino, fecha, tr.id)), modulo: 'cuentas',
     // Dos cuentas en direcciones opuestas: no encaja en el aviso estándar.
     dialogo: () => dialogo('Movimiento antiguo',
       `Esta transferencia ya tiene tiempo y puede estar mezclada con operaciones más recientes. Si la eliminas, "${fuenteLabel(tr.origen)}" recupera ${fmt(tr.monto)} y "${fuenteLabel(tr.destino)}" pierde ${fmt(tr.monto)} ahora mismo — no se recalcula el historial completo. ¿Eliminar de todas formas?`,
@@ -743,11 +743,11 @@ Reversibles.registrar({ tipo: 'transferencia', proteccion(tr, c) {
 Reversibles.registrar({ tipo: 'salida_manual', proteccion(m, c) {
   if (!m || !m.fuente) return null;
   const fecha = m.fecha || (c && c.fechaItem);
-  return { fecha, ops: _cuentaOpsPosteriores(m.fuente, fecha, m.id), modulo: 'cuentas', nombre: fuenteLabel(m.fuente), monto: m.monto || 0, direccion: 'sube' };
+  return { fecha, operaciones: _cuentaOperacionesPosteriores(m.fuente, fecha, m.id), modulo: 'cuentas', nombre: fuenteLabel(m.fuente), monto: m.monto || 0, direccion: 'sube' };
 } });
 Reversibles.registrar({ tipo: ['ingreso', 'apertura', 'entrada'], proteccion(r) {
   if (!r || !r.fuente) return null;
-  return { fecha: r.fecha, ops: _cuentaOpsPosteriores(r.fuente, r.fecha, r.m ? r.m.id : null), modulo: 'cuentas', nombre: fuenteLabel(r.fuente), monto: r.monto || 0, direccion: 'baja' };
+  return { fecha: r.fecha, operaciones: _cuentaOperacionesPosteriores(r.fuente, r.fecha, r.m ? r.m.id : null), modulo: 'cuentas', nombre: fuenteLabel(r.fuente), monto: r.monto || 0, direccion: 'baja' };
 } });
 Reversibles.registrar({ tipo: 'gasto', proteccion(g) {
   if (!g) return null;
@@ -755,13 +755,13 @@ Reversibles.registrar({ tipo: 'gasto', proteccion(g) {
     const tc = (S.tarjetasCredito || []).find(x => x.id === g._tcId);
     const it = g._esCompraTC ? (tc && (tc.compras || []).find(c => c.id === g._tcCompraId)) : (tc && (tc.pagos || []).find(p => p.id === g._tcPagoId));
     if (!tc || !it) return null;
-    return { fecha: it.fecha, ops: _tcOpsPosteriores(tc, it.fecha, it.id), modulo: 'tarjetas', nombre: tc.nombre, monto: it.monto || 0, direccion: g._esCompraTC ? 'baja' : 'sube', campo: 'deuda' };
+    return { fecha: it.fecha, operaciones: _tcOperacionesPosteriores(tc, it.fecha, it.id), modulo: 'tarjetas', nombre: tc.nombre, monto: it.monto || 0, direccion: g._esCompraTC ? 'baja' : 'sube', campo: 'deuda' };
   }
-  if (g.fuente) return { fecha: g.fecha, ops: _cuentaOpsPosteriores(g.fuente, g.fecha, g.id), modulo: 'gastos', nombre: fuenteLabel(g.fuente), monto: g.monto || 0, direccion: 'sube' };
+  if (g.fuente) return { fecha: g.fecha, operaciones: _cuentaOperacionesPosteriores(g.fuente, g.fecha, g.id), modulo: 'gastos', nombre: fuenteLabel(g.fuente), monto: g.monto || 0, direccion: 'sube' };
   // Dividido entre cuentas: g.fuente queda vacío (ver addGastoVar).
   const conFuente = (g.splits || []).filter(s => s.fuente);
   if (!conFuente.length) return null;
-  return { fecha: g.fecha, ops: Math.max(...conFuente.map(s => _cuentaOpsPosteriores(s.fuente, g.fecha, g.id))), modulo: 'gastos',
+  return { fecha: g.fecha, operaciones: Math.max(...conFuente.map(s => _cuentaOperacionesPosteriores(s.fuente, g.fecha, g.id))), modulo: 'gastos',
     nombre: conFuente.length > 1 ? `${conFuente.length} cuentas` : fuenteLabel(conFuente[0].fuente), monto: g.monto || 0, direccion: 'sube' };
 } });
 

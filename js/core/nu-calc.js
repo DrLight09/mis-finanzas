@@ -92,14 +92,14 @@ function _historialTasas(cuentaId){
 // Devuelve la tasa EA vigente de la cuenta en una fecha dada, según su historial.
 // Si la fecha es anterior a cualquier cambio registrado, usa la primera tasa del historial (o la base si no hay).
 function _tasaVigenteEnFecha(fechaStr,cuentaId){
-  const hist=_historialTasas(cuentaId);
+  const historial=_historialTasas(cuentaId);
   let tasa=getTasaCuenta(cuentaId);
   let encontrada=null;
-  for(const h of hist){
+  for(const h of historial){
     if(h.fecha<=fechaStr) encontrada=h.tasa; else break;
   }
   if(encontrada!=null) tasa=encontrada;
-  else if(hist.length) tasa=hist[0].tasa;
+  else if(historial.length) tasa=historial[0].tasa;
   return tasa;
 }
 

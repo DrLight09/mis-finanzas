@@ -31,7 +31,7 @@
       // CADA carga, aunque el usuario ya tenga sesión y nunca vaya a abrir un
       // popup. initializeAuth() SIN resolver los difiere: solo se cargan al
       // llamar signInWithPopup/reauthenticateWithPopup, que reciben el
-      // resolver explícito (ver window._fb.popupResolver, usado en
+      // resolver explícito (ver window._firebase.popupResolver, usado en
       // firebase-sync.js). El resto de la config es idéntica a la que trae
       // getAuth() por defecto (mismo orden de persistencia).
       //
@@ -70,7 +70,7 @@
       // runTransaction (2026-09-19): lo usa firebase-sync.js para leer el
       // documento DIRECTO del servidor, sin pasar por la caché local ni por
       // el listener (ver _leerDocEnServidor).
-      window._fb = { auth, db, provider, popupResolver: browserPopupRedirectResolver, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction, arrayUnion, collection, getDocs };
+      window._firebase = { auth, db, provider, popupResolver: browserPopupRedirectResolver, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction, arrayUnion, collection, getDocs };
 
       // Escuchar estado de auth y arrancar la app
       //
@@ -104,7 +104,7 @@
       function _onAuthState(user) {
         // Marca de sesión para el próximo arranque (ver comentario de
         // initializeAuth arriba). En la rama "sin usuario" se borra ANTES de
-        // que _fbSignOut/_fbDeleteAccount hagan su location.reload(), así
+        // que _firebaseSignOut/_firebaseDeleteAccount hagan su location.reload(), así
         // que la carga siguiente ya vuelve al camino con resolver precargado.
         try {
           if (user) localStorage.setItem('mf_auth_hint', '1');
@@ -114,7 +114,7 @@
           // Usuario logueado
           document.getElementById('fb-login-screen').style.display = 'none';
           document.getElementById('fb-loading-screen').style.display = 'flex';
-          window._fbUser = user;
+          window._firebaseUser = user;
           // Actualizar avatar/nombre en config
           const nameEl = document.getElementById('fb-user-name');
           const emailEl = document.getElementById('fb-user-email');
@@ -138,7 +138,7 @@
               if (window._pendingPinGate) {
                 console.warn('[Auth] Módulo PIN no cargó en 5s — arrancando app directamente.');
                 window._pendingPinGate = false;
-                if (typeof window._fbLoadData === 'function') window._fbLoadData();
+                if (typeof window._firebaseLoadData === 'function') window._firebaseLoadData();
               }
             }, 5000);
           }

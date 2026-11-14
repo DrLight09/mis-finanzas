@@ -1,6 +1,6 @@
 # Protección por antigüedad de movimientos (todos los módulos)
 
-Mecanismo transversal implementado en todos los módulos que mueven dinero. Nació de una pregunta puntual sobre Spotify, pero el riesgo que resuelve es general a toda la app: `nivelAntiguedadMovimiento(fecha, opsPosteriores, modulo)` (en `js/core/dialogos.js`) es el único punto que decide el nivel, y cada módulo lo llama con su propia clave (`'spotify'`, `'mesada'`, `'prestamos'`, `'encargos'`, `'tarjetas'`, `'gastos'`, `'alcancia'`, `'plata_comprometida'`) y su propio conteo de "operaciones posteriores".
+Mecanismo transversal implementado en todos los módulos que mueven dinero. Nació de una pregunta puntual sobre Spotify, pero el riesgo que resuelve es general a toda la app: `nivelAntiguedadMovimiento(fecha, operacionesPosteriores, modulo)` (en `js/core/dialogos.js`) es el único punto que decide el nivel, y cada módulo lo llama con su propia clave (`'spotify'`, `'mesada'`, `'prestamos'`, `'encargos'`, `'tarjetas'`, `'gastos'`, `'alcancia'`, `'plata_comprometida'`) y su propio conteo de "operaciones posteriores".
 
 ---
 

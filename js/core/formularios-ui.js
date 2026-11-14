@@ -58,6 +58,6 @@ function mostrarAlertaFuente(prefix){
   // para mov_fuente_hint/mov_destino_hint (Préstamos), que no cambiaron.
   const fuenteEl=document.getElementById(prefix+'_fuente');
   if(fuenteEl){const val=fuenteEl.value;const hint=document.getElementById(prefix+'_fuente_hint');if(hint)hint.style.visibility=val?'visible':'hidden';}
-  const destEl=document.getElementById(prefix+'_destino');
-  if(destEl){const val=destEl.value;const hint=document.getElementById(prefix+'_destino_hint');if(hint)hint.style.visibility=val?'visible':'hidden';}
+  const destinoEl=document.getElementById(prefix+'_destino');
+  if(destinoEl){const val=destinoEl.value;const hint=document.getElementById(prefix+'_destino_hint');if(hint)hint.style.visibility=val?'visible':'hidden';}
 }

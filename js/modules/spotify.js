@@ -63,9 +63,9 @@ let sppSplitMode=false;
 // confirmarSpotifyDestino), cada registro necesita su propia porción del split para
 // que borrar uno solo revierta solo esa porción de cada cuenta, no el total.
 // ── Libro (js/core/cuentas-fuentes.js): origen de cada cambio de saldo ────────────────────────────────────────────────
-// _ogSpotify(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'spotify', ref:<id del registro de spotifyHistorial,
+// _origenLibroSpotify(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'spotify', ref:<id del registro de spotifyHistorial,
 // o del pago> }. Con rev=true es una reversión (tipo 'reversion'). `opts.exacto` ya no existe: el saldo no se recorta en 0.
-const _ogSpotify = Libro.origen('spotify');
+const _origenLibroSpotify = Libro.origen('spotify');
 
 function _spotifyProporcionarSplits(splits,montoParcial,montoTotal){
   if(!splits||!splits.length||montoTotal<=0||montoParcial<=0)return null;
@@ -163,10 +163,10 @@ function spotifyCicloCobrosActual(){
   // Se excluyen los cobros con _pagoIdCierre: aunque queden posicionados después del
   // último pago (porque se registraron más tarde), son plata que en realidad saldó
   // deuda de ESE ciclo que ya cerró — ver confirmarSpotifyDestino().
-  const hist=S.spotify.historial||[];
+  const historial=S.spotify.historial||[];
   let lastPagoIdx=-1;
-  for(let i=hist.length-1;i>=0;i--){ if(hist[i].tipo==='pago'){lastPagoIdx=i;break;} }
-  return hist.map((h,idx)=>({...h,_idx:idx})).filter(h=>h.tipo==='cobro'&&h._idx>lastPagoIdx&&!h._pagoIdCierre);
+  for(let i=historial.length-1;i>=0;i--){ if(historial[i].tipo==='pago'){lastPagoIdx=i;break;} }
+  return historial.map((h,idx)=>({...h,_idx:idx})).filter(h=>h.tipo==='cobro'&&h._idx>lastPagoIdx&&!h._pagoIdCierre);
 }
 
 function spotifyCobradoDePersona(p,cicloCobros){
@@ -223,16 +223,16 @@ function spotifyMontoAntesDe(h,fechaCorte){
   return spotifyTramosDeCobro(h).filter(t=>!t.inicio||t.inicio<fechaCorte).reduce((a,t)=>a+t.monto,0);
 }
 
-function spotifyAsignarPeriodos(hist){
+function spotifyAsignarPeriodos(historial){
   // Devuelve un tramo por período de cada cobro, con el ciclo al que pertenece
   // (0 = antes del primer pago a Spotify; M = pagos.length = ciclo abierto).
-  hist=hist||S.spotify.historial||[];
+  historial=historial||S.spotify.historial||[];
   const pagos=[];
-  hist.forEach((h,idx)=>{ if(h.tipo==='pago')pagos.push({idx,id:h.id,fecha:h.fecha||''}); });
+  historial.forEach((h,idx)=>{ if(h.tipo==='pago')pagos.push({idx,id:h.id,fecha:h.fecha||''}); });
   const M=pagos.length;
   const hoyStr=hoy();
   const tramos=[];
-  hist.forEach((h,idx)=>{
+  historial.forEach((h,idx)=>{
     if(h.tipo!=='cobro')return;
     let cPos=0;
     pagos.forEach(pg=>{ if(pg.idx<idx)cPos++; });
@@ -273,11 +273,11 @@ function spotifyAsignarPeriodos(hist){
   return tramos;
 }
 
-function spotifyResumenCicloActual(hist){
+function spotifyResumenCicloActual(historial){
   // "Recaudado este ciclo" = tramos del ciclo abierto que ya empezaron. Los períodos
   // prepagados que todavía no empiezan quedan aparte, como `flotante`.
-  const tramos=spotifyAsignarPeriodos(hist);
-  const M=(hist||S.spotify.historial||[]).filter(h=>h.tipo==='pago').length;
+  const tramos=spotifyAsignarPeriodos(historial);
+  const M=(historial||S.spotify.historial||[]).filter(h=>h.tipo==='pago').length;
   let recaudado=0,flotante=0;
   tramos.forEach(t=>{
     if(t.h._pagoIdCierre||t.ciclo!==M)return;
@@ -447,17 +447,17 @@ function renderSpotifyHistorial(){
   // Mapear con índice real, luego ordenar por fecha descendente. A igual fecha,
   // gana el orden de registro descendente (el más reciente en agregarse va primero) —
   // así un cobro atrasado con fecha vieja no se cuela por encima de uno más reciente.
-  const hist=total.map((h,i)=>({...h,_realIdx:i}))
+  const historial=total.map((h,i)=>({...h,_realIdx:i}))
     .sort((a,b)=>(b.fecha||'').localeCompare(a.fecha||'')||(b._realIdx-a._realIdx))
     .slice(0,12);
-  if(!hist.length){el.innerHTML=emptyInline('Sin pagos registrados aún.',{centro:true,clase:'card card-sm'});return;}
+  if(!historial.length){el.innerHTML=emptyInline('Sin pagos registrados aún.',{centro:true,clase:'card card-sm'});return;}
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
   // Hallazgo real de paso: fuenteLabel() en `fuentesInfo` (nombre de cajita/cuenta,
   // texto libre) nunca pasaba por escHtml() acá — a diferencia del badge de
   // "último destino" en renderSpotify(), que sí se había corregido antes. Al
   // interpolarse como UN solo ${...}, html`` lo escapa igual que cualquier otro
   // campo, sin tocar los separadores fijos (' · ', ' + ').
-  el.innerHTML=html`${hist.map(h=>{
+  el.innerHTML=html`${historial.map(h=>{
     const tienePendiente=h.tipo==='cobro'&&(h.pendiente||0)>0;
     const yaSaldado=h.tipo==='cobro'&&h.cuotaEsperada&&!tienePendiente;
     const pendienteHtml=tienePendiente
@@ -469,7 +469,7 @@ function renderSpotifyHistorial(){
     // Cada abono de lo pendiente, como su propia línea — antes quedaban invisibles,
     // fundidos dentro de h.monto (ver CHANGELOG.md#spotify, fix de visibilidad de abonos).
     const abonosHtml=(h.pendienteHistorial&&h.pendienteHistorial.length)
-      ?html`<div class="sp-abonos">${h.pendienteHistorial.map((ab,abIdx)=>html`<div class="sp-abono-fila"><span class="sp-flex1"><span class="c-green">+ ${fmt(ab.monto)}</span> · ${ab.fecha}${ab.destino?' · '+fuenteLabel(ab.destino):''}${ab.nota?html` · <span class="c-blue">${ab.nota}</span>`:''}</span><span class="sp-deshacer" ${raw(Events.attr('spotify:deshacerAbonoPendiente', h._realIdx, abIdx))}>deshacer</span></div>`)}</div>`
+      ?html`<div class="sp-abonos">${h.pendienteHistorial.map((abono,abonoIdx)=>html`<div class="sp-abono-fila"><span class="sp-flex1"><span class="c-green">+ ${fmt(abono.monto)}</span> · ${abono.fecha}${abono.destino?' · '+fuenteLabel(abono.destino):''}${abono.nota?html` · <span class="c-blue">${abono.nota}</span>`:''}</span><span class="sp-deshacer" ${raw(Events.attr('spotify:deshacerAbonoPendiente', h._realIdx, abonoIdx))}>deshacer</span></div>`)}</div>`
       :'';
     const extraHtml=(h.tipo==='cobro'&&(h.extra||0)>0)
       ?html`<div class="sp-extra-nota"><span class="c-blue">+ ${fmt(h.extra)} extra</span> · ${h.extraFuente?fuenteLabel(h.extraFuente):'sin cuenta'} · aparte del cobro de Spotify</div>`
@@ -500,12 +500,12 @@ function renderSpotifyStats(){
   const el=document.getElementById('spStats');
   if(!el)return;
   const personas=S.spotify.personas||[];
-  const hist=S.spotify.historial||[];
+  const historial=S.spotify.historial||[];
   const costo=S.spotify.costo||0;
 
   // Sin personas ni historial no hay nada que mostrar: el título «Estadísticas» tampoco
   // (quedaba pegado al de «Historial de pagos», que sí lleva su mensaje de vacío).
-  const _hayStats=personas.length>0||hist.length>0;
+  const _hayStats=personas.length>0||historial.length>0;
   mostrarSi(document.getElementById('spStatsTitulo'),_hayStats);
   if(!_hayStats){
     el.innerHTML='';
@@ -513,10 +513,10 @@ function renderSpotifyStats(){
   }
 
   // ── Cobros y pagos del historial
-  const cobros=hist.filter(h=>h.tipo==='cobro');
-  const pagosSpotify=hist.filter(h=>h.tipo==='pago');
-  const totalCobradoHist=cobros.reduce((a,h)=>a+(h.monto||0),0);
-  const totalPagadoHist=pagosSpotify.reduce((a,h)=>a+(h.monto||0),0);
+  const cobros=historial.filter(h=>h.tipo==='cobro');
+  const pagosSpotify=historial.filter(h=>h.tipo==='pago');
+  const totalCobradoHistorial=cobros.reduce((a,h)=>a+(h.monto||0),0);
+  const totalPagadoHistorial=pagosSpotify.reduce((a,h)=>a+(h.monto||0),0);
 
   // ── Cuota del admin (su "plan gratis")
   const totalSlots=personas.length+1;
@@ -539,8 +539,8 @@ function renderSpotifyStats(){
   // siguiente, no en el que estaba abierto cuando entró la plata. Los cobros con
   // _pagoIdCierre siguen sumándose al ciclo que saldaron (o al que estaba acumulando si
   // el pago que referenciaban ya no existe).
-  const tramosStats=spotifyAsignarPeriodos(hist);
-  hist.filter(h=>h.tipo==='pago').forEach((h,j)=>{
+  const tramosStats=spotifyAsignarPeriodos(historial);
+  historial.filter(h=>h.tipo==='pago').forEach((h,j)=>{
     const cobradoCiclo=tramosStats.filter(t=>t.ciclo===j).reduce((a,t)=>a+t.monto,0);
     const cuotaAdminDeEseCiclo=h._cuotaAdmin||0;
     // Dos lecturas del mismo ciclo (ver docs/spotify.md §7):
@@ -557,7 +557,7 @@ function renderSpotifyStats(){
   const promedioMano=ciclosCompletos.length?ciclosCompletos.reduce((a,c)=>a+c.mano,0)/ciclosCompletos.length:null;
 
   // ── Ganancia real: solo calculable cuando hay pagos registrados
-  const gananciaMano=(totalCobradoHist-flotanteTotal)-totalPagadoHist;       // sin tu parte
+  const gananciaMano=(totalCobradoHistorial-flotanteTotal)-totalPagadoHistorial;       // sin tu parte
   const gananciaReal=gananciaMano+ahorroCuotaAdmin;                           // con tu parte
   // Extras: plata de más que dieron las personas. Va aparte, nunca suma a la ganancia de Spotify.
   const extrasTotal=cobros.reduce((a,h)=>a+(h.extra||0),0);
@@ -620,15 +620,15 @@ function renderSpotifyStats(){
   // Total cobrado
   html+=`<div class="stat">
     <div class="stat-label">Total cobrado</div>
-    <div class="stat-value c-green">${fmt(totalCobradoHist)}</div>
+    <div class="stat-value c-green">${fmt(totalCobradoHistorial)}</div>
     <div class="sp-stat-hint">${cobros.length} cobro${cobros.length!==1?'s':''}${flotanteTotal>0?` · ${fmt(flotanteTotal)} adelantado`:''}</div>
   </div>`;
 
   // Segunda stat: ganancia real si hay ciclo, balance del ciclo si no
-  if(!hayCiclo&&totalCobradoHist>0&&costo>0){
+  if(!hayCiclo&&totalCobradoHistorial>0&&costo>0){
     // Sin pagos a Spotify aún: mostrar cuánto falta/sobra para cubrir el costo
-    const pendiente=costo-(totalCobradoHist-flotanteTotal);
-    const sobra=(totalCobradoHist-flotanteTotal)-costo;
+    const pendiente=costo-(totalCobradoHistorial-flotanteTotal);
+    const sobra=(totalCobradoHistorial-flotanteTotal)-costo;
     html+=`<div class="stat">
       <div class="stat-label">Balance del ciclo</div>
       ${pendiente>0
@@ -685,8 +685,8 @@ async function deleteSpotifyHistorial(i){
   // borrándose igual que siempre, su alcance ya es pequeño y contenido (solo
   // revierte el proximoPago de un integrante).
   if(h.tipo==='pago'){
-    const opsPosteriores=S.spotify.historial.filter((h2,idx2)=>idx2>i&&h2.tipo==='pago').length;
-    const nivel=nivelAntiguedadMovimiento(h.fecha,opsPosteriores,'spotify');
+    const operacionesPosteriores=S.spotify.historial.filter((h2,idx2)=>idx2>i&&h2.tipo==='pago').length;
+    const nivel=nivelAntiguedadMovimiento(h.fecha,operacionesPosteriores,'spotify');
     if(nivel==='bloqueado'){
       await avisarMovimientoBloqueado();
       return;
@@ -714,28 +714,28 @@ async function deleteSpotifyHistorial(i){
 // (confirmación específica, ver arriba) terminen en el mismo lugar sin
 // duplicar la reversión de saldos.
 async function _borrarSpotifyHistorial(i,h){
-  const _histAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este registro
+  const _historialAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este registro
 
   if(h.tipo==='cobro'){
     // Si este cobro tuvo pago parcial con deuda pendiente (ver §3 de docs/spotify.md),
     // h.monto incluye tanto el monto original como los abonos de pendienteHistorial ya
     // recibidos — hay que separarlos porque cada abono pudo entrar a una cuenta distinta
     // (mismo criterio que _borrarMesadaPago() en mesada.js).
-    const historialPendTotal=(h.pendienteHistorial||[]).reduce((acc,ab)=>acc+(ab.monto||0),0);
+    const historialPendTotal=(h.pendienteHistorial||[]).reduce((acc,abono)=>acc+(abono.monto||0),0);
     const montoOriginalCobro=Math.max(0,(h.monto||0)-historialPendTotal);
     // Revertir el movimiento secundario: la plata que entró a la(s) cuenta(s) destino al cobrar
     if(h.splits&&h.splits.length){
-      h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0,_ogSpotify(h.id,true)); });
+      h.splits.forEach(s=>{ if(s.fuente)descontarFuente(s.fuente,s.monto||0,_origenLibroSpotify(h.id,true)); });
     } else if(h.fuente){
-      descontarFuente(h.fuente,montoOriginalCobro,_ogSpotify(h.id,true));
+      descontarFuente(h.fuente,montoOriginalCobro,_origenLibroSpotify(h.id,true));
     }
     // Revertir cada abono de lo pendiente por separado (cada uno pudo ir a otra cuenta)
-    (h.pendienteHistorial||[]).forEach(ab=>{
-      if(ab.destino)descontarFuente(ab.destino,ab.monto||0,_ogSpotify(h.id,true));
+    (h.pendienteHistorial||[]).forEach(abono=>{
+      if(abono.destino)descontarFuente(abono.destino,abono.monto||0,_origenLibroSpotify(h.id,true));
     });
     // Revertir el EXTRA (si dio de más): sale de su cuenta y se quita su movimiento espejo.
     if((h.extra||0)>0&&h.extraFuente){
-      descontarFuente(h.extraFuente,h.extra,_ogSpotify(h.id,true));
+      descontarFuente(h.extraFuente,h.extra,_origenLibroSpotify(h.id,true));
       if(h.extraMovId)borrarMovimientoEspejo(h.extraFuente,h.extraMovId);
     }
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
@@ -781,9 +781,9 @@ async function _borrarSpotifyHistorial(i,h){
         }
       }
     } else if(h.splits&&h.splits.length){
-      h.splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto||0,_ogSpotify(h.id,true)); });
+      h.splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto||0,_origenLibroSpotify(h.id,true)); });
     } else if(h.fuente){
-      sumarFuente(h.fuente,h.monto||0,_ogSpotify(h.id,true));
+      sumarFuente(h.fuente,h.monto||0,_origenLibroSpotify(h.id,true));
     }
     // Eliminar el gasto variable que se generó junto con este pago
     if(h._gastoVarId&&S.gastosVar){
@@ -801,7 +801,7 @@ async function _borrarSpotifyHistorial(i,h){
   }
 
   S.spotify.historial.splice(i,1);
-  purgarEfectoEnHistorial(_histAntes,h);
+  purgarEfectoEnHistorial(_historialAntes,h);
   save();refresh();
   toast('Movimiento eliminado y plata revertida','ok');
 }
@@ -811,17 +811,17 @@ async function _borrarSpotifyHistorial(i,h){
 // se lo quita a pendienteHistorial, y devuelve ese monto de h.monto a h.pendiente.
 // Distinto de deleteSpotifyHistorial/_borrarSpotifyHistorial, que borran el cobro completo
 // (con todos sus abonos) de una sola vez.
-async function deshacerAbonoPendienteSpotify(i,abIdx){
+async function deshacerAbonoPendienteSpotify(i,abonoIdx){
   const h=S.spotify.historial[i];
   if(!h||!h.pendienteHistorial)return;
-  const ab=h.pendienteHistorial[abIdx];
-  if(!ab)return;
-  const ok=await confirmarEliminar({titulo:'Deshacer abono',verbo:'Deshacer',etiqueta:'Deshacer',objeto:'este abono de '+fmt(ab.monto),detalle:'Esto revierte esa plata de '+(ab.destino?fuenteLabel(ab.destino):'la cuenta elegida')+' y vuelve a marcar esa parte como pendiente.'});
+  const abono=h.pendienteHistorial[abonoIdx];
+  if(!abono)return;
+  const ok=await confirmarEliminar({titulo:'Deshacer abono',verbo:'Deshacer',etiqueta:'Deshacer',objeto:'este abono de '+fmt(abono.monto),detalle:'Esto revierte esa plata de '+(abono.destino?fuenteLabel(abono.destino):'la cuenta elegida')+' y vuelve a marcar esa parte como pendiente.'});
   if(!ok)return;
-  if(ab.destino)descontarFuente(ab.destino,ab.monto||0,_ogSpotify(h.id,true));
-  h.monto=Math.max(0,(h.monto||0)-(ab.monto||0));
-  h.pendiente=(h.pendiente||0)+(ab.monto||0);
-  h.pendienteHistorial.splice(abIdx,1);
+  if(abono.destino)descontarFuente(abono.destino,abono.monto||0,_origenLibroSpotify(h.id,true));
+  h.monto=Math.max(0,(h.monto||0)-(abono.monto||0));
+  h.pendiente=(h.pendiente||0)+(abono.monto||0);
+  h.pendienteHistorial.splice(abonoIdx,1);
   save();refresh();
   toast('Abono deshecho — vuelve a quedar pendiente '+fmt(h.pendiente),'ok',3000);
 }
@@ -850,8 +850,8 @@ function marcarPagoSpotify(i){
   // Si se reduce por debajo de lo esperado, aparece el toggle "quedó debiendo".
   const montoRecInp=document.getElementById('spMontoRecibido');
   if(montoRecInp)montoRecInp.value=fmtInput(p.monto*1);
-  const chkDebeSpotify=document.getElementById('spQuedaDebiendo');
-  if(chkDebeSpotify)chkDebeSpotify.checked=false;
+  const checkboxDebeSpotify=document.getElementById('spQuedaDebiendo');
+  if(checkboxDebeSpotify)checkboxDebeSpotify.checked=false;
   const debeWrapSpotify=document.getElementById('spDebeWrap');
   if(debeWrapSpotify)debeWrapSpotify.style.display='none';
   const extraWrapSpotify=document.getElementById('spExtraWrap');
@@ -875,9 +875,9 @@ function marcarPagoSpotify(i){
   // No se puede guardar plata ajena en una TC (mismo criterio que Encargos, "Yo debo",
   // Mis deudas y Alcancía) — por eso getFuentesSinTC() y no getFuentes().
   const fuentes=getFuentesSinTC();
-  const destSel=document.getElementById('spDestinoSelect');
+  const destinoSel=document.getElementById('spDestinoSelect');
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
-  destSel.innerHTML=html`<option value="" disabled selected>Selecciona una opción...</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}<option value="__sin_especificar__">Sin especificar (no mover)</option>`;
+  destinoSel.innerHTML=html`<option value="" disabled selected>Selecciona una opción...</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}<option value="__sin_especificar__">Sin especificar (no mover)</option>`;
   // Editable para poder anotar un cobro días después sin que quede fechado hoy
   // por error (ver docs/spotify.md §7ter — el ciclo se decide por la fecha real).
   const fechaEl=document.getElementById('spFecha');
@@ -900,12 +900,12 @@ function selSpotifyMeses(){
 
 // Muestra/oculta el toggle "quedó debiendo la diferencia" según el monto
 // recibido ingresado vs. lo esperado para los períodos elegidos — mismo
-// patrón que _syncMpDebeWrap() en mesada.js.
+// patrón que _syncMesadaPagoDebeWrap() en mesada.js.
 function _syncSpotifyDebeWrap(){
   const wrap=document.getElementById('spDebeWrap');
-  const chk=document.getElementById('spQuedaDebiendo');
+  const checkbox=document.getElementById('spQuedaDebiendo');
   const lbl=document.getElementById('spDebeLabel');
-  if(!wrap||!chk||spotifyDestinoIdx===null)return;
+  if(!wrap||!checkbox||spotifyDestinoIdx===null)return;
   const p=S.spotify.personas[spotifyDestinoIdx];
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const montoEsperado=(p?.monto||0)*n;
@@ -916,7 +916,7 @@ function _syncSpotifyDebeWrap(){
     if(lbl)lbl.textContent='Te está debiendo '+fmt(diff)+' — ¿marcar como pendiente?';
   } else {
     wrap.style.display='none';
-    chk.checked=false;
+    checkbox.checked=false;
   }
 }
 
@@ -963,7 +963,7 @@ function _syncSpotifyExtraWrap(){
   }
 }
 
-// Preview del split de cobro — mismo estilo que actualizarMpPreview() en
+// Preview del split de cobro — mismo estilo que actualizarMesadaPagoPreview() en
 // mesada.js. En modo simple no hay nada que mostrar acá (spMesesTotal ya
 // cubre el total); solo pinta cuando spcSplitMode está activo. Siempre
 // sincroniza el toggle de "quedó debiendo", independientemente del modo.
@@ -1016,8 +1016,8 @@ function confirmarSpotifyDestino(){
   // "Quedó debiendo la diferencia": solo aplica si el usuario marcó el toggle
   // explícitamente. Si no lo marca, un monto menor al esperado se registra
   // tal cual, sin deuda — el período de todas formas se cuenta como cubierto.
-  const chkDebeSpotify=document.getElementById('spQuedaDebiendo');
-  const quedaDebiendoSpotify=!!(chkDebeSpotify&&chkDebeSpotify.checked);
+  const checkboxDebeSpotify=document.getElementById('spQuedaDebiendo');
+  const quedaDebiendoSpotify=!!(checkboxDebeSpotify&&checkboxDebeSpotify.checked);
   const diferenciaSpotify=quedaDebiendoSpotify?Math.max(0,montoEsperado-montoTotal):0;
 
   // ── Modo dividido: validar y aplicar el split ANTES de tocar nada más ──
@@ -1037,12 +1037,12 @@ function confirmarSpotifyDestino(){
       return;
     }
   } else {
-    const destVal=document.getElementById('spDestinoSelect').value;
-    if(!destVal){
+    const destinoVal=document.getElementById('spDestinoSelect').value;
+    if(!destinoVal){
       toast('Selecciona a dónde metiste la plata (o marca "Sin especificar")','err');
       return;
     }
-    spotifyDestinoSel=destVal==='__sin_especificar__'?'':destVal;
+    spotifyDestinoSel=destinoVal==='__sin_especificar__'?'':destinoVal;
   }
 
   // Destino del extra: explícito, igual que el del cobro (nunca se asume en silencio).
@@ -1070,9 +1070,9 @@ function confirmarSpotifyDestino(){
   // cierre de deuda vieja si lo hay; si no, el cobro normal): así el libro apunta a un registro que existe.
   const _cobroRef=uid();
   if(splits){
-    splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto,_ogSpotify(_cobroRef)); });
+    splits.forEach(s=>{ if(s.fuente)sumarFuente(s.fuente,s.monto,_origenLibroSpotify(_cobroRef)); });
   } else if(spotifyDestinoSel){
-    sumarFuente(spotifyDestinoSel,cuotaRecibida,_ogSpotify(_cobroRef));
+    sumarFuente(spotifyDestinoSel,cuotaRecibida,_origenLibroSpotify(_cobroRef));
   }
   // Avanzar fecha de cobro N meses pero respetando el día original fijo
   if(p.proximoPago)p.proximoPago=spotifySumarDias(p.proximoPago,(meses||1)*SPOTIFY_PERIODO_DIAS);
@@ -1127,7 +1127,7 @@ function confirmarSpotifyDestino(){
     if(ultimoReg){
       ultimoReg.extra=extraSpotify;
       if(extraFuenteSpotify){
-        sumarFuente(extraFuenteSpotify,extraSpotify,_ogSpotify(ultimoReg.id));
+        sumarFuente(extraFuenteSpotify,extraSpotify,_origenLibroSpotify(ultimoReg.id));
         ultimoReg.extraFuente=extraFuenteSpotify;
         const movimientoId=registrarMovimientoEspejo({cuenta:extraFuenteSpotify,flujo:'entrada',monto:extraSpotify,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',clase:'ingreso',extra:{_esExtraIngreso:true}});
         if(movimientoId)ultimoReg.extraMovId=movimientoId;
@@ -1159,9 +1159,9 @@ function resolverPendienteSpotifyHistorial(i){
   document.getElementById('spResFecha').value=hoy();
   document.getElementById('spResNota').value='';
   const fuentes=getFuentesSinTC();
-  const destSel=document.getElementById('spResDestino');
+  const destinoSel=document.getElementById('spResDestino');
   // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md, punto 2).
-  destSel.innerHTML=html`<option value="">No especificar / lo gasté</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
+  destinoSel.innerHTML=html`<option value="">No especificar / lo gasté</option>${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   actualizarSpotifyResolverPreview();
   openSheet('sp-hist-pend');
 }
@@ -1192,7 +1192,7 @@ function confirmarSpotifyResolverPendiente(){
   const fecha=document.getElementById('spResFecha').value||hoy();
   const nota=document.getElementById('spResNota').value.trim();
   const destino=document.getElementById('spResDestino').value;
-  if(destino)sumarFuente(destino,monto,_ogSpotify(h.id));
+  if(destino)sumarFuente(destino,monto,_origenLibroSpotify(h.id));
   if(!h.pendienteHistorial)h.pendienteHistorial=[];
   // id + _secundario/_origenSeccion: mismo criterio que cualquier otro registro
   // de spotifyHistorial (ver §3 de docs/spotify.md) — permite que cuentas.js
@@ -1345,7 +1345,7 @@ async function confirmarPagarSpotify(){
     }
     const vs=Plata.validarSalidas(splits); // suma por fuente (núcleo)
     if(!vs.ok){toast(vs.motivo,'err',3500);return;}
-    splits.forEach(s=>descontarFuente(s.fuente,s.monto,_ogSpotify(_pagoRef)));
+    splits.forEach(s=>descontarFuente(s.fuente,s.monto,_origenLibroSpotify(_pagoRef)));
     notaGasto+=' · dividido entre '+splits.map(s=>fuenteLabel(s.fuente)).join(', ');
   } else {
     fuente=document.getElementById('spPagarFuente').value;
@@ -1366,7 +1366,7 @@ async function confirmarPagarSpotify(){
     } else if(fuente){
       const v=Plata.validarSalida(fuente,monto);
       if(!v.ok){toast(v.motivo,'err',3500);return;}
-      descontarFuente(fuente,monto,_ogSpotify(_pagoRef));
+      descontarFuente(fuente,monto,_origenLibroSpotify(_pagoRef));
     }
   }
   if(!S.spotify.historial)S.spotify.historial=[];
@@ -1588,8 +1588,8 @@ if (_spotifyBtnPagar) _spotifyBtnPagar.addEventListener('click', abrirPagarSpoti
 
 const _spotifyBtnSave = document.getElementById('btn-guardar-spotify');
 if (_spotifyBtnSave) _spotifyBtnSave.addEventListener('click', () => addSpotify());
-const _spotifyBtnDest = document.getElementById('btn-confirmar-sp-destino');
-if (_spotifyBtnDest) _spotifyBtnDest.addEventListener('click', confirmarSpotifyDestino);
+const _spotifyBtnDestino = document.getElementById('btn-confirmar-sp-destino');
+if (_spotifyBtnDestino) _spotifyBtnDestino.addEventListener('click', confirmarSpotifyDestino);
 const _spotifyMesesSelect = document.getElementById('spMesesSelect');
 if (_spotifyMesesSelect) _spotifyMesesSelect.addEventListener('change', selSpotifyMeses);
 const _spotifyMontoRecibido = document.getElementById('spMontoRecibido');

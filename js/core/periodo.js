@@ -49,7 +49,7 @@
    usa mesKey/_esGastoVarNoReal/entradasIngresoReal (el núcleo) al ser llamado.
    ═══════════════════════════════════════════════════════════════ */
 const Periodo = (() => {
-  const _st = e => e || S;
+  const _estadoActual = e => e || S;
 
   // Cuota de Mesada de un año: la del año, o la del año más cercano hacia atrás,
   // o la más antigua, o 80.000 si no hay ninguna configurada. Es la regla única
@@ -99,13 +99,13 @@ const Periodo = (() => {
   // Cada pago y cada abono de un pendiente cuenta en su propia fecha; sin fecha, cae en el mes que cubre.
   // → [{ parent, key, mesCubre:'YYYY-MM', monto, fecha, mes:'YYYY-MM' }]  (`mes` = mes en que entró la plata)
   function mesadaEntradas(estado) {
-    const st = _st(estado);
+    const estadoActual = _estadoActual(estado);
     // NO depende de si el módulo Mesada está activo: apagarlo solo oculta la pantalla; la plata que ya entró a tus cuentas sigue siendo ingreso
     // (igual que Spotify). Sin pagos registrados, esto da [] por sí solo.
-    if (!st.mesadas || typeof st.mesadas !== 'object') return [];
+    if (!estadoActual.mesadas || typeof estadoActual.mesadas !== 'object') return [];
     const out = [];
     ['papa', 'mama'].forEach(parent => {
-      const d = st.mesadas[parent];
+      const d = estadoActual.mesadas[parent];
       const pagos = d && d.pagos;
       if (!pagos) return;
       Object.keys(pagos).forEach(key => {
@@ -132,7 +132,7 @@ const Periodo = (() => {
   // Cobros de ingresos fijos (js/core/cobros.js): cada uno cuenta en el mes de su fecha; sin fecha, en el mes que cubre.
   // → [{ id, nombre, cobroId, mesCubre:'YYYY-MM', monto, fecha, mes:'YYYY-MM' }]
   function ingresosFijosEntradas(estado) {
-    const fijos = _st(estado).ingresosFijos;
+    const fijos = _estadoActual(estado).ingresosFijos;
     if (!Array.isArray(fijos)) return [];
     const out = [];
     fijos.forEach(ingreso => {
@@ -153,14 +153,14 @@ const Periodo = (() => {
   //     principal cuente en la fecha del cobro y cada abono en la suya.
   //   · El extra con destino (extraFuente) ya cuenta como entrada real (movimiento espejo clase 'ingreso'): aquí no se repite.
   function spotifyEntradas(estado) {
-    const spotify = _st(estado).spotify;
-    const hist = spotify && Array.isArray(spotify.historial) ? spotify.historial : [];
+    const spotify = _estadoActual(estado).spotify;
+    const historial = spotify && Array.isArray(spotify.historial) ? spotify.historial : [];
     const out = [];
     const push = (h, tipo, monto, fecha) => {
       if (!(monto > 0)) return;
       out.push({ id: h.id, spotifyId: h.spotifyId || '', nombre: h.nombre || '', tipo, monto, fecha: fecha || '', mes: fecha ? mesKey(fecha) : '' });
     };
-    hist.forEach(h => {
+    historial.forEach(h => {
       if (!h || h.tipo !== 'cobro') return;
       const abonos = Array.isArray(h.pendienteHistorial) ? h.pendienteHistorial : [];
       const abonado = abonos.reduce((a, x) => a + ((x && x.monto) || 0), 0);
@@ -209,10 +209,10 @@ const Periodo = (() => {
   // S.pagosGastosFijos es un mapa {"<gastoFijoId>_YYYY-MM": {fecha, fuente, monto}}; `mesCubre` sale de la clave y `mes` (el que
   // cuenta) de la fecha del pago.
   function pagosFijos(estado) {
-    const st = _st(estado);
-    const raw = st.pagosGastosFijos;
+    const estadoActual = _estadoActual(estado);
+    const raw = estadoActual.pagosGastosFijos;
     if (!raw || typeof raw !== 'object') return [];
-    const gfs = st.gastosFijos || [];
+    const gfs = estadoActual.gastosFijos || [];
     const out = [];
     const sumar = (id, mes, p) => {
       if (!p || !mes) return;
@@ -239,7 +239,7 @@ const Periodo = (() => {
   // gasto registrado, normalmente para cuadrar lo registrado con lo real. Es el opuesto de sumar dinero
   // (ingreso), así que cuenta como gasto del mes, en la categoría 'Ajuste'. Se agrupa con los variables.
   function retirosManuales(estado) {
-    return (_st(estado).movimientos || [])
+    return (_estadoActual(estado).movimientos || [])
       .filter(m => m && m.tipo === 'salida_manual' && claseEfectivaMovimiento(m) === 'gasto')
       .map(m => ({ id: m.id, monto: m.monto || 0, fecha: m.fecha, cat: 'Ajuste', desc: m.desc || m.nota || 'Retiro manual', fuente: m.fuente, clase: 'gasto', _esRetiroManual: true }));
   }
@@ -289,7 +289,7 @@ const Periodo = (() => {
   const esCompraGrande = (g, umbral) => compraGrandeEstado(g, umbral) !== 'no';
 
   const gastosVarRealesDelMes = (mes, estado) =>
-    (_st(estado).gastosVar || []).filter(g => mesKey(g.fecha) === mes && !_esGastoVarNoReal(g))
+    (_estadoActual(estado).gastosVar || []).filter(g => mesKey(g.fecha) === mes && !_esGastoVarNoReal(g))
       .concat(retirosManuales(estado).filter(r => mesKey(r.fecha) === mes));
 
   // { variables:[gastos], fijos:[pagos], gastoVariableTotal, gastoFijoTotal, total, items }
@@ -310,7 +310,7 @@ const Periodo = (() => {
   // del patrimonio entre dos fotos del historial: lo que cayó ese intervalo por una compra grande no es el ritmo del usuario.
   function comprasGrandesEntre(desde, hasta, estado) {
     const umbral = umbralCompraGrande(estado);
-    return (_st(estado).gastosVar || []).filter(g => esCompraGrande(g, umbral) && !_esGastoVarNoReal(g) && g.fecha > desde && g.fecha <= hasta);
+    return (_estadoActual(estado).gastosVar || []).filter(g => esCompraGrande(g, umbral) && !_esGastoVarNoReal(g) && g.fecha > desde && g.fecha <= hasta);
   }
 
   // Total de gasto real por mes: { 'YYYY-MM': total } con todos los meses que tienen datos.
@@ -319,7 +319,7 @@ const Periodo = (() => {
     const out = {};
     const sinExtra = !!(opciones && opciones.sinExtraordinarios);
     const umbral = sinExtra ? umbralCompraGrande(estado) : Infinity;
-    (_st(estado).gastosVar || []).forEach(g => {
+    (_estadoActual(estado).gastosVar || []).forEach(g => {
       if (_esGastoVarNoReal(g)) return;
       if (sinExtra && esCompraGrande(g, umbral)) return;
       const k = mesKey(g.fecha);
@@ -377,9 +377,9 @@ const Periodo = (() => {
   //  · CDTs: calcRendimientoCDTsMes(), exacto para cualquier mes.
   // Con un `estado` distinto del global solo se lee lo ya anotado (el cálculo en vivo depende de S).
   function rendimientosDelMes(mes, estado) {
-    const st = _st(estado), esGlobal = st === S;
+    const estadoActual = _estadoActual(estado), esGlobal = estadoActual === S;
     let cajitas = 0;
-    (st.cajitas || []).forEach(c => {
+    (estadoActual.cajitas || []).forEach(c => {
       if (!c) return;
       cajitas += (c.rendimientos && c.rendimientos[mes]) || 0;
       if (esGlobal && typeof rendimientoCajitaPorMes === 'function') cajitas += rendimientoCajitaPorMes(c)[mes] || 0;
@@ -426,10 +426,10 @@ const Periodo = (() => {
   // venció. Un gasto fijo sin día no aparece aquí (la app no inventa un vencimiento: solo avisa de lo que el usuario dijo).
   // → [{ id, nombre, monto, cat, dia, fecha:'YYYY-MM-DD', dias }] ordenado por vencimiento.
   function gastosFijosProgramados(mes, hoyStr, estado) {
-    const st = _st(estado);
+    const estadoActual = _estadoActual(estado);
     const pagados = new Set(pagosFijos(estado).filter(p => p.mesCubre === mes).map(p => p.id));
     const out = [];
-    (st.gastosFijos || []).forEach(gastoFijo => {
+    (estadoActual.gastosFijos || []).forEach(gastoFijo => {
       const f = diaDelMes(gastoFijo.dia, mes, hoyStr);
       if (!f || pagados.has(gastoFijo.id)) return;
       out.push({ id: gastoFijo.id, nombre: gastoFijo.nombre, monto: gastoFijo.monto || 0, cat: gastoFijo.cat, dia: f.dia, fecha: f.fecha, dias: f.dias });
@@ -441,9 +441,9 @@ const Periodo = (() => {
   // ellos, pero «ya es 25 y el arriendo no está pagado» merece un aviso suave (ver la regla 'gastos-fijos-sin-dia' en reglas.js).
   // → [{ id, nombre, monto, cat }] en el orden en que están guardados.
   function gastosFijosSinDia(mes, estado) {
-    const st = _st(estado);
+    const estadoActual = _estadoActual(estado);
     const pagados = new Set(pagosFijos(estado).filter(p => p.mesCubre === mes).map(p => p.id));
-    return (st.gastosFijos || [])
+    return (estadoActual.gastosFijos || [])
       .filter(gastoFijo => !diaDelMes(gastoFijo.dia, mes, mes + '-01') && !pagados.has(gastoFijo.id))
       .map(gastoFijo => ({ id: gastoFijo.id, nombre: gastoFijo.nombre, monto: gastoFijo.monto || 0, cat: gastoFijo.cat }));
   }
@@ -516,8 +516,8 @@ const Periodo = (() => {
      entra en montoBase. Es la ÚNICA definición: la usan la tarjeta de Análisis y scripts/conciliacion.js.
      → { mes, desde, hasta, delta, base, ingresos, gastos, rendimientos, explicado, sinExplicar } o null si el mes no tiene dos fotos. */
   function conciliar(mes, estado) {
-    const st = _st(estado);
-    const H = (st.patrimonioHistorial || []).filter(h => h && h.fecha).slice().sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
+    const estadoActual = _estadoActual(estado);
+    const H = (estadoActual.patrimonioHistorial || []).filter(h => h && h.fecha).slice().sort((a, b) => (a.fecha < b.fecha ? -1 : a.fecha > b.fecha ? 1 : 0));
     const mk = h => String(h.fecha).slice(0, 7);
     const prev = H.filter(h => mk(h) < mes).pop();
     const fin = H.filter(h => mk(h) === mes).pop();
@@ -527,9 +527,9 @@ const Periodo = (() => {
     const sum = (arr, f) => arr.filter(x => en(x.fecha)).reduce((a, x) => a + (f ? f(x) : (x.monto || 0)), 0);
     const base = H.filter(h => en(h.fecha)).reduce((a, h) => a + (h.montoBase || 0), 0);
     let mesada = 0;
-    ['papa', 'mama'].forEach(par => Object.values(((st.mesadas || {})[par] || {}).pagos || {}).forEach(x => { if (x && en(x.fecha)) mesada += x.monto || 0; }));
+    ['papa', 'mama'].forEach(par => Object.values(((estadoActual.mesadas || {})[par] || {}).pagos || {}).forEach(x => { if (x && en(x.fecha)) mesada += x.monto || 0; }));
     const ingresos = sum(entradasIngresoReal(estado)) + sum(spotifyEntradas(estado)) + sum(ingresosFijosEntradas(estado)) + mesada;
-    const gastos = (st.gastosVar || []).filter(g => en(g.fecha) && !_esGastoVarNoReal(g)).reduce((a, g) => a + (g.monto || 0), 0)
+    const gastos = (estadoActual.gastosVar || []).filter(g => en(g.fecha) && !_esGastoVarNoReal(g)).reduce((a, g) => a + (g.monto || 0), 0)
       + sum(retirosManuales(estado)) + sum(pagosFijos(estado));
     const rendimientos = rendimientosDelMes(mes, estado).total;
     const explicado = ingresos - gastos + rendimientos;

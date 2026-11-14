@@ -90,7 +90,7 @@
 
    Esto no reemplaza un `btn.disabled = true` manual dentro de un
    handler que además quiera dar feedback visual propio (texto tipo
-   "Guardando…", como ya hace _fbDeleteAccount) — ambos conviven sin
+   "Guardando…", como ya hace _firebaseDeleteAccount) — ambos conviven sin
    pisarse.
    ═══════════════════════════════════════════════════════════════ */
 

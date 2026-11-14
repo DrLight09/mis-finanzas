@@ -2,6 +2,7 @@
 // Convenciones de nombres (docs/glosario-dominio.md): cuenta las abreviaturas opacas que siguen en los identificadores de js/ e index.html.
 //   node scripts/convenciones.js             muestra el recuento por archivo y por abreviatura
 //   node scripts/convenciones.js --actualizar  baja el «trinquete» (tests/fixtures/convenciones-base.json); nunca lo sube
+//   node scripts/convenciones.js --actualizar --forzar  igual, pero aceptando que suba: solo al SUMAR abreviaturas nuevas a ABREVIATURAS
 // tests/convenciones.test.js falla si una abreviatura SUBE en algún archivo (código nuevo) o si BAJA sin actualizar el trinquete
 // (así lo que se limpia no se pierde). Solo cuentan identificadores: textos entre comillas, comentarios, ids del HTML y clases CSS no.
 const fs = require('fs'), path = require('path');
@@ -13,6 +14,9 @@ const ABREVIATURAS = {
   enc: 'encargo', mov: 'movimiento', movs: 'movimientos', sp: 'spotify', gv: 'gastoVariable', gf: 'gastoFijo',
   cp: 'plataComprometida', alc: 'alcancia', caj: 'cajita', ctc: 'compraConTc', prtc: 'prestamoConTc',
   movenc: 'movimientoEncargo', mpp: 'mesadaPagoPendiente', rte: 'retencion', ing: 'ingreso', dif: 'diferencial',
+  inst: 'instancia', hist: 'historial', st: 'estadoActual', fb: 'firebase', og: 'origenLibro', ops: 'operaciones', chk: 'checkbox',
+  dest: 'destino', cont: 'contenedor', tt: 'tooltip', ab: 'abono', liq: 'liquidez', nc: 'nuevaCuenta', ad: 'agregarDinero', mp: 'mesadaPago',
+  sc: 'scroller', sl: 'slide', ae: 'elementoActivo', vk: 'tecladoVirtual',
 };
 
 function archivos() {
@@ -34,7 +38,8 @@ function codigoDe(rel) {
     s = s.replace(/<!--[\s\S]*?-->/g, '');
     s = [...s.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join('\n');
   }
-  return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '').replace(/(["'`])(?:\\.|(?!\1)[^\\\n])*\1/g, '""');
+  // comentarios de bloque, luego textos entre comillas, y al final los comentarios de línea (también los que siguen a código)
+  return s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(["'`])(?:\\.|(?!\1)[^\\\n])*\1/g, '""').replace(/\/\/[^\n]*$/gm, '');
 }
 const trozos = n => n.replace(/^[_$]+/, '').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').replace(/[_-]+/g, ' ').toLowerCase().split(' ').filter(Boolean);
 
@@ -55,7 +60,7 @@ if (require.main === module) {
   const { porArchivo, porAbreviatura } = contar();
   if (process.argv.includes('--actualizar')) {
     const base = fs.existsSync(BASE) ? JSON.parse(fs.readFileSync(BASE, 'utf8')) : null;
-    if (base) {
+    if (base && !process.argv.includes('--forzar')) {
       const sube = Object.keys(porArchivo).filter(f => porArchivo[f] > (base[f] || 0));
       if (sube.length) { console.error('Hay abreviaturas NUEVAS (el trinquete no se sube):\n  ' + sube.join('\n  ')); process.exit(1); }
     }

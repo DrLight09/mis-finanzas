@@ -75,10 +75,10 @@
   var KB_EXIT_PX = 30;               // por debajo de esto se da por cerrado (histéresis)
   var KB_SETTLE_MS = 340;            // --kb-ms (280, styles.css) + margen: pasado esto el sheet ya está quieto
   var LAYOUT_KB_PX = 100;            // el layout se achicó al menos esto = el navegador resolvió el teclado solo
-  var vk = navigator.virtualKeyboard || null;
+  var tecladoVirtual = navigator.virtualKeyboard || null;
   var vv = window.visualViewport || null;
   var kbH = 0, kbPan = 0;            // lo publicado en --kb / --pan
-  var vkOverlays = false;            // ¿la página está en modo overlays-content ahora mismo?
+  var tecladoVirtualOverlays = false;            // ¿la página está en modo overlays-content ahora mismo?
   var lastChange = 0;                // última vez que cambió --kb / --pan / el layout
   var kbListeners = [];
   var raf = 0;
@@ -123,10 +123,10 @@
   // Con un sheet abierto el teclado se dibuja ENCIMA y el layout no se achica; sin
   // sheets, comportamiento normal del navegador (inputs sueltos en pantallas, login).
   function sheetOpen(){ return !!document.querySelector('.overlay.open .sheet'); }
-  function vkRectH(){ try{ return vk ? Math.round(vk.boundingRect.height || 0) : 0; }catch(_){ return 0; } }
+  function tecladoVirtualRectH(){ try{ return tecladoVirtual ? Math.round(tecladoVirtual.boundingRect.height || 0) : 0; }catch(_){ return 0; } }
   function setOverlays(on){
-    if(!vk || vkOverlays === on) return;
-    try{ vk.overlaysContent = on; vkOverlays = on; }catch(_){}
+    if(!tecladoVirtual || tecladoVirtualOverlays === on) return;
+    try{ tecladoVirtual.overlaysContent = on; tecladoVirtualOverlays = on; }catch(_){}
   }
   // Seguir en overlays mientras haya un sheet, o mientras el teclado de un sheet que
   // ya se cerró siga bajando (soltar el modo en ese momento achicaría el layout de
@@ -134,14 +134,14 @@
   // de la pantalla, se suelta ya: ahí manda el navegador.
   function wantOverlays(){
     if(sheetOpen()) return true;
-    return vkOverlays && vkRectH() > 0 && !focusedTextField();
+    return tecladoVirtualOverlays && tecladoVirtualRectH() > 0 && !focusedTextField();
   }
 
   // ── Medir y publicar ──
   // Devuelve [alto del teclado que tapa el layout, desplazamiento del viewport visual].
   function measure(){
     var k = 0, pan = 0;
-    if(vk && vkOverlays) k = vkRectH();
+    if(tecladoVirtual && tecladoVirtualOverlays) k = tecladoVirtualRectH();
     if(!k && vv && !zoomed() && focusedTextField()){
       var d = window.innerHeight - vv.height;
       if(d > (kbH > 0 ? KB_EXIT_PX : KB_ENTER_PX)){ k = d; pan = vv.offsetTop || 0; }
@@ -168,10 +168,10 @@
     // Un campo enfocado dentro de algo que se acaba de ocultar (muchos sheets se
     // abren/cierran con classList directo) se suelta ya: así el teclado se cierra
     // junto con el sheet y no cuando el navegador decida limpiar el foco.
-    var ae = document.activeElement;
-    if(ae && ae !== document.body && ae !== document.documentElement &&
-       !ae.getClientRects().length && typeof ae.blur === 'function'){
-      try{ ae.blur(); }catch(_){}
+    var elementoActivo = document.activeElement;
+    if(elementoActivo && elementoActivo !== document.body && elementoActivo !== document.documentElement &&
+       !elementoActivo.getClientRects().length && typeof elementoActivo.blur === 'function'){
+      try{ elementoActivo.blur(); }catch(_){}
     }
     setOverlays(wantOverlays());
     var m = measure();
@@ -187,7 +187,7 @@
     schedule();
   }
 
-  if(vk) vk.addEventListener('geometrychange', schedule);
+  if(tecladoVirtual) tecladoVirtual.addEventListener('geometrychange', schedule);
   if(vv){ vv.addEventListener('resize', schedule); vv.addEventListener('scroll', schedule); }
   window.addEventListener('resize', onLayoutEvent);
   window.addEventListener('orientationchange', schedule);
@@ -232,7 +232,7 @@
       if(opts && opts.select && typeof el.select === 'function') el.select();
     }
     if(needsKeyboard(document.activeElement)) attempt();
-    else if(vk) requestAnimationFrame(attempt);
+    else if(tecladoVirtual) requestAnimationFrame(attempt);
     else setTimeout(attempt, 200);
   }
 
@@ -241,7 +241,7 @@
 
   // Borde inferior de lo visible, en coordenadas del layout (las de getBoundingClientRect).
   function visibleBottom(){
-    if(vk && vkOverlays) return window.innerHeight - kbH;
+    if(tecladoVirtual && tecladoVirtualOverlays) return window.innerHeight - kbH;
     return vv ? vv.offsetTop + vv.height : window.innerHeight;
   }
 
@@ -557,8 +557,8 @@
         dur = Math.round(Math.min(280, Math.max(140, remaining / Math.max(0.9, v) )));
         ease = 'cubic-bezier(.3,.7,.4,1)';
         // Antes de animar la salida: si hay teclado abierto, soltarlo.
-        var ae = document.activeElement;
-        if(ae && panel.contains(ae) && typeof ae.blur === 'function') ae.blur();
+        var elementoActivo = document.activeElement;
+        if(elementoActivo && panel.contains(elementoActivo) && typeof elementoActivo.blur === 'function') elementoActivo.blur();
       } else {
         target = 0;
         dur = 260;
@@ -671,23 +671,23 @@
     var cacheName = '…';
     if(window.caches && caches.keys) caches.keys().then(function(k){ cacheName = k.join(','); render(); });
     function render(){
-      var ae = document.activeElement;
-      var src = vk ? (vkOverlays ? 'vk (overlays-content)' : 'vk (en espera)') : (vv ? 'vv' : 'ninguna');
+      var elementoActivo = document.activeElement;
+      var src = tecladoVirtual ? (tecladoVirtualOverlays ? 'vk (overlays-content)' : 'vk (en espera)') : (vv ? 'vv' : 'ninguna');
       if(layoutShrunk()) src += ' + layout achicado';
       el.textContent =
         'build ' + BUILD + '\n' +
         'cache ' + cacheName + '\n' +
         'fuente: ' + src + '\n' +
-        'kb ' + kbH + 'px  pan ' + kbPan + 'px  (vk ' + vkRectH() + ')\n' +
+        'kb ' + kbH + 'px  pan ' + kbPan + 'px  (vk ' + tecladoVirtualRectH() + ')\n' +
         'latencia teclado: ' + (kbLatency < 0 ? '-' : kbLatency + ' ms') + '\n' +
         'innerH ' + window.innerHeight + '  rest ' + restInner + '\n' +
         (vv ? 'vv.h ' + Math.round(vv.height) + '  vv.top ' + Math.round(vv.offsetTop) + '  scale ' + (vv.scale || 1).toFixed(2) + '\n' : '') +
-        'foco: ' + (ae && ae.tagName ? ae.tagName.toLowerCase() + (ae.id ? '#' + ae.id : '') : '-') +
+        'foco: ' + (elementoActivo && elementoActivo.tagName ? elementoActivo.tagName.toLowerCase() + (elementoActivo.id ? '#' + elementoActivo.id : '') : '-') +
         '  tecladoVisible ' + keyboardVisible();
     }
     ['resize','scroll'].forEach(function(t){ if(vv) vv.addEventListener(t, render); });
     window.addEventListener('resize', render);
-    if(vk) vk.addEventListener('geometrychange', render);
+    if(tecladoVirtual) tecladoVirtual.addEventListener('geometrychange', render);
     document.addEventListener('focusin', render, true);
     document.addEventListener('focusout', render, true);
     setInterval(render, 400);

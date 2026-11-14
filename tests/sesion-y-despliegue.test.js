@@ -67,8 +67,8 @@ function entorno({ pin = '1234', sesion = true } = {}) {
   const oyentes = {};
   const document = { hidden: false, readyState: 'complete', getElementById: id => els[id] || (els[id] = nuevo(id)), addEventListener: (t, fn) => { (oyentes[t] = oyentes[t] || []).push(fn); } };
   const lanzados = [], toasts = [];
-  const window = { _fbLoadData: () => lanzados.push('app'), toast: (m, t) => toasts.push([m, t]), dialogo: async () => true };
-  if (sesion) window._fbUser = { uid: 'u1' };
+  const window = { _firebaseLoadData: () => lanzados.push('app'), toast: (m, t) => toasts.push([m, t]), dialogo: async () => true };
+  if (sesion) window._firebaseUser = { uid: 'u1' };
   const reloj = { t: 1_700_000_000_000 };
   const ctx = vm.createContext({ window, document, localStorage, toast: window.toast, dialogo: window.dialogo, navigator: { userAgent: '' }, crypto: crypto.webcrypto, console,
     Date: { now: () => reloj.t }, setTimeout, clearTimeout,
@@ -205,7 +205,7 @@ describe('firebase-sync', () => {
   const RESPALDOS = escribir('respaldos.js', respaldosSrc);
   const SYNC = escribir('sync.js', 'const waitFor = () => {};\n' + syncSrc);
   const plano = x => JSON.parse(JSON.stringify(x));
-  const guardar = app => { const p = app._fbSaveToCloud(); app._fbFlushSave(); return p; }; // encola y fuerza el guardado sin esperar el debounce
+  const guardar = app => { const p = app._firebaseSaveToCloud(); app._firebaseFlushSave(); return p; }; // encola y fuerza el guardado sin esperar el debounce
   const esperar = ms => new Promise(r => setTimeout(r, ms));
   // Espera a una condición en vez de dormir un tiempo fijo: en una máquina lenta (OneDrive, antivirus) 50 ms no alcanzan para descomprimir y el test fallaba sin que la app tuviera un error.
   const hasta = async (cond, ms = 5000) => { const t0 = Date.now(); while (!cond()) { if (Date.now() - t0 > ms) throw new Error('timeout esperando la condición'); await esperar(5); } };
@@ -221,13 +221,13 @@ describe('firebase-sync', () => {
     app.CompressionStream = CompressionStream; app.DecompressionStream = DecompressionStream;
     app.Blob = Blob; app.Response = Response; app.btoa = btoa; app.atob = atob; app.TextEncoder = TextEncoder; app.Uint8Array = Uint8Array;
     const escritos = []; const listeners = {};
-    app._fb = {
+    app._firebase = {
       db: {}, doc: (...a) => ({ ruta: a.slice(1).join('/') }),
       setDoc: async (ref, datos) => { escritos.push(datos); },
       onSnapshot: (ref, opts, onNext, onError) => { listeners.next = onNext; listeners.error = onError; return () => {}; },
       runTransaction: async () => { throw new Error('no usado'); },
     };
-    app._fbUser = { uid: 'u1' };
+    app._firebaseUser = { uid: 'u1' };
     app.S = estado || { cuentas: [{ id: 'nequi', saldo: 5 }], libro: [] };
     return { app, escritos, listeners };
   }
@@ -297,7 +297,7 @@ describe('firebase-sync', () => {
 
   test('listener — carga inicial con payload comprimido aplica los datos y habilita el guardado', async () => {
     const { app, listeners } = entorno({ cuentas: [], libro: [] });
-    app._fbLoadData();
+    app._firebaseLoadData();
     listeners.next(snap(gz(JSON.stringify({ cuentas: [{ id: 'nequi', saldo: 123 }], libro: [{ id: 'l1' }] }))));
     await hasta(() => app._dataLoaded);
     assert.equal(app.S.cuentas[0].saldo, 123);
@@ -306,7 +306,7 @@ describe('firebase-sync', () => {
 
   test('listener — payload en JSON plano (formato anterior) también se lee', async () => {
     const { app, listeners } = entorno({ cuentas: [], libro: [] });
-    app._fbLoadData();
+    app._firebaseLoadData();
     listeners.next(snap(JSON.stringify({ cuentas: [{ id: 'efectivo', saldo: 7 }] })));
     await hasta(() => app._dataLoaded);
     assert.equal(app.S.cuentas[0].saldo, 7);
@@ -316,7 +316,7 @@ describe('firebase-sync', () => {
   test('listener — un payload comprimido ilegible NO habilita el guardado (nunca se pisa la nube)', async () => {
     const { app, listeners, escritos } = entorno({ cuentas: [], libro: [] });
     const terminadas = espiar(app);
-    app._fbLoadData();
+    app._firebaseLoadData();
     listeners.next(snap('gz1:basura-no-gzip'));
     await terminadas(); await esperar(30); // la descompresión ya falló; margen para que el listener reaccione
     assert.ok(!app._dataLoaded, 'sigue en modo lectura');
@@ -325,7 +325,7 @@ describe('firebase-sync', () => {
 
   test('listener — los snapshots se procesan en el orden en que llegaron', async () => {
     const { app, listeners } = entorno({ cuentas: [], libro: [] });
-    app._fbLoadData();
+    app._firebaseLoadData();
     const grande = JSON.stringify({ cuentas: [{ id: 'nequi', saldo: 1 }], relleno: Array.from({ length: 4000 }, (_, i) => 'x' + i) });
     const terminadas = espiar(app);
     listeners.next(snap(gz(grande)));                                              // tarda más en descomprimir
@@ -339,7 +339,7 @@ describe('firebase-sync', () => {
     const avisos = [];
     app.toast = (m) => avisos.push(m); app.window = app.window || app; app.window.toast = app.toast;
     app.load = () => {}; app.refresh = () => {}; app.applyModulos = () => {};
-    app._fbLoadData();
+    app._firebaseLoadData();
     const payload = JSON.stringify({ cuentas: [{ id: 'nequi', saldo: 9 }] });
     // updatedAt muy posterior a lo guardado localmente (mf_lastSavedAt vacío en un dispositivo recién abierto)
     const ts = Date.now() - 600000; // el mismo updatedAt en los tres: es el mismo documento de la nube
@@ -359,7 +359,7 @@ describe('firebase-sync', () => {
     const avisos = [];
     app.toast = (m) => avisos.push(m); app.window = app.window || app; app.window.toast = app.toast; app.window.dispatchEvent = () => {};
     app.load = () => {}; app.refresh = () => {}; app.applyModulos = () => {};
-    app._fbLoadData();
+    app._firebaseLoadData();
     const base = Date.now() - 600000;
     const s = (saldo, ts) => ({ exists: () => true, data: () => ({ payload: JSON.stringify({ cuentas: [{ id: 'nequi', saldo }] }), updatedAt: ts }), metadata: { fromCache: false, hasPendingWrites: false } });
     listeners.next(s(1, base)); await hasta(() => app._dataLoaded); await esperar(40);
@@ -374,11 +374,11 @@ describe('firebase-sync', () => {
     const almacen = { doc: nube }; // lo que hay en «Firestore»: { payload, updatedAt, rev } o null
     const store = {};
     e.app.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
-    e.app._fb.setDoc = async (ref, datos) => { almacen.doc = datos; e.escritos.push(datos); };
+    e.app._firebase.setDoc = async (ref, datos) => { almacen.doc = datos; e.escritos.push(datos); };
     // El «Firestore» distingue los documentos por ruta: `finanzas` es el principal; los demás (respaldos automáticos, su índice) van aparte.
     almacen.otros = new Map();
     const esPrincipal = ref => /\/data\/finanzas$/.test(ref.ruta);
-    e.app._fb.runTransaction = async (db, fn) => {
+    e.app._firebase.runTransaction = async (db, fn) => {
       const pend = [];
       const tx = {
         get: async (ref) => {
@@ -400,7 +400,7 @@ describe('firebase-sync', () => {
     return e;
   }
   const nubeDoc = (saldo, rev, updatedAt = Date.now() - 600000) => ({ payload: JSON.stringify({ cuentas: [{ id: 'nequi', saldo }], libro: [] }), updatedAt, ...(rev == null ? {} : { rev }) });
-  const cargar = async (e) => { e.app._fbLoadData(); e.listeners.next({ exists: () => e.almacen.doc != null, data: () => e.almacen.doc, metadata: { fromCache: false, hasPendingWrites: false } }); await hasta(() => e.app._dataLoaded); };
+  const cargar = async (e) => { e.app._firebaseLoadData(); e.listeners.next({ exists: () => e.almacen.doc != null, data: () => e.almacen.doc, metadata: { fromCache: false, hasPendingWrites: false } }); await hasta(() => e.app._dataLoaded); };
 
   test('rev — un guardado normal escribe rev+1 con una transacción y recuerda la revisión', async () => {
     const e = entornoRev(nubeDoc(1, 3));
@@ -449,7 +449,7 @@ describe('firebase-sync', () => {
     await cargar(e);
     e.almacen.doc = nubeDoc(500, 8, Date.now());
     e.app.S.cuentas[0].saldo = 77;
-    const p = e.app._fbSaveToCloud({ forzar: true }); e.app._fbFlushSave();
+    const p = e.app._firebaseSaveToCloud({ forzar: true }); e.app._firebaseFlushSave();
     const r = await p;
     assert.equal(r.ok, true);
     assert.equal(e.almacen.doc.rev, 9, 'sube sobre la revisión que había en la nube');
@@ -459,7 +459,7 @@ describe('firebase-sync', () => {
   test('rev — sin conexión la transacción falla y el guardado se encola con setDoc (no se pierde)', async () => {
     const e = entornoRev(nubeDoc(1, 3));
     await cargar(e);
-    e.app._fb.runTransaction = async () => { const err = new Error('Failed to get document because the client is offline.'); err.code = 'unavailable'; throw err; };
+    e.app._firebase.runTransaction = async () => { const err = new Error('Failed to get document because the client is offline.'); err.code = 'unavailable'; throw err; };
     e.app.S.cuentas[0].saldo = 12;
     const r = await guardar(e.app);
     assert.equal(r.ok, true);
@@ -548,8 +548,8 @@ test('el script sella solo la línea BUILD; con --check falla (código 1) si est
   fs.writeFileSync(path.join(dir, 'index.html'), 'x'); fs.writeFileSync(path.join(dir, 'js', 'a.js'), 'a');
   const original = "const VERSION = 'v1';\nconst BUILD = 'sin-sellar';\nconst otra = 2;\n";
   fs.writeFileSync(path.join(dir, 'sw.js'), original);
-  const chk = spawnSync(process.execPath, [script, '--check', dir], { encoding: 'utf8' });
-  assert.equal(chk.status, 1, 'vieja → código 1');
+  const checkbox = spawnSync(process.execPath, [script, '--check', dir], { encoding: 'utf8' });
+  assert.equal(checkbox.status, 1, 'vieja → código 1');
   assert.equal(fs.readFileSync(path.join(dir, 'sw.js'), 'utf8'), original, '--check no escribe');
   const run = spawnSync(process.execPath, [script, dir], { encoding: 'utf8' });
   assert.equal(run.status, 0);

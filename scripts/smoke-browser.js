@@ -297,7 +297,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   // handlers (authgate:*, pin:*) siempre aparecen como "sin handler" / "lanzan al
   // tocar". Eso NO es un fallo del producto: se excluye del veredicto.
   // Acciones de namespaces clásicos cuyo HANDLER vive en un módulo ES
-  // (firebase-sync.js define _fbSignOut/_abrirEliminarCuenta, pero se exponen
+  // (firebase-sync.js define _firebaseSignOut/_abrirEliminarCuenta, pero se exponen
   // bajo el namespace 'config'). jsdom no ejecuta módulos ES, así que estas
   // acciones no se pueden tocar aquí. No es un fallo del producto.
   const accionesQueDependenDeModuloES = new Set(['config:abrirEliminarCuenta', 'config:signOut']);

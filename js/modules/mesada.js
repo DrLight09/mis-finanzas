@@ -72,8 +72,8 @@
 const MESADA_PADRES = ['papa', 'mama'];
 
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
-// _ogMes(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'mesada', ref:<id del movimiento espejo del abono> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogMes = Libro.origen('mesada');
+// _origenLibroMes(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'mesada', ref:<id del movimiento espejo del abono> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _origenLibroMes = Libro.origen('mesada');
 
 function mesadaNombrePadre(parent) { return parent === 'papa' ? 'Papá' : 'Mamá'; }
 
@@ -196,14 +196,14 @@ function _mesadaEntrar(destino, monto, fecha, desc) {
   if (!destino || !monto) return null;
   // El espejo se crea primero para que el libro apunte a su id (el orden no afecta al saldo).
   const movimientoId = registrarMovimientoEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Mesada' });
-  sumarFuente(destino, monto, _ogMes(movimientoId || undefined));
+  sumarFuente(destino, monto, _origenLibroMes(movimientoId || undefined));
   return movimientoId;
 }
 
 // Inverso de _mesadaEntrar. `descontar=false` solo borra el espejo (ver mesadaRevertirAbono).
 function _mesadaSacar(destino, monto, movimientoSecId, descontar) {
   if (!destino) return;
-  if (descontar) descontarFuente(destino, monto, _ogMes(movimientoSecId, true));
+  if (descontar) descontarFuente(destino, monto, _origenLibroMes(movimientoSecId, true));
   borrarMovimientoEspejo(destino, movimientoSecId);
 }
 
@@ -258,30 +258,30 @@ function _mesadaAplicarEntrada(b, desc, encargo) {
 //   { esOriginal, monto, fecha, nota, destino, splits, _movSecId, origenEncargo }
 // `info.monto` incluye los abonos posteriores, así que el original = monto − Σ abonos.
 function mesadaAbonosDe(info) {
-  const hist = info.pendienteHistorial || [];
-  const totalHist = hist.reduce((a, h) => a + (h.monto || 0), 0);
+  const historial = info.pendienteHistorial || [];
+  const totalHistorial = historial.reduce((a, h) => a + (h.monto || 0), 0);
   const norm = (x, esOriginal, monto) => ({
     esOriginal, monto, fecha: x.fecha, nota: x.nota,
     destino: x.destino || '', splits: x.splits || null,
     _movSecId: x._movSecId || null, origenEncargo: x.origenEncargo || null,
   });
-  return [norm(info, true, Math.max(0, (info.monto || 0) - totalHist))]
-    .concat(hist.map(h => norm(h, false, h.monto || 0)));
+  return [norm(info, true, Math.max(0, (info.monto || 0) - totalHistorial))]
+    .concat(historial.map(h => norm(h, false, h.monto || 0)));
 }
 
 // Deshace los efectos de UN abono: devuelve la salida al encargo (si la hubo) y saca la
 // plata de la(s) cuenta(s) donde entró, con su espejo.
 // Usa el monto GUARDADO en el abono, no el del movimiento del encargo: si ese movimiento
 // ya no existe, igual se devuelve la plata a la cuenta (antes quedaba el saldo inflado).
-function mesadaRevertirAbono(ab) {
-  const oe = ab.origenEncargo;
+function mesadaRevertirAbono(abono) {
+  const oe = abono.origenEncargo;
   if (oe) _mesadaQuitarSalidaEncargo(oe);
-  if (ab.splits && ab.splits.length) {
-    ab.splits.forEach(s => { if (s.fuente) _mesadaSacar(s.fuente, s.monto, s._movSecId, true); });
+  if (abono.splits && abono.splits.length) {
+    abono.splits.forEach(s => { if (s.fuente) _mesadaSacar(s.fuente, s.monto, s._movSecId, true); });
     return;
   }
   // Con encargo, solo se había sumado a la cuenta si `sumado`; sin encargo, siempre.
-  _mesadaSacar(ab.destino, ab.monto, ab._movSecId, oe ? !!oe.sumado : true);
+  _mesadaSacar(abono.destino, abono.monto, abono._movSecId, oe ? !!oe.sumado : true);
 }
 
 /* ── Casos de uso ─────────────────────────────────────────────────── */
@@ -388,9 +388,9 @@ function mesadaDeshacerAbono(parent, key, idx) {
 // Cuentas realmente afectadas por el mes (pago original Y abonos del pendiente).
 function mesadaFuentesDe(info) {
   const out = [];
-  mesadaAbonosDe(info).forEach(ab => {
-    if (ab.splits && ab.splits.length) ab.splits.forEach(s => { if (s.fuente) out.push(s.fuente); });
-    else if (ab.destino) out.push(ab.destino);
+  mesadaAbonosDe(info).forEach(abono => {
+    if (abono.splits && abono.splits.length) abono.splits.forEach(s => { if (s.fuente) out.push(s.fuente); });
+    else if (abono.destino) out.push(abono.destino);
   });
   return Array.from(new Set(out));
 }
@@ -398,11 +398,11 @@ function mesadaFuentesDe(info) {
 // ¿Borrar este mes movería el saldo de alguna cuenta o encargo? Si todo fue
 // "no especificar / lo gasté", no hay nada que proteger.
 function mesadaTieneCuentaAfectada(info) {
-  return mesadaAbonosDe(info).some(ab => ab.origenEncargo || (ab.splits && ab.splits.length) || ab.destino);
+  return mesadaAbonosDe(info).some(abono => abono.origenEncargo || (abono.splits && abono.splits.length) || abono.destino);
 }
 
 // Pagos de mesada (papá + mamá) posteriores a este que tocaron alguna de las mismas cuentas.
-function mesadaOpsPosteriores(parentActual, keyActual, info) {
+function mesadaOperacionesPosteriores(parentActual, keyActual, info) {
   const fuentes = mesadaFuentesDe(info);
   if (!fuentes.length || !info.fecha) return 0;
   let count = 0;
@@ -445,22 +445,22 @@ const _msFlujos = {
   mp:  { parent: '', key: '', usarEncargo: false, encargoId: '' },
   mpp: { parent: '', key: '', usarEncargo: false, encargoId: '' },
 };
-let mpSplitMode = false; // lo lee/escribe el motor de split (ver crearSplitWidget abajo)
+let mesadaPagoSplitMode = false; // lo lee/escribe el motor de split (ver crearSplitWidget abajo)
 
 /* ── Widget "Me pagó con plata de un encargo" (uno por sheet) ───────── */
 
 function _crearEncargoPicker(p, f, onCambio) {
-  const chk = () => _msEl(p + 'UsarEncargo');
+  const checkbox = () => _msEl(p + 'UsarEncargo');
 
   const picker = {
     // El destino sigue siendo elegible aunque la cuenta del encargo sea conocida: esa
     // cuenta solo dice de dónde SALE la plata (para validar cuánta hay), no a dónde ENTRA.
     // Se precarga con la misma cuenta como sugerencia, pero es editable.
     sincronizarDestino() {
-      const cuentaSel = _msEl(p + 'EncargoCuentaSel'), dest = _msEl(p + 'Destino');
-      if (!cuentaSel || !dest) return;
+      const cuentaSel = _msEl(p + 'EncargoCuentaSel'), destino = _msEl(p + 'Destino');
+      if (!cuentaSel || !destino) return;
       const val = cuentaSel.value;
-      dest.value = (val && [...dest.options].some(o => o.value === val)) ? val : '';
+      destino.value = (val && [...destino.options].some(o => o.value === val)) ? val : '';
     },
 
     poblarCuentas() {
@@ -478,7 +478,7 @@ function _crearEncargoPicker(p, f, onCambio) {
     abrir(parent) {
       f.usarEncargo = false;
       f.encargoId = '';
-      if (chk()) chk().checked = false;
+      if (checkbox()) checkbox().checked = false;
       const det = _msEl(p + 'EncargoDetalle');
       if (det) det.style.display = 'none';
       const box = _msEl(p + 'EncargoBox');
@@ -503,7 +503,7 @@ function _crearEncargoPicker(p, f, onCambio) {
 
     cablear() {
       _msOn(p + 'UsarEncargo', 'change', () => {
-        f.usarEncargo = chk().checked;
+        f.usarEncargo = checkbox().checked;
         const det = _msEl(p + 'EncargoDetalle');
         if (det) det.style.display = f.usarEncargo ? '' : 'none';
         if (f.usarEncargo) picker.sincronizarDestino();
@@ -518,7 +518,7 @@ function _crearEncargoPicker(p, f, onCambio) {
 }
 
 const _msPickers = {
-  mp:  _crearEncargoPicker('mp',  _msFlujos.mp,  () => actualizarMpPreview()),
+  mp:  _crearEncargoPicker('mp',  _msFlujos.mp,  () => actualizarMesadaPagoPreview()),
   mpp: _crearEncargoPicker('mpp', _msFlujos.mpp, () => actualizarMesadaPagoPendientePreview()),
 };
 
@@ -591,9 +591,9 @@ function cambiarAnio(d) {
 
 crearSplitWidget('mp', {
   simpleId: 'mpModoSimple', splitId: 'mpModoDividido', toggleId: 'mpSplitToggle', rowsId: 'mpSplitRows',
-  getModo: () => mpSplitMode, setModo: v => { mpSplitMode = v; },
+  getModo: () => mesadaPagoSplitMode, setModo: v => { mesadaPagoSplitMode = v; },
   getFuentesFn: selectedVal => opcionesCuenta({ selectedVal, placeholder: 'No especificar' }),
-  onPreview: () => actualizarMpPreview(),
+  onPreview: () => actualizarMesadaPagoPreview(),
 });
 
 // <select> de destino: cuentas rastreables (sin TC: es plata que entra) + "no especificar".
@@ -615,7 +615,7 @@ function mesadaAvisoMesPago(key, fecha) {
   return 'Cubre ' + _mesNombreDeKey(key) + ', pero cuenta como ingreso de ' + donde + ': el mes en que te la pagan.';
 }
 
-function actualizarMpAvisoMes() {
+function actualizarMesadaPagoAvisoMes() {
   const el = _msEl('mpAvisoMes');
   if (el) el.textContent = mesadaAvisoMesPago(_msFlujos.mp.key, _msVal('mpFecha'));
 }
@@ -627,7 +627,7 @@ function abrirRegistrarMesada(parent, key, nombre) {
   _msEl('mpDesc').textContent = 'Registra cuándo te pagó y qué hiciste con esa plata.';
   setMoneyInput(_msEl('mpMonto'), mesadaCuotaDeKey(parent, key));
   _msEl('mpFecha').value = hoy();
-  actualizarMpAvisoMes();
+  actualizarMesadaPagoAvisoMes();
   _msEl('mpNota').value = '';
   _msEl('mpPreview').textContent = '';
   splitReset('mp'); // vuelve el widget de dividir a su estado base (modo simple, sin filas)
@@ -660,25 +660,25 @@ function _previewDisponible(prev, picker, v) {
   return d;
 }
 
-function actualizarMpPreview() {
+function actualizarMesadaPagoPreview() {
   const f = _msFlujos.mp;
   const v = parseMoney(_msVal('mpMonto')) || 0;
   const prev = _msEl('mpPreview');
-  _syncMpDebeWrap(v);
+  _syncMesadaPagoDebeWrap(v);
   if (!v) { prev.textContent = ''; return; }
   if (f.usarEncargo) {
     const d = _previewDisponible(prev, _msPickers.mp, v);
     if (!d) return;
-    if (mpSplitMode) { _previewSplit(prev, v, splitGetData('mp'), d.encargo.nombre); return; }
+    if (mesadaPagoSplitMode) { _previewSplit(prev, v, splitGetData('mp'), d.encargo.nombre); return; }
     prev.textContent = 'Se descuenta de lo que le tenías guardado a ' + d.encargo.nombre + ' · queda ' + fmt(d.disponible - v);
     prev.style.color = 'var(--blue)';
     return;
   }
-  if (mpSplitMode) { _previewSplit(prev, v, splitGetData('mp'), ''); return; }
-  const dest = _msVal('mpDestino');
-  if (dest) {
-    const actual = getSaldoFuente(dest);
-    prev.textContent = fuenteLabel(dest) + ': ' + fmt(actual) + ' + ' + fmt(v) + ' = ' + fmt(actual + v);
+  if (mesadaPagoSplitMode) { _previewSplit(prev, v, splitGetData('mp'), ''); return; }
+  const destino = _msVal('mpDestino');
+  if (destino) {
+    const actual = getSaldoFuente(destino);
+    prev.textContent = fuenteLabel(destino) + ': ' + fmt(actual) + ' + ' + fmt(v) + ' = ' + fmt(actual + v);
     prev.style.color = 'var(--accent)';
   } else {
     prev.textContent = fmt(v) + ' registrados';
@@ -687,9 +687,9 @@ function actualizarMpPreview() {
 }
 
 // Muestra/oculta "me quedó debiendo la diferencia" según monto vs. la cuota del mes.
-function _syncMpDebeWrap(v) {
-  const wrap = _msEl('mpDebeWrap'), chk = _msEl('mpQuedaDebiendo');
-  if (!wrap || !chk) return;
+function _syncMesadaPagoDebeWrap(v) {
+  const wrap = _msEl('mpDebeWrap'), checkbox = _msEl('mpQuedaDebiendo');
+  if (!wrap || !checkbox) return;
   const f = _msFlujos.mp;
   const diff = (f.parent ? mesadaCuotaDeKey(f.parent, f.key) : 0) - v;
   if (v > 0 && diff > 0) {
@@ -697,7 +697,7 @@ function _syncMpDebeWrap(v) {
     if (_msEl('mpDebeLabel')) _msEl('mpDebeLabel').textContent = 'Te está debiendo ' + fmt(diff) + ' — ¿marcar como pendiente?';
   } else {
     wrap.style.display = 'none';
-    chk.checked = false;
+    checkbox.checked = false;
   }
 }
 
@@ -716,16 +716,16 @@ function _mesadaMostrarError(r, previewId) {
 
 function confirmarMesadaPago() {
   const f = _msFlujos.mp;
-  const chk = _msEl('mpQuedaDebiendo');
+  const checkbox = _msEl('mpQuedaDebiendo');
   const r = mesadaRegistrarPago({
     parent: f.parent, key: f.key,
     monto: parseMoney(_msVal('mpMonto')) || 0,
     fecha: _msVal('mpFecha') || hoy(),
     nota: _msVal('mpNota').trim(),
     destino: _msVal('mpDestino'),
-    splitMode: mpSplitMode,
-    splits: mpSplitMode ? splitGetData('mp') : null,
-    quedaDebiendo: !!(chk && chk.checked),
+    splitMode: mesadaPagoSplitMode,
+    splits: mesadaPagoSplitMode ? splitGetData('mp') : null,
+    quedaDebiendo: !!(checkbox && checkbox.checked),
     encargo: _msPickers.mp.seleccion(),
   });
   if (!r.ok) { _mesadaMostrarError(r, 'mpPreview'); return; }
@@ -802,7 +802,7 @@ async function eliminarMesadaPago(parent, key) {
   // realmente movería el saldo de alguna cuenta o encargo. Un pago 100% "no especificar"
   // no revierte nada, así que no hay saldo que proteger.
   if (mesadaTieneCuentaAfectada(info)) {
-    const nivel = nivelAntiguedadMovimiento(info.fecha, mesadaOpsPosteriores(parent, key, info), 'mesada');
+    const nivel = nivelAntiguedadMovimiento(info.fecha, mesadaOperacionesPosteriores(parent, key, info), 'mesada');
     if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
     if (nivel === 'viejo') {
       const fuentes = mesadaFuentesDe(info);
@@ -810,9 +810,9 @@ async function eliminarMesadaPago(parent, key) {
       if (!await confirmarBorrarMovimientoViejo(nombreCuenta, info.monto || 0, 'baja')) return;
     }
   }
-  const _histAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
+  const _historialAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
   mesadaBorrarPago(parent, key);
-  purgarEfectoEnHistorial(_histAntes, info);
+  purgarEfectoEnHistorial(_historialAntes, info);
   save(); refresh();
   closeSheet('mesada-det');
 }
@@ -906,9 +906,9 @@ function _msOn(id, evt, fn) {
 }
 
 // La fila entera es clickeable y delega en su checkbox (sin re-disparar su propio click).
-function _msFilaClickeable(wrapId, chkId) {
-  const wrap = _msEl(wrapId), chk = _msEl(chkId);
-  if (wrap && chk) wrap.addEventListener('click', e => { if (e.target !== chk) chk.click(); });
+function _msFilaClickeable(wrapId, checkboxId) {
+  const wrap = _msEl(wrapId), checkbox = _msEl(checkboxId);
+  if (wrap && checkbox) wrap.addEventListener('click', e => { if (e.target !== checkbox) checkbox.click(); });
 }
 
 function _msCablear() {
@@ -917,11 +917,11 @@ function _msCablear() {
     ['btn-anio-next',             'click',  () => cambiarAnio(1)],
     ['btn-confirmar-mesada',      'click',  confirmarMesadaPago],
     ['btn-confirmar-mesada-pend', 'click',  confirmarPendienteMesada],
-    ['mpMonto',                   'input',  actualizarMpPreview],
-    ['mpFecha',                   'input',  actualizarMpAvisoMes],
-    ['mpFecha',                   'change', actualizarMpAvisoMes],
-    ['mpDestino',                 'change', actualizarMpPreview],
-    ['mpQuedaDebiendo',           'change', actualizarMpPreview],
+    ['mpMonto',                   'input',  actualizarMesadaPagoPreview],
+    ['mpFecha',                   'input',  actualizarMesadaPagoAvisoMes],
+    ['mpFecha',                   'change', actualizarMesadaPagoAvisoMes],
+    ['mpDestino',                 'change', actualizarMesadaPagoPreview],
+    ['mpQuedaDebiendo',           'change', actualizarMesadaPagoPreview],
     ['mppMonto',                  'input',  actualizarMesadaPagoPendientePreview],
     ['mppDestino',                'change', actualizarMesadaPagoPendientePreview],
     ['mpSplitToggle',             'click',  () => splitToggle('mp')],

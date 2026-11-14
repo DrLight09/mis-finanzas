@@ -257,9 +257,9 @@ test('patrimonio exactamente 0 con cuentas y deudas es un dato real, no «sin da
 });
 
 test('una fecha sin padding en el historial («2026-9-26») no produce NaN en la Proyección', () => {
-  const hist = historial(60, 1000000, 1000);
-  hist[10].fecha = '2026-9-26';
-  const h = proyeccion({ cuentas: cuentas(1000000), patrimonioHistorial: hist });
+  const historialPrueba = historial(60, 1000000, 1000);
+  historialPrueba[10].fecha = '2026-9-26';
+  const h = proyeccion({ cuentas: cuentas(1000000), patrimonioHistorial: historialPrueba });
   assert.ok(!h.includes('NaN'));
 });
 
@@ -269,9 +269,9 @@ test('«ESTABLE» exige 90 días y un ritmo consistente en los tres tercios; una
   const corto = proyeccion({ cuentas: cuentas(2000000), patrimonioHistorial: historial(70, 2000000, 10000) });
   assert.ok(!corto.includes('ESTABLE') && corto.includes('estimación'), 'antes bastaban 60 días');
   // una caída de −3 M en el primer tercio y subidas después
-  const hist = historial(100, 2000000, 10000);
-  hist.forEach((p, i) => { if (i >= 10) { p.valor -= 3000000; p.valorVisible -= 3000000; } });
-  const irregular = proyeccion({ cuentas: cuentas(2000000), patrimonioHistorial: hist });
+  const historialPrueba = historial(100, 2000000, 10000);
+  historialPrueba.forEach((p, i) => { if (i >= 10) { p.valor -= 3000000; p.valorVisible -= 3000000; } });
+  const irregular = proyeccion({ cuentas: cuentas(2000000), patrimonioHistorial: historialPrueba });
   assert.ok(!irregular.includes('ESTABLE'));
   assert.ok(irregular.includes('Tu ritmo cambió mucho'));
 });
@@ -317,8 +317,8 @@ function wrapped() {
   const { cargarApp } = require('./support/datos-sinteticos');
   return cargarApp(['core/wrapped-gate.js']).window._wrappedInternals;
 }
-const anioHist = (inicio, fin) => ({ patrimonioHistorial: [{ fecha: '2025-01-05', valor: inicio, valorVisible: inicio, montoBase: 0 }, { fecha: '2025-12-20', valor: fin, valorVisible: fin, montoBase: 0 }] });
-const frase = (ctx, inicio, fin, extra) => { const p = ctx._wrappedPatrimonioAnio(anioHist(inicio, fin), '2025'); return { p, f: ctx._wrappedCopyPatrimonio(p, extra) }; };
+const anioHistorial = (inicio, fin) => ({ patrimonioHistorial: [{ fecha: '2025-01-05', valor: inicio, valorVisible: inicio, montoBase: 0 }, { fecha: '2025-12-20', valor: fin, valorVisible: fin, montoBase: 0 }] });
+const frase = (ctx, inicio, fin, extra) => { const p = ctx._wrappedPatrimonioAnio(anioHistorial(inicio, fin), '2025'); return { p, f: ctx._wrappedCopyPatrimonio(p, extra) }; };
 
 test('F5. Wrapped: sobre una base mínima o negativa no hay porcentaje (+39.900 %, −800 %, «casi se duplicó» siguiendo en deuda)', () => {
   const ctx = wrapped();
@@ -614,20 +614,20 @@ test('Impacto antes de comprar: qué parte de lo disponible es y cuántos meses 
 });
 
 test('Impacto antes de comprar: sin gasto típico solo dice el porcentaje; pagar con tarjeta pesa igual que pagar de una cuenta', () => {
-  const sinHist = app({ cuentas: cuentas(10000000) }).calcImpactoCompra(6000000);
-  assert.equal(sinHist.despues, null);
-  assert.match(sinHist.texto, /Es el 60 % de tu plata disponible/);
-  assert.ok(!sinHist.texto.includes('cubrirías'));
+  const sinHistorial = app({ cuentas: cuentas(10000000) }).calcImpactoCompra(6000000);
+  assert.equal(sinHistorial.despues, null);
+  assert.match(sinHistorial.texto, /Es el 60 % de tu plata disponible/);
+  assert.ok(!sinHistorial.texto.includes('cubrirías'));
   const conTarjeta = app({ cuentas: cuentas(10000000), tarjetasCredito: [{ id: 't', nombre: 'TC', deuda: 4000000, cupo: 20000000 }] }).calcImpactoCompra(6000000);
   assert.equal(conTarjeta.netaDespues, 10000000 - 4000000 - 6000000, 'la deuda propia ya resta de la liquidez, igual que la salida de una cuenta');
 });
 
 test('Proyección: una compra grande marcada no se extrapola como ritmo, y se dice con claridad', () => {
   const dias = 100;
-  const hist = historial(dias, 3000000, 10000);              // sube 10.000/día
-  hist.forEach((p, i) => { if (i >= 50) { p.valor -= 5000000; p.valorVisible -= 5000000; } }); // la moto cae el día 50
-  const fechaMoto = hist[50].fecha;
-  const base = { cuentas: cuentas(3000000), patrimonioHistorial: hist };
+  const historialPrueba = historial(dias, 3000000, 10000);              // sube 10.000/día
+  historialPrueba.forEach((p, i) => { if (i >= 50) { p.valor -= 5000000; p.valorVisible -= 5000000; } }); // la moto cae el día 50
+  const fechaMoto = historialPrueba[50].fecha;
+  const base = { cuentas: cuentas(3000000), patrimonioHistorial: historialPrueba };
   const marcada = proyeccion({ ...base, gastosVar: [{ id: 'm', desc: 'Moto <x>', monto: 5000000, fecha: fechaMoto, cat: 'Transporte', fuente: 'cuenta:nequi', clase: 'gasto', grande: true }] });
   assert.ok(marcada.includes('ESTABLE'), 'sin la moto el ritmo fue consistente en los tres tercios');
   assert.match(marcada, /Sin contar tu compra grande \(Moto &lt;x&gt;: \$?5\.000\.000\)/, 'escapa el nombre');
@@ -640,14 +640,14 @@ test('Proyección: una compra grande marcada no se extrapola como ritmo, y se di
 
 test('Gastos: la casilla «compra grande» sigue a la sugerencia del monto hasta que el usuario decide', () => {
   const { ctx, el } = gastosApp({ cuentas: cuentas(20000000), ingresosFijos: ingresosEn(3000000, ultimosN(6)), ...gastosEn(1000000, ultimosN(3)) });
-  const chk = el('gv_grande');
+  const checkbox = el('gv_grande');
   el('gv_monto').value = '15.000.000,00';
   ctx.actualizarGastoVariableImpacto();
-  assert.equal(chk.checked, true, 'sugerida: es el 75 % de lo disponible');
+  assert.equal(checkbox.checked, true, 'sugerida: es el 75 % de lo disponible');
   assert.match(el('gv-impacto').textContent, /Es el 75 %/);
   el('gv_monto').value = '60.000,00';
   ctx.actualizarGastoVariableImpacto();
-  assert.equal(chk.checked, false);
+  assert.equal(checkbox.checked, false);
   assert.equal(el('gv-impacto').textContent, '');
 });
 
@@ -693,9 +693,9 @@ test('Compra grande automática: lo que decide el usuario manda, en los dos sent
 });
 
 test('Compra grande automática: no se detecta sola sin historia suficiente, bajo el mínimo, ni en retiros manuales', () => {
-  const sinHist = app({ gastosVar: [moto(15000000, mesHace(1))] });
-  assert.equal(sinHist.Periodo.umbralCompraGrande(), Infinity, 'con menos de 2 meses completos no hay con qué juzgar');
-  assert.equal(sinHist.Periodo.compraGrandeEstado(sinHist.S.gastosVar[0], sinHist.Periodo.umbralCompraGrande()), 'no');
+  const sinHistorial = app({ gastosVar: [moto(15000000, mesHace(1))] });
+  assert.equal(sinHistorial.Periodo.umbralCompraGrande(), Infinity, 'con menos de 2 meses completos no hay con qué juzgar');
+  assert.equal(sinHistorial.Periodo.compraGrandeEstado(sinHistorial.S.gastosVar[0], sinHistorial.Periodo.umbralCompraGrande()), 'no');
   const ctx = app({ ...historia6() });
   assert.equal(ctx.Periodo.umbralCompraGrande(), 1000000);
   assert.equal(ctx.Periodo.compraGrandeEstado({ monto: 400000 }, 100), 'no', 'bajo el mínimo de 500.000 nunca');
@@ -962,9 +962,9 @@ test('P6. Periodo.conciliar: lo que no explican ingresos y gastos queda «sin ex
 
 test('P6. la tarjeta de Análisis avisa lo sin explicar y, si todo cuadra, lo dice', () => {
   const m = mesHace(1), p = mesHace(2);
-  const pintar = hist => {
+  const pintar = historialPrueba => {
     const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('cobros.js'), MOD('analisis.js')], { permissive: true });
-    Object.assign(ctx.S, { patrimonioHistorial: hist, gastosVar: [{ id: 'g', fecha: m + '-12', monto: 180000, cat: 'Otro', desc: 'x' }] });
+    Object.assign(ctx.S, { patrimonioHistorial: historialPrueba, gastosVar: [{ id: 'g', fecha: m + '-12', monto: 180000, cat: 'Otro', desc: 'x' }] });
     const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
     const dom = createFakeDom(); ctx.document = dom.document; dom.el('an-conciliacion');
     ctx.renderConciliacion();
@@ -1106,9 +1106,9 @@ test('irConsejo: «pantalla/detalle» abre la pantalla y el sitio exacto (cuenta
 });
 
 test('Historial de patrimonio: el saldo inicial es el punto de partida (la línea termina en el patrimonio real, no bajo cero) y el selector aparece solo si cambia algo', () => {
-  const pintar = hist => {
+  const pintar = historialPrueba => {
     const ctx = loadApp([CORE('core-state.js'), CORE('periodo.js'), CORE('nu-calc.js'), CORE('calc-helpers.js'), CORE('html-tag.js'), CORE('umbrales.js'), CORE('cobros.js'), CORE('reglas.js'), CORE('salud.js'), CORE('plan-deudas.js'), MOD('inicio.js'), MOD('analisis.js')], { permissive: true });
-    Object.assign(ctx.S, { patrimonioHistorial: hist });
+    Object.assign(ctx.S, { patrimonioHistorial: historialPrueba });
     const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
     const dom = createFakeDom(); ctx.document = dom.document;
     ['analisis-balance-hero', 'an-patrimonio-chart'].forEach(id => dom.el(id));
@@ -1147,11 +1147,11 @@ test('B5. fraseTendencia: causa principal según el signo del flujo', () => {
 
 test('B7. Wrapped mide el año completo con el cierre de diciembre anterior aunque la serie diaria ya no tenga enero', () => {
   const ctx = wrapped();
-  const st = {
+  const estadoActual = {
     patrimonioHistorial: [{ fecha: '2026-01-20', valor: 900, valorVisible: 900 }, { fecha: '2026-06-01', valor: 1200, valorVisible: 1200 }],
     patrimonioCierres: { '2025-12': { valor: 1000, valorVisible: 1000, base: 0 }, '2026-01': { valor: 900, valorVisible: 900, base: 0 }, '2026-06': { valor: 1200, valorVisible: 1200, base: 100 } },
   };
-  const p = ctx._wrappedPatrimonioAnio(st, '2026');
+  const p = ctx._wrappedPatrimonioAnio(estadoActual, '2026');
   assert.equal(p.inicio, 1000);
   assert.equal(p.fin, 1200);
   assert.equal(p.diff, 100, 'sube 200 pero 100 fueron aperturas, no crecimiento');
@@ -1344,7 +1344,7 @@ test('A3-2. Reversibles: un tipo nuevo se protege por antigüedad sin tocar los 
   ctx.dialogo = () => { dlg++; return Promise.resolve(true); };
   const hoy = new Date().toISOString().slice(0, 10);
   const viejo = new Date(Date.now() - 400 * 86400000).toISOString().slice(0, 10);
-  ctx.Reversibles.registrar({ tipo: ['x1', 'x2'], proteccion: r => r && { fecha: r.fecha, ops: 0, modulo: 'cuentas', nombre: 'Nequi', monto: 5, direccion: 'sube' } });
+  ctx.Reversibles.registrar({ tipo: ['x1', 'x2'], proteccion: r => r && { fecha: r.fecha, operaciones: 0, modulo: 'cuentas', nombre: 'Nequi', monto: 5, direccion: 'sube' } });
   assert.equal(ctx.Reversibles.tiene('x2'), true);
   assert.equal(ctx.Reversibles.tiene('zzz'), false);
   assert.deepEqual({ ...await ctx.Reversibles.proteger('x1', { fecha: hoy }) }, { ok: true, confirmado: false });
@@ -1385,7 +1385,7 @@ const base = (o = {}) => ({
   tendencia: { dias: 90, delta: 1e6, pct: 10, inicio: 9e6, fin: 10e6 }, sinDatos: false, ...o,
 });
 const niv = (m, id) => Salud.pilares(m).find(p => p.id === id).nivel;
-const hist = (puntos) => puntos.map(([fecha, v, montoBase]) => ({ fecha, valorVisible: v, montoBase: montoBase || 0 }));
+const historialPrueba = (puntos) => puntos.map(([fecha, v, montoBase]) => ({ fecha, valorVisible: v, montoBase: montoBase || 0 }));
 
 test('pilar Liquidez: < 1 mes rojo, 1–3 ámbar, ≥ 3 verde, sin gasto típico «sin datos», liquidez negativa rojo', () => {
   assert.equal(niv(base({ mesesCubiertos: 0.5 }), 'liquidez'), 'rojo');
@@ -1435,17 +1435,17 @@ test('cada pilar lleva la pantalla donde se actúa (`ir`) y siempre son cuatro, 
 
 test('tendenciaPatrimonio: variación a 90 días SIN contar depósitos/retiros (montoBase) y con mínimo de 30 días de historial', () => {
   assert.equal(Salud.tendenciaPatrimonio([], '2026-11-05'), null);
-  assert.equal(Salud.tendenciaPatrimonio(hist([['2026-10-20', 100]]), '2026-11-05'), null, 'un solo punto');
-  assert.equal(Salud.tendenciaPatrimonio(hist([['2026-10-20', 100], ['2026-11-05', 200]]), '2026-11-05'), null, 'solo 16 días');
-  const t = Salud.tendenciaPatrimonio(hist([['2026-08-10', 1000], ['2026-09-10', 1100, 50], ['2026-11-05', 1400, 200]]), '2026-11-05');
+  assert.equal(Salud.tendenciaPatrimonio(historialPrueba([['2026-10-20', 100]]), '2026-11-05'), null, 'un solo punto');
+  assert.equal(Salud.tendenciaPatrimonio(historialPrueba([['2026-10-20', 100], ['2026-11-05', 200]]), '2026-11-05'), null, 'solo 16 días');
+  const t = Salud.tendenciaPatrimonio(historialPrueba([['2026-08-10', 1000], ['2026-09-10', 1100, 50], ['2026-11-05', 1400, 200]]), '2026-11-05');
   assert.equal(t.dias, 87);
   assert.equal(t.delta, (1400 - 1000) - (50 + 200), 'los 250 que entraron como depósito no son crecimiento');
   assert.equal(t.pct, 15);
-  const sinPct = Salud.tendenciaPatrimonio(hist([['2026-08-10', -500], ['2026-11-05', -100]]), '2026-11-05');
+  const sinPct = Salud.tendenciaPatrimonio(historialPrueba([['2026-08-10', -500], ['2026-11-05', -100]]), '2026-11-05');
   assert.equal(sinPct.pct, null); assert.equal(sinPct.delta, 400);
-  const corte = Salud.tendenciaPatrimonio(hist([['2026-01-01', 1], ['2026-08-10', 1000], ['2026-11-05', 1200]]), '2026-11-05');
+  const corte = Salud.tendenciaPatrimonio(historialPrueba([['2026-01-01', 1], ['2026-08-10', 1000], ['2026-11-05', 1200]]), '2026-11-05');
   assert.equal(corte.inicio, 1000, 'solo mira los últimos 90 días');
-  assert.equal(Salud.tendenciaPatrimonio(hist([['2026-8-10', 1000], ['2026-11-05', 1200]]), '2026-11-05').delta, 200, 'fechas sin ceros');
+  assert.equal(Salud.tendenciaPatrimonio(historialPrueba([['2026-8-10', 1000], ['2026-11-05', 1200]]), '2026-11-05').delta, 200, 'fechas sin ceros');
 });
 
 test('estado: las cinco situaciones, con su prioridad (crisis > presión > atención > creciendo > estable)', () => {
@@ -1507,16 +1507,16 @@ test('tieneBase: dos meses completos, o un mes con 30 días de uso; un «mes» d
 
 /* ================= Salud.puntaje: puro, corre en Node sin S ni DOM ================= */
 test('puntaje: sin S ni navegador; fondo sólido y sin deudas suma, deuda de TC alta resta', () => {
-  const liq = (o = {}) => ({ neta: 6000000, conCDTs: 6000000, cdts: 0, meDeben: 0, yoDebo: 0, ajeno: 0, libre: 6000000, tcPropia: 0, ...o });
-  const base = { patrimonio: 6000000, gastoVariableMes: 0, gastosMes: 0, deudaTC: 0, ingresoRef: 3000000, liq: liq(), gastoRef: 1000000, ingresoTipico: 3000000, racha: { meses: 0 }, cdtsActivos: 0, catsCount: 3, comprasGrandes: [], fmt: n => '$' + n };
+  const liquidez = (o = {}) => ({ neta: 6000000, conCDTs: 6000000, cdts: 0, meDeben: 0, yoDebo: 0, ajeno: 0, libre: 6000000, tcPropia: 0, ...o });
+  const base = { patrimonio: 6000000, gastoVariableMes: 0, gastosMes: 0, deudaTC: 0, ingresoRef: 3000000, liquidez: liquidez(), gastoRef: 1000000, ingresoTipico: 3000000, racha: { meses: 0 }, cdtsActivos: 0, catsCount: 3, comprasGrandes: [], fmt: n => '$' + n };
   const sano = Salud.puntaje(base);
   assert.ok(sano.score >= 80, 'fondo ≥ 6 meses, gasto sano y sin deudas: Excelente');
   assert.equal(sano.sinDatos, false);
-  const deuda = Salud.puntaje({ ...base, deudaTC: 9000000, liq: liq({ neta: -3000000, conCDTs: -3000000, tcPropia: 9000000 }) });
+  const deuda = Salud.puntaje({ ...base, deudaTC: 9000000, liquidez: liquidez({ neta: -3000000, conCDTs: -3000000, tcPropia: 9000000 }) });
   assert.ok(deuda.score < sano.score - 30);
   assert.ok(deuda.consejos.some(c => c.tipo === 'alerta'));
   assert.equal(deuda.consejos[0].tipo, 'alerta', 'lo urgente primero');
-  const vacio = Salud.puntaje({ ...base, patrimonio: 0, gastoRef: 0, ingresoTipico: 0, ingresoRef: 0, liq: liq({ neta: 0, conCDTs: 0, libre: 0 }) });
+  const vacio = Salud.puntaje({ ...base, patrimonio: 0, gastoRef: 0, ingresoTipico: 0, ingresoRef: 0, liquidez: liquidez({ neta: 0, conCDTs: 0, libre: 0 }) });
   assert.equal(vacio.sinDatos, true);
 });
 });

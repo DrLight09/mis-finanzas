@@ -44,10 +44,10 @@
    ═══════════════════════════════════════════════════════════════ */
 
 // ── Libro (js/core/cuentas-fuentes.js): origen de cada cambio de saldo ────────────────────────────────────────────────
-// _ogEncargo(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'encargos', ref:<id del movimiento del encargo> }.
+// _origenLibroEncargo(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'encargos', ref:<id del movimiento del encargo> }.
 // Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace). `opts.exacto` ya no existe: el saldo
 // nunca se recorta en 0 (ver descontarFuente en js/core/cuentas-fuentes.js).
-const _ogEncargo = Libro.origen('encargos');
+const _origenLibroEncargo = Libro.origen('encargos');
 
 function editarEncargoActual() {
   if (!encargoActualId) return;
@@ -280,9 +280,9 @@ function encargoLibre(encargo) {
 
 // Sonda de la huella (js/core/huella.js): saldo, comprometido, libre y reparto por cuenta de cada encargo. Un encargo es su
 // propia bolsa (enc.movimientos), fuera de S.movimientos y del libro: un cambio de almacenamiento no puede alterar nada de esto.
-registrarSonda('encargos', st => {
+registrarSonda('encargos', estadoActual => {
   const entidades = {};
-  (st.encargos || []).forEach(encargo => {
+  (estadoActual.encargos || []).forEach(encargo => {
     const porCuenta = {};
     _getEncargoSaldoPorCuenta(encargo).forEach(c => { porCuenta[c.cuenta] = c.saldo; });
     entidades[encargo.id] = { saldo: encargoSaldo(encargo), comprometido: encargoComprometido(encargo), libre: encargoLibre(encargo), sinCuenta: _getEncargoSaldoSinCuenta(encargo), porCuenta };
@@ -416,7 +416,7 @@ function _pintarEncargoDetalle(id) {
   }
 
   // Historial — mezclar saldo inicial con movimientos y ordenar todo por fecha desc
-  const histEl = document.getElementById('encargoHistorial');
+  const historialEl = document.getElementById('encargoHistorial');
   // Construir lista unificada
   const todosMovimientos = [...(encargo.movimientos||[]).map(m=>({...m, _esSaldoInicial:false}))];
   if (encargo.saldoInicial > 0) {
@@ -450,7 +450,7 @@ function _pintarEncargoDetalle(id) {
     });
   }
   if (!todosMovimientos.length) {
-    histEl.innerHTML = emptyInline('Sin movimientos aún. Registra entradas y salidas.', { centro: true });
+    historialEl.innerHTML = emptyInline('Sin movimientos aún. Registra entradas y salidas.', { centro: true });
   } else {
     // Helper: construye atributos data-mov-* para abrir el sheet de detalle (saldo = saldo del encargo)
     // Ya escapa a mano (escHtml) porque arma una lista de atributos, no un solo valor —
@@ -518,7 +518,7 @@ function _pintarEncargoDetalle(id) {
         despues: raw(m && m.diferencial ? diffRenderHistorial(m.diferencial) : '')
       });
     });
-    histEl.innerHTML = html`${contenido}`;
+    historialEl.innerHTML = html`${contenido}`;
   }
 }
 
@@ -943,7 +943,7 @@ function _procesarMovimientoEncargoMia(movimiento) {
 
   // Egresos de mis cuentas propias (lo que puse de mi bolsillo) — uno por cuenta
   salidas.forEach(r => {
-    descontarFuente(r.fuente, r.monto, _ogEncargo(movimiento.id));
+    descontarFuente(r.fuente, r.monto, _origenLibroEncargo(movimiento.id));
     S.movimientos.push({
       id: uid(),
       tipo: 'transferencia',
@@ -965,7 +965,7 @@ function _procesarMovimientoEncargoMia(movimiento) {
 
   // Ingresos a mis cuentas destino (lo que recupero del encargo) — uno por cuenta
   entradas.forEach(r => {
-    sumarFuente(r.fuente, r.monto, _ogEncargo(movimiento.id));
+    sumarFuente(r.fuente, r.monto, _origenLibroEncargo(movimiento.id));
     S.movimientos.push({
       id: uid(),
       tipo: 'transferencia',
@@ -1009,7 +1009,7 @@ let _usarParteId    = null;
 /* ─── Split (Dividir) del sobrante del margen — fábrica para "Ya la usé" y "Compra con TC" ───
    Mismo comportamiento que el de "Registrar salida" (movencDifMi): el usuario reparte lo que
    sobra entre varias cuentas suyas. ids: {simple, split, toggle, rows, preview} (elementos del sheet). */
-function _crearSplitSobrante(instId, key, ids) {
+function _crearSplitSobrante(instanciaId, key, ids) {
   let modo = false;
   const ctl = {
     activo: () => modo,
@@ -1022,7 +1022,7 @@ function _crearSplitSobrante(instId, key, ids) {
       const el = document.getElementById(ids.preview);
       if (!el) return;
       if (!modo) { el.textContent = ''; return; }
-      const calc = diffCalcular(instId);
+      const calc = diffCalcular(instanciaId);
       const sobra = calc ? Math.max(0, calc.sinAsignar) : 0;
       const filas = splitGetData(key);
       if (!filas.length) { el.textContent = sobra > 0.5 ? `Repartí ${fmt(sobra)} entre tus cuentas` : ''; el.style.color = 'var(--text3)'; return; }
@@ -1187,7 +1187,7 @@ async function _confirmarUsarParte() {
 
       if (aplicaMi) {
         const destinosMi = (filasMi && filasMi.length) ? filasMi : [{ fuente: miCuenta, monto: yoMeQuedo }];
-        destinosMi.forEach(r => sumarFuente(r.fuente, r.monto, _ogEncargo(parte.id)));
+        destinosMi.forEach(r => sumarFuente(r.fuente, r.monto, _origenLibroEncargo(parte.id)));
         _usarParteMargenPendiente = destinosMi.map(r => ({ fuente: r.fuente, monto: r.monto }));
       }
     }
@@ -1876,7 +1876,7 @@ function _movimientoEncargoConfirmarPrestarFaltante() {
     _encargoOrigenMovId: movimientoEncargoId,
     ts: Date.now() + 1
   });
-  descontarFuente(fuentePrestamo, faltante, _ogEncargo(movimientoEncargoId));
+  descontarFuente(fuentePrestamo, faltante, _origenLibroEncargo(movimientoEncargoId));
 
   save();
   refresh();
@@ -1941,8 +1941,8 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   // sigue siendo una sola bolsa de plata que se mezcla con cada movimiento
   // nuevo, toque o no la misma cuenta externa — filtrar por cuenta subestimaba
   // esa mezcla en encargos con movimientos en cuentas distintas.
-  const opsPosteriores = (encargo.movimientos||[]).filter(m => m.id!==movimientoId && m.fecha && m.fecha>movimiento.fecha).length;
-  const nivel = nivelAntiguedadMovimiento(movimiento.fecha, opsPosteriores, 'encargos');
+  const operacionesPosteriores = (encargo.movimientos||[]).filter(m => m.id!==movimientoId && m.fecha && m.fecha>movimiento.fecha).length;
+  const nivel = nivelAntiguedadMovimiento(movimiento.fecha, operacionesPosteriores, 'encargos');
   if (nivel === 'bloqueado') {
     await avisarMovimientoBloqueado();
     return;
@@ -1974,7 +1974,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
     // con fallback a _tcMonto y luego a monto para compatibilidad con registros anteriores.
     if (movimiento._destino) {
       const montoARevertir = movimiento._destinoMonto || movimiento._tcMonto || movimiento.monto;
-      if (montoARevertir) descontarFuente(movimiento._destino, montoARevertir, _ogEncargo(movimientoId, true));
+      if (montoARevertir) descontarFuente(movimiento._destino, montoARevertir, _origenLibroEncargo(movimientoId, true));
     }
 
     // Revertir la deuda de la TC (paso 3)
@@ -1992,7 +1992,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
     // y revertir sus sumas. Excluye los de intercambio — esos los maneja el bloque siguiente.
     if (S.movimientos) {
       const diferencialMovimientos = S.movimientos.filter(m => m._encMovId === movimientoId && !m._esIntercambioEncargo);
-      diferencialMovimientos.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _ogEncargo(movimientoId, true)); });
+      diferencialMovimientos.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true)); });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && !m._esIntercambioEncargo));
     }
   }
@@ -2011,7 +2011,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   // Revertir "Me lo regalaron" (traspaso de encargo a cuenta propia)
   if (movimiento && movimiento._traspasoEncargo) {
     // Revertir el sumarFuente que se hizo en el paso 2
-    if (movimiento._destino && movimiento.monto) descontarFuente(movimiento._destino, movimiento.monto, _ogEncargo(movimientoId, true));
+    if (movimiento._destino && movimiento.monto) descontarFuente(movimiento._destino, movimiento.monto, _origenLibroEncargo(movimientoId, true));
     // Borrar el movimiento de ingreso vinculado (vive en S.movimientos, como el de toda cuenta).
     if (S.movimientos) {
       S.movimientos = S.movimientos.filter(m => m._encMovId !== movimientoId);
@@ -2025,9 +2025,9 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
       intercambioMovimientos.forEach(m => {
         if (!m.fuente || !m.monto) return;
         if (m._intercambioSalida) {
-          sumarFuente(m.fuente, m.monto, _ogEncargo(movimientoId, true));
+          sumarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true));
         } else if (m._intercambioEntrada) {
-          descontarFuente(m.fuente, m.monto, _ogEncargo(movimientoId, true));
+          descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true));
         }
       });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && m._esIntercambioEncargo));
@@ -2042,10 +2042,10 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
         if (!m.fuente || !m.monto) return;
         if (m._intercambioSalida) {
           // Pagué de mi bolsillo → revertir sumando de vuelta a esa cuenta
-          sumarFuente(m.fuente, m.monto, _ogEncargo(movimientoId, true));
+          sumarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true));
         } else if (m._intercambioEntrada) {
           // Recuperé en mi cuenta → revertir descontando
-          descontarFuente(m.fuente, m.monto, _ogEncargo(movimientoId, true));
+          descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true));
         }
       });
       S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && m._esIntercambioEncargo));
@@ -2056,7 +2056,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   // por cuenta si se repartió con "Dividir"). La compra con TC ya lo limpió arriba.
   if (movimiento && movimiento.diferencial && !movimiento._esTcEncargo && S.movimientos) {
     S.movimientos.filter(m => m._encMovId === movimientoId && m._esDiferencialEncargo)
-      .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _ogEncargo(movimientoId, true)); });
+      .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true)); });
     S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && m._esDiferencialEncargo));
   }
 
@@ -2259,7 +2259,7 @@ function confirmarTraspasoEncargo() {
   });
 
   // 2. Sumar a mi cuenta (cambia "de quién es" la plata)
-  sumarFuente(destino, monto, _ogEncargo(encargoMovimientoId));
+  sumarFuente(destino, monto, _origenLibroEncargo(encargoMovimientoId));
 
   // 3. Registrar ingreso visible en el historial de la cuenta destino.
   //    Va en S.movimientos, como el historial de toda cuenta.
@@ -2475,8 +2475,8 @@ function _actualizarMoverEncargoPreview(encargo) {
       return html`${i > 0 ? raw('<br>') : ''}<span class="${color}">${label} (encargo): ${fmt(saldoEnOrigen)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoEnOrigen - s.monto)}</span>`;
     });
 
-    const cuentaDestEncargo = cuentas.find(c => c.cuenta === destino);
-    const saldoEnDestino = cuentaDestEncargo ? cuentaDestEncargo.saldo : 0;
+    const cuentaDestinoEncargo = cuentas.find(c => c.cuenta === destino);
+    const saldoEnDestino = cuentaDestinoEncargo ? cuentaDestinoEncargo.saldo : 0;
     const nuevoDestino = saldoEnDestino + totalSplit;
 
     prev.innerHTML = html`${lineasOrigen}<br>
@@ -2502,8 +2502,8 @@ function _actualizarMoverEncargoPreview(encargo) {
   const excede = monto > saldoEnOrigen;
   const colorOrigen = excede ? 'enc-c-red' : 'enc-c-amber';
   const nuevoOrigen = saldoEnOrigen - monto;
-  const cuentaDestEncargo = cuentas.find(c => c.cuenta === destino);
-  const saldoEnDestino = cuentaDestEncargo ? cuentaDestEncargo.saldo : 0;
+  const cuentaDestinoEncargo = cuentas.find(c => c.cuenta === destino);
+  const saldoEnDestino = cuentaDestinoEncargo ? cuentaDestinoEncargo.saldo : 0;
   const nuevoDestino = saldoEnDestino + monto;
   prev.innerHTML = html`<span class="${colorOrigen}">${labelOrigen} (encargo): ${fmt(saldoEnOrigen)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoOrigen)}</span><br>
     <span class="enc-c-blue">${fuenteLabel(destino)} (encargo): ${fmt(saldoEnDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoDestino)}</span>
@@ -2984,15 +2984,15 @@ function abrirCompraConTC() {
 
   // Poblar destino del dinero (mis cuentas, sin TC: es plata que entra) — el saldo va en el hint de abajo,
   // no en la opción (mismo patrón que traspaso_destino/spPagarFuente).
-  const selDest = document.getElementById('ctc_destino');
+  const selDestino = document.getElementById('ctc_destino');
   const fuentes = FuentesFiltro.receptoras(getFuentes());
-  selDest.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
+  selDestino.innerHTML = html`<option value="">Seleccionar cuenta</option>${fuentes.map(f => html`<option value="${f.val}">${f.label}</option>`)}`;
   // Buscar cajita que tenga "tarjeta" o "TC" o "pago" en el nombre para pre-seleccionar
   const cajitaTC = (S.cajitas || []).find(c => {
     const n = (c.nombre||'').toLowerCase();
     return n.includes('tarjeta') || n.includes(' tc') || n.includes('pago tc') || n.includes('tc ');
   });
-  if (cajitaTC) selDest.value = 'cajita:' + cajitaTC.id;
+  if (cajitaTC) selDestino.value = 'cajita:' + cajitaTC.id;
 
   _compraConTcActualizarDestinoHint();
   _compraConTcActualizarPreview();
@@ -3052,12 +3052,12 @@ function _compraConTcActualizarPreview() {
   const nombreTC = tc ? tc.nombre : (tcId ? tcId : 'TC');
 
   // Destino
-  const saldoDest = destino ? getSaldoFuente(destino) : 0;
-  const lblDest = destino ? fuenteLabel(destino) : '';
+  const saldoDestino = destino ? getSaldoFuente(destino) : 0;
+  const lblDestino = destino ? fuenteLabel(destino) : '';
 
   const lines = [];
   lines.push(html`<span class="enc-c-red">Encargo ${encargo?encargo.nombre:''}: ${fmt(saldoEncargoCuenta)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoEncargoCuenta - monto)}</span>`);
-  if (destino) lines.push(html`<span class="enc-c-accent">${lblDest}: ${fmt(saldoDest)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoDest + monto)}</span>`);
+  if (destino) lines.push(html`<span class="enc-c-accent">${lblDestino}: ${fmt(saldoDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoDestino + monto)}</span>`);
   if (tc) lines.push(html`<span class="enc-c-red">Deuda ${nombreTC}: ${fmt(deudaTC)} <i class="fa-solid fa-arrow-right"></i> ${fmt(deudaTC + tcMonto)}</span>`);
   if (margen > 0) lines.push(html`<span class="enc-c-accent">Diferencial tuyo: +${fmt(margen)}</span>`);
 
@@ -3130,7 +3130,7 @@ function confirmarCompraConTC() {
   // ── 2. Mover el dinero del encargo a la cuenta destino
   //    Solo entra el valor real cobrado por la TC (tcMonto), no el total del encargo.
   //    La diferencia (margen) ya fue separada como ganancia tuya en el paso diferencial.
-  sumarFuente(destino, tcMonto, _ogEncargo(_encargoMovimientoId));
+  sumarFuente(destino, tcMonto, _origenLibroEncargo(_encargoMovimientoId));
   if (!S.movimientos) S.movimientos = [];
   S.movimientos.push({
     id: uid(),
@@ -3197,8 +3197,8 @@ function confirmarCompraConTC() {
   // Listeners de cambio en los selects del sheet
   const selEncargo = document.getElementById('ctc_cuenta_enc');
   if (selEncargo) selEncargo.addEventListener('change', _compraConTcActualizarCuentaEncargoHint);
-  const selDest = document.getElementById('ctc_destino');
-  if (selDest) selDest.addEventListener('change', _compraConTcActualizarDestinoHint);
+  const selDestino = document.getElementById('ctc_destino');
+  if (selDestino) selDestino.addEventListener('change', _compraConTcActualizarDestinoHint);
 })();
 
 /* ═══════════════════════════════════════════════════════════════

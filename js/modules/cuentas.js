@@ -42,8 +42,8 @@ let cuentaActual = '';
 // Abre el detalle de una cuenta. `fuente` es 'cuenta:ID'. Las cuentas de ahorro tienen su propia pantalla (cajitas, tasa, CDTs:
 // nu.js la registra en CuentaPantallas.ahorro); todas las demás comparten #cuentas-detalle-simple.
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
-// _ogCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogCta = Libro.origen('cuentas');
+// _origenLibroCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _origenLibroCta = Libro.origen('cuentas');
 
 // Al cambiar de cuenta o volver al selector, cada cuenta con pantalla propia (Nu) deja en blanco su estado interno.
 function _reiniciarPantallasCuenta() {
@@ -110,8 +110,8 @@ function _tituloCuentaHtml(d) {
 // Administración de la cuenta abierta (editar / archivar o reactivar / eliminar): la MISMA para todo tipo de cuenta. `ids` son los
 // ids de los botones de cada detalle (el simple y el de ahorro tienen los suyos).
 function _pintarAdministrarCuenta(d, ids) {
-  const cont = document.getElementById(ids.contenedor);
-  if (cont) cont.style.display = 'flex';
+  const contenedor = document.getElementById(ids.contenedor);
+  if (contenedor) contenedor.style.display = 'flex';
   const btnArch = document.getElementById(ids.archivar);
   if (btnArch) {
     // Archivar solo tiene sentido con historial (o ya archivada, para reactivar): sin movimientos se elimina.
@@ -141,9 +141,9 @@ function _accionAdministrarCuenta(btnId) {
 function _renderDetalleSimple(fuente) {
   const d = _descriptorCuenta(fuente);
   if (!d) return;
-  const cont = document.getElementById('cuentas-detalle-simple');
-  cont.style.setProperty('--cuenta', d.color);
-  cont.style.setProperty('--cuenta-rgb', d.rgb);
+  const contenedor = document.getElementById('cuentas-detalle-simple');
+  contenedor.style.setProperty('--cuenta', d.color);
+  contenedor.style.setProperty('--cuenta-rgb', d.rgb);
   document.getElementById('det-cuenta-nombre').innerHTML = _tituloCuentaHtml(d);
   document.getElementById('det-cuenta-label').textContent = d.etiquetaDetalle;
   document.getElementById('det-cuenta-saldo').textContent = fmt(d.saldo());
@@ -151,7 +151,7 @@ function _renderDetalleSimple(fuente) {
   // Editar y archivar valen para toda cuenta; eliminar solo si nunca se usó (si ya tiene historia se archiva, no se borra).
   _pintarAdministrarCuenta(d, { contenedor: 'det-cuenta-acciones-custom', archivar: 'btn-archivar-cuenta', eliminar: 'btn-eliminar-cuenta-custom', banner: 'banner-archivada' });
   // Cuenta archivada: no se le mete ni se le saca plata; solo se consulta su historial o se reactiva.
-  const acciones = cont.querySelector('.cuenta-actions');
+  const acciones = contenedor.querySelector('.cuenta-actions');
   if (acciones) acciones.style.display = d.archivada ? 'none' : '';
   // Banner saldo inicial. El div es único (banner-apertura-cuenta), por eso el elId va explícito:
   // el default de renderBannerApertura armaría un id con el ':' de 'cuenta:ID'.
@@ -201,35 +201,35 @@ function renderIconoCustom(c, size=30){
   return html`<div class="cuenta-ico-box cuenta-ico-box-ini" style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);font-size:${Math.round(size*.38)}px;color:${hex};">${iniciales}</div>`;
 }
 
-let _ncColorSel='#60b0f0';
-let _ncIconoSel='otro';
+let _nuevaCuentaColorSel='#60b0f0';
+let _nuevaCuentaIconoSel='otro';
 
-function selColorNC(color){
-  _ncColorSel=color;
+function selColorNuevaCuenta(color){
+  _nuevaCuentaColorSel=color;
   marcarColorSeleccionado('.nc-color-opt', color); // js/core/color-picker.js
 }
 
-function selIconoNC(iconoId){
+function selIconoNuevaCuenta(iconoId){
   // Elegir un banco/app del catálogo es elegir un PRESET: fija su color, su clase de cuenta y, si el nombre está vacío o todavía es el
   // sugerido por el preset anterior, su nombre. Todo se puede cambiar después antes de crear.
-  _ncIconoSel=iconoId;
+  _nuevaCuentaIconoSel=iconoId;
   const icono=getIconoData(iconoId);
-  selColorNC(icono.color);
+  selColorNuevaCuenta(icono.color);
   const ni=document.getElementById('nc_nombre');
-  if(ni&&!_ncModoEdicion&&(!(ni.value||'').trim()||ni.dataset.auto==='1')){
+  if(ni&&!_nuevaCuentaModoEdicion&&(!(ni.value||'').trim()||ni.dataset.auto==='1')){
     ni.value=iconoId==='otro'?'':(icono.nombre||icono.label);
     ni.dataset.auto=iconoId==='otro'?'0':'1';
   }
-  if(!_ncModoEdicion){selTipoNC(icono.tipo||'banco');_mostrarTipoNC();}
+  if(!_nuevaCuentaModoEdicion){selTipoNuevaCuenta(icono.tipo||'banco');_mostrarTipoNuevaCuenta();}
   renderIconGrid();
 }
 
 // Clase de cuenta que se está creando (ver TIPOS_CUENTA). La de ahorro no pide saldo inicial: su plata va en cajitas.
-let _ncTipoSel='banco';
-let _ncModoEdicion=false;
-function selTipoNC(tipo){
+let _nuevaCuentaTipoSel='banco';
+let _nuevaCuentaModoEdicion=false;
+function selTipoNuevaCuenta(tipo){
   if(!TIPOS_CUENTA[tipo])tipo='banco';
-  _ncTipoSel=tipo;
+  _nuevaCuentaTipoSel=tipo;
   document.querySelectorAll('.nc-tipo-opt').forEach(el=>{
     const sel=el.dataset.tipo===tipo;
     el.classList.toggle('cuenta-tipo-sel',sel);
@@ -237,7 +237,7 @@ function selTipoNC(tipo){
   });
   const si=document.getElementById('nc_saldo');
   const igSaldo=si&&si.closest?si.closest('.ig'):null;
-  if(igSaldo)igSaldo.style.display=(tipo==='ahorro'||_ncModoEdicion)?'none':'';
+  if(igSaldo)igSaldo.style.display=(tipo==='ahorro'||_nuevaCuentaModoEdicion)?'none':'';
   const nota=document.getElementById('nc_tipo_nota');
   if(nota)nota.textContent=tipo==='ahorro'
     ?'Una cuenta de ahorro guarda su plata en cajitas que crecen con la tasa EA de la cuenta (y pueden tener CDTs). Las creas dentro de la cuenta.'
@@ -246,16 +246,16 @@ function selTipoNC(tipo){
 
 // El interruptor de ahorro solo se muestra cuando el preset no define ya cómo se comporta la cuenta: con «Otra» o con un banco genérico
 // (p. ej. Bancolombia, que puede ser corriente o de ahorros). Nu (ahorro), Nequi (billetera) y Efectivo ya traen su tipo.
-function _mostrarTipoNC(){
+function _mostrarTipoNuevaCuenta(){
   const tipos=document.getElementById('nc-tipos');
   const bloque=tipos&&tipos.closest?tipos.closest('.ig'):null;
   if(!bloque||!bloque.style)return;
-  const ic=getIconoData(_ncIconoSel);
-  bloque.style.display=(_ncModoEdicion||!(_ncIconoSel==='otro'||(ic&&ic.tipo==='banco')))?'none':'';
+  const ic=getIconoData(_nuevaCuentaIconoSel);
+  bloque.style.display=(_nuevaCuentaModoEdicion||!(_nuevaCuentaIconoSel==='otro'||(ic&&ic.tipo==='banco')))?'none':'';
 }
 function ocultarInvitacionCuentas(){S.invitacionCuentasOculta=true;save();refresh();}
-function alternarAhorroNC(){selTipoNC(_ncTipoSel==='ahorro'?'banco':'ahorro');}
-function _renderTiposNC(){
+function alternarAhorroNuevaCuenta(){selTipoNuevaCuenta(_nuevaCuentaTipoSel==='ahorro'?'banco':'ahorro');}
+function _renderTiposNuevaCuenta(){
   const wrap=document.getElementById('nc-tipos');
   if(!wrap)return;
   // Un solo interruptor: la ÚNICA diferencia real entre cuentas es si guardan su plata en cajitas con tasa EA (ahorro). Banco y billetera
@@ -265,8 +265,8 @@ function _renderTiposNC(){
 function renderIconGrid(){
   const grid=document.getElementById('nc-icon-grid');
   if(!grid)return;
-  grid.innerHTML=html`${ICONOS_CUENTA.filter(ic=>_ncModoEdicion||ic.tipo!=='efectivo').map(ic=>{
-    const sel=ic.id===_ncIconoSel;
+  grid.innerHTML=html`${ICONOS_CUENTA.filter(ic=>_nuevaCuentaModoEdicion||ic.tipo!=='efectivo').map(ic=>{
+    const sel=ic.id===_nuevaCuentaIconoSel;
     const hexRgb=hexToRgb(colorLegible(ic.color));
     return html`<div class="nc-icon-opt cuenta-ico-op${sel?' cuenta-ico-op-sel':''}" data-icono="${ic.id}" ${raw(Events.attr('cuentas:selIconoNC', ic.id))}
       style="background:${sel?`rgba(${hexRgb},.18)`:'var(--bg3)'};">
@@ -282,13 +282,13 @@ function abrirNuevaCuenta(){
   const primera=!cuentasTodas().some(c=>!esCuentaFija(c));
   const titulo=document.querySelector('#sheet-nueva-cuenta .sheet-title');
   if(titulo)titulo.textContent=primera?'Agrega tu primera cuenta':'Nueva cuenta';
-  _ncIconoSel='otro';
-  _ncColorSel='#888880';
-  _renderTiposNC();
-  selTipoNC('banco');
-  _mostrarTipoNC();
+  _nuevaCuentaIconoSel='otro';
+  _nuevaCuentaColorSel='#888880';
+  _renderTiposNuevaCuenta();
+  selTipoNuevaCuenta('banco');
+  _mostrarTipoNuevaCuenta();
   renderIconGrid();
-  marcarColorSeleccionado('.nc-color-opt', _ncColorSel); // js/core/color-picker.js
+  marcarColorSeleccionado('.nc-color-opt', _nuevaCuentaColorSel); // js/core/color-picker.js
   const ni=document.getElementById('nc_nombre');
   const si=document.getElementById('nc_saldo');
   if(ni){ni.value='';ni.dataset.auto='0';}
@@ -304,10 +304,10 @@ async function crearCuenta(){
   if(cuentasTodas().some(c=>(c.nombre||'').trim().toLowerCase()===nombre.toLowerCase())){
     toast('Ya tienes una cuenta llamada "'+nombre+'". Usa otro nombre (puede ser archivada: míralo en Archivadas).','err',5000);return;
   }
-  const tipo=_ncTipoSel;
+  const tipo=_nuevaCuentaTipoSel;
   const esAhorro=tipo==='ahorro';
   const saldo=esAhorro?0:(parseMoney(document.getElementById('nc_saldo').value)||0);
-  const nueva={id:uid(),tipo,nombre,icono:_ncIconoSel,color:_ncColorSel,movimientos:[],...(esAhorro?{tasaEA:null,historialTasas:[]}:{saldo})};
+  const nueva={id:uid(),tipo,nombre,icono:_nuevaCuentaIconoSel,color:_nuevaCuentaColorSel,movimientos:[],...(esAhorro?{tasaEA:null,historialTasas:[]}:{saldo})};
   const fuente=fuenteDeCuenta(nueva.id);
   // El saldo inicial es un movimiento de apertura en S.movimientos con `fuente` y su entrada en el libro.
   const movimientoApertura=saldo>0?crearMovimientoApertura(saldo,hoy(),'Saldo inicial'):null;
@@ -587,14 +587,14 @@ function editarCuenta(id){
   const c=getCuenta(id);
   if(!c)return;
   // Rellenar el sheet reutilizando el mismo form de nueva cuenta
-  _ncModoEdicion=true;
+  _nuevaCuentaModoEdicion=true;
   const ni=document.getElementById('nc_nombre');
   if(ni){ni.value=c.nombre;ni.dataset.auto='0';}
   // Saldo y tipo no se editan aquí (el saldo se maneja con depósitos/retiros; cambiar el tipo cambiaría lo que la cuenta sabe hacer)
-  _ncIconoSel=c.icono||'otro';
-  _ncColorSel=c.color||'#60b0f0';
-  _renderTiposNC();
-  selTipoNC(c.tipo);
+  _nuevaCuentaIconoSel=c.icono||'otro';
+  _nuevaCuentaColorSel=c.color||'#60b0f0';
+  _renderTiposNuevaCuenta();
+  selTipoNuevaCuenta(c.tipo);
   // En edición el tipo no se cambia: se oculta el bloque entero (rótulo incluido). Efectivo deja solo una nota.
   const tipos=document.getElementById('nc-tipos');
   if(tipos)tipos.style.display='none';
@@ -604,7 +604,7 @@ function editarCuenta(id){
   if(rotuloTipo)rotuloTipo.style.display=esCuentaFija(c)?'none':'';
   const notaTipo=document.getElementById('nc_tipo_nota');
   if(notaTipo)notaTipo.textContent=esCuentaFija(c)?'Es tu cuenta de efectivo: permanente (no se archiva ni se elimina). Nombre, color e ícono los defines tú.':'';
-  marcarColorSeleccionado('.nc-color-opt', _ncColorSel); // js/core/color-picker.js
+  marcarColorSeleccionado('.nc-color-opt', _nuevaCuentaColorSel); // js/core/color-picker.js
   // Se vuelve a dibujar el grid (así marca SU ícono; antes se dejaba el que hubiera quedado marcado de la última vez)
   renderIconGrid();
   const titulo=document.querySelector('#sheet-nueva-cuenta .sheet-title');
@@ -622,8 +622,8 @@ function editarCuenta(id){
         toast('Ya tienes otra cuenta llamada "'+nombre+'"','err');return;
       }
       cc.nombre=nombre;
-      cc.icono=_ncIconoSel;
-      cc.color=_ncColorSel;
+      cc.icono=_nuevaCuentaIconoSel;
+      cc.color=_nuevaCuentaColorSel;
       save();refresh();
       closeSheet('nueva-cuenta');
       // Volver a abrir la cuenta con datos actualizados
@@ -637,7 +637,7 @@ function editarCuenta(id){
   openSheet('nueva-cuenta');
 }
 function _resetSheetNuevaCuenta(){
-  _ncModoEdicion=false;
+  _nuevaCuentaModoEdicion=false;
   const titulo=document.querySelector('#sheet-nueva-cuenta .sheet-title');
   if(titulo) titulo.textContent='Nueva cuenta';
   const btnCrear=document.getElementById('btn-crear-cuenta-custom');
@@ -647,7 +647,7 @@ function _resetSheetNuevaCuenta(){
     btnCrear.onclick=crearCuenta;
   }
   const si=document.getElementById('nc_saldo');
-  if(si&&si.closest('.ig')) si.closest('.ig').style.display=_ncTipoSel==='ahorro'?'none':'';
+  if(si&&si.closest('.ig')) si.closest('.ig').style.display=_nuevaCuentaTipoSel==='ahorro'?'none':'';
   const tipos=document.getElementById('nc-tipos');
   if(tipos)tipos.style.display='';
   const bloqueTipo=tipos&&tipos.closest&&tipos.closest('.ig');
@@ -801,14 +801,14 @@ function getMovimientosCuenta(tipo) {
     if (h.tipo === 'pago') return;
     // h.monto acumula el cobro original + los abonos ya recibidos (confirmarSpotifyResolverPendiente): hay que
     // restar los abonos para no contar la misma plata dos veces (una acá, otra en su propia fila).
-    const historialPendTotal = (h.pendienteHistorial || []).reduce((a, ab) => a + (ab.monto || 0), 0);
+    const historialPendTotal = (h.pendienteHistorial || []).reduce((a, abono) => a + (abono.monto || 0), 0);
     const montoOriginalCobro = Math.max(0, (h.monto || 0) - historialPendTotal);
     if (coincide(h.fuente)) {
       movimientos.push({ tipo: 'ingreso', fecha: h.fecha, desc: 'Cobro Spotify (' + h.nombre + ')', monto: +montoOriginalCobro, fuente: h.fuente, _idx: _idx++, _movId: h.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     }
-    (h.pendienteHistorial || []).forEach(ab => {
-      if (!coincide(ab.destino)) return;
-      movimientos.push({ tipo: 'ingreso', fecha: ab.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +ab.monto, fuente: ab.destino, _idx: _idx++, _movId: ab.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
+    (h.pendienteHistorial || []).forEach(abono => {
+      if (!coincide(abono.destino)) return;
+      movimientos.push({ tipo: 'ingreso', fecha: abono.fecha, desc: 'Abono pendiente Spotify (' + h.nombre + ')', monto: +abono.monto, fuente: abono.destino, _idx: _idx++, _movId: abono.id, _origen: 'Spotify', _otrasCuentas: null, _secundario: true, _origenSeccion: 'Spotify' });
     });
   });
 
@@ -1006,8 +1006,8 @@ function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filt
     const dataFecha = html`data-mov-fecha="${m.fecha}"`;
     const dataOrigen = m._origen ? html`data-mov-origen="${m._origen}"` : '';
     const dataOtras = m._otrasCuentas ? html`data-mov-otras="${JSON.stringify(m._otrasCuentas)}"` : '';
-    const esSecundarioHist = !!m._secundario;
-    const puedeEliminar = !!m._movId && !esSecundarioHist;
+    const esSecundarioHistorial = !!m._secundario;
+    const puedeEliminar = !!m._movId && !esSecundarioHistorial;
     // Depósito a la alcancía: la fila se ve (para saber que salió/entró plata) pero el monto va
     // oculto (tampoco se escribe data-mov-monto) y no abre el detalle, que mostraría monto y
     // saldos antes/después. Sin botón eliminar (siempre _secundario). El Antes/Después de las
@@ -1019,13 +1019,13 @@ function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filt
       attrs: html`${dataId} ${dataTipo} ${dataFuente} ${dataDestino} ${dataMonto} ${dataFuenteReal} ${dataFecha} ${dataOrigen} ${dataOtras} ${puedeVerDetalle ? raw('data-cuenta-key="'+escHtml(cuentaKey)+'" data-action="core:abrirDetalleMov"') : ''}`,
       nombreClase: 'row-name gasto-nombre-fila',
       nombre: m.desc,
-      nombreExtra: esSecundarioHist ? html`<span class="cuenta-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : '',
+      nombreExtra: esSecundarioHistorial ? html`<span class="cuenta-chip-auto"><svg aria-hidden="true" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>Automático</span>` : '',
       sub: m.fecha || '—',
       subClase: 'cuenta-mov-fecha',
       montoHtml: alcanciaOculto
                 ? html`<div title="Monto oculto — se ve dentro de Alcancía" class="cuenta-monto-oculto"><svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="cuenta-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg></div>`
                 : html`<div class="cuenta-monto ${claseMonto}">${signo} ${fmt(Math.abs(m.monto))}</div>`,
-      acciones: puedeEliminar ? html`<button type="button" class="btn-icon cuenta-btn-del" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHist && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" class="cuenta-mov-lock"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : '',
+      acciones: puedeEliminar ? html`<button type="button" class="btn-icon cuenta-btn-del" data-action="core:eliminarMovimiento" data-stop-propagation="true" title="Eliminar movimiento"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg></button>` : esSecundarioHistorial && m._movId ? html`<span title="Generado automáticamente — elimínalo desde ${m._origenSeccion||'la sección de origen'}" class="cuenta-mov-lock"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>` : '',
       meta: html`
         ${alcanciaOculto ? '' : html`<span class="badge badge-xs ${bgLabel}">${tipoLabel}</span>`}
         ${(m._alcanciaOculto || m._origen === 'Alcancía oculta') ? html`<span class="badge badge-xs cuenta-badge-alc"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Alcancía</span>` : ''}
@@ -1042,11 +1042,11 @@ function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filt
    entró-salió plata en Nu / transferir entre cuentas
    ─────────────────────────────────────────────────────────────── */
 /* ---- AGREGAR DINERO ---- */
-let adFuente='';
+let agregarDineroFuente='';
 
 function abrirAgregarDinero(fuente,nombre){
   save();
-  adFuente=fuente;
+  agregarDineroFuente=fuente;
   const label=nombre||fuenteLabel(fuente);
   document.getElementById('adTitle').textContent='Agregar a '+label;
   const actual=getSaldoFuente(fuente);
@@ -1055,12 +1055,12 @@ function abrirAgregarDinero(fuente,nombre){
   document.getElementById('adDesc').value='';
   document.getElementById('adFecha').value=hoy();
   const _xa=document.getElementById('adEsExtra'); if(_xa)_xa.checked=false;
-  const adNotaEl=document.getElementById('adNota');
-  if(adNotaEl)adNotaEl.value='';
+  const agregarDineroNotaEl=document.getElementById('adNota');
+  if(agregarDineroNotaEl)agregarDineroNotaEl.value='';
   document.getElementById('adPreview').textContent='';
   // Reset apertura toggle
-  const chk=document.getElementById('adEsApertura');
-  if(chk){chk.checked=false;}
+  const checkbox=document.getElementById('adEsApertura');
+  if(checkbox){checkbox.checked=false;}
   const lbl=document.getElementById('adDescLabel');
   if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span class="c-red">*</span>';
   const inp=document.getElementById('adDesc');
@@ -1079,14 +1079,14 @@ function abrirAgregarDinero(fuente,nombre){
    (copiando el de adAperturaWrap), darle ids propios, y llamar estas 2 funciones. */
 
 function _aperturaToggleUI(ids){
-  // ids = {chk, lbl, inp, notaPlaceholder, descPlaceholder}
-  const chk=document.getElementById(ids.chk);
-  if(!chk)return;
+  // ids = {checkbox, lbl, inp, notaPlaceholder, descPlaceholder}
+  const checkbox=document.getElementById(ids.checkbox);
+  if(!checkbox)return;
   const lbl=ids.lbl?document.getElementById(ids.lbl):null;
   const inp=ids.inp?document.getElementById(ids.inp):null;
   const notaPh=ids.notaPlaceholder||'Ej: Ahorros de varios meses...';
   const descPh=ids.descPlaceholder||'Ej: Mesada, regalo, venta, sueldo...';
-  if(chk.checked){
+  if(checkbox.checked){
     if(lbl)lbl.innerHTML='Nota opcional <span class="cuenta-nota-opc">(ej: ahorros de varios meses)</span>';
     if(inp)inp.placeholder=notaPh;
   } else {
@@ -1112,7 +1112,7 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota,ext
   if(nota)movimiento.nota=nota;
   if(extraordinario&&!esApertura)movimiento.extraordinario=true;
   S.movimientos.push(movimiento);
-  sumarFuente(fuente,monto,_ogCta(movimiento.id)); // el saldo se aplica una vez creado el movimiento, para que el libro apunte a su id
+  sumarFuente(fuente,monto,_origenLibroCta(movimiento.id)); // el saldo se aplica una vez creado el movimiento, para que el libro apunte a su id
   return movimiento.desc;
 }
 
@@ -1128,18 +1128,18 @@ function registrarSalida(fuente,monto,fecha,desc,nota){
   const movimiento={id:uid(),tipo:'salida_manual',clase:'gasto',fuente,monto,fecha,desc:desc||''};
   if(nota)movimiento.nota=nota;
   S.movimientos.push(movimiento);
-  descontarFuente(fuente,monto,_ogCta(movimiento.id));
+  descontarFuente(fuente,monto,_origenLibroCta(movimiento.id));
   return movimiento.desc;
 }
 
-function toggleAdApertura(){
-  _aperturaToggleUI({chk:'adEsApertura',lbl:'adDescLabel',inp:'adDesc'});
+function toggleAgregarDineroApertura(){
+  _aperturaToggleUI({checkbox:'adEsApertura',lbl:'adDescLabel',inp:'adDesc'});
 }
 
 document.addEventListener('input',function(e){
   if(e.target.id==='adMonto'){
     const v=parseMoney(e.target.value)||0;
-    const actual=getSaldoFuente(adFuente);
+    const actual=getSaldoFuente(agregarDineroFuente);
     const prev=document.getElementById('adPreview');
     if(v>0){prev.textContent=fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);prev.style.color='var(--accent)';}
     else{prev.textContent='';}
@@ -1154,41 +1154,41 @@ function confirmarAgregarDinero(){
   const esApertura=document.getElementById('adEsApertura')?.checked||false;
   if(!esApertura&&!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v){toast('Ingresa un monto válido','err');return;}
-  if(!adFuente)return;
+  if(!agregarDineroFuente)return;
   // Los intereses de una cajita se materializan solos al sumar (sumarFuente, js/core/cuentas-fuentes.js).
-  const descFinal=registrarEntradaConApertura(adFuente,v,fecha,desc,esApertura,nota,document.getElementById('adEsExtra')?.checked||false);
+  const descFinal=registrarEntradaConApertura(agregarDineroFuente,v,fecha,desc,esApertura,nota,document.getElementById('adEsExtra')?.checked||false);
   save();
   closeSheet('agregar-dinero');
   refresh();
-  if(window.logCambio){const _fLabel=fuenteLabel(adFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Agregaste dinero en '+_fLabel;const _cjId=adFuente&&Fuente.esCajita(adFuente)?adFuente.split(':')[1]:null;logCambio(_accion,descFinal||'',v,'ingreso',_cjId);}
-  adFuente='';
+  if(window.logCambio){const _fLabel=fuenteLabel(agregarDineroFuente);const _accion=esApertura?'Saldo inicial en '+_fLabel:'Agregaste dinero en '+_fLabel;const _cjId=agregarDineroFuente&&Fuente.esCajita(agregarDineroFuente)?agregarDineroFuente.split(':')[1]:null;logCambio(_accion,descFinal||'',v,'ingreso',_cjId);}
+  agregarDineroFuente='';
 toast(fmt(v) + (esApertura?' registrado como saldo inicial':' agregado — ' + descFinal), 'ok');
 }
 
-function openSheet_adMenu(){
+function openSheet_agregarDineroMenu(){
   poblarFuente('adMenuDest');
   // Replace options with all accounts including all cajitas (sin tarjetas de crédito — no son destino válido)
   const sel=document.getElementById('adMenuDest');
   const fuentes=getFuentesSinTC();
   sel.innerHTML=html`${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
-  actualizarAdMenuSaldo();
+  actualizarAgregarDineroMenuSaldo();
   document.getElementById('adMenuMonto').value='';
   document.getElementById('adMenuDesc').value='';
   document.getElementById('adMenuFecha').value=hoy();
   const _xm=document.getElementById('adMenuEsExtra'); if(_xm)_xm.checked=false;
-  const adMenuNotaEl=document.getElementById('adMenuNota');
-  if(adMenuNotaEl)adMenuNotaEl.value='';
+  const agregarDineroMenuNotaEl=document.getElementById('adMenuNota');
+  if(agregarDineroMenuNotaEl)agregarDineroMenuNotaEl.value='';
   document.getElementById('adMenuPreview').textContent='';
 }
 
-function actualizarAdMenuSaldo(){
+function actualizarAgregarDineroMenuSaldo(){
   const fuente=document.getElementById('adMenuDest').value;
   const actual=getSaldoFuente(fuente);
   document.getElementById('adMenuSaldo').textContent='Saldo actual: '+fmt(actual);
-  actualizarAdMenuPreview();
+  actualizarAgregarDineroMenuPreview();
 }
 
-function actualizarAdMenuPreview(){
+function actualizarAgregarDineroMenuPreview(){
   const fuente=document.getElementById('adMenuDest').value;
   const v=parseMoney(document.getElementById('adMenuMonto').value)||0;
   const actual=getSaldoFuente(fuente);
@@ -1207,11 +1207,11 @@ function confirmarAgregarDineroMenu(){
   if(!v||!fuente)return;
   // Registrar movimiento de entrada
   if(!S.movimientos)S.movimientos=[];
-  const _movimientoAdMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
-  if(nota)_movimientoAdMenu.nota=nota;
-  if(document.getElementById('adMenuEsExtra')?.checked)_movimientoAdMenu.extraordinario=true;
-  S.movimientos.push(_movimientoAdMenu);
-  sumarFuente(fuente,v,_ogCta(_movimientoAdMenu.id));
+  const _movimientoAgregarDineroMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
+  if(nota)_movimientoAgregarDineroMenu.nota=nota;
+  if(document.getElementById('adMenuEsExtra')?.checked)_movimientoAgregarDineroMenu.extraordinario=true;
+  S.movimientos.push(_movimientoAgregarDineroMenu);
+  sumarFuente(fuente,v,_origenLibroCta(_movimientoAgregarDineroMenu.id));
   save();
   closeSheet('agregar-dinero-menu');
   refresh();
@@ -1271,10 +1271,10 @@ function abrirRegistrarApertura(fuente){
   abrirAgregarDinero(fuente, nombre);
   // Forzar toggle activo después de que abra
   setTimeout(()=>{
-    const chk=document.getElementById('adEsApertura');
-    if(chk&&!chk.checked){
-      chk.checked=true;
-      toggleAdApertura();
+    const checkbox=document.getElementById('adEsApertura');
+    if(checkbox&&!checkbox.checked){
+      checkbox.checked=true;
+      toggleAgregarDineroApertura();
     }
   },120);
 }
@@ -1300,8 +1300,8 @@ function confirmarEditarApertura(){
   const diff=nuevo-anterior;
   if(diff===0){toast('El valor es igual al actual','err');return;}
   // Ajustar saldo de la cuenta por la diferencia
-  if(diff>0) sumarFuente(_eaFuente,diff,_ogCta(movimiento?movimiento.id:'apertura:'+_eaFuente));
-  else descontarFuente(_eaFuente,Math.abs(diff),_ogCta(movimiento?movimiento.id:'apertura:'+_eaFuente,true));
+  if(diff>0) sumarFuente(_eaFuente,diff,_origenLibroCta(movimiento?movimiento.id:'apertura:'+_eaFuente));
+  else descontarFuente(_eaFuente,Math.abs(diff),_origenLibroCta(movimiento?movimiento.id:'apertura:'+_eaFuente,true));
   // Actualizar o crear el movimiento de apertura
   if(movimiento){
     movimiento.monto=nuevo;
@@ -1598,7 +1598,7 @@ function confirmarTransferir() {
   // Perform transfer
   const _trId = uid();
   // Plata.transferir valida ambos lados ANTES de tocar saldos (cuenta que ya no existe, archivada, de ahorro…): o se mueve todo o nada.
-  const _movimiento = Plata.transferir(origen, destino, monto, { og: _ogCta(_trId) });
+  const _movimiento = Plata.transferir(origen, destino, monto, { origenLibro: _origenLibroCta(_trId) });
   if (!_movimiento.ok) { toast(_movimiento.motivo, 'err', 3500); return; }
 
   // Save transfer record
@@ -1625,13 +1625,13 @@ function confirmarTransferir() {
    ═══════════════════════════════════════════════════════════════ */
 Events.registerAll('cuentas', {
   // Crear / editar / archivar cuentas
-  selIconoNC,
-  selTipoNC,
-  alternarAhorroNC,
+  selIconoNC: selIconoNuevaCuenta,
+  selTipoNC: selTipoNuevaCuenta,
+  alternarAhorroNC: alternarAhorroNuevaCuenta,
   ocultarInvitacionCuentas,
   abrirArchivadas,
   alternarOrdenCuentas,
-  selColorNC,
+  selColorNC: selColorNuevaCuenta,
   abrirOnboarding,
   reactivarCuenta,
   resetSheetNuevaCuenta: _resetSheetNuevaCuenta,
@@ -1661,16 +1661,16 @@ Events.registerAll('cuentas', {
 const btnAgregarCuentaCustom = document.getElementById('btn-agregar-cuenta-custom');
 if (btnAgregarCuentaCustom) btnAgregarCuentaCustom.addEventListener('click', abrirNuevaCuenta);
 // Si el usuario escribe su propio nombre, el preset deja de sobrescribirlo al cambiar de banco.
-const _ncNombreInput = document.getElementById('nc_nombre');
-if (_ncNombreInput) _ncNombreInput.addEventListener('input', () => { _ncNombreInput.dataset.auto = '0'; });
+const _nuevaCuentaNombreInput = document.getElementById('nc_nombre');
+if (_nuevaCuentaNombreInput) _nuevaCuentaNombreInput.addEventListener('input', () => { _nuevaCuentaNombreInput.dataset.auto = '0'; });
 const btnCrearCuentaCustom = document.getElementById('btn-crear-cuenta-custom');
 if (btnCrearCuentaCustom) btnCrearCuentaCustom.onclick = crearCuenta;
 
 // --- Agregar / restar dinero, editar apertura, transferir (confirmación) ---
-const btnAdConf = document.getElementById('btn-confirmar-agregar-dinero');
-if (btnAdConf) btnAdConf.addEventListener('click', confirmarAgregarDinero);
-const btnAdMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
-if (btnAdMenuConf) btnAdMenuConf.addEventListener('click', confirmarAgregarDineroMenu);
+const btnAgregarDineroConf = document.getElementById('btn-confirmar-agregar-dinero');
+if (btnAgregarDineroConf) btnAgregarDineroConf.addEventListener('click', confirmarAgregarDinero);
+const btnAgregarDineroMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
+if (btnAgregarDineroMenuConf) btnAgregarDineroMenuConf.addEventListener('click', confirmarAgregarDineroMenu);
 const btnRdConf = document.getElementById('btn-confirmar-restar');
 if (btnRdConf) btnRdConf.addEventListener('click', confirmarRestarDinero);
 const btnEaConf = document.getElementById('btn-confirmar-editar-apertura');
@@ -1729,9 +1729,9 @@ if (_detalleSimple) _detalleSimple.addEventListener('click', e => {
 
 // --- Agregar dinero (menú combinado, selector de cuenta destino) ---
 const adMenuDest = document.getElementById('adMenuDest');
-if (adMenuDest) adMenuDest.addEventListener('change', actualizarAdMenuSaldo);
+if (adMenuDest) adMenuDest.addEventListener('change', actualizarAgregarDineroMenuSaldo);
 const adMenuMonto = document.getElementById('adMenuMonto');
-if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAdMenuPreview);
+if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAgregarDineroMenuPreview);
 
 // --- Transferir: selects y monto (preview en vivo + exclusión mutua origen/destino) ---
 const trOrigen = document.getElementById('tr_origen');
@@ -1749,15 +1749,15 @@ if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
    mecánica de UI — así que se conecta directo con addEventListener, mismo
    criterio ya usado en configuracion.js para data-modulo/inputs de archivo,
    en vez de pasar por el despachador de data-action.
-   El 'change' de cada checkbox (antes onchange="toggleAdApertura()" /
+   El 'change' de cada checkbox (antes onchange="toggleAgregarDineroApertura()" /
    onchange="_nuMovimientoToggleApertura()" inline en el HTML; el de Nu vive en nu.js) se agrega acá mismo. */
-[['adAperturaWrap','adEsApertura',toggleAdApertura]].forEach(([wrapId,chkId,onChangeFn])=>{
+[['adAperturaWrap','adEsApertura',toggleAgregarDineroApertura]].forEach(([wrapId,checkboxId,onChangeFn])=>{
   const wrap=document.getElementById(wrapId);
-  const chk=document.getElementById(chkId);
-  if(wrap&&chk){
-    wrap.addEventListener('click', () => chk.click());
-    chk.addEventListener('click', e => e.stopPropagation());
-    chk.addEventListener('change', onChangeFn);
+  const checkbox=document.getElementById(checkboxId);
+  if(wrap&&checkbox){
+    wrap.addEventListener('click', () => checkbox.click());
+    checkbox.addEventListener('click', e => e.stopPropagation());
+    checkbox.addEventListener('change', onChangeFn);
   }
 });
 
@@ -1769,7 +1769,7 @@ if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
 
 
 /* ── Ciclo de vida de la UI (antes ramas dentro de openSheet/showScreen, navegacion.js) ───────────────────── */
-Ui.hoja('agregar-dinero-menu', () => { save(); openSheet_adMenu(); }, { key: 'cuentas-menu-agregar' });
+Ui.hoja('agregar-dinero-menu', () => { save(); openSheet_agregarDineroMenu(); }, { key: 'cuentas-menu-agregar' });
 
 Ui.pantalla('cuentas', () => {
   // Reflejar cambios hechos en otras pantallas: la cuenta abierta y la lista (las cajitas de Nu las pinta nu.js).

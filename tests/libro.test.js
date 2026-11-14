@@ -28,14 +28,14 @@ describe('libro', () => {
 
   test('Libro.origen — fábrica del origen por módulo: sin ref/rev no deja claves vacías; con rev marca la reversión', () => {
     const ctx = app();
-    const og = ctx.Libro.origen('gastos');
-    assert.deepEqual(plano(og()), { origen: { modulo: 'gastos' } });
-    assert.deepEqual(plano(og('g1')), { origen: { modulo: 'gastos', ref: 'g1' } });
-    assert.deepEqual(plano(og('g1', true)), { origen: { modulo: 'gastos', ref: 'g1', rev: true } });
-    assert.equal('rev' in og('g1').origen, false, 'rev ausente no deja `rev: undefined` en la entrada');
+    const origenLibro = ctx.Libro.origen('gastos');
+    assert.deepEqual(plano(origenLibro()), { origen: { modulo: 'gastos' } });
+    assert.deepEqual(plano(origenLibro('g1')), { origen: { modulo: 'gastos', ref: 'g1' } });
+    assert.deepEqual(plano(origenLibro('g1', true)), { origen: { modulo: 'gastos', ref: 'g1', rev: true } });
+    assert.equal('rev' in origenLibro('g1').origen, false, 'rev ausente no deja `rev: undefined` en la entrada');
     // Pasada como `opts` de la puerta única, queda en el libro tal cual y la entrada de reversión se tipa sola.
-    ctx.sumarFuente('cuenta:nequi', 100, { ...og('g1'), fecha: '2026-10-01' });
-    ctx.descontarFuente('cuenta:nequi', 100, { ...og('g1', true), fecha: '2026-10-02' });
+    ctx.sumarFuente('cuenta:nequi', 100, { ...origenLibro('g1'), fecha: '2026-10-01' });
+    ctx.descontarFuente('cuenta:nequi', 100, { ...origenLibro('g1', true), fecha: '2026-10-02' });
     assert.deepEqual(plano(ctx.S.libro.map(l => [l.tipo, l.monto, l.origen.modulo, l.origen.ref, l.origen.rev === true])),
       [['movimiento', 100, 'gastos', 'g1', false], ['reversion', -100, 'gastos', 'g1', true]]);
     assert.equal(ctx.Libro.verificar().ok, true);
@@ -53,12 +53,12 @@ describe('libro', () => {
   });
 
   test('registrar — rendimiento: una sola entrada por cuenta y mes', () => {
-    const ctx = app(); const st = { libro: [] };
-    ctx.Libro.registrar('cajita:c1', 10, { tipo: 'rendimiento', fecha: '2026-10-01' }, st);
-    ctx.Libro.registrar('cajita:c1', 5, { tipo: 'rendimiento', fecha: '2026-10-20' }, st);
-    ctx.Libro.registrar('cajita:c1', 7, { tipo: 'rendimiento', fecha: '2026-11-02' }, st);
-    ctx.Libro.registrar('cajita:c2', 3, { tipo: 'rendimiento', fecha: '2026-10-05' }, st);
-    assert.deepEqual(plano(st.libro.map(l => [l.cuenta, l.fecha.slice(0, 7), l.monto])), [['cajita:c1', '2026-10', 15], ['cajita:c1', '2026-11', 7], ['cajita:c2', '2026-10', 3]]);
+    const ctx = app(); const estadoActual = { libro: [] };
+    ctx.Libro.registrar('cajita:c1', 10, { tipo: 'rendimiento', fecha: '2026-10-01' }, estadoActual);
+    ctx.Libro.registrar('cajita:c1', 5, { tipo: 'rendimiento', fecha: '2026-10-20' }, estadoActual);
+    ctx.Libro.registrar('cajita:c1', 7, { tipo: 'rendimiento', fecha: '2026-11-02' }, estadoActual);
+    ctx.Libro.registrar('cajita:c2', 3, { tipo: 'rendimiento', fecha: '2026-10-05' }, estadoActual);
+    assert.deepEqual(plano(estadoActual.libro.map(l => [l.cuenta, l.fecha.slice(0, 7), l.monto])), [['cajita:c1', '2026-10', 15], ['cajita:c1', '2026-11', 7], ['cajita:c2', '2026-10', 3]]);
   });
 
   test('conOrigen — lo que se mueva dentro lleva ese origen; con rev:true es una "reversion" con el mismo ref', () => {
@@ -126,9 +126,9 @@ describe('libro', () => {
 
   test('entradasVisibles — solo lo que ningún registro de módulo representa (intereses, ajustes, CDT)', () => {
     const ctx = app();
-    const st = { libro: [] };
-    ['movimiento', 'reversion', 'apertura', 'rendimiento', 'ajuste', 'cdt'].forEach((t, i) => ctx.Libro.registrar('cuenta:nequi', i + 1, { tipo: t, fecha: '2026-10-0' + (i + 1) }, st));
-    assert.deepEqual(plano(ctx.Libro.entradasVisibles(st).map(l => l.tipo)), ['rendimiento', 'ajuste', 'cdt']);
+    const estadoActual = { libro: [] };
+    ['movimiento', 'reversion', 'apertura', 'rendimiento', 'ajuste', 'cdt'].forEach((t, i) => ctx.Libro.registrar('cuenta:nequi', i + 1, { tipo: t, fecha: '2026-10-0' + (i + 1) }, estadoActual));
+    assert.deepEqual(plano(ctx.Libro.entradasVisibles(estadoActual).map(l => l.tipo)), ['rendimiento', 'ajuste', 'cdt']);
   });
 
   test('espejo y libro van juntos: registrarMovimientoEspejo escribe en S.movimientos con `fuente` para cualquier cuenta', () => {
@@ -212,7 +212,7 @@ describe('libro-modulos', () => {
 describe('puerta-unica', () => {
   // Guardia estática del libro de movimientos (libro-de-movimientos.md §3, reglas 2 y 3):
   //   · nadie escribe `c.saldo` fuera de la puerta única (sumarFuente / descontarFuente / ajustarSaldoCuenta en cuentas-fuentes.js);
-  //   · toda llamada a sumarFuente / descontarFuente lleva `origen` (directo, vía _og…(), o con un `opts` ya armado).
+  //   · toda llamada a sumarFuente / descontarFuente lleva `origen` (directo, vía _origenLibro…(), o con un `opts` ya armado).
   // Un módulo nuevo que se salte cualquiera de las dos rompe este test en vez de dejar una entrada 'sin-origen' o un
   // descuadre que solo avisaría `save()` una vez por sesión.
   const test = require('node:test');
@@ -322,10 +322,10 @@ describe('plata-comprometida', () => {
     app.document = dom.document;
     app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {};
     const plataComprometida = app.__reg.cp;
-    const og = (ref, rev) => ({ origen: { modulo: 'plata-comprometida', ref, ...(rev ? { rev: true } : {}) } });
+    const origenLibro = (ref, rev) => ({ origen: { modulo: 'plata-comprometida', ref, ...(rev ? { rev: true } : {}) } });
     const saldo = id => app.getSaldoFuente(id);
     const neto = () => { const n = {}; app.S.libro.forEach(e => { n[e.cuenta] = (n[e.cuenta] || 0) + e.monto; }); return n; };
-    return { app, cp: plataComprometida, og, saldo, neto };
+    return { app, cp: plataComprometida, origenLibro, saldo, neto };
   }
   const recibir = e => { e.cp.abrirRecibir('cp1'); e.cp.confirmarRecibir(); };
   const item = destinos => ({ id: 'cp1', desc: 'Arriendo', montoTotal: 100000, cuentaDestino: 'cuenta:nequi', recibido: false, destinos });
@@ -355,7 +355,7 @@ describe('plata-comprometida', () => {
   test('eliminar un ingreso recibido que tenía un adelanto devuelve también el adelanto', async () => {
     const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: true }]));
     // el adelanto ya se había hecho antes de recibir (como lo deja _cpdConfirmar / _plataComprometidaGuardarMarcados)
-    e.app.sumarFuente('cuenta:efectivo', -30000, e.og('d1'));
+    e.app.sumarFuente('cuenta:efectivo', -30000, e.origenLibro('d1'));
     e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
     recibir(e);
     assert.equal(e.saldo('cuenta:efectivo'), 50000, 'adelanto (−30.000) y reposición (+30.000)');
@@ -368,7 +368,7 @@ describe('plata-comprometida', () => {
 
   test('eliminar un ingreso recibido con un gasto de cajita ya pagado devuelve también el pago', async () => {
     const e = entorno(item([{ id: 'd2', tipo: 'gasto', desc: 'Luz', monto: 20000, gastoOrigen: 'cajita', gastoCajita: 'cuenta:efectivo', yaPague: true }]));
-    e.app.sumarFuente('cuenta:efectivo', -20000, e.og('d2'));
+    e.app.sumarFuente('cuenta:efectivo', -20000, e.origenLibro('d2'));
     e.app.S.movimientos.push({ id: 'pago', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 20000, fecha: '2026-10-02', desc: 'Pago: Luz' });
     recibir(e);
     assert.equal(e.saldo('cuenta:efectivo'), 50000);
@@ -381,7 +381,7 @@ describe('plata-comprometida', () => {
 
   test('eliminar un ingreso NO recibido con adelanto devuelve el adelanto (con el mismo ref)', async () => {
     const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: true }]));
-    e.app.sumarFuente('cuenta:efectivo', -30000, e.og('d1'));
+    e.app.sumarFuente('cuenta:efectivo', -30000, e.origenLibro('d1'));
     e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
     await e.cp.eliminar('cp1');
     assert.equal(e.saldo('cuenta:efectivo'), 50000);

@@ -17,7 +17,7 @@
 | Qué | Dónde | Notas |
 |---|---|---|
 | Huella de invariantes | `js/core/huella.js` (bajo demanda) | Registro de sondas puras; `SONDAS_BASE` = `saldos, periodos, deudas, patrimonio, tarjetas, encargos, alcancia, wrapped`; `Huella.completa()` carga los 4 grupos diferidos **por nombre** (`GRUPOS_CON_SONDA`; `Loader.ensureAll()` se salta `wrapped` fuera de enero). API: `registrar, registradas, calcular, comparar, verificarTransformacion, completa, digest`. |
-| Estado aislado | `conEstadoAislado(estado, fn)` en `js/core/persistencia.js` | `fn` síncrona; mientras corre, `save()` y `_fbSaveToCloud()` no escriben (`window._estadoAislado`). |
+| Estado aislado | `conEstadoAislado(estado, fn)` en `js/core/persistencia.js` | `fn` síncrona; mientras corre, `save()` y `_firebaseSaveToCloud()` no escriben (`window._estadoAislado`). |
 | Vista previa y medidor | `js/core/cierre.js` | `analizar(corte, estado, {huella, mesActual})`, `analizarCompleto`, `tamano`, `disparador`, `corteMasReciente`, `registrarFuente`, `CLASIFICACION`. |
 | Sondas de módulos | `tarjetas-credito.js` (`tcDeudaCalculada`, pura), `encargos.js`, `alcancia.js`, `wrapped.js` | Se registran con **`registrarSonda(nombre, fn)`** (`js/core/persistencia.js`), nunca con `Huella.registrar` directo: los módulos se precargan al arrancar y `huella.js` llega después, así que la sonda espera en cola (`window._sondasPendientes`) y `huella.js` la vacía al cargarse. |
 | Carga bajo demanda | `js/core/lazy-loader.js` | Grupo `cierre: ['js/core/huella.js','js/core/cierre.js']`, en `SOLO_BAJO_DEMANDA`: `ensureAll()` (que precarga **todos** los demás grupos en tiempo ocioso tras `appDataLoaded`) **no** lo carga. `renderTamanoDatos` hace `await Loader.ensure('cierre')`; si la descarga falla (sin conexión) el medidor queda vacío y la pantalla no se rompe. |
@@ -100,7 +100,7 @@ Ningún registro con fecha ≤ `S.cierre.corte` (conservado o no) puede editarse
 2. Aplicar la transformación (poda + plegado del libro + `S.cierre`) **al clon**, dentro de `conEstadoAislado`.
 3. `Huella.verificarTransformacion` con `SONDAS_BASE` requeridas: la sonda `periodos` compara el cálculo desde el detalle (antes, sin resumen) con el resumen (después): **no es tautológica**. Cualquier diferencia o error de sonda aborta **sin escribir**.
 4. Escribir **una sola vez** (el `save()` normal: un `setDoc`).
-5. Releer lo escrito (`_fbLoadData`) y volver a verificar contra la huella de antes; si falla, avisar y conservar el backup.
+5. Releer lo escrito (`_firebaseLoadData`) y volver a verificar contra la huella de antes; si falla, avisar y conservar el backup.
 6. Idempotencia: ejecutar dos veces seguidas no cambia nada la segunda.
 
 ### 5.10 Pruebas que deben existir (con datos sintéticos; no tocar datos reales)

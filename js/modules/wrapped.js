@@ -693,14 +693,14 @@ function _wrappedPatrimonioAnio(S, anioK){
     const baseAnio = delAnio.reduce((a, k) => a + (cierres[k].base || 0), 0);
     diff = (fin - inicio) - baseAnio;
   } else {
-    const hist = (S.patrimonioHistorial || [])
+    const historial = (S.patrimonioHistorial || [])
       .filter(p => (p.fecha||'').slice(0,4) === anioK)
       .slice()
       .sort((a,b) => (a.fecha||'').localeCompare(b.fecha||''));
-    if(hist.length < 2) return null;
-    const primero = hist[0], ultimo = hist[hist.length-1];
+    if(historial.length < 2) return null;
+    const primero = historial[0], ultimo = historial[historial.length-1];
     let montoBaseAcumulado = 0;
-    hist.forEach(p => { if(p !== primero) montoBaseAcumulado += (p.montoBase||0); });
+    historial.forEach(p => { if(p !== primero) montoBaseAcumulado += (p.montoBase||0); });
     inicio = val(primero); fin = val(ultimo);
     diff = (fin - inicio) - montoBaseAcumulado;
   }
@@ -723,19 +723,19 @@ function _wrappedPatrimonioAnio(S, anioK){
 function _wrappedSerieMensualAnio(S, anioK){
   const { anioActual, mesActualIdx } = _wrappedAnioYMesActual();
   const mesMax = (anioK === anioActual) ? mesActualIdx : 11;
-  const hist = (S.patrimonioHistorial || [])
+  const historial = (S.patrimonioHistorial || [])
     .filter(p => p.fecha)
     .slice()
     .sort((a,b) => a.fecha.localeCompare(b.fecha));
   const val = p => (typeof p.valorVisible === 'number') ? p.valorVisible : (p.valor||0);
 
   let ultimoConocido = null;
-  hist.forEach(p => { if(p.fecha.slice(0,4) < anioK) ultimoConocido = val(p); });
+  historial.forEach(p => { if(p.fecha.slice(0,4) < anioK) ultimoConocido = val(p); });
 
   const serie = [];
   for(let m=0; m<=mesMax; m++){
     const mesK = Fecha.mesKey(anioK, m+1);
-    const puntosDelMes = hist.filter(p => p.fecha.slice(0,7) === mesK);
+    const puntosDelMes = historial.filter(p => p.fecha.slice(0,7) === mesK);
     if(puntosDelMes.length) ultimoConocido = val(puntosDelMes[puntosDelMes.length-1]);
     serie.push({ mesK, valor: ultimoConocido });
   }
@@ -1058,7 +1058,7 @@ const WRAPPED_SNAPSHOT_VERSION = 1;
 const _WRAPPED_BTN_GUARDAR = '<button type="button" class="wrapped-cta" data-wrapped-action="guardar">Guardar este Wrapped</button>';
 const _WRAPPED_BTN_GUARDADO = '<button type="button" class="wrapped-cta ghost" disabled>Guardado</button>';
 function _wrappedMarcarGuardado(slides){
-  return slides.map(sl => (sl.id === 'cierre' ? Object.assign({}, sl, { html: sl.html.replace(_WRAPPED_BTN_GUARDAR, _WRAPPED_BTN_GUARDADO) }) : sl));
+  return slides.map(slide => (slide.id === 'cierre' ? Object.assign({}, slide, { html: slide.html.replace(_WRAPPED_BTN_GUARDAR, _WRAPPED_BTN_GUARDADO) }) : slide));
 }
 
 function _wrappedSinMascara(html){ return html.replace(/\s*\bsaldo-hidden\b/g, ''); }
@@ -1070,10 +1070,10 @@ function _wrappedSnapshotDe(slides){
   return {
     version: WRAPPED_SNAPSHOT_VERSION,
     generadoEn: hoy(),
-    slides: _wrappedMarcarGuardado(slides).map(sl => {
-      const o = { id: sl.id, html: _wrappedSinMascara(sl.html) };
-      if(sl.mood) o.mood = sl.mood;
-      if(sl.confetti) o.confetti = true;
+    slides: _wrappedMarcarGuardado(slides).map(slide => {
+      const o = { id: slide.id, html: _wrappedSinMascara(slide.html) };
+      if(slide.mood) o.mood = slide.mood;
+      if(slide.confetti) o.confetti = true;
       return o;
     })
   };
@@ -1081,7 +1081,7 @@ function _wrappedSnapshotDe(slides){
 
 // Guardar un año (acción explícita del usuario): reemplaza el guardado de ese año si lo había. Nunca se llama con el mensaje de «no alcanzó».
 function _wrappedGuardar(S, anioK, slides){
-  if(slides.some(sl => sl.id === 'insuf-titular')) throw new Error('El mensaje «no alcanzó el tiempo» no se guarda');
+  if(slides.some(slide => slide.id === 'insuf-titular')) throw new Error('El mensaje «no alcanzó el tiempo» no se guarda');
   if(!S.wrappedAnios) S.wrappedAnios = {};
   S.wrappedAnios[anioK] = _wrappedSnapshotDe(slides);
   if(typeof save === 'function') save();
@@ -1090,7 +1090,7 @@ function _wrappedGuardar(S, anioK, slides){
 // Las diapositivas guardadas listas para pintar: aquí sí se aplica la preferencia actual de ocultar saldos.
 function _wrappedSlidesDeSnapshot(snap){
   const ocultar = _wrappedSaldosOcultos();
-  return snap.slides.map(sl => Object.assign({}, sl, { html: (ocultar && sl.id === 'alcancia') ? _wrappedConMascara(sl.html) : sl.html }));
+  return snap.slides.map(slide => Object.assign({}, slide, { html: (ocultar && slide.id === 'alcancia') ? _wrappedConMascara(slide.html) : slide.html }));
 }
 
 // Frase sobre el patrimonio del año. `ctx` (opcional): { balance, gastoMasGrande } del año, para explicar la CAUSA de una caída.
@@ -1713,13 +1713,13 @@ function _wrappedAnimarNumeros(container, fmt2){
 function _wrappedLanzarConfeti(slideEl){
   if(typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   if(!slideEl || !slideEl.querySelector) return;
-  let cont = slideEl.querySelector('.wrapped-confetti');
-  if(!cont){
-    cont = document.createElement('div');
-    cont.className = 'wrapped-confetti';
-    slideEl.appendChild(cont);
+  let contenedor = slideEl.querySelector('.wrapped-confetti');
+  if(!contenedor){
+    contenedor = document.createElement('div');
+    contenedor.className = 'wrapped-confetti';
+    slideEl.appendChild(contenedor);
   }
-  cont.innerHTML = '';
+  contenedor.innerHTML = '';
   const colores = ['var(--accent)','var(--amber)','var(--blue)','var(--red)','var(--purple)'];
   for(let i=0; i<18; i++){
     const pieza = document.createElement('i');
@@ -1727,7 +1727,7 @@ function _wrappedLanzarConfeti(slideEl){
     pieza.style.background = colores[i % colores.length];
     pieza.style.animationDelay = (Math.random()*0.35).toFixed(2) + 's';
     pieza.style.transform = 'rotate(' + Math.floor(Math.random()*360) + 'deg)';
-    cont.appendChild(pieza);
+    contenedor.appendChild(pieza);
   }
 }
 
@@ -2262,11 +2262,11 @@ function _wrappedCalcularMesada(S, tipo, mesK, anioK){
    pantalla de Spotify. Es un "cobrado menos pagado del año" honesto, no
    la ganancia oficial del módulo. */
 function _wrappedCalcularSpotify(S, tipo, mesK, anioK){
-  const hist = (S.spotify||{}).historial;
-  if(!Array.isArray(hist) || !hist.length) return null;
+  const historial = (S.spotify||{}).historial;
+  if(!Array.isArray(historial) || !historial.length) return null;
 
   let cobrado = 0, pagado = 0;
-  hist.forEach(h => {
+  historial.forEach(h => {
     if(!h || !_wrappedEnRango(h.fecha, tipo, mesK, anioK)) return;
     if(h.tipo === 'cobro') cobrado += (h.monto||0);
     else if(h.tipo === 'pago') pagado += (h.monto||0);
@@ -3822,10 +3822,10 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   // `--accent`, el mismo default neutro de siempre.
   const _MOOD_DE_CLASE = { 'c-purple':'purple', 'c-blue':'blue', 'c-amber':'amber', 'c-red':'red', 'c-green':'accent' };
   const _moodRegex = /(?:^|[\s"])(c-purple|c-blue|c-amber|c-red|c-green)(?=[\s"])/;
-  slides.forEach(sl => {
-    if(sl.mood) return;
-    const m = _moodRegex.exec(sl.html);
-    sl.mood = m ? _MOOD_DE_CLASE[m[1]] : 'accent';
+  slides.forEach(slide => {
+    if(slide.mood) return;
+    const m = _moodRegex.exec(slide.html);
+    slide.mood = m ? _MOOD_DE_CLASE[m[1]] : 'accent';
   });
 
   // Snapshot para el panel de debug visual (2026-09-15, ver
@@ -3972,7 +3972,7 @@ function _wrappedSetupNav(overlay, fmt2, contexto){
 
   const slidesEls = Array.prototype.slice.call(overlay.querySelectorAll('.wrapped-slide'));
   const segEls    = Array.prototype.slice.call(overlay.querySelectorAll('.wrapped-seg'));
-  const contSlides = overlay.querySelector('#wrapped-slides');
+  const contenedorSlides = overlay.querySelector('#wrapped-slides');
   const closeBtn   = overlay.querySelector('#wrapped-close');
   const restartBtn = overlay.querySelector('#wrapped-restart');
   const hintEl     = overlay.querySelector('#wrapped-hint');
@@ -3993,7 +3993,7 @@ function _wrappedSetupNav(overlay, fmt2, contexto){
   // cierre) lo deja pasar; si no, navega según la mitad de la pantalla
   // donde ocurrió el tap — mismo patrón de "zonas muertas" que usa la
   // navegación tipo stories.
-  contSlides.addEventListener('click', function(e){
+  contenedorSlides.addEventListener('click', function(e){
     // Un tap sobre una zona de mes del gráfico interactivo (ver
     // `_wrappedGraficoMensualSvg`) selecciona ese mes en vez de navegar de
     // slide — se resuelve ANTES que la lista de "interactivo" de abajo
@@ -4013,18 +4013,18 @@ function _wrappedSetupNav(overlay, fmt2, contexto){
       else if(accion === 'guardar') _wrappedAlGuardar(interactivo, contexto);
       return;
     }
-    const rect = contSlides.getBoundingClientRect();
+    const rect = contenedorSlides.getBoundingClientRect();
     const x = e.clientX - rect.left;
     if(x < rect.width * 0.34) anterior();
     else siguiente();
   });
 
   let touchX = null, touchY = null;
-  contSlides.addEventListener('touchstart', function(e){
+  contenedorSlides.addEventListener('touchstart', function(e){
     touchX = e.touches[0].clientX;
     touchY = e.touches[0].clientY;
   }, { passive: true });
-  contSlides.addEventListener('touchend', function(e){
+  contenedorSlides.addEventListener('touchend', function(e){
     if(touchX === null) return;
     const dx = e.changedTouches[0].clientX - touchX;
     const dy = e.changedTouches[0].clientY - touchY;
@@ -4096,7 +4096,7 @@ window.renderWrapped = function(anioOpt){
   let slides;
   if(generable){
     const frescas = _wrappedBuildSlides(S, fmt2, anioK);
-    const esMensaje = frescas.some(sl => sl.id === 'insuf-titular');
+    const esMensaje = frescas.some(slide => slide.id === 'insuf-titular');
     if(guardado && esMensaje){
       slides = _wrappedSlidesDeSnapshot(guardado);
     } else {
@@ -4110,7 +4110,7 @@ window.renderWrapped = function(anioOpt){
   }
 
   const progresoHtml = slides.map(() => `<div class="wrapped-seg"><i></i></div>`).join('');
-  const slidesHtml = slides.map(sl => `<div class="wrapped-slide" data-mood="${sl.mood || 'accent'}"${sl.confetti ? ' data-confetti="1"' : ''}>${sl.html}</div>`).join('');
+  const slidesHtml = slides.map(slide => `<div class="wrapped-slide" data-mood="${slide.mood || 'accent'}"${slide.confetti ? ' data-confetti="1"' : ''}>${slide.html}</div>`).join('');
 
   // Panel de debug visual (2026-09-15) — solo se arma y se inyecta cuando
   // la URL trae `?debug=1`/`#debug` (ver `_wrappedDebugPanelHtml`); en
@@ -4187,23 +4187,23 @@ window.renderWrapped = function(anioOpt){
 // intereses y comisiones de tarjeta). Los años anteriores no se ven en ninguna pantalla, así que no se exige conservarlos: la política de
 // corte (Cierre.corteMasReciente, ≥ 24 meses, siempre ≤ dic de año − 2) deja intacto este año por construcción y la sonda lo comprueba.
 // Corre aislada: las funciones reciben la copia como `S`. docs/cierre-de-periodos.md.
-registrarSonda('wrapped',function(st){
+registrarSonda('wrapped',function(estadoActual){
   const out={};
   const anioObjetivo=typeof window._wrappedAnioObjetivo==='function'?window._wrappedAnioObjetivo():String(parseInt(hoy().slice(0,4),10)-1);
   [anioObjetivo].forEach(anioK=>{
     out[anioK]={
-      periodo:_wrappedCalcularPeriodo(st,'anio',null,anioK),
-      mejorPeor:_wrappedMejorPeorMesAnio(st,anioK),
-      encargos:_wrappedCalcularEncargos(st,'anio',null,anioK),
-      prestado:_wrappedCalcularPrestado(st,'anio',null,anioK),
-      misDeudas:_wrappedCalcularMisDeudas(st,'anio',null,anioK),
-      mesada:_wrappedCalcularMesada(st,'anio',null,anioK),
-      spotify:_wrappedCalcularSpotify(st,'anio',null,anioK),
-      comprometida:_wrappedCalcularComprometida(st,'anio',null,anioK),
-      interesesTC:_wrappedCalcularInteresesTC(st,'anio',null,anioK),
-      comisionesTC:_wrappedCalcularComisionesTC(st,'anio',null,anioK),
-      protagonistas:_wrappedProtagonistas(st,'anio',null,anioK),
-      recuperacion:_wrappedRecuperacionMasRapida(st,anioK)
+      periodo:_wrappedCalcularPeriodo(estadoActual,'anio',null,anioK),
+      mejorPeor:_wrappedMejorPeorMesAnio(estadoActual,anioK),
+      encargos:_wrappedCalcularEncargos(estadoActual,'anio',null,anioK),
+      prestado:_wrappedCalcularPrestado(estadoActual,'anio',null,anioK),
+      misDeudas:_wrappedCalcularMisDeudas(estadoActual,'anio',null,anioK),
+      mesada:_wrappedCalcularMesada(estadoActual,'anio',null,anioK),
+      spotify:_wrappedCalcularSpotify(estadoActual,'anio',null,anioK),
+      comprometida:_wrappedCalcularComprometida(estadoActual,'anio',null,anioK),
+      interesesTC:_wrappedCalcularInteresesTC(estadoActual,'anio',null,anioK),
+      comisionesTC:_wrappedCalcularComisionesTC(estadoActual,'anio',null,anioK),
+      protagonistas:_wrappedProtagonistas(estadoActual,'anio',null,anioK),
+      recuperacion:_wrappedRecuperacionMasRapida(estadoActual,anioK)
     };
   });
   return out;

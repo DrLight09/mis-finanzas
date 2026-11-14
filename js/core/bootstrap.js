@@ -13,9 +13,9 @@ function iniciales(nombre) {
 
 
 document.getElementById('hDate').textContent=new Date().toLocaleDateString('es-CO',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-// FIREBASE: load() y refresh() se llaman desde _fbLoadData() después de autenticar.
+// FIREBASE: load() y refresh() se llaman desde _firebaseLoadData() después de autenticar.
 // Solo inicializamos lo que no depende de datos de usuario:
 // Autosave silencioso cada 60s
-setInterval(() => { if(window._fbUser) save(); }, 60000);
+setInterval(() => { if(window._firebaseUser) save(); }, 60000);
 // Enter en inputs de nueva categoría: migrado a js/modules/configuracion.js (evita doble-wiring/doble-agregado).
 // Preview del sheet "crear CDT" migrado a js/modules/cuentas.js (estaba compartiendo <script> con Tarjetas de Crédito, sin relación real con TC).

@@ -271,7 +271,7 @@ const Salud = (() => {
   function puntaje(e){
   const R = _R(), U0 = _U();
   const fmt = e.fmt || (n => String(n));
-  const { patrimonio, gastosMes, deudaTC, ingresoRef, liq } = e;
+  const { patrimonio, gastosMes, deudaTC, ingresoRef, liquidez } = e;
   // Sin base (usuario nuevo, ver tieneBase) no se concluye nada de ahorro, flujo ni tendencia: el «gasto típico» sería de tres días de uso y
   // el «déficit» solo la falta de ingresos anotados. Esas medidas se anulan; lo que no necesita historial (deudas, liquidez negativa,
   // lo prestado) se evalúa igual.
@@ -313,19 +313,19 @@ const Salud = (() => {
   // propia, lo que debes a personas (aunque no haya fecha de pago: entre amigos casi nunca la hay, y es plata que te pueden
   // pedir en cualquier momento) y la plata ajena que guardas. NO suma los CDTs (bloqueados) ni lo que te deben (sin fecha
   // cierta no es plata disponible). Ver el bloque «PATRIMONIO Y LIQUIDEZ» del núcleo.
-  const liquidoReal = liq.neta;
-  const cdtVal = liq.cdts;
+  const liquidoReal = liquidez.neta;
+  const cdtVal = liquidez.cdts;
   // patrimonio total sí incluye CDTs para otros cálculos
-  const liquidoConCDTs = liq.conCDTs;
+  const liquidoConCDTs = liquidez.conCDTs;
 
   // ── Plata prestada a otros ────────────────────────────────────────────
-  const prest = liq.meDeben;
+  const prest = liquidez.meDeben;
 
   // ── Hay datos suficientes para evaluar? ───────────────────────────────
   // Cualquier activo o deuda cuenta como dato, también las deudas con personas y la plata ajena: antes solo contaban un patrimonio
   // positivo, lo prestado, la tarjeta o los gastos del mes, y quien solo debía («Yo debo») veía «Registra más datos» justo cuando su
   // situación era más delicada.
-  const tieneAlgo = patrimonio !== 0 || prest > 0 || deudaTC > 0 || liq.yoDebo > 0 || liq.ajeno > 0 || liq.libre !== 0 || liq.cdts > 0 || gastosMes > 0;
+  const tieneAlgo = patrimonio !== 0 || prest > 0 || deudaTC > 0 || liquidez.yoDebo > 0 || liquidez.ajeno > 0 || liquidez.libre !== 0 || liquidez.cdts > 0 || gastosMes > 0;
   const U = U0.salud;
 
   // a) Fondo de emergencia: liquidez real vs gasto mensual TÍPICO
@@ -344,12 +344,12 @@ const Salud = (() => {
   } else if(liquidoReal < 0){
     // Debes más de lo que tienes disponible. Se nombra QUÉ deuda es. Si lo cubren CDTs sin vencer es menos grave (la plata existe, solo está
     // bloqueada). Antes un CDT mandaba este caso a «tus ahorros están en CDTs» y el consejo no decía que la liquidez era negativa.
-    const quien = (liq.yoDebo <= 0 && liq.ajeno <= 0) ? 'Tu deuda en tarjetas supera'
-      : (liq.tcPropia <= 0 && liq.ajeno <= 0) ? 'Lo que debes a personas supera'
+    const quien = (liquidez.yoDebo <= 0 && liquidez.ajeno <= 0) ? 'Tu deuda en tarjetas supera'
+      : (liquidez.tcPropia <= 0 && liquidez.ajeno <= 0) ? 'Lo que debes a personas supera'
       : 'Tus deudas y la plata ajena que guardas superan';
-    avisoDeudaTC = liq.tcPropia > 0;
+    avisoDeudaTC = liquidez.tcPropia > 0;
     // El botón lleva a donde se paga esa deuda: la tarjeta, la pestaña «Yo debo» o (si es mezcla) Préstamos.
-    const irDeuda = (liq.yoDebo <= 0 && liq.ajeno <= 0) ? 'tarjetas' : (liq.tcPropia <= 0 && liq.ajeno <= 0) ? 'prestamos/yo-debo' : 'prestamos';
+    const irDeuda = (liquidez.yoDebo <= 0 && liquidez.ajeno <= 0) ? 'tarjetas' : (liquidez.tcPropia <= 0 && liquidez.ajeno <= 0) ? 'prestamos/yo-debo' : 'prestamos';
     if(liquidoConCDTs >= 0){ score -= 8; add(`${quien} la plata que tienes disponible; lo que cubre la diferencia está en tus CDTs.`,'aviso',irDeuda); }
     else { score -= 15; add(`${quien} la plata que tienes disponible.`,'alerta',irDeuda); }
   } else if((gastosMes > 0 || gastoRef > 0) && liquidoConCDTs > 0){
@@ -374,7 +374,7 @@ const Salud = (() => {
     }
   }
   // Sin deudas propias y con plata disponible: lo único que se premia en endeudamiento.
-  if(deudaTC <= 0 && liq.yoDebo <= 0 && liq.ajeno <= 0 && liquidoReal > 0) score += 5;
+  if(deudaTC <= 0 && liquidez.yoDebo <= 0 && liquidez.ajeno <= 0 && liquidoReal > 0) score += 5;
 
   // c) Plata prestada a otros (riesgo de incobrabilidad / inmovilización)
   // Penalización escalonada por ratio — independiente del bonus de CDTs
@@ -430,7 +430,7 @@ const Salud = (() => {
     const cdtBonusMax = (ratioPrest > U.prestadoSobreLiquidez.comprometido || liquidoReal < 0) ? 3 : 10;
     const pesoCDT = liquidoConCDTs > 0 ? cdtVal / liquidoConCDTs : 0;
     score += Math.round(cdtBonusMax * Math.min(1, pesoCDT / U.cdtPesoCompleto));
-  } else if(tieneAlgo && gastoRef > 0 && deudaTC <= 0 && liq.yoDebo <= 0 && ratioPrest <= U.prestadoSobreLiquidez.comprometido){
+  } else if(tieneAlgo && gastoRef > 0 && deudaTC <= 0 && liquidez.yoDebo <= 0 && ratioPrest <= U.prestadoSobreLiquidez.comprometido){
     // Un CDT bloquea la plata (no cuenta como liquidez), así que solo se sugiere lo que SOBRA por encima del fondo mínimo: sin deudas (ni de
     // tarjeta ni con personas: pagarlas rinde más que cualquier CDT), sin tener prestado más de lo que tienes disponible, y con gasto típico
     // medido (sin él no se sabe cuánto es «de sobra»). Antes se sugería también sin gasto típico, y poner en CDT parte de la reserva la dejaba

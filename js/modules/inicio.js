@@ -65,7 +65,7 @@ function _diasDeUso(){
 function _situacion(){
   const mes=mesActual();
   const U=UMBRALES.salud;
-  const liq=calcLiquidez();
+  const liquidez=calcLiquidez();
   const gP=Periodo.gastoPromedioPrevio(mes,U.mesesReferencia), iP=Periodo.ingresoPromedioPrevio(mes,U.mesesReferencia);
   const gastoTipico=gP.promedio;
   const ingresoTipico=iP.promedio;
@@ -79,14 +79,14 @@ function _situacion(){
   }
   const patrimonio=calcPatrimonioVisible();
   const m={
-    patrimonio, liquidezNeta:liq.neta, activosLiquidos:liq.libre+liq.cdtsVencidos,
-    tcPropia:liq.tcPropia, deudaPropia:liq.tcPropia+liq.yoDebo, meDeben:liq.meDeben,
-    ingresoTipico, ingresoRef, gastoTipico, mesesCubiertos:_mesesCubiertos(liq.neta,gastoTipico),
+    patrimonio, liquidezNeta:liquidez.neta, activosLiquidos:liquidez.libre+liquidez.cdtsVencidos,
+    tcPropia:liquidez.tcPropia, deudaPropia:liquidez.tcPropia+liquidez.yoDebo, meDeben:liquidez.meDeben,
+    ingresoTipico, ingresoRef, gastoTipico, mesesCubiertos:_mesesCubiertos(liquidez.neta,gastoTipico),
     racha, balances, deficitMesActual:ingresoRef>0&&Periodo.gastosDelMes(mes).total>ingresoRef,
     tendencia:Salud.tendenciaPatrimonio(S.patrimonioHistorial,hoy()),
     patrimonioCayendo:Salud.mesesCayendo(S.patrimonioCierres,mes,{gastoTipico}),
     mesesReferencia:Math.max(gP.meses,iP.meses), diasDeUso:_diasDeUso(),
-    sinDatos:patrimonio===0&&liq.libre===0&&liq.cdts===0&&liq.tcPropia===0&&liq.yoDebo===0&&liq.meDeben===0&&liq.ajeno===0&&Periodo.gastosDelMes(mes).total===0,
+    sinDatos:patrimonio===0&&liquidez.libre===0&&liquidez.cdts===0&&liquidez.tcPropia===0&&liquidez.yoDebo===0&&liquidez.meDeben===0&&liquidez.ajeno===0&&Periodo.gastosDelMes(mes).total===0,
   };
   // Sin base (usuario nuevo): no hay con qué evaluar ahorro, flujo ni tendencia. La falta de registros no es una situación negativa.
   m.sinBase=!Salud.tieneBase(m);
@@ -298,12 +298,12 @@ function _textoRunway(meses){ return Reglas.textoRunway(meses); }
 function calcImpactoCompra(monto){
   const C = UMBRALES.compraGrande;
   if(!(monto >= C.minimo)) return null;
-  const liq = calcLiquidez();
+  const liquidez = calcLiquidez();
   const gastoRef = Periodo.gastoPromedioPrevio(mesActual(), UMBRALES.salud.mesesReferencia).promedio;
-  const netaDespues = liq.neta - monto;
-  const antes = _mesesCubiertos(liq.neta, gastoRef);
+  const netaDespues = liquidez.neta - monto;
+  const antes = _mesesCubiertos(liquidez.neta, gastoRef);
   const despues = _mesesCubiertos(netaDespues, gastoRef);
-  const pctLiquidez = liq.neta > 0 ? monto / liq.neta : null;
+  const pctLiquidez = liquidez.neta > 0 ? monto / liquidez.neta : null;
   const patrimonio = calcPatrimonioVisible();
   const pctPatrimonio = patrimonio > 0 ? monto / patrimonio : null;
   const grande = (pctLiquidez !== null && pctLiquidez >= C.fraccionLiquidez) || (gastoRef > 0 && monto >= C.mesesDeGasto * gastoRef) || netaDespues < 0;
@@ -342,7 +342,7 @@ function calcHealthScore(sit){
     deudaTC: typeof calcDeudaTcPropia==='function' ? calcDeudaTcPropia() : 0,
     // Ingreso de REFERENCIA: el mayor entre lo de este mes y el típico de los últimos 3 meses con ingreso (ver Salud.puntaje).
     ingresoRef: Math.max(ingresosMes, Periodo.ingresoPromedioPrevio(mes, 3).promedio),
-    liq: calcLiquidez(), gastoRef,
+    liquidez: calcLiquidez(), gastoRef,
     ingresoTipico: Periodo.ingresoPromedioPrevio(mes, U.mesesReferencia).promedio,
     racha: Periodo.rachaDeficit(mes, 6),
     cdtsActivos: (S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).length,0),
@@ -504,8 +504,8 @@ function renderPlanDeudas(){
   // la línea no lo sabe: por eso habla de «con lo que tienes en tus cuentas y cajitas».
   let apartar = '';
   if(masCara){
-    const liq = calcLiquidez(), gt = Periodo.gastoPromedioPrevio(mesActual(), UMBRALES.salud.mesesReferencia).promedio;
-    const pp = PlanDeudas.pagoPosible({ deuda: masCara, disponible: liq.libre + liq.cdtsVencidos - liq.ajeno, gastoTipico: gt, mesesReserva: UMBRALES.salud.fondoMeses.minimo, rendimientoEA: rendNu });
+    const liquidez = calcLiquidez(), gt = Periodo.gastoPromedioPrevio(mesActual(), UMBRALES.salud.mesesReferencia).promedio;
+    const pp = PlanDeudas.pagoPosible({ deuda: masCara, disponible: liquidez.libre + liquidez.cdtsVencidos - liquidez.ajeno, gastoTipico: gt, mesesReserva: UMBRALES.salud.fondoMeses.minimo, rendimientoEA: rendNu });
     if(pp){
       const ir = masCara.tipo === 'tarjeta' ? 'tarjetas' : 'prestamos';
       apartar = `<div class="inicio-plan-apartar"><span>${pp.total ? 'Con lo que tienes en tus cuentas y cajitas podrías saldar' : 'Con lo que tienes en tus cuentas y cajitas podrías pagar ya'} ${fmt(pp.monto)} de «${escHtml(masCara.nombre)}» y seguir con ${UMBRALES.salud.fondoMeses.minimo} meses de gastos de reserva${pp.ahorroMensual > 0 ? ` (ahorrarías ≈ ${fmt(pp.ahorroMensual)} al mes en intereses)` : ''}.</span><button type="button" class="inicio-plan-est" ${Events.attr('inicio:irConsejo', ir)}>Ir a pagar</button></div>`;
@@ -529,17 +529,17 @@ Refresh.registrar('inicio-plan-deudas', renderPlanDeudas, { pantalla: 'inicio' }
 // El hero era verde fijo: un patrimonio de −$800.000 se veía igual que uno de +$8.000.000 (solo el signo «−» lo delataba), y quien
 // tenía valor pero liquidez negativa (un CDT y una tarjeta alta) veía «todo bien» mientras Salud gritaba alerta.
 // → { estado, clase (color del monto), tono ('red'|'amber'|'gris'|''), mensaje }. Prioridad: negativo > cero > liquidez negativa > prestado.
-function calcEstadoHero(d, liq){
+function calcEstadoHero(d, liquidez){
   d = d || calcPatrimonioDesglose();
-  liq = liq || calcLiquidez();
+  liquidez = liquidez || calcLiquidez();
   const p = d.visible;
   if(!isFinite(p)) return { estado:'desconocido', clase:'c-green', tono:'', mensaje:'' };
   if(p < 0) return { estado:'negativo', clase:'c-red', tono:'red', mensaje:'Debes más de lo que tienes: ' + fmtNoCents(-p) };
   const hayDatos = (d.activos - d.alcancia) > 0 || d.pasivos > 0; // la alcancía no cuenta: está oculta a propósito
   if(p === 0 && hayDatos) return { estado:'cero', clase:'c-text2', tono:'gris', mensaje:'Lo que tienes y lo que debes se compensan' };
-  if(liq.neta < 0) return { estado:'liquidez-negativa', clase:'c-amber', tono:'amber', mensaje:'Tienes valor, pero tus deudas superan tu plata disponible en ' + fmtNoCents(-liq.neta) };
+  if(liquidez.neta < 0) return { estado:'liquidez-negativa', clase:'c-amber', tono:'amber', mensaje:'Tienes valor, pero tus deudas superan tu plata disponible en ' + fmtNoCents(-liquidez.neta) };
   // «Me deben» cuenta al 100 % en el patrimonio sin provisión de incobrabilidad: si pesa mucho, se muestra también sin eso.
-  if(liq.meDeben > 0 && liq.meDeben >= p * UMBRALES.hero.meDebenFraccion) return { estado:'prestado', clase:'c-green', tono:'gris', mensaje:'Sin contar lo que te deben: ' + fmtNoCents(p - liq.meDeben) };
+  if(liquidez.meDeben > 0 && liquidez.meDeben >= p * UMBRALES.hero.meDebenFraccion) return { estado:'prestado', clase:'c-green', tono:'gris', mensaje:'Sin contar lo que te deben: ' + fmtNoCents(p - liquidez.meDeben) };
   return { estado:'sano', clase:'c-green', tono:'', mensaje:'' };
 }
 function renderHeroEstado(d){
@@ -614,7 +614,7 @@ function renderProyeccion(){
   // Transferencias entre cuentas propias y préstamos a terceros no afectan el patrimonio
   // total, así que tampoco distorsionan este cálculo.
   // Últimos 120 puntos (≈ 4 meses): con 90 la ventana nunca llegaba a los 90 días que exige «estable» (89 días con un punto diario).
-  const hist = (S.patrimonioHistorial||[]).slice(-UMBRALES.proyeccion.puntosHistorial);
+  const historial = (S.patrimonioHistorial||[]).slice(-UMBRALES.proyeccion.puntosHistorial);
   let tendenciaMensual = 0;
   let historialInsuficiente = false;
   // Niveles: 'insuficiente' | 'normal' | 'estable'
@@ -629,25 +629,25 @@ function renderProyeccion(){
   let ritmos = [];    // ritmo mensual de cada tercio del historial (para saber si la tendencia fue consistente)
   const intervalos = [];
   const comprasGrandes = []; // compras grandes dentro de la ventana: son un golpe real (ya está en el patrimonio de hoy), no un ritmo
-  if(hist.length >= 2){
+  if(historial.length >= 2){
     // Cambio neto total (sin aperturas/ajustes) y días totales transcurridos —
     // ver más abajo por qué se promedia así en vez de por-intervalo.
     let cambioNetoTotal = 0;
-    for(let i=1;i<hist.length;i++){
+    for(let i=1;i<historial.length;i++){
       // _fechaSafe: una fecha mal formada («2026-9-26») haría NaN en toda la tendencia; si aun así no se puede leer, el intervalo cuenta 1 día.
-      const _dd = Fecha.diasEntre(hist[i-1].fecha, hist[i].fecha);
+      const _dd = Fecha.diasEntre(historial[i-1].fecha, historial[i].fecha);
       const diasEntre = isFinite(_dd) ? Math.max(1, _dd) : 1;
       // valorVisible (sin alcancía) en vez de valor crudo — mismo motivo que
       // el patrimonio de arriba: un depósito/destape de alcancía no debe
       // aparecer como un salto de tendencia. Fallback a .valor para puntos
       // del historial guardados antes de que existiera valorVisible.
-      const vHoy  = (hist[i].valorVisible!=null)   ? hist[i].valorVisible   : hist[i].valor;
-      const vAyer = (hist[i-1].valorVisible!=null) ? hist[i-1].valorVisible : hist[i-1].valor;
+      const vHoy  = (historial[i].valorVisible!=null)   ? historial[i].valorVisible   : historial[i].valor;
+      const vAyer = (historial[i-1].valorVisible!=null) ? historial[i-1].valorVisible : historial[i-1].valor;
       // Una compra grande de ese intervalo (marcada por el usuario) bajó el patrimonio, pero no es su RITMO: se suma de vuelta para la
       // pendiente. Sin esto, una moto de 15 M se extrapolaba como −15 M cada mes (o dejaba la tendencia en «estimación» para siempre).
-      const _cg = Periodo.comprasGrandesEntre(hist[i-1].fecha, hist[i].fecha);
+      const _cg = Periodo.comprasGrandesEntre(historial[i-1].fecha, historial[i].fecha);
       _cg.forEach(g => comprasGrandes.push(g));
-      const cambioDelDia = (vHoy - vAyer) - (hist[i].montoBase||0) + _cg.reduce((a, g) => a + (g.monto||0), 0);
+      const cambioDelDia = (vHoy - vAyer) - (historial[i].montoBase||0) + _cg.reduce((a, g) => a + (g.monto||0), 0);
       cambioNetoTotal += cambioDelDia;
       diasReales += diasEntre;
       intervalos.push({ dias: diasEntre, cambio: cambioDelDia });
@@ -782,13 +782,13 @@ function renderProyeccion(){
   // Bind listeners DESPUÉS de setear innerHTML
   (function(){
     const fmt2 = x=>Dinero.fmt(x,{decimales:0});
-    const tt = el.querySelector('#_proy-tt');
-    if(!tt) return;
-    function showTT(html){ tt.innerHTML=html; tt.style.display='block'; clearTimeout(window._proyTT_t); window._proyTT_t=setTimeout(()=>{ tt.style.display='none'; },3000); }
+    const tooltip = el.querySelector('#_proy-tt');
+    if(!tooltip) return;
+    function showTooltip(html){ tooltip.innerHTML=html; tooltip.style.display='block'; clearTimeout(window._proyTooltip_t); window._proyTooltip_t=setTimeout(()=>{ tooltip.style.display='none'; },3000); }
     // Header (tendencia mensual)
     const header = el.querySelector('#_proy-header');
     if(header){
-      function bindHeader(ev){ ev.stopPropagation(); const t=parseFloat(header.dataset.tendencia)||0; const pos=t>=0; showTT(`<div class="inicio-tt-titulo">¿Qué significa esto?</div><div class="inicio-tt-cuerpo">Ritmo mensual de <b class="${pos?'inicio-tt-pos':'inicio-tt-neg'}">crecimiento real del patrimonio</b> (ingresos, gastos, intereses y rendimientos — sin contar saldos iniciales ni ajustes de base).</div><div class="inicio-tt-nota inicio-tt-nota-top">${pos?'Tu patrimonio está creciendo ~'+fmt2(t)+' por mes en promedio.':'Tu patrimonio está bajando ~'+fmt2(Math.abs(t))+'/mes en promedio.'}</div>`); }
+      function bindHeader(ev){ ev.stopPropagation(); const t=parseFloat(header.dataset.tendencia)||0; const pos=t>=0; showTooltip(`<div class="inicio-tt-titulo">¿Qué significa esto?</div><div class="inicio-tt-cuerpo">Ritmo mensual de <b class="${pos?'inicio-tt-pos':'inicio-tt-neg'}">crecimiento real del patrimonio</b> (ingresos, gastos, intereses y rendimientos — sin contar saldos iniciales ni ajustes de base).</div><div class="inicio-tt-nota inicio-tt-nota-top">${pos?'Tu patrimonio está creciendo ~'+fmt2(t)+' por mes en promedio.':'Tu patrimonio está bajando ~'+fmt2(Math.abs(t))+'/mes en promedio.'}</div>`); }
       header.addEventListener('click', bindHeader);
       header.addEventListener('touchend', function(e){ e.preventDefault(); bindHeader(e); });
     }
@@ -797,7 +797,7 @@ function renderProyeccion(){
     if(wrap){
       function bindCard(card, e){ e.stopPropagation(); const lbl=card.dataset.proyLbl; const val=parseFloat(card.dataset.proyVal)||0; const diff=parseFloat(card.dataset.proyDiff)||0; const pct=card.dataset.proyPct; const meses=card.dataset.proyMeses; const hoyV=parseFloat(card.dataset.proyHoy)||0;
         // Con base ≤ 0 no hay porcentaje: se dice qué pasa con el signo (números rojos) y se muestra el cambio absoluto.
-        const nota = (val<0 && hoyV>=0) ? 'Pasarías a números rojos' : (val>=0 && hoyV<0) ? 'Saldrías de números rojos' : pct ? `${diff>=0?'+':''}${pct}% vs hoy` : (val<0 ? 'Seguirías en números rojos' : 'vs hoy'); const claseDelta=diff>=0?'inicio-tt-pos':'inicio-tt-neg'; const ico=diff>=0?'<i class="fa-solid fa-arrow-up"></i>':'<i class="fa-solid fa-arrow-down"></i>'; showTT(`<div class="inicio-tt-titulo">Proyección a ${lbl}</div><div class="inicio-tt-fila"><span class="inicio-tt-monto">${fmt2(val)}</span><span class="inicio-tt-delta ${claseDelta}">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div class="inicio-tt-nota">${nota} · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
+        const nota = (val<0 && hoyV>=0) ? 'Pasarías a números rojos' : (val>=0 && hoyV<0) ? 'Saldrías de números rojos' : pct ? `${diff>=0?'+':''}${pct}% vs hoy` : (val<0 ? 'Seguirías en números rojos' : 'vs hoy'); const claseDelta=diff>=0?'inicio-tt-pos':'inicio-tt-neg'; const ico=diff>=0?'<i class="fa-solid fa-arrow-up"></i>':'<i class="fa-solid fa-arrow-down"></i>'; showTooltip(`<div class="inicio-tt-titulo">Proyección a ${lbl}</div><div class="inicio-tt-fila"><span class="inicio-tt-monto">${fmt2(val)}</span><span class="inicio-tt-delta ${claseDelta}">${ico} ${diff>=0?'+':''}${fmt2(diff)}</span></div><div class="inicio-tt-nota">${nota} · acumulado ${meses} meses</div>`); card.style.background='var(--bg4)'; setTimeout(()=>{ card.style.background='var(--bg3)'; },200); }
       wrap.addEventListener('click', function(e){ const card=e.target.closest('[data-proy-key]'); if(card) bindCard(card,e); });
       wrap.addEventListener('touchend', function(e){ const card=e.target.closest('[data-proy-key]'); if(card){ e.preventDefault(); bindCard(card,e); } });
     }
@@ -811,8 +811,8 @@ function renderProyeccion(){
 (function _initCierreTooltipProyeccion(){
   document.addEventListener('click', function(e){
     if(e.target.closest('#proyeccion-card')) return;
-    const tt = document.getElementById('_proy-tt');
-    if(tt) tt.style.display = 'none';
+    const tooltip = document.getElementById('_proy-tt');
+    if(tooltip) tooltip.style.display = 'none';
   });
 })();
 

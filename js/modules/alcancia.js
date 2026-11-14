@@ -25,8 +25,8 @@ const _ALCANCIA_KEY = 0x4D;
 // Ícono (SVG inline) que reemplaza al texto "••••" cuando el monto de un depósito está oculto.
 const _ALCANCIA_ICONO_OCULTO = '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="6" viewBox="0 0 32 6" fill="currentColor" role="img" aria-label="Monto oculto" class="alc-svg-block"><circle cx="2" cy="3" r="2"/><circle cx="11.3333" cy="3" r="2"/><circle cx="20.6667" cy="3" r="2"/><circle cx="30" cy="3" r="2"/></svg>';
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
-// _ogAlcancia(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'alcancia', ref:<id del depósito> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _ogAlcancia = Libro.origen('alcancia');
+// _origenLibroAlcancia(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'alcancia', ref:<id del depósito> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
+const _origenLibroAlcancia = Libro.origen('alcancia');
 
 function _alcanciaEncode(saldo){
   const raw = JSON.stringify({s: saldo});
@@ -469,11 +469,11 @@ function _getMoneyVal(id){
 /* Racha: cuántos ciclos consecututivos, contando desde el más reciente hacia
    atrás, ahorraron más que el ciclo inmediatamente anterior. 0 si el último
    ciclo ahorró igual o menos que el anterior. */
-function _alcanciaRachaAhorro(hist){
-  if(!hist || hist.length < 2) return 0;
+function _alcanciaRachaAhorro(historial){
+  if(!historial || historial.length < 2) return 0;
   let racha = 0;
-  for(let i = hist.length - 1; i > 0; i--){
-    if((hist[i].saldoRegistrado||0) > (hist[i-1].saldoRegistrado||0)) racha++;
+  for(let i = historial.length - 1; i > 0; i--){
+    if((historial[i].saldoRegistrado||0) > (historial[i-1].saldoRegistrado||0)) racha++;
     else break;
   }
   return racha;
@@ -481,9 +481,9 @@ function _alcanciaRachaAhorro(hist){
 
 /* Mejor ciclo histórico por saldoRegistrado (nunca por saldoReal, para no
    premiar diferencias que en realidad fueron un error de conteo). */
-function _alcanciaMejorCiclo(hist){
-  if(!hist || !hist.length) return null;
-  return hist.reduce((mejor, h) => (h.saldoRegistrado||0) > (mejor.saldoRegistrado||0) ? h : mejor, hist[0]);
+function _alcanciaMejorCiclo(historial){
+  if(!historial || !historial.length) return null;
+  return historial.reduce((mejor, h) => (h.saldoRegistrado||0) > (mejor.saldoRegistrado||0) ? h : mejor, historial[0]);
 }
 
 // Expuestas en window (2026-09-07): el módulo Wrapped general (js/modules/
@@ -497,9 +497,9 @@ window._alcanciaMejorCiclo = _alcanciaMejorCiclo;
 /* Mini gráfico de barras (SVG inline, sin dependencias) de los últimos hasta
    6 ciclos por saldoRegistrado. Devuelve '' si hay menos de 2 ciclos —no
    tiene sentido "comparar" con un solo punto. */
-function _alcanciaWrappedBarrasSvg(hist){
-  if(!hist || hist.length < 2) return '';
-  const datos = hist.slice(-6);
+function _alcanciaWrappedBarrasSvg(historial){
+  if(!historial || historial.length < 2) return '';
+  const datos = historial.slice(-6);
   const max = Math.max(...datos.map(h => h.saldoRegistrado||0), 1);
   const w = 280, h = 70, gap = 8;
   const barW = (w - gap*(datos.length-1)) / datos.length;
@@ -516,12 +516,12 @@ function _alcanciaWrappedBarrasSvg(hist){
 
 /* Arma el HTML de la tarjeta persistente de progreso (pantalla principal de
    Alcancía). '' si no hay al menos 2 ciclos destapados para comparar. */
-function _alcanciaWrappedProgresoHtml(hist, fmtFn){
-  if(!hist || hist.length < 2) return '';
+function _alcanciaWrappedProgresoHtml(historial, fmtFn){
+  if(!historial || historial.length < 2) return '';
   const fmt2 = fmtFn || fmt;
-  const racha = _alcanciaRachaAhorro(hist);
-  const mejor = _alcanciaMejorCiclo(hist);
-  const ultimo = hist[hist.length-1];
+  const racha = _alcanciaRachaAhorro(historial);
+  const mejor = _alcanciaMejorCiclo(historial);
+  const ultimo = historial[historial.length-1];
   const esMejorHastaAhora = mejor === ultimo;
   const rachaMsg = racha >= 2
     ? `🔥 Llevas ${racha} alcancías seguidas ahorrando más que la anterior`
@@ -529,7 +529,7 @@ function _alcanciaWrappedProgresoHtml(hist, fmtFn){
   return `
     <div class="card alc-prog-card">
       <div class="alc-prog-cap">Tu progreso ahorrando</div>
-      ${_alcanciaWrappedBarrasSvg(hist)}
+      ${_alcanciaWrappedBarrasSvg(historial)}
       <div class="alc-mt10">
         ${rachaMsg ? `<div class="alc-racha">${rachaMsg}</div>` : ''}
         <div class="alc-prog-txt">Mejor alcancía hasta ahora: <span class="alc-prog-val">${fmt2(mejor.saldoRegistrado||0)}</span>${esMejorHastaAhora ? ' <span class="alc-c-amber">(tu última)</span>' : ''}</div>
@@ -597,8 +597,8 @@ Ui.hoja('alcancia-destapar', function(){
     setTimeout(()=>{
       const mi = document.getElementById('alc_real_monto');
       if(mi) mi.value = '';
-      const dest = document.getElementById('alc_destino');
-      if(dest) dest.innerHTML = opcionesCuenta({placeholder:'Seleccionar cuenta'});
+      const destino = document.getElementById('alc_destino');
+      if(destino) destino.innerHTML = opcionesCuenta({placeholder:'Seleccionar cuenta'});
       const hint = document.getElementById('alc_diferencia_hint');
       if(hint) hint.textContent = '';
       // Resumen
@@ -725,27 +725,27 @@ window.renderAlcancia = function(){
     }
 
     if(listaEl){
-      const hist = a.historial || [];
+      const historial = a.historial || [];
       // Sin alcancías destapadas no hay historial que mostrar: ni título ni mensaje
       // (el estado vacío o la alcancía activa ya dicen en qué punto está la persona).
-      if(tituloEl) tituloEl.style.display = hist.length ? '' : 'none';
-      listaEl.style.display = hist.length ? '' : 'none';
-      if(!hist.length){
+      if(tituloEl) tituloEl.style.display = historial.length ? '' : 'none';
+      listaEl.style.display = historial.length ? '' : 'none';
+      if(!historial.length){
         listaEl.innerHTML = '';
       } else {
-        listaEl.innerHTML = [...hist].reverse().map((h,i) => {
+        listaEl.innerHTML = [...historial].reverse().map((h,i) => {
           const diferencial = (h.saldoReal||0) - (h.saldoRegistrado||0);
           const diferencialFmt = Math.abs(diferencial) < 1 ? 'Exacto'
             : diferencial > 0 ? '+' + (typeof fmt==='function'?fmt(diferencial):diferencial)
             : '−' + (typeof fmt==='function'?fmt(Math.abs(diferencial)):Math.abs(diferencial));
           const diferencialColor = Math.abs(diferencial) < 1 ? 'alc-c-text3' : diferencial > 0 ? 'alc-c-accent' : 'alc-c-red';
-          const histIdx = hist.length - i; // número de alcancía (1-based, más reciente = mayor)
-          const desgloseId = 'alc-hist-desglose-' + histIdx;
+          const historialIdx = historial.length - i; // número de alcancía (1-based, más reciente = mayor)
+          const desgloseId = 'alc-hist-desglose-' + historialIdx;
           const desgloseHtml = _alcanciaDesgloseHtml(h.movimientos || [], fmt);
           return `
           <div class="card card-sm alc-fila-mb8">
             <div class="row alc-fila-mb6">
-              <span class="alc-hist-tit">Alcancía #${histIdx}</span>
+              <span class="alc-hist-tit">Alcancía #${historialIdx}</span>
               <span class="alc-mov-fecha">${h.fechaInicio||''} <i class="fa-solid fa-arrow-right"></i> ${h.fechaFin||''}</span>
             </div>
             <div class="row alc-fila-mb4">
@@ -891,7 +891,7 @@ window.alcanciaConfirmarDeposito = function(){
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
-      if(typeof descontarFuente === 'function') descontarFuente(p.fuente, p.monto, _ogAlcancia(p.movId));
+      if(typeof descontarFuente === 'function') descontarFuente(p.fuente, p.monto, _origenLibroAlcancia(p.movId));
     } else if(p.origen !== 'deuda'){
       const info = _ALCANCIA_INFO_ORIGEN[p.origen];
       window.S.movimientos = window.S.movimientos || [];
@@ -1084,7 +1084,7 @@ window.alcanciaConfirmarDestapar = function(){
   // ── Guardar en historial
   const diasDuracion = _diasDesde(a.fechaInicio);
   if(!a.historial) a.historial = [];
-  const entradaHist = {
+  const entradaHistorial = {
     fechaInicio:      a.fechaInicio,
     fechaFin:         hoyStr,
     diasDuracion,
@@ -1094,21 +1094,21 @@ window.alcanciaConfirmarDestapar = function(){
     diferencia:       diferencial,
     movimientos:      [...(a.movimientos || [])]
   };
-  a.historial.push(entradaHist);
+  a.historial.push(entradaHistorial);
 
   // ── Preparar resultado para mostrar
   const resBody = document.getElementById('alc-resultado-body');
   if(resBody){
     const fmt2 = fmt;
-    const hist = a.historial;
-    const prev = hist.length >= 2 ? hist[hist.length - 2] : null;
+    const historial = a.historial;
+    const prev = historial.length >= 2 ? historial[historial.length - 2] : null;
     let comparHtml = '';
     if(!prev){
       comparHtml = `<div class="alc-primera">Esta es tu primera alcancía. ¡Se inicia tu historial de ahorro!</div>`;
     } else {
       const diferencialMonto  = saldoReg - (prev.saldoRegistrado||0);
       const diferencialDias   = diasDuracion - (prev.diasDuracion||0);
-      const racha = _alcanciaRachaAhorro(hist);
+      const racha = _alcanciaRachaAhorro(historial);
       const rachaMsg = racha >= 2 ? `🔥 Racha de ${racha} alcancías seguidas ahorrando más` : '';
       comparHtml = `
         <div class="card alc-cmp-card">
@@ -1264,8 +1264,8 @@ window.alcanciaEliminarDeposito = async function(movimientoId){
     deudorParaAviso = Deudas.lista('favor').find(x => x.id === entry._prestamoDeudorId) || null;
   }
   if(typeof nivelAntiguedadMovimiento === 'function'){
-    const opsPosteriores = entry.fecha ? (a.movimientos||[]).filter(m => m.id!==entry.id && m.fecha && m.fecha>entry.fecha).length : 0;
-    const nivel = nivelAntiguedadMovimiento(entry.fecha, opsPosteriores, 'alcancia');
+    const operacionesPosteriores = entry.fecha ? (a.movimientos||[]).filter(m => m.id!==entry.id && m.fecha && m.fecha>entry.fecha).length : 0;
+    const nivel = nivelAntiguedadMovimiento(entry.fecha, operacionesPosteriores, 'alcancia');
     if(nivel === 'bloqueado'){
       if(typeof avisarMovimientoBloqueado === 'function') await avisarMovimientoBloqueado();
       return;
@@ -1304,13 +1304,13 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
   // Revertir el/los registro(s) reales según el tipo
   if(entry.tipo === 'yo-cuenta'){
     _alcanciaQuitarMirrorCuenta(entry.id);
-    if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto, _ogAlcancia(entry.id, true));
+    if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto, _origenLibroAlcancia(entry.id, true));
   } else if(entry.tipo === 'multi'){
     // Varios orígenes: cada parte tiene su propio movimiento espejo (partes[].movId).
     (entry.partes || []).forEach(pt => {
       if(pt.origen === 'cuenta'){
         _alcanciaQuitarMirrorCuenta(pt.movId);
-        if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto, _ogAlcancia(pt.movId || entry.id, true));
+        if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto, _origenLibroAlcancia(pt.movId || entry.id, true));
       } else {
         window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== pt.movId);
       }
@@ -1485,13 +1485,13 @@ if(window._dataLoaded){
 
 // Sonda de la huella (js/core/huella.js): saldo registrado y su copia ofuscada, depósitos y cada ciclo ya destapado (con la suma de
 // los movimientos que guarda). Vive dentro de la IIFE porque _getSaldoOfuscado es privado; corre aislada (lee el S de la copia).
-registrarSonda('alcancia',function(st){
-  const a=st.alcancia;
+registrarSonda('alcancia',function(estadoActual){
+  const a=estadoActual.alcancia;
   if(!a) return {existe:false,entidades:{}};
   const suma=l=>(l||[]).reduce((x,m)=>x+((m&&m.monto)||0),0);
   return {
     existe:true, entidades:{alcancia:{saldo:a.saldoRegistrado||0}}, destapada:!!a._destapada, saldoRegistrado:a.saldoRegistrado||0, depositos:a.depositos||0,
-    ofuscado:st.alcanciaSaldoOfuscado?_getSaldoOfuscado():null, sumaMovimientos:suma(a.movimientos),
+    ofuscado:estadoActual.alcanciaSaldoOfuscado?_getSaldoOfuscado():null, sumaMovimientos:suma(a.movimientos),
     ciclos:(a.historial||[]).map(h=>({fechaFin:h.fechaFin||null,saldoRegistrado:h.saldoRegistrado||0,depositos:h.depositos||0,saldoReal:h.saldoReal==null?null:h.saldoReal,diferencia:h.diferencia==null?null:h.diferencia,sumaMovimientos:suma(h.movimientos)}))
   };
 });

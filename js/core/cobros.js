@@ -38,7 +38,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 // Libro (js/core/cuentas-fuentes.js): cada sumar/descontarFuente deja { modulo:'ingreso-fijo', ref:<id del espejo> }; rev=true es la reversión.
-const _ogCobro = Libro.origen('ingreso-fijo');
+const _origenLibroCobro = Libro.origen('ingreso-fijo');
 
 const COBRO_MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
@@ -46,13 +46,13 @@ function _cobroEntrar(destino, monto, fecha, desc) {
   if (!destino || !monto) return null;
   // El espejo se crea primero para que el libro apunte a su id (el orden no afecta al saldo).
   const movimientoId = registrarMovimientoEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Ingreso fijo' });
-  sumarFuente(destino, monto, _ogCobro(movimientoId || undefined));
+  sumarFuente(destino, monto, _origenLibroCobro(movimientoId || undefined));
   return movimientoId;
 }
 
 function _cobroSacar(destino, monto, movimientoId) {
   if (!destino) return;
-  descontarFuente(destino, monto, _ogCobro(movimientoId, true));
+  descontarFuente(destino, monto, _origenLibroCobro(movimientoId, true));
   borrarMovimientoEspejo(destino, movimientoId);
 }
 

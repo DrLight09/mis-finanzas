@@ -309,7 +309,7 @@ Al destapar se generan hasta 3 movimientos automáticos, y **no son intercambiab
 - `_esAlcancia: true` oculta movimientos del feed general (`_normMovimientos`) — **no decide** si cuentan como ingreso; eso lo decide la `clase` guardada.
 - `_esAlcanciaIngreso: true` identifica los ingresos reales generados al momento del depósito (regalo, mandado, yo-directo, partes sin cuenta de un depósito dividido). Son tipo `'entrada'` y **sí aparecen** en el feed porque son ingresos reales visibles.
 - Al destapar, `S.alcancia.saldoRegistrado` se resetea a `0` — necesario porque `calcPatrimonioTotal()` suma ese campo mientras está activa; si no se reseteara, el dinero quedaría contado dos veces.
-- El historial (`entradaHist`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `_alcanciaDesgloseHtml` no tendría de dónde sacar el desglose de los ciclos anteriores.
+- El historial (`entradaHistorial`) **incluye** `movimientos: [...a.movimientos]` para que las tarjetas de historial muestren el desglose por tipo. Sin esto, `_alcanciaDesgloseHtml` no tendría de dónde sacar el desglose de los ciclos anteriores.
 
 ---
 

@@ -65,8 +65,8 @@ function mesadaOrigenDeMovimientoEncargo(movimientoId){
     const pagos=(S.mesadas[parent]&&S.mesadas[parent].pagos)||{};
     for(const key of Object.keys(pagos)){
       const info=pagos[key];
-      if(info.origenEncargo&&info.origenEncargo.movId===movimientoId)return {parent,key};
-      if((info.pendienteHistorial||[]).some(h=>h.origenEncargo&&h.origenEncargo.movId===movimientoId))return {parent,key};
+      if(info.origenEncargo&&info.origenEncargo.movimientoId===movimientoId)return {parent,key};
+      if((info.pendienteHistorial||[]).some(h=>h.origenEncargo&&h.origenEncargo.movimientoId===movimientoId))return {parent,key};
     }
   }
   return null;

@@ -12,13 +12,13 @@
      sobre un <select> oculto que en la práctica nunca se disparaba)
      pasaron a data-action + Events.attr(), despachados por el sistema
      centralizado en js/core/events.js. Se registran todos al final de
-     este archivo con Events.registerAll('cp', {...}).
+     este archivo con Events.registerAll('plata-comprometida', {...}).
    - Un solo archivo alcanzó (a diferencia de Spotify/Encargos): el
      módulo no depende de nada definido más abajo en index.html — usa
      S.deudores directo para "Me devuelven", no funciones de Personas.
    - Las funciones de acción (_plataComprometidaAbrirNuevo, _plataComprometidaGuardar, etc.) y el
      estado de los sheets en construcción (_plataComprometidaMarcarId, _plataComprometidaMarcarTmp,
-     _cpdGastoOrigenVal, _cpdYaSaqueVal, _cpdYaPagueVal) vivían
+     _destinoNuevoGastoOrigenVal, _destinoNuevoYaSaqueVal, _destinoNuevoYaPagueVal) vivían
      innecesariamente en `window` — solo para que los onclick inline
      pudieran llamarlos. Ya no hace falta: quedaron como funciones y
      `let` locales al módulo.
@@ -92,7 +92,7 @@ function _injectScreen(){
     <!-- Lista -->
     <div class="cp-sec-cab">
       <div class="sec-title cp-mt0">Ingresos comprometidos</div>
-      <button type="button" ${Events.attr('cp:abrirNuevo')} class="btn-chip btn-chip-amber">
+      <button type="button" ${Events.attr('plata-comprometida:abrirNuevo')} class="btn-chip btn-chip-amber">
         <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Nuevo
       </button>
@@ -177,14 +177,14 @@ function _injectSheet(){
       <div class="cp-dest-cab-wrap">
         <div class="cp-dest-cab">
           <div class="il cp-mt0">¿A dónde va esta plata?</div>
-          <button type="button" ${Events.attr('cp:agregarDestino')} class="btn-chip btn-chip-accent btn-chip-sm"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar destino</button>
+          <button type="button" ${Events.attr('plata-comprometida:agregarDestino')} class="btn-chip btn-chip-accent btn-chip-sm"><svg aria-hidden="true" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Agregar destino</button>
         </div>
         <div id="cp-destinos-list"></div>
         <div id="cp-balance-preview" class="cp-balance-prev"></div>
       </div>
 
-      <button type="button" class="btn btn-primary cp-btn-guardar-amber" ${Events.attr('cp:guardar')}>Guardar</button>
-      <button type="button" class="btn btn-ghost" data-close-sheet="cp-nuevo" ${Events.attr('cp:cancelarSheet')}>Cancelar</button>
+      <button type="button" class="btn btn-primary cp-btn-guardar-amber" ${Events.attr('plata-comprometida:guardar')}>Guardar</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="cp-nuevo" ${Events.attr('plata-comprometida:cancelarSheet')}>Cancelar</button>
     </div>
   </div>
 
@@ -199,22 +199,22 @@ function _injectSheet(){
       <div class="cp-mb14">
         <div class="il cp-cap-mono">Tipo de destino</div>
         <div class="cp-tipos-grid" id="cpd-tipo-cards">
-          <button type="button" class="cpd-tipo-card cp-tipo-card-a" data-tipo="reposicion" ${Events.attr('cp:dSetTipo','reposicion')}
+          <button type="button" class="cpd-tipo-card cp-tipo-card-a" data-tipo="reposicion" ${Events.attr('plata-comprometida:dSetTipo','reposicion')}
            >
             <div class="cp-tipo-tit"><i class="fa-solid fa-rotate-left cp-ico-r5-12"></i>Reponer</div>
             <div class="cp-tipo-sub">Devolver plata de una cajita que ya usé</div>
           </button>
-          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="gasto" ${Events.attr('cp:dSetTipo','gasto')}
+          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="gasto" ${Events.attr('plata-comprometida:dSetTipo','gasto')}
            >
             <div class="cp-tipo-tit"><i class="fa-solid fa-receipt cp-ico-r5-12"></i>Gasto</div>
             <div class="cp-tipo-sub">Cubrir un pago próximo o en TC</div>
           </button>
-          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="abono_deuda" ${Events.attr('cp:dSetTipo','abono_deuda')}
+          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="abono_deuda" ${Events.attr('plata-comprometida:dSetTipo','abono_deuda')}
            >
             <div class="cp-tipo-tit"><i class="fa-solid fa-handshake cp-ico-r5-12"></i>Me devuelven</div>
             <div class="cp-tipo-sub">Abono a lo que me deben</div>
           </button>
-          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="otro" ${Events.attr('cp:dSetTipo','otro')}
+          <button type="button" class="cpd-tipo-card cp-tipo-card-b" data-tipo="otro" ${Events.attr('plata-comprometida:dSetTipo','otro')}
            >
             <div class="cp-tipo-tit"><i class="fa-solid fa-tag cp-ico-r5-12"></i>Otro</div>
             <div class="cp-tipo-sub">Solo registro, sin mover saldos</div>
@@ -248,12 +248,12 @@ function _injectSheet(){
         <div class="il cp-mb8">¿De dónde salió o va a salir esta plata?</div>
         <div class="cp-origen-btns">
           <button type="button" id="cpd-origen-cajita-btn"
-            ${Events.attr('cp:dSetGastoOrigen','cajita')}
+            ${Events.attr('plata-comprometida:dSetGastoOrigen','cajita')}
             class="cp-origen-btn-a">
             <i class="fa-solid fa-box cp-ico-r5"></i>De una cajita
           </button>
           <button type="button" id="cpd-origen-tc-btn"
-            ${Events.attr('cp:dSetGastoOrigen','tc')}
+            ${Events.attr('plata-comprometida:dSetGastoOrigen','tc')}
             class="cp-origen-btn-b">
             <i class="fa-solid fa-credit-card cp-ico-r5"></i>De la tarjeta
           </button>
@@ -287,12 +287,12 @@ function _injectSheet(){
         <div class="il cp-mb8">¿Ya adelantaste esta plata?</div>
         <div class="cp-btns-fila">
           <button type="button" id="cpd-ya-saque-si"
-            ${Events.attr('cp:dSetYaSaque',true)}
+            ${Events.attr('plata-comprometida:dSetYaSaque',true)}
             class="cp-origen-btn-b">
             <i class="fa-solid fa-check cp-ico-r5"></i>Sí, ya la saqué
           </button>
           <button type="button" id="cpd-ya-saque-no"
-            ${Events.attr('cp:dSetYaSaque',false)}
+            ${Events.attr('plata-comprometida:dSetYaSaque',false)}
             class="cp-btn-fecha-a">
             <i class="fa-regular fa-circle cp-ico-r5"></i>No, esperaré
           </button>
@@ -310,18 +310,18 @@ function _injectSheet(){
         <div class="il cp-mb8">¿Ya lo pagaste?</div>
         <div class="cp-btns-fila">
           <button type="button" id="cpd-ya-pague-si"
-            ${Events.attr('cp:dSetYaPague',true)}
+            ${Events.attr('plata-comprometida:dSetYaPague',true)}
             class="cp-origen-btn-b">
             <i class="fa-solid fa-check cp-ico-r5"></i>Sí, ya lo pagué
           </button>
           <button type="button" id="cpd-ya-pague-no"
-            ${Events.attr('cp:dSetYaPague',false)}
+            ${Events.attr('plata-comprometida:dSetYaPague',false)}
             class="cp-btn-fecha-b">
             <i class="fa-regular fa-circle cp-ico-r5"></i>Pendiente de pagar
           </button>
         </div>
       </div>
-      <button type="button" class="btn btn-primary cp-btn-agregar-dest" ${Events.attr('cp:dConfirmar')}>Agregar este destino</button>
+      <button type="button" class="btn btn-primary cp-btn-agregar-dest" ${Events.attr('plata-comprometida:dConfirmar')}>Agregar este destino</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-destino">Cancelar</button>
     </div>
   </div>
@@ -360,7 +360,7 @@ function _injectSheet(){
         <input type="date" id="cp-recibir-fecha">
       </div>
 
-      <button type="button" class="btn btn-primary cp-btn-confirmar" ${Events.attr('cp:confirmarRecibir')}>Confirmar y distribuir</button>
+      <button type="button" class="btn btn-primary cp-btn-confirmar" ${Events.attr('plata-comprometida:confirmarRecibir')}>Confirmar y distribuir</button>
       <button type="button" class="btn btn-ghost" data-close-sheet="cp-recibir">Cancelar</button>
     </div>
   </div>
@@ -374,9 +374,9 @@ let _plataComprometidaDestinosTmp = [];   // destinos mientras se construye el n
 let _plataComprometidaRecibirId = null;
 let _plataComprometidaMarcarId = null;         // id del ingreso cuyo sheet "Pagos" está abierto
 let _plataComprometidaMarcarTmp = null;        // copia de trabajo de destinos mientras se marca
-let _cpdGastoOrigenVal = 'cajita'; // origen elegido en el destino "Gasto" que se está armando
-let _cpdYaSaqueVal = false;        // ¿ya adelantó? (destino "Reposición" en construcción)
-let _cpdYaPagueVal = false;        // ¿ya pagó/cargó? (destino "Gasto"/"Otro" en construcción)
+let _destinoNuevoGastoOrigenVal = 'cajita'; // origen elegido en el destino "Gasto" que se está armando
+let _destinoNuevoYaSaqueVal = false;        // ¿ya adelantó? (destino "Reposición" en construcción)
+let _destinoNuevoYaPagueVal = false;        // ¿ya pagó/cargó? (destino "Gasto"/"Otro" en construcción)
 
 /* ── HELPERS ─────────────────────────────────────────────────────── */
 // Origen de las patas de saldo de este módulo (libro-de-movimientos.md §3.3). `ref` es el id del destino que causó el
@@ -558,21 +558,21 @@ function _plataComprometidaRenderLista(){
 
         <!-- Acciones -->
         <div class="cp-item-btns">
-          <button type="button" ${raw(Events.attr('cp:abrirRecibir', item.id))}
+          <button type="button" ${raw(Events.attr('plata-comprometida:abrirRecibir', item.id))}
             class="cp-btn-recibir">
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
             ¡Llegó!
           </button>
-          <button type="button" ${raw(Events.attr('cp:marcarPagos', item.id))}
+          <button type="button" ${raw(Events.attr('plata-comprometida:marcarPagos', item.id))}
             class="cp-btn-b"
             title="Marcar qué ya pagaste">
             <i class="fa-solid fa-check-double cp-ico-r5"></i>Pagos
           </button>
-          <button type="button" ${raw(Events.attr('cp:abrirEditar', item.id))}
+          <button type="button" ${raw(Events.attr('plata-comprometida:abrirEditar', item.id))}
             class="cp-btn-editar">
             Editar
           </button>
-          <button type="button" ${raw(Events.attr('cp:eliminar', item.id))}
+          <button type="button" ${raw(Events.attr('plata-comprometida:eliminar', item.id))}
             class="cp-btn-borrar">
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
           </button>
@@ -639,7 +639,7 @@ function _plataComprometidaRenderLista(){
           <span class="cp-rec-monto">${fmt(item.montoTotal)}</span>
         </div>
         ${guardadaHtml}
-        <button type="button" ${raw(Events.attr('cp:marcarPagos', item.id))}
+        <button type="button" ${raw(Events.attr('plata-comprometida:marcarPagos', item.id))}
           class="cp-rec-btn">
           <i class="fa-solid fa-check cp-ico-r5"></i>Marcar como pagado
         </button>
@@ -754,7 +754,7 @@ function _plataComprometidaGuardar(){
 };
 
 /* ── DESTINOS TEMPORALES ─────────────────────────────────────────── */
-function _cpdSetTipo(tipo){
+function _destinoNuevoSetTipo(tipo){
   // Actualizar hidden select
   const sel = document.getElementById('cpd-tipo');
   if(sel){ sel.value = tipo; }
@@ -779,7 +779,7 @@ function _cpdSetTipo(tipo){
     }
   });
   // Llamar el handler original
-  if(typeof _cpdTipoChange === 'function') _cpdTipoChange();
+  if(typeof _destinoNuevoTipoChange === 'function') _destinoNuevoTipoChange();
 };
 
 function _plataComprometidaAgregarDestino(){
@@ -791,12 +791,12 @@ function _plataComprometidaAgregarDestino(){
   const fpInput = document.getElementById('cpd-fecha-pago');
   if(fpInput) fpInput.value = '';
   // Activar "reposicion" por defecto con UI de tarjeta
-  _cpdSetTipo('reposicion');
+  _destinoNuevoSetTipo('reposicion');
   openSheet('cp-destino');
   focusSheetField('cpd-desc');
 };
 
-function _cpdTipoChange(){
+function _destinoNuevoTipoChange(){
   const tipo = document.getElementById('cpd-tipo').value;
   const personaWrap     = document.getElementById('cpd-persona-wrap');
   const gastoOrigenWrap = document.getElementById('cpd-gasto-origen-wrap');
@@ -809,17 +809,17 @@ function _cpdTipoChange(){
   if(cuentaWrap)      cuentaWrap.style.display       = tipo==='reposicion' ? '' : 'none';
   if(yaSaqueWrap)     yaSaqueWrap.style.display      = tipo==='reposicion' ? '' : 'none';
   if(yaPagueWrap)     yaPagueWrap.style.display      = (tipo==='gasto'||tipo==='otro') ? '' : 'none';
-  // fechaPago solo aplica a gastos de cajita, se controla después en _cpdSetYaPague/_cpdSetGastoOrigen
+  // fechaPago solo aplica a gastos de cajita, se controla después en _destinoNuevoSetYaPague/_destinoNuevoSetGastoOrigen
   const fechaPagoWrap = document.getElementById('cpd-fecha-pago-wrap');
   if(fechaPagoWrap) fechaPagoWrap.style.display = 'none';
 
   if(tipo==='gasto'){
-    _cpdSetGastoOrigen(_cpdGastoOrigenVal||'cajita');
-    _cpdPoblarGastoSelectores();
+    _destinoNuevoSetGastoOrigen(_destinoNuevoGastoOrigenVal||'cajita');
+    _destinoNuevoPoblarGastoSelectores();
   }
 
-  _cpdSetYaSaque(false);
-  _cpdSetYaPague(false);
+  _destinoNuevoSetYaSaque(false);
+  _destinoNuevoSetYaPague(false);
 
   const descInput = document.getElementById('cpd-desc');
   if(descInput && !descInput.value){
@@ -834,15 +834,15 @@ function _cpdTipoChange(){
 // Opciones de «de dónde sale» para los selectores de gasto: SIEMPRE desde opcionesCuenta() (js/core/cuentas-fuentes.js: cajitas de cuentas de ahorro activas +
 // cuentas activas con saldo), así no aparecen cuentas archivadas ni la cuenta de ahorro en sí (no tiene saldo propio) y la lista se
 // refresca si cambian las cuentas. Conserva la opción elegida si sigue existiendo.
-function _cpdRepoblarFuentes(sel){
+function _destinoNuevoRepoblarFuentes(sel){
   if(!sel) return;
   const previo = sel.value;
   const placeholder = sel.options.length ? sel.options[0].textContent : 'Sin especificar';
   sel.innerHTML = opcionesCuenta({ selectedVal: previo, placeholder });
 }
 
-function _cpdPoblarGastoSelectores(){
-  _cpdRepoblarFuentes(document.getElementById('cpd-gasto-cajita'));
+function _destinoNuevoPoblarGastoSelectores(){
+  _destinoNuevoRepoblarFuentes(document.getElementById('cpd-gasto-cajita'));
   const selTc = document.getElementById('cpd-gasto-tc');
   if(selTc && selTc.options.length <= 1){
     (S.tarjetasCredito||[]).filter(t=>(t.estado||'activa')==='activa').forEach(t=>{
@@ -853,11 +853,11 @@ function _cpdPoblarGastoSelectores(){
     });
   }
   // Selector de cajita destino para gastos con TC (siempre repoblar)
-  _cpdRepoblarFuentes(document.getElementById('cpd-gasto-tc-cajita'));
+  _destinoNuevoRepoblarFuentes(document.getElementById('cpd-gasto-tc-cajita'));
 }
 
-function _cpdSetGastoOrigen(val){
-  _cpdGastoOrigenVal = val;
+function _destinoNuevoSetGastoOrigen(val){
+  _destinoNuevoGastoOrigenVal = val;
   const cajitaBtn  = document.getElementById('cpd-origen-cajita-btn');
   const tcBtn   = document.getElementById('cpd-origen-tc-btn');
   const cajitaWrap = document.getElementById('cpd-gasto-cajita-wrap');
@@ -868,24 +868,24 @@ function _cpdSetGastoOrigen(val){
     tcBtn.style.cssText  += ';background:transparent;border-color:var(--border2);color:var(--text2);';
     if(cajitaWrap) cajitaWrap.style.display = '';
     if(tcWrap)  tcWrap.style.display  = 'none';
-    _cpdPoblarGastoSelectores();
+    _destinoNuevoPoblarGastoSelectores();
     // Mostrar fecha pago solo si es cajita y no está ya pagado
     const fechaPagoWrapG = document.getElementById('cpd-fecha-pago-wrap');
-    if(fechaPagoWrapG) fechaPagoWrapG.style.display = _cpdYaPagueVal ? 'none' : '';
+    if(fechaPagoWrapG) fechaPagoWrapG.style.display = _destinoNuevoYaPagueVal ? 'none' : '';
   } else {
     tcBtn.style.cssText  += ';background:rgba(240,104,104,.12);border-color:rgba(240,104,104,.5);color:var(--red);';
     cajitaBtn.style.cssText += ';background:transparent;border-color:var(--border2);color:var(--text2);';
     if(tcWrap)  tcWrap.style.display  = '';
     if(cajitaWrap) cajitaWrap.style.display = 'none';
-    _cpdPoblarGastoSelectores();
+    _destinoNuevoPoblarGastoSelectores();
     // Ocultar fecha pago para TC
     const fechaPagoWrapG = document.getElementById('cpd-fecha-pago-wrap');
     if(fechaPagoWrapG) fechaPagoWrapG.style.display = 'none';
   }
 };
 
-function _cpdSetYaSaque(val){
-  _cpdYaSaqueVal = val;
+function _destinoNuevoSetYaSaque(val){
+  _destinoNuevoYaSaqueVal = val;
   const si = document.getElementById('cpd-ya-saque-si');
   const no = document.getElementById('cpd-ya-saque-no');
   if(!si || !no) return;
@@ -906,8 +906,8 @@ function _cpdSetYaSaque(val){
   }
 };
 
-function _cpdSetYaPague(val){
-  _cpdYaPagueVal = val;
+function _destinoNuevoSetYaPague(val){
+  _destinoNuevoYaPagueVal = val;
   const si = document.getElementById('cpd-ya-pague-si');
   const no = document.getElementById('cpd-ya-pague-no');
   if(!si || !no) return;
@@ -930,13 +930,13 @@ function _cpdSetYaPague(val){
   const fpWrap = document.getElementById('cpd-fecha-pago-wrap');
   if(fpWrap){
     const esGastoCajita = document.getElementById('cpd-tipo') && document.getElementById('cpd-tipo').value === 'gasto'
-      && _cpdGastoOrigenVal === 'cajita';
+      && _destinoNuevoGastoOrigenVal === 'cajita';
     fpWrap.style.display = (esGastoCajita && !val) ? '' : 'none';
   }
 };
 
 
-function _cpdConfirmar(){
+function _destinoNuevoConfirmar(){
   const tipo  = document.getElementById('cpd-tipo').value;
   const desc  = (document.getElementById('cpd-desc').value||'').trim();
   if(!desc){ toast('Describe para qué es','err'); return; }
@@ -954,7 +954,7 @@ function _cpdConfirmar(){
   let gastoTcId   = '';   // id de TC si origen=tc
   let gastoTcCajita = ''; // cajita donde va la plata al llegar el ingreso (si origen=tc)
   if(tipo === 'gasto'){
-    gastoOrigen = _cpdGastoOrigenVal || 'cajita';
+    gastoOrigen = _destinoNuevoGastoOrigenVal || 'cajita';
     if(gastoOrigen === 'cajita'){
       gastoCajita = document.getElementById('cpd-gasto-cajita') ? document.getElementById('cpd-gasto-cajita').value : '';
     } else {
@@ -964,8 +964,8 @@ function _cpdConfirmar(){
     }
   }
 
-  const yaSaque = tipo === 'reposicion' ? (_cpdYaSaqueVal === true) : false;
-  const yaPague = (tipo === 'gasto' || tipo === 'otro') ? (_cpdYaPagueVal === true) : false;
+  const yaSaque = tipo === 'reposicion' ? (_destinoNuevoYaSaqueVal === true) : false;
+  const yaPague = (tipo === 'gasto' || tipo === 'otro') ? (_destinoNuevoYaPagueVal === true) : false;
   let _tcCompraIdInicial = '';
   const destinoId = uid(); // id del destino: también es el `ref` de sus entradas del libro
 
@@ -1097,7 +1097,7 @@ function _plataComprometidaRenderDestinosTmp(){
         </div>
         <div class="cp-sd-der">
           <div class="cp-tipo-monto cp-tc-${ti.k}">${fmt(d.monto)}</div>
-          <button type="button" ${raw(Events.attr('cp:quitarDestino', i))} class="cp-btn-x" title="Quitar">
+          <button type="button" ${raw(Events.attr('plata-comprometida:quitarDestino', i))} class="cp-btn-x" title="Quitar">
             <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
         </div>
@@ -1480,8 +1480,8 @@ function _plataComprometidaMarcarPagos(id){
       <div class="sheet-title">Marcar estado de pagos</div>
       <div class="cp-sub-intro">Toca cada ítem para cambiar su estado.</div>
       <div id="cp-marcar-list"></div>
-      <button type="button" class="btn btn-primary cp-btn-guardar-acc" ${Events.attr('cp:guardarMarcados')}>Guardar</button>
-      <button type="button" class="btn btn-ghost" data-close-sheet="cp-marcar" ${Events.attr('cp:cerrarMarcar')}>Cancelar</button>
+      <button type="button" class="btn btn-primary cp-btn-guardar-acc" ${Events.attr('plata-comprometida:guardarMarcados')}>Guardar</button>
+      <button type="button" class="btn btn-ghost" data-close-sheet="cp-marcar" ${Events.attr('plata-comprometida:cerrarMarcar')}>Cancelar</button>
     </div>`;
     document.body.appendChild(div);
     // Swipe — usando la función unificada (sección 7)
@@ -1520,11 +1520,11 @@ function _plataComprometidaRenderMarcarList(){
         </div>
       </div>
       <div class="cp-mar-btns">
-        <button type="button" ${raw(Events.attr('cp:toggleMarcar', i, false))}
+        <button type="button" ${raw(Events.attr('plata-comprometida:toggleMarcar', i, false))}
           class="cp-tgl ${!estado?'cp-tgl-off-act':'cp-tgl-inact'}">
           ${raw(labelOff)}
         </button>
-        <button type="button" ${raw(Events.attr('cp:toggleMarcar', i, true))}
+        <button type="button" ${raw(Events.attr('plata-comprometida:toggleMarcar', i, true))}
           class="cp-tgl ${estado?(esReposicion?'cp-tgl-on-rep':'cp-tgl-on-ing'):'cp-tgl-inact'}">
           ${raw(labelOn)}
         </button>
@@ -1965,11 +1965,11 @@ function _plataComprometidaInit(){
   }
 
   // Select oculto de tipo de destino: por defensividad, si algo llega a
-  // cambiar su valor y disparar 'change' (hoy no ocurre — _cpdSetTipo ya
-  // llama a _cpdTipoChange() directo), lo conectamos igual sin onchange inline.
-  const cpdTipoSel = document.getElementById('cpd-tipo');
-  if(cpdTipoSel){
-    cpdTipoSel.addEventListener('change', ()=>_cpdTipoChange());
+  // cambiar su valor y disparar 'change' (hoy no ocurre — _destinoNuevoSetTipo ya
+  // llama a _destinoNuevoTipoChange() directo), lo conectamos igual sin onchange inline.
+  const destinoNuevoTipoSel = document.getElementById('cpd-tipo');
+  if(destinoNuevoTipoSel){
+    destinoNuevoTipoSel.addEventListener('change', ()=>_destinoNuevoTipoChange());
   }
 
   // Conectar botones data-close-sheet de los nuevos sheets
@@ -1998,17 +1998,17 @@ function _plataComprometidaInit(){
    Namespace "cp" — ver js/core/events.js. Reemplaza los onclick
    inline que tenía este módulo (27 en total: 26 onclick + 1 onchange
    sobre un <select> oculto que en la práctica nunca se disparaba). */
-Events.registerAll('cp', {
+Events.registerAll('plata-comprometida', {
   abrirNuevo:       _plataComprometidaAbrirNuevo,
   abrirEditar:      _plataComprometidaAbrirEditar,
   cancelarSheet:    _plataComprometidaCancelSheet,
   guardar:          _plataComprometidaGuardar,
   agregarDestino:   _plataComprometidaAgregarDestino,
-  dSetTipo:         _cpdSetTipo,
-  dSetGastoOrigen:  _cpdSetGastoOrigen,
-  dSetYaSaque:      _cpdSetYaSaque,
-  dSetYaPague:      _cpdSetYaPague,
-  dConfirmar:       _cpdConfirmar,
+  dSetTipo:         _destinoNuevoSetTipo,
+  dSetGastoOrigen:  _destinoNuevoSetGastoOrigen,
+  dSetYaSaque:      _destinoNuevoSetYaSaque,
+  dSetYaPague:      _destinoNuevoSetYaPague,
+  dConfirmar:       _destinoNuevoConfirmar,
   quitarDestino:    _plataComprometidaQuitarDestino,
   abrirRecibir:     _plataComprometidaAbrirRecibir,
   confirmarRecibir: _plataComprometidaConfirmarRecibir,

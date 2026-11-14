@@ -6,7 +6,7 @@
    movimiento desde el feed general de actividad y desde el detalle de cada
    cuenta — por eso vive en js/core/, junto a events.js, y no en js/modules/.
 
-   - abrirDetalleMov(el)   — abre el sheet "detalle de movimiento" (saldo
+   - abrirDetalleMovimiento(el)   — abre el sheet "detalle de movimiento" (saldo
      antes/después de la fuente involucrada). Reconstruye el saldo histórico
      recorriendo la lista de movimientos de la fuente hasta el índice del
      movimiento clickeado.
@@ -31,7 +31,7 @@
        Si el array de destino no está ahí, borrar revierte el saldo pero
        deja el registro zombie parado para siempre.
    (b) Relacional — el objeto SÍ se borra limpio de su propio array, pero
-       tiene un campo que lo liga a un "dueño" en otro módulo (_encMovId,
+       tiene un campo que lo liga a un "dueño" en otro módulo (_encargoMovimientoId,
        spotifyId, _viaEncargo, _tcId...) que no se entera del borrado y sigue
        mostrando el evento como vigente.
 
@@ -48,7 +48,7 @@
         dueño externo que sincronizar) es seguro dejarlo borrable directo —
         caso real: "Préstamo dado" (deudores[].movimientos), único registro
         del evento — pero NO lo revierte una rama de acá: eliminarMovimiento()
-        delega en eliminarMovDeudor() (prestado.js), la única implementación
+        delega en eliminarMovimientoDeudor() (prestado.js), la única implementación
         completa (fuentes divididas, vía TC/encargo/Alcancía, grupos).
 
    Se registran bajo el namespace Events 'core:' (no bajo el de ningún
@@ -58,7 +58,7 @@
    Sin dependencia real de orden de carga: ambas funciones se llaman desde
    data-action="core:..." (click-time), nunca en el momento en que este
    script se parsea — así que basta con que carguen en algún punto antes de
-   que Events.on('core:abrirDetalleMov', ...) / Events.on('core:eliminarMovimiento', ...)
+   que Events.on('core:abrirDetalleMovimiento', ...) / Events.on('core:eliminarMovimiento', ...)
    se ejecuten en index.html (que sigue siendo donde se registran, junto al
    resto del wiring de Events).
 
@@ -81,10 +81,10 @@ const _origenLibroMovimiento = Libro.origen('movimientos');
 // `el` es el .gasto-item / .card clickeado, con data-mov-* attributes.
 function abrirDetalleMovimiento(el){
   if(!el) return;
-  const movimientoId = el.dataset.movId;
-  const movimientoTipo = el.dataset.movTipo || '';
-  const fuente = el.dataset.movFuenteReal || el.dataset.movFuente || '';
-  const montoAbs = parseFloat(el.dataset.movMonto) || 0;
+  const movimientoId = el.dataset.movimientoId;
+  const movimientoTipo = el.dataset.movimientoTipo || '';
+  const fuente = el.dataset.movimientoFuenteReal || el.dataset.movimientoFuente || '';
+  const montoAbs = parseFloat(el.dataset.movimientoMonto) || 0;
   const cuentaKey = el.dataset.cuentaKey || '';
   let monto, fecha, desc, saldoAntes, saldoDespues, saldoLabel;
 
@@ -92,11 +92,11 @@ function abrirDetalleMovimiento(el){
     // Movimiento que afecta una deuda/saldo de terceros (préstamo/abono, compra/pago TC, entrada/salida encargo)
     const aumentaSaldo = (movimientoTipo === 'prestamo' || movimientoTipo === 'compra' || movimientoTipo === 'entrada');
     monto = aumentaSaldo ? montoAbs : -montoAbs;
-    fecha = el.dataset.movFecha || '';
-    desc = el.dataset.movDesc || (aumentaSaldo ? 'Entrada' : 'Salida');
-    saldoAntes = parseFloat(el.dataset.movSaldoAntes) || 0;
-    saldoDespues = parseFloat(el.dataset.movSaldoDespues) || 0;
-    saldoLabel = el.dataset.movSaldoLabel || 'Saldo';
+    fecha = el.dataset.movimientoFecha || '';
+    desc = el.dataset.movimientoDesc || (aumentaSaldo ? 'Entrada' : 'Salida');
+    saldoAntes = parseFloat(el.dataset.movimientoSaldoAntes) || 0;
+    saldoDespues = parseFloat(el.dataset.movimientoSaldoDespues) || 0;
+    saldoLabel = el.dataset.movimientoSaldoLabel || 'Saldo';
   } else if(!fuente){
     // Sin fuente identificable — no hay saldo que calcular
     return;
@@ -106,7 +106,7 @@ function abrirDetalleMovimiento(el){
   if(esFuenteCuenta(fuente)){
     // Cuenta normal: getMovimientosCuenta incluye todas las fuentes que la afectan
     lista = getMovimientosCuenta(fuente);
-    idx = lista.findIndex(m => m._movId === movimientoId);
+    idx = lista.findIndex(m => m._movimientoId === movimientoId);
     if(idx===-1) return;
     signedFn = m => m.monto;
     const m = lista[idx];
@@ -116,7 +116,7 @@ function abrirDetalleMovimiento(el){
     const cajita = (S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]);
     const tipoCuenta = cajita && cajita.cuentaId ? fuenteDeCuenta(cajita.cuentaId) : fuente;
     lista = getMovimientosCuenta(tipoCuenta).filter(m=>m.fuente===fuente);
-    idx = lista.findIndex(m=> movimientoId ? m._movId===movimientoId : (m.fecha===el.dataset.movFecha && Math.abs(m.monto)===montoAbs));
+    idx = lista.findIndex(m=> movimientoId ? m._movimientoId===movimientoId : (m.fecha===el.dataset.movimientoFecha && Math.abs(m.monto)===montoAbs));
     if(idx===-1) return;
     signedFn = m => m.monto;
     const m = lista[idx];
@@ -138,7 +138,7 @@ function abrirDetalleMovimiento(el){
   const tipoLabel = { gasto:'Gasto', ingreso:'Ingreso', apertura:'Apertura', prestamo:'Préstamo', abono:'Abono', compra:'Compra', mesada:'Mesada', transferencia:'Transferencia', salida_manual:'Retiro' }[movimientoTipo] || movimientoTipo;
 
   // Sección de origen (módulo donde se registró este movimiento)
-  const origenLabel = el.dataset.movOrigen || '';
+  const origenLabel = el.dataset.movimientoOrigen || '';
   const origenHtml = origenLabel ? `
     <div class="mdet-origen">
       <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="mdet-no-shrink"><path d="M9 18l6-6-6-6"/></svg>
@@ -147,7 +147,7 @@ function abrirDetalleMovimiento(el){
 
   // Otras cuentas implicadas en este mismo movimiento (transferencias, splits, etc.)
   let otrasCuentas = [];
-  try { otrasCuentas = JSON.parse(el.dataset.movOtras || '[]'); } catch(_){ otrasCuentas = []; }
+  try { otrasCuentas = JSON.parse(el.dataset.movimientoOtras || '[]'); } catch(_){ otrasCuentas = []; }
   const otrasHtml = (otrasCuentas && otrasCuentas.length) ? `
     <div class="mdet-caja-saldo">
       <div class="mdet-cap-saldo">Otras cuentas implicadas</div>
@@ -166,7 +166,7 @@ function abrirDetalleMovimiento(el){
     if (movimientoId) {
       if (cuentaKey === 'encargo') {
         // Buscar en todos los encargos (no solo el activo, para cubrir casos donde el usuario navegó)
-        const encargoIdHint = el.dataset.movEncId || null;
+        const encargoIdHint = el.dataset.movimientoEncargoId || null;
         const todosEncs = (S.encargos||[]);
         for (const encargo of todosEncs) {
           const found = (encargo.movimientos||[]).find(m=>m.id===movimientoId);
@@ -243,9 +243,9 @@ function abrirDetalleMovimiento(el){
 
     // ── Sobrante del diferencial de encargo (ingreso generado automáticamente) ─
     if (rm._esDiferencialEncargo) {
-      const encargoMovimientoRef = rm._encMovId ? (() => {
+      const encargoMovimientoRef = rm._encargoMovimientoId ? (() => {
         for (const encargo of (S.encargos||[])) {
-          const m = (encargo.movimientos||[]).find(x=>x.id===rm._encMovId);
+          const m = (encargo.movimientos||[]).find(x=>x.id===rm._encargoMovimientoId);
           if (m) return { encargo, movimiento: m };
         }
         return null;
@@ -399,10 +399,10 @@ function abrirDetalleMovimiento(el){
     }
 
     // ── Vía encargo ─────────────────────────────────────────────────────────
-    if (rm._viaEncargo && rm._encNombre) {
+    if (rm._viaEncargo && rm._encargoNombre) {
       richParts.push(`
         <div class="mdet-aviso-azul">
-          <div class="mdet-txt">Este pago salió del encargo de <strong>${escHtml(rm._encNombre)}</strong>, no de tu bolsillo directamente.</div>
+          <div class="mdet-txt">Este pago salió del encargo de <strong>${escHtml(rm._encargoNombre)}</strong>, no de tu bolsillo directamente.</div>
         </div>`);
     }
 
@@ -490,7 +490,7 @@ function _movimientoExiste(tipo, id) {
 const _movimientoEliminando = new Set();
 async function eliminarMovimiento(btn) {
   const item = btn && btn.closest && btn.closest('.gasto-item');
-  const id = item && item.dataset && item.dataset.movId;
+  const id = item && item.dataset && item.dataset.movimientoId;
   if (!id) return;
   if (_movimientoEliminando.has(id)) return;
   _movimientoEliminando.add(id);
@@ -501,12 +501,12 @@ async function eliminarMovimiento(btn) {
 async function _eliminarMovimientoImpl(btn) {
   const item = btn.closest('.gasto-item');
   if (!item) return;
-  const movimientoId = item.dataset.movId;
-  const movimientoTipoEl = item.dataset.movTipo;
-  const fuenteOrigen = item.dataset.movFuente;
-  const fuenteDestino = item.dataset.movDestino;
-  const monto = parseFloat(item.dataset.movMonto) || 0;
-  const fechaItem = item.dataset.movFecha || '';
+  const movimientoId = item.dataset.movimientoId;
+  const movimientoTipoEl = item.dataset.movimientoTipo;
+  const fuenteOrigen = item.dataset.movimientoFuente;
+  const fuenteDestino = item.dataset.movimientoDestino;
+  const monto = parseFloat(item.dataset.movimientoMonto) || 0;
+  const fechaItem = item.dataset.movimientoFecha || '';
 
   // Bloquear si es un movimiento secundario (generado automáticamente por otra sección)
   const movimientoObj = (S.movimientos || []).find(x => x.id === movimientoId)
@@ -527,7 +527,7 @@ async function _eliminarMovimientoImpl(btn) {
   // (`fuentes`), vía TC (`_viaTC`), abonos con `destinos`/encargo/Alcancía, ni
   // reevaluar los grupos de préstamo — y la protección por antigüedad de esa copia
   // llamaba funciones de prestado.js (grupo lazy) sin guard. Se delega en
-  // eliminarMovDeudor(), que trae todo eso; { desdeFeed: true } evita que navegue
+  // eliminarMovimientoDeudor(), que trae todo eso; { desdeFeed: true } evita que navegue
   // al detalle del deudor (el usuario se queda en la cuenta desde donde borró).
   if (movimientoTipoEl === 'prestamo' || movimientoTipoEl === 'abono') {
     const deudorDueno = Deudas.lista('favor').find(d => (d.movimientos || []).some(x => x.id === movimientoId));
@@ -701,7 +701,7 @@ async function _eliminarMovimientoImpl(btn) {
 
 // Vuelve a pintar la cuenta que está abierta (saldo + movimientos) después de
 // borrar un movimiento. Compartido por el final de eliminarMovimiento() y por la
-// delegación en eliminarMovDeudor() (préstamo/abono).
+// delegación en eliminarMovimientoDeudor() (préstamo/abono).
 function _rerenderCuentaActiva() {
   // cuentaActual vive en cuentas.js (grupo lazy): guard typeof, igual que refresh() en
   // el núcleo. Vale para cualquier cuenta abierta ('cuenta:ID').
@@ -710,7 +710,7 @@ function _rerenderCuentaActiva() {
 }
 
 // Registro bajo el namespace 'core' — ver nota de cabecera de este archivo.
-Events.on('core:abrirDetalleMov', abrirDetalleMovimiento);
+Events.on('core:abrirDetalleMovimiento', abrirDetalleMovimiento);
 Events.on('core:eliminarMovimiento', eliminarMovimiento);
 // Marca o quita «extraordinario» en una entrada ya registrada (S.movimientos). No mueve plata: solo cambia cómo cuenta en el ingreso típico.
 function toggleExtraordinario(id) {

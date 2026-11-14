@@ -46,19 +46,19 @@ let S={
     proteccionAntiguedad:{
       diasAviso:90,
       diasBloqueo:365,
-      spotify:{opsAviso:2,opsBloqueo:5},
-      mesada:{opsAviso:2,opsBloqueo:5},
-      prestamos:{opsAviso:2,opsBloqueo:5},
-      encargos:{opsAviso:2,opsBloqueo:5},
-      tarjetas:{opsAviso:2,opsBloqueo:5},
-      cuentas:{opsAviso:2,opsBloqueo:5},
-      gastos:{opsAviso:2,opsBloqueo:5},
-      alcancia:{opsAviso:2,opsBloqueo:5},
-      plata_comprometida:{opsAviso:2,opsBloqueo:5}
+      spotify:{operacionesAviso:2,operacionesBloqueo:5},
+      mesada:{operacionesAviso:2,operacionesBloqueo:5},
+      prestamos:{operacionesAviso:2,operacionesBloqueo:5},
+      encargos:{operacionesAviso:2,operacionesBloqueo:5},
+      tarjetas:{operacionesAviso:2,operacionesBloqueo:5},
+      cuentas:{operacionesAviso:2,operacionesBloqueo:5},
+      gastos:{operacionesAviso:2,operacionesBloqueo:5},
+      alcancia:{operacionesAviso:2,operacionesBloqueo:5},
+      plata_comprometida:{operacionesAviso:2,operacionesBloqueo:5}
     }
   }
   // alcancia: {saldoRegistrado, depositos, fechaInicio, movimientos:[{id,monto,fecha,tipo,tipoLabel,desc,fuenteOrigen,ts,partes?}], historial:[...]}
-  //   tipo: yo-cuenta|yo-directo|regalo|mandado|cobro-deuda (un solo origen) | multi (varios: partes:[{origen,monto,fuente?,movId}])
+  //   tipo: yo-cuenta|yo-directo|regalo|mandado|cobro-deuda (un solo origen) | multi (varios: partes:[{origen,monto,fuente?,movimientoId}])
   // alcanciaSaldoOfuscado: string (XOR+Base64 del JSON {saldo:N}) — guardado en S pero no visible en UI
   // ingresosFijos: [{id, nombre, monto, desde}]
   // desde: 'YYYY-MM' — el mes desde el cual aplica este ingreso (para escalar en el futuro)

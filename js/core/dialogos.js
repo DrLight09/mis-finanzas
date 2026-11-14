@@ -129,7 +129,7 @@ function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora); }   /
 //                                 registradas sobre la misma cuenta/ciclo
 //                                 (0 si el módulo aún no define este criterio).
 // @param {string} modulo          Clave dentro de S.config.proteccionAntiguedad
-//                                 con los umbrales opsAviso/opsBloqueo del
+//                                 con los umbrales operacionesAviso/operacionesBloqueo del
 //                                 módulo (ej: 'spotify'). Si el módulo todavía
 //                                 no tiene esos umbrales definidos, el nivel
 //                                 se decide solo por tiempo.
@@ -139,8 +139,8 @@ function nivelAntiguedadMovimiento(fecha, operacionesPosteriores, modulo){
   const modCfg=cfg[modulo]||{};
   const dias=Fecha.diasEntre(fecha,hoy());
   const operaciones=operacionesPosteriores||0;
-  if(dias>cfg.diasBloqueo || (modCfg.opsBloqueo!=null && operaciones>=modCfg.opsBloqueo)) return 'bloqueado';
-  if(dias>cfg.diasAviso || (modCfg.opsAviso!=null && operaciones>=modCfg.opsAviso)) return 'viejo';
+  if(dias>cfg.diasBloqueo || (modCfg.operacionesBloqueo!=null && operaciones>=modCfg.operacionesBloqueo)) return 'bloqueado';
+  if(dias>cfg.diasAviso || (modCfg.operacionesAviso!=null && operaciones>=modCfg.operacionesAviso)) return 'viejo';
   return 'reciente';
 }
 

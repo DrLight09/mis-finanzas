@@ -202,10 +202,10 @@ Las reversiones que restan saldo (reposición a cada destino, cajita usada para 
 | `_plataComprometidaDiasHastaStr(fecha)` | Texto relativo ("Mañana", "En 3 días", "Vencido") para una fecha |
 | `_plataComprometidaAbrirNuevo()` / `_plataComprometidaAbrirEditar(id)` | Abren el sheet de creación/edición, poblando destinos si corresponde |
 | `_plataComprometidaGuardar()` | Valida y guarda el ingreso (nuevo o editado) |
-| `_cpdSetTipo(tipo)` / `_cpdTipoChange()` | Cambian el tipo de destino en construcción y qué campos se muestran |
-| `_cpdSetGastoOrigen(val)` | Alterna la UI entre gasto de cajita y gasto con TC |
-| `_cpdSetYaSaque(val)` / `_cpdSetYaPague(val)` | Togglean el estado de adelanto/pago del destino en construcción |
-| `_cpdConfirmar()` | Valida y agrega el destino a la lista temporal; si es adelanto, descuenta la cuenta ya mismo |
+| `_destinoNuevoSetTipo(tipo)` / `_destinoNuevoTipoChange()` | Cambian el tipo de destino en construcción y qué campos se muestran |
+| `_destinoNuevoSetGastoOrigen(val)` | Alterna la UI entre gasto de cajita y gasto con TC |
+| `_destinoNuevoSetYaSaque(val)` / `_destinoNuevoSetYaPague(val)` | Togglean el estado de adelanto/pago del destino en construcción |
+| `_destinoNuevoConfirmar()` | Valida y agrega el destino a la lista temporal; si es adelanto, descuenta la cuenta ya mismo |
 | `_plataComprometidaAgregarDestino()` / `_plataComprometidaRenderDestinosTmp()` / `_plataComprometidaQuitarDestino(i)` | Manejo de la lista de destinos mientras se arma el ingreso |
 | `_plataComprometidaAbrirRecibir(id)` | Arma el plan de distribución (qué le pasa a cada destino) antes de confirmar |
 | `_plataComprometidaConfirmarRecibir()` | Ejecuta la distribución real: reposiciones, abonos, gastos, sobrante |

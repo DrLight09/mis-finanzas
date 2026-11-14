@@ -215,7 +215,7 @@ function _wrappedLogDebug(S){
    (`_wrappedLogDebug`) — útil, pero obliga a tener las devtools abiertas y
    no muestra NADA sobre por qué el motor de insights/personalidad eligió
    lo que eligió. Este panel es puramente de inspección para quien ajusta
-   el motor (mismo criterio que ya regía la consola): se arma a partir del
+   el motor (mismo criterio que ya registrosía la consola): se arma a partir del
    snapshot que `_wrappedBuildSlides` ya deja en `slides._wrappedDebugInfo`
    (ver ese comentario) — no dispara ningún cálculo nuevo, no guarda nada
    en `S`, y jamás se inyecta al DOM si `_wrappedDebugOn()` es falso (ver

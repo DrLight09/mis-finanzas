@@ -19,7 +19,7 @@ Un "cerdito oculto" digital: permite guardar dinero apartándolo de la vista nor
 
 - **El total acumulado (`saldoRegistrado`) nunca se muestra mientras la alcancía está activa — en ningún lado.** Ni en Cuentas, ni dentro de la propia pantalla de Alcancía. `heroSaldo` no es un blur de CSS sobre el número real: mientras está activa, ese elemento contiene literalmente el string `"$??"`. Cualquier función nueva que toque esta pantalla debe preservar esto — incluida la lista de depósitos individuales (§7, muestran montos ocultos por defecto, uno a la vez). **Lo mismo aplica al historial de cada cuenta en Cuentas** (desde 2026-09-19): los depósitos aparecen como filas, pero con `••••` en lugar del monto y sin abrir el detalle (marca `_alcanciaOculto`, ver §7 y `cuentas.md` §3) — a diferencia de la lista de Alcancía, ahí no hay forma de revelarlo fila por fila. También aplica a la **búsqueda global** (`busqueda-global.js`: depósitos con `••••`, agrupados como "Ahorro") y a **Actividad reciente** (`actividad-reciente.js`: ni los depósitos con cuenta de origen — desde 2026-09-27 en `S.transferencias`, antes en `S.gastosVar` — ni los ingresos `_esAlcanciaIngreso` aparecen; este módulo nunca lee `S.transferencias`, así que la exclusión es automática, no necesitó tocarse). Cualquier pantalla nueva que liste movimientos leyendo `S.gastosVar`/`S.movimientos`/`S.transferencias` directo tiene que aplicar el mismo criterio.
 - **Todo movimiento que Alcancía empuja a `S.movimientos`/`S.gastosVar` debe llevar `_secundario: true, _origenSeccion: 'Alcancía'`.** El borrado real de un depósito o del destape solo puede pasar desde dentro de Alcancía (`alcanciaEliminarDeposito`), nunca desde el feed genérico de Cuentas — `eliminarMovimiento()` no sabe revertir el estado propio de `S.alcancia` (`saldoRegistrado`, `depositos`, `movimientos[]`, el saldo ofuscado). Ver CHANGELOG.md § Alcancía, 2026-08-06, para el bug real que causó esto al no cumplirse.
-- **Un depósito `cobro-deuda` puede borrarse desde dos lados** (la lista de depósitos de Alcancía, o el historial del deudor en Prestado) — cada lado guarda el id del otro (`_prestamoMovId`/`_prestamoDeudorId` en la entrada de Alcancía; `_alcanciaMovId` en el abono del deudor) y debe revertir ambos, nunca solo el propio. `eliminarMovDeudor()` usa `window._alcanciaQuitarPorCobroDeuda()` (sin diálogo propio ni tocar al deudor) y `alcanciaEliminarDeposito()` borra directo del deudor (sin diálogo propio ni tocar la alcancía) — ninguno de los dos vuelve a llamar al otro, para no duplicar la confirmación ni entrar en recursión.
+- **Un depósito `cobro-deuda` puede borrarse desde dos lados** (la lista de depósitos de Alcancía, o el historial del deudor en Prestado) — cada lado guarda el id del otro (`_prestamoMovimientoId`/`_prestamoDeudorId` en la entrada de Alcancía; `_alcanciaMovimientoId` en el abono del deudor) y debe revertir ambos, nunca solo el propio. `eliminarMovimientoDeudor()` usa `window._alcanciaQuitarPorCobroDeuda()` (sin diálogo propio ni tocar al deudor) y `alcanciaEliminarDeposito()` borra directo del deudor (sin diálogo propio ni tocar la alcancía) — ninguno de los dos vuelve a llamar al otro, para no duplicar la confirmación ni entrar en recursión.
 - **El truco de ingreso neto-cero es obligatorio para los tipos que no vienen de una cuenta** (`yo-directo`, `regalo`, `mandado`). Si algún día se simplifica a "no crear ningún movimiento", esos depósitos dejan de contar en las estadísticas de ingreso del mes. Si se simplifica a "solo sumar sin restar", el dinero queda incorrectamente disponible en Efectivo.
 - **El reinicio del ciclo (`saldoRegistrado=0`, `depositos=0`, `movimientos=[]`) nunca es automático al destapar.** Solo ocurre cuando el usuario elige explícitamente "Iniciar nueva alcancía" desde la pantalla de resultado. Mientras tanto, la alcancía queda marcada `_destapada: true` pero con todos sus datos intactos.
 - **Mientras la alcancía está activa, ningún número derivado del patrimonio (gráfica de Análisis, Tendencia mensual y Proyección de Inicio) la incluye; al destapar, esa plata pasa a contar también hacia atrás.** Cada punto de `S.patrimonioHistorial` guarda dos valores: `valor` (el real, siempre con alcancía) y `valorVisible` (el que se le muestra al usuario, sin ella). Las pantallas leen `valorVisible`; el destape lo iguala a `valor` en todo el historial, así los depósitos aparecen en el día en que ocurrieron y no como un salto único el día del destape. Nunca debe mostrarse `valor` mientras haya una alcancía activa.
@@ -100,11 +100,11 @@ Además de los campos comunes (`id`, `monto`, `fecha`, `tipo`, `tipoLabel`, `des
 {
   fuenteOrigen: null,             // nunca sale de una cuenta real
   _prestamoDeudorId: "d_xxx",     // id en S.deudores
-  _prestamoMovId: "m_xxx"         // id del abono creado en d.movimientos[]
+  _prestamoMovimientoId: "m_xxx"         // id del abono creado en d.movimientos[]
 }
 ```
 
-El abono espejo en `d.movimientos[]` (Prestado) lleva `destino: ''`, `_viaAlcancia: true` y `_alcanciaMovId` apuntando de vuelta a esta entrada — mismo patrón de "toda entrada secundaria necesita su id de vuelta" que ya usa Prestado internamente (ver prestado.md §4.2).
+El abono espejo en `d.movimientos[]` (Prestado) lleva `destino: ''`, `_viaAlcancia: true` y `_alcanciaMovimientoId` apuntando de vuelta a esta entrada — mismo patrón de "toda entrada secundaria necesita su id de vuelta" que ya usa Prestado internamente (ver prestado.md §4.2).
 
 ### Clase de los movimientos (2026-10-09)
 
@@ -137,9 +137,9 @@ Elegir "Me pagaron una deuda" → elegir la persona (solo aparecen deudores con 
   → si tiene ≥2 préstamos abiertos, elegir a cuál (igual que el selector de grupo en Prestado)
   → el monto se precarga con el saldo pendiente, editable (permite abono parcial)
   → validar monto ≤ saldo pendiente de la persona (o del grupo elegido)
-  → registrar 'abono' en d.movimientos[] del deudor (destino: '', _viaAlcancia: true, _alcanciaMovId)
+  → registrar 'abono' en d.movimientos[] del deudor (destino: '', _viaAlcancia: true, _alcanciaMovimientoId)
   → _autoCerrarGruposEnCero(d)
-  → sumar a S.alcancia.saldoRegistrado y depositos, guardar entrada con _prestamoDeudorId/_prestamoMovId
+  → sumar a S.alcancia.saldoRegistrado y depositos, guardar entrada con _prestamoDeudorId/_prestamoMovimientoId
   → actualizar saldo ofuscado → save() → re-render (total sigue oculto)
 ```
 
@@ -207,8 +207,8 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 |---|---|
 | `window.renderAlcancia()` | Pinta toda la pantalla: hero (oculto/revelado), stats, lista de depósitos, historial de ciclos destapados |
 | `window.alcanciaConfirmarDeposito()` | Valida y registra un depósito nuevo según el tipo elegido |
-| `window.alcanciaEliminarDeposito(movId)` | Revierte y borra un depósito existente (único camino real de borrado, ver §7) |
-| `window.alcanciaToggleMontoDeposito(movId, el)` | Revela/oculta el monto de una fila puntual en la lista de depósitos |
+| `window.alcanciaEliminarDeposito(movimientoId)` | Revierte y borra un depósito existente (único camino real de borrado, ver §7) |
+| `window.alcanciaToggleMontoDeposito(movimientoId, el)` | Revela/oculta el monto de una fila puntual en la lista de depósitos |
 | `window.alcanciaConfirmarDestapar()` | Cierra el ciclo activo: genera los movimientos de destape, guarda en `historial`, marca `_destapada` |
 | `window.alcanciaIniciarNueva()` | Resetea `S.alcancia` para empezar un ciclo nuevo |
 | `_initA()` / `_getA()` | Inicializan/leen `S.alcancia`, creándolo con valores por defecto si no existe |
@@ -217,7 +217,7 @@ Resetear saldoRegistrado, depositos, movimientos[] y fechaInicio
 | `_alcanciaToggleDesglose(desgloseId, el)` | Expande/colapsa ese desglose en una entrada del historial |
 | `_diasDesde()` / `_fmtTiempo()` | Helpers de tiempo activo ("3 semanas", "2 meses") |
 | `_alcanciaDeudorSelActualizar()` / `_alcanciaDeudorSaldoHintActualizar()` | Pueblan el selector de persona/grupo y el hint de saldo cuando el tipo elegido es `cobro-deuda` (agregado 2026-08-09) |
-| `window._alcanciaQuitarPorCobroDeuda(alcanciaMovimientoId)` | Quita solo el lado de Alcancía de un depósito `cobro-deuda`, sin tocar al deudor — usado por `eliminarMovDeudor()` (prestado.js) cuando el borrado se inicia desde Prestado (agregado 2026-08-09) |
+| `window._alcanciaQuitarPorCobroDeuda(alcanciaMovimientoId)` | Quita solo el lado de Alcancía de un depósito `cobro-deuda`, sin tocar al deudor — usado por `eliminarMovimientoDeudor()` (prestado.js) cuando el borrado se inicia desde Prestado (agregado 2026-08-09) |
 | `_alcanciaOrigenOptsHtml(selected, conDeuda)` | Opciones del selector de origen: `opcionesCuenta({ sentido:'sale', preset:'ALCANCIA' })` (solo cuentas con más de $50, sin tarjetas) + el grupo «Sin cuenta» y, si aplica, «Deudas» como `extra`. Sustituye al antiguo `<select>` temporal filtrado a mano |
 | `_alcanciaNombreFuente(f)` | Nombre legible de una cuenta (`nequi`, `efectivo`, `cajita:ID`, `custom:ID`): usa `fuenteLabel()` y cae a una resolución propia si no está disponible. Es la única que se usa para mostrar la cuenta de origen de un depósito, tanto en validaciones como en el historial |
 | `_alcanciaRachaAhorro(hist)` / `_alcanciaMejorCiclo(hist)` | Única fuente de verdad de la racha de ahorro y el mejor ciclo histórico — usadas tanto por la tarjeta persistente como por la sheet de resultado del destape (agregado 2026-09-07) |

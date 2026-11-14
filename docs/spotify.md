@@ -107,7 +107,7 @@ S.spotify.historial = [
     // Solo si la persona dio MÁS que períodos × cuota (ver §7quater). `monto` sigue siendo solo la cuota:
     extra: 400,               // plata de más, aparte del cobro
     extraFuente: "nequi",     // cuenta a la que entró el extra (ausente si "Sin especificar")
-    extraMovId: "uid",        // id del movimiento espejo del extra en el historial de esa cuenta
+    extraMovimientoId: "uid",        // id del movimiento espejo del extra en el historial de esa cuenta
     proximoPagoAntes: "...",  // snapshot para revertir la fecha de cobro al borrar; también es el inicio del período 1 (ver §7bis)
     _secundario: true, _origenSeccion: "Spotify",
     // Solo en los dos registros que nacen de un "pago atrasado" (ver §7ter):
@@ -132,7 +132,7 @@ S.spotify.historial = [
     monto: 30000, fuente: "cajita:xyz", fecha: "2026-07-05", nota: "",
     splits: [{ fuente: "...", monto: 0 }],  // solo si se pagó dividiendo entre varias cuentas
     _gastoVarId: "id del gasto vinculado en gastosVar",
-    _tcMovId: "id del cargo en S.tcMovimientos",  // solo si se pagó con tarjeta de crédito
+    _tcMovimientoId: "id del cargo en S.tcMovimientos",  // solo si se pagó con tarjeta de crédito
     _cuotaAdmin: 7500,        // cuota del admin en ESE momento, según integrantes de entonces (ver §7)
     _estadoAntes: [{ id: "id del integrante", pagado: true }],  // foto de quién estaba "Pagó" antes de resetear, para poder deshacer
     _pendienteAlCerrar: { "id del integrante": 8000 }  // lo que cada persona quedó debiendo al cerrar este ciclo (ver §7ter)

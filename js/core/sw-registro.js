@@ -13,13 +13,13 @@ if ('serviceWorker' in navigator) {
   const _teniaControlador = !!navigator.serviceWorker.controller;
 
   navigator.serviceWorker.register('sw.js', { scope: './' })
-    .then(reg => {
+    .then(registration => {
       console.info('[SW] Registrado correctamente');
       // Una versión nueva ya descargada de una visita anterior…
-      if (reg.waiting && navigator.serviceWorker.controller) mostrarAvisoNuevaVersion(reg.waiting);
+      if (registration.waiting && navigator.serviceWorker.controller) mostrarAvisoNuevaVersion(registration.waiting);
       // …o una que se descarga ahora.
-      reg.addEventListener('updatefound', () => {
-        const nuevo = reg.installing;
+      registration.addEventListener('updatefound', () => {
+        const nuevo = registration.installing;
         if (!nuevo) return;
         nuevo.addEventListener('statechange', () => {
           if (nuevo.state === 'installed' && navigator.serviceWorker.controller) mostrarAvisoNuevaVersion(nuevo);
@@ -27,7 +27,7 @@ if ('serviceWorker' in navigator) {
       });
       // Una PWA puede quedar abierta días: al volver a ella se busca una versión nueva.
       document.addEventListener('visibilitychange', () => {
-        if (!document.hidden) reg.update().catch(() => {});
+        if (!document.hidden) registration.update().catch(() => {});
       });
     })
     .catch(err => console.info('[SW] No disponible:', err.message));

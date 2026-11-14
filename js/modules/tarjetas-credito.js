@@ -67,7 +67,7 @@
    ya se corrigió ahí también. movimientos.js (que llama
    tcEliminarCompraInterna/tcEliminarPagoInterna sin guard) y spotify.js
    (getTCById/tcCupoDisponible/tcRecalcular sin guard) también se
-   corrigieron con Loader.ensure('tarjetas'). El wrapper de abrirDetalleMov
+   corrigieron con Loader.ensure('tarjetas'). El wrapper de abrirDetalleMovimiento
    de este archivo (ver Events.registerAll más abajo) ya resuelve el
    nombre en tiempo de click, no de carga — es lazy-safe sin cambios. Ya
    se puede agregar `tarjetas` a Loader.GROUPS — ver js/core/lazy-loader.js
@@ -911,8 +911,8 @@ function abrirDetalleTCSheet(tcId){
     const _tcAttrs=(item,origenLbl,otrasCuentas,descOverride)=>{
       const sd=_tcDeudaPorId.get(item.id);
       if(!sd) return '';
-      const otras=otrasCuentas?html`data-mov-otras="${JSON.stringify(otrasCuentas)}"`.toString():'';
-      return html`data-mov-id="${item.id}" data-mov-tipo="${item._tipo==='pago'?'abono':'compra'}" data-mov-monto="${Math.abs(item.monto)}" data-cuenta-key="tc" data-mov-origen="${origenLbl}" ${raw(otras)} data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Deuda ${tc.nombre}" data-mov-desc="${descOverride||item.desc||''}" data-mov-fecha="${item.fecha}" style="cursor:pointer;" data-action="tarjetas:verMov"`.toString();
+      const otras=otrasCuentas?html`data-movimiento-otras="${JSON.stringify(otrasCuentas)}"`.toString():'';
+      return html`data-movimiento-id="${item.id}" data-movimiento-tipo="${item._tipo==='pago'?'abono':'compra'}" data-movimiento-monto="${Math.abs(item.monto)}" data-cuenta-key="tc" data-movimiento-origen="${origenLbl}" ${raw(otras)} data-movimiento-saldo-antes="${sd.antes}" data-movimiento-saldo-despues="${sd.despues}" data-movimiento-saldo-label="Deuda ${tc.nombre}" data-movimiento-desc="${descOverride||item.desc||''}" data-movimiento-fecha="${item.fecha}" style="cursor:pointer;" data-action="tarjetas:verMovimiento"`.toString();
     };
     contenido+=itemsLinea.slice(0,80).map(item=>{
       if(item._tipo==='saldo_inicial'){
@@ -1060,7 +1060,7 @@ Events.registerAll('tarjetas', {
   eliminarCompra:   eliminarCompraTC,
   eliminarPago:     eliminarPagoTC,
   seleccionarColor: tcSelColor,          // usada por los 8 círculos de color estáticos en #sheet-nueva-tc
-  verMov:           (...args) => abrirDetalleMovimiento(...args), // función compartida (js/core/movimientos.js), envuelta por el mismo motivo que en prestado.js: se define más abajo (en movimientos.js, que carga DESPUÉS de este archivo), así que pasarla directo la capturaría como undefined al cargar. Envuelta así, la búsqueda del nombre global ocurre recién al hacer click.
+  verMovimiento:           (...args) => abrirDetalleMovimiento(...args), // función compartida (js/core/movimientos.js), envuelta por el mismo motivo que en prestado.js: se define más abajo (en movimientos.js, que carga DESPUÉS de este archivo), así que pasarla directo la capturaría como undefined al cargar. Envuelta así, la búsqueda del nombre global ocurre recién al hacer click.
   verTodo:          () => { closeMas(); showScreen('tarjetas'); } // antes navTo('tarjetas') — ver CHANGELOG.md#infraestructura--seguridad (2026-09-10, retiro de nav.js)
 });
 // ── Conectar botones TC al formulario y selects ───────────────────

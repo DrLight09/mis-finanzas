@@ -541,9 +541,9 @@ function _actualizarDiferenciaHint(){
   const hint = document.getElementById('alc_diferencia_hint');
   if(!hint) return;
   const real = _getMoneyVal('alc_real_monto');
-  const reg  = _saldoRegistrado();
+  const saldoRegistrado  = _saldoRegistrado();
   if(!real){ hint.textContent = ''; return; }
-  const diferencial = real - reg;
+  const diferencial = real - saldoRegistrado;
   if(Math.abs(diferencial) < 1){
     hint.style.color = 'var(--text3)';
     hint.textContent = 'Todo el dinero estaba registrado.';
@@ -699,7 +699,7 @@ window.renderAlcancia = function(){
               <div class="alc-mov-fecha">${m.fecha}${fmtFuente ? ' · de ' + fmtFuente : ''}</div>
               <div class="alc-mov-tipo ${color}">${label}</div>
             </div>
-            <span class="alc-dep-monto alc-mov-monto" data-shown="0" data-mov-id="${m.id}" ${Events.attr('alcancia:toggleMontoDeposito', m.id)} title="Toca para ver el monto">${_ALCANCIA_ICONO_OCULTO}</span>
+            <span class="alc-dep-monto alc-mov-monto" data-shown="0" data-movimiento-id="${m.id}" ${Events.attr('alcancia:toggleMontoDeposito', m.id)} title="Toca para ver el monto">${_ALCANCIA_ICONO_OCULTO}</span>
             <button type="button" class="btn-delete-hover alc-no-shrink" data-stop-propagation="true" ${Events.attr('alcancia:eliminarDeposito', m.id)} title="Eliminar este depósito">
               <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg>
             </button>
@@ -866,7 +866,7 @@ window.alcanciaConfirmarDeposito = function(){
   const a = window.S.alcancia;
   const uidF = () => typeof uid==='function' ? uid() : Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   const entryId = uidF();
-  partes.forEach((p, i) => { p.movId = i === 0 ? entryId : uidF(); }); // la 1ª parte comparte id con la entrada (como siempre)
+  partes.forEach((p, i) => { p.movimientoId = i === 0 ? entryId : uidF(); }); // la 1ª parte comparte id con la entrada (como siempre)
 
   partes.forEach(p => {
     if(p.origen === 'cuenta'){
@@ -879,7 +879,7 @@ window.alcanciaConfirmarDeposito = function(){
       // todo lado — eso no cambia, solo cambia dónde vive el registro.
       window.S.transferencias = window.S.transferencias || [];
       window.S.transferencias.push({
-        id: p.movId,
+        id: p.movimientoId,
         fecha,
         origen: p.fuente,
         destino: 'alcancia',
@@ -891,12 +891,12 @@ window.alcanciaConfirmarDeposito = function(){
         _secundario: true, _origenSeccion: 'Alcancía',
         ts: Date.now()
       });
-      if(typeof descontarFuente === 'function') descontarFuente(p.fuente, p.monto, _origenLibroAlcancia(p.movId));
+      if(typeof descontarFuente === 'function') descontarFuente(p.fuente, p.monto, _origenLibroAlcancia(p.movimientoId));
     } else if(p.origen !== 'deuda'){
       const info = _ALCANCIA_INFO_ORIGEN[p.origen];
       window.S.movimientos = window.S.movimientos || [];
       window.S.movimientos.push({
-        id: p.movId,
+        id: p.movimientoId,
         tipo: 'entrada',
         // Plata que nunca estuvo en una cuenta: la fuente es la propia alcancía, no una cuenta (el ingreso cuenta en el mes
         // igual: entradasIngresoReal() no mira la fuente). No mueve ningún saldo y ningún historial de cuenta lo lista.
@@ -930,7 +930,7 @@ window.alcanciaConfirmarDeposito = function(){
         destino: '',
         grupoId: grupoIdFinal,
         _viaAlcancia: true,
-        _alcanciaMovId: entryId,
+        _alcanciaMovimientoId: entryId,
         ts: Date.now()
       });
       if(typeof _autoCerrarGruposEnCero === 'function') _autoCerrarGruposEnCero(d);
@@ -952,7 +952,7 @@ window.alcanciaConfirmarDeposito = function(){
       movimientoEntry.tipo = 'cobro-deuda'; movimientoEntry.tipoLabel = 'Cobro de deuda';
       movimientoEntry.desc = descVal || ('Cobro de deuda — ' + cobroDeudorNombre);
       movimientoEntry._prestamoDeudorId = cobroDeudorId;
-      movimientoEntry._prestamoMovId = cobroAbonoMovimientoId;
+      movimientoEntry._prestamoMovimientoId = cobroAbonoMovimientoId;
     } else {
       const info = _ALCANCIA_INFO_ORIGEN[p.origen];
       movimientoEntry.tipo = info.tipo;
@@ -964,7 +964,7 @@ window.alcanciaConfirmarDeposito = function(){
     movimientoEntry.tipoLabel = partes.map(p => p.origen === 'cuenta' ? _alcanciaNombreFuente(p.fuente) : _ALCANCIA_INFO_ORIGEN[p.origen].corto).join(' + ');
     movimientoEntry.desc = descVal || 'Depósito de varias fuentes';
     movimientoEntry.partes = partes.map(p => {
-      const o = { origen: p.origen, monto: p.monto, movId: p.movId };
+      const o = { origen: p.origen, monto: p.monto, movimientoId: p.movimientoId };
       if(p.fuente) o.fuente = p.fuente;
       return o;
     });
@@ -993,20 +993,20 @@ window.alcanciaConfirmarDestapar = function(){
 
   _initA();
   const a = window.S.alcancia;
-  const saldoReg = a.saldoRegistrado || 0;
-  const diferencial = saldoReal - saldoReg;
+  const saldoRegistrado = a.saldoRegistrado || 0;
+  const diferencial = saldoReal - saldoRegistrado;
   const hoyStr = hoy();
 
   // ── Movimiento 1: transferir saldo registrado desde alcancía → destino
   // Los gastos marcados _esAlcancia ya descontaron el dinero de las cuentas.
   // Ahora lo reponemos en la cuenta destino como ingreso neutral interno.
-  if(saldoReg > 0){
+  if(saldoRegistrado > 0){
     window.S.movimientos = window.S.movimientos || [];
     window.S.movimientos.push({
       id: typeof uid==='function' ? uid() : Date.now().toString(36),
       tipo: 'transferencia',
       fuente: destino,
-      monto: saldoReg,
+      monto: saldoRegistrado,
       fecha: hoyStr,
       clase: 'neutro',
       desc: 'Alcancía destapada — saldo registrado',
@@ -1016,7 +1016,7 @@ window.alcanciaConfirmarDestapar = function(){
       ts: Date.now()
     });
     // Actualizar saldo de la cuenta destino
-    _sumarASaldo(destino, saldoReg);
+    _sumarASaldo(destino, saldoRegistrado);
   }
 
   // ── Movimiento 2: diferencia positiva → ingreso real
@@ -1067,7 +1067,7 @@ window.alcanciaConfirmarDestapar = function(){
   // alcancía", ese monto queda contado DOS veces (una en la cuenta destino,
   // otra acá) — duplicando patrimonio, tendencia mensual y la proyección
   // 3m/6m/12m. El valor para historial ya quedó capturado arriba en
-  // `saldoReg`, así que resetear acá no afecta el registro histórico.
+  // `saldoRegistrado`, así que resetear acá no afecta el registro histórico.
   a.saldoRegistrado = 0;
   _setSaldoOfuscado(0);
 
@@ -1089,7 +1089,7 @@ window.alcanciaConfirmarDestapar = function(){
     fechaFin:         hoyStr,
     diasDuracion,
     depositos:        a.depositos || 0,
-    saldoRegistrado:  saldoReg,
+    saldoRegistrado:  saldoRegistrado,
     saldoReal,
     diferencia:       diferencial,
     movimientos:      [...(a.movimientos || [])]
@@ -1106,7 +1106,7 @@ window.alcanciaConfirmarDestapar = function(){
     if(!prev){
       comparHtml = `<div class="alc-primera">Esta es tu primera alcancía. ¡Se inicia tu historial de ahorro!</div>`;
     } else {
-      const diferencialMonto  = saldoReg - (prev.saldoRegistrado||0);
+      const diferencialMonto  = saldoRegistrado - (prev.saldoRegistrado||0);
       const diferencialDias   = diasDuracion - (prev.diasDuracion||0);
       const racha = _alcanciaRachaAhorro(historial);
       const rachaMsg = racha >= 2 ? `🔥 Racha de ${racha} alcancías seguidas ahorrando más` : '';
@@ -1138,7 +1138,7 @@ window.alcanciaConfirmarDestapar = function(){
       <div class="card card-sm alc-fila-mb8">
         <div class="row alc-fila-mb6">
           <span class="alc-prog-txt">Registrado por la app</span>
-          <span class="alc-res-reg-val">${fmt2(saldoReg)}</span>
+          <span class="alc-res-reg-val">${fmt2(saldoRegistrado)}</span>
         </div>
         <div class="row alc-fila-mb6">
           <span class="alc-prog-txt">Real encontrado</span>
@@ -1215,7 +1215,7 @@ function _sumarASaldo(fuente, monto){
    de que el usuario lo pida: se busca en window.S.alcancia recién al
    tocar, y solo para esa fila. */
 window.alcanciaToggleMontoDeposito = function(movimientoId, el){
-  if(!el || el.dataset.movId === undefined) return;
+  if(!el || el.dataset.movimientoId === undefined) return;
   const montoEl = el;
   const shown = montoEl.dataset.shown === '1';
   if(shown){
@@ -1306,22 +1306,22 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
     _alcanciaQuitarMirrorCuenta(entry.id);
     if(entry.fuenteOrigen && typeof sumarFuente === 'function') sumarFuente(entry.fuenteOrigen, entry.monto, _origenLibroAlcancia(entry.id, true));
   } else if(entry.tipo === 'multi'){
-    // Varios orígenes: cada parte tiene su propio movimiento espejo (partes[].movId).
+    // Varios orígenes: cada parte tiene su propio movimiento espejo (partes[].movimientoId).
     (entry.partes || []).forEach(pt => {
       if(pt.origen === 'cuenta'){
-        _alcanciaQuitarMirrorCuenta(pt.movId);
-        if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto, _origenLibroAlcancia(pt.movId || entry.id, true));
+        _alcanciaQuitarMirrorCuenta(pt.movimientoId);
+        if(pt.fuente && typeof sumarFuente === 'function') sumarFuente(pt.fuente, pt.monto, _origenLibroAlcancia(pt.movimientoId || entry.id, true));
       } else {
-        window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== pt.movId);
+        window.S.movimientos = (window.S.movimientos || []).filter(x => x.id !== pt.movimientoId);
       }
     });
   } else if(entry.tipo === 'cobro-deuda'){
     // No hay cuenta real ni movimiento en S.movimientos que revertir — el
     // rastro real es el abono en el deudor. Quitarlo de ahí reabre la deuda.
-    if(entry._prestamoDeudorId && entry._prestamoMovId){
+    if(entry._prestamoDeudorId && entry._prestamoMovimientoId){
       const d = Deudas.lista('favor').find(x => x.id === entry._prestamoDeudorId);
       if(d && d.movimientos){
-        d.movimientos = d.movimientos.filter(x => x.id !== entry._prestamoMovId);
+        d.movimientos = d.movimientos.filter(x => x.id !== entry._prestamoMovimientoId);
         if(typeof _autoCerrarGruposEnCero === 'function') _autoCerrarGruposEnCero(d);
       }
     }
@@ -1344,7 +1344,7 @@ async function _alcanciaEjecutarEliminarDeposito(a, idx, entry){
 
 /* Quita SOLO el lado de la alcancía de un depósito 'cobro-deuda', sin tocar
    al deudor — para cuando el borrado se inició desde Préstamos
-   (eliminarMovDeudor ya revirtió/confirmó ese lado). Sin diálogo de
+   (eliminarMovimientoDeudor ya revirtió/confirmó ese lado). Sin diálogo de
    confirmación propio: quien llama ya confirmó una sola vez. */
 window._alcanciaQuitarPorCobroDeuda = function(alcanciaMovimientoId){
   _initA();

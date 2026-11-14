@@ -36,14 +36,14 @@ const Huella = (() => {
   const VERSION = 1;
   const TOL = 0.01; // diferencia máxima entre dos montos para darlos por iguales
   const SONDAS_BASE = ['saldos', 'periodos', 'deudas', 'patrimonio', 'tarjetas', 'encargos', 'alcancia', 'wrapped'];
-  const _reg = new Map();
+  const _registro = new Map();
 
   function registrar(nombre, fn) {
     if (typeof nombre !== 'string' || !nombre) throw new Error('Huella.registrar: falta el nombre de la sonda');
     if (typeof fn !== 'function') throw new Error('Huella.registrar: la sonda "' + nombre + '" debe ser una función');
-    _reg.set(nombre, fn);
+    _registro.set(nombre, fn);
   }
-  const registradas = () => Array.from(_reg.keys());
+  const registradas = () => Array.from(_registro.keys());
 
   // Objeto plano y determinista: claves ordenadas, undefined → null, números no finitos como texto (así NaN no se confunde con 0).
   function _plano(x) {
@@ -65,12 +65,12 @@ const Huella = (() => {
     const nombres = op.solo || registradas();
     conEstadoAislado(estadoActual, () => {
       nombres.forEach(n => {
-        const fn = _reg.get(n);
+        const fn = _registro.get(n);
         if (!fn) { errores[n] = 'sonda no registrada'; return; }
         try { sondas[n] = _plano(fn(estadoActual)); } catch (e) { errores[n] = String((e && e.message) || e); }
       });
     });
-    (op.requeridas || []).forEach(n => { if (!_reg.has(n)) errores[n] = 'sonda requerida no registrada (¿módulo sin cargar?)'; });
+    (op.requeridas || []).forEach(n => { if (!_registro.has(n)) errores[n] = 'sonda requerida no registrada (¿módulo sin cargar?)'; });
     return { version: VERSION, sondas, errores };
   }
 

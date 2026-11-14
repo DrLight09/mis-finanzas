@@ -152,24 +152,24 @@
   }
 
   // Ids de movimientos espejo que un abono de "Me deben" señala explícitamente
-  // (_abonoDestinoMovId / destinos[]._movId): ese abono ya sale como "Abono de X" en
+  // (_abonoDestinoMovimientoId / destinos[]._movimientoId): ese abono ya sale como "Abono de X" en
   // _normDeudores. Solo se ocultan los referenciados; un espejo sin referencia (p.ej. el
   // extra/propina) sigue visible. Lo usa _normMovimientos.
   function _espejosDeudores(S) {
     var ids = {};
     Deudas.lista('favor').forEach(function(d){
       (d.movimientos || []).forEach(function(m){
-        if (m._abonoDestinoMovId) ids[m._abonoDestinoMovId] = true;
-        (m.destinos || []).forEach(function(r){ if (r && r._movId) ids[r._movId] = true; });
+        if (m._abonoDestinoMovimientoId) ids[m._abonoDestinoMovimientoId] = true;
+        (m.destinos || []).forEach(function(r){ if (r && r._movimientoId) ids[r._movimientoId] = true; });
       });
     });
     // "Yo debo": cada movimiento ya sale como una fila propia en _normMisDeudas, así que se ocultan sus
-    // espejos en las cuentas (de una cuenta: _movSecId; repartido: destinos[]/fuentes[]._movId).
+    // espejos en las cuentas (de una cuenta: _movimientoSecId; repartido: destinos[]/fuentes[]._movimientoId).
     Deudas.lista('contra').forEach(function(d){
       (d.movimientos || []).forEach(function(m){
-        if (m._movSecId) ids[m._movSecId] = true;
-        (m.destinos || []).forEach(function(r){ if (r && r._movId) ids[r._movId] = true; });
-        (m.fuentes || []).forEach(function(r){ if (r && r._movId) ids[r._movId] = true; });
+        if (m._movimientoSecId) ids[m._movimientoSecId] = true;
+        (m.destinos || []).forEach(function(r){ if (r && r._movimientoId) ids[r._movimientoId] = true; });
+        (m.fuentes || []).forEach(function(r){ if (r && r._movimientoId) ids[r._movimientoId] = true; });
       });
     });
     return ids;
@@ -178,7 +178,7 @@
   function _normMovimientos(S) {
     // S.movimientos unifica Nequi, Efectivo, Cajitas Nu y cuentas custom via campo fuente
     // Tipos: 'entrada' | 'salida_manual' | 'salida' | 'apertura' (apertura excluida)
-    // Excluimos movimientos internos generados automáticamente por encargos (_encMovId,
+    // Excluimos movimientos internos generados automáticamente por encargos (_encargoMovimientoId,
     // "Margen de encargo", "Margen encargo") para evitar duplicados con _normEncargos.
     // EXCEPCIÓN (2026-09-29): las entradas que son ingreso REAL para Análisis/Salud sí se muestran
     // (mismo criterio que _esEntradaEspejoNoIngreso en js/core/ingresos.js): margen/regalo de un encargo
@@ -191,13 +191,13 @@
       .filter(function(m){
         if (m.tipo === 'apertura') return false;
         if (m.tipo === 'transferencia') return false; // intercambios contables, no son ingresos ni gastos
-        // Ingresos reales que se quedan el usuario: pasan aunque lleven _encMovId o desc "Margen…".
+        // Ingresos reales que se quedan el usuario: pasan aunque lleven _encargoMovimientoId o desc "Margen…".
         // Se decide por bandera, no por descripción: los márgenes viejos sin bandera siguen ocultos
         // (igual que en Análisis, que tampoco los cuenta).
         var esIngresoReal = m.tipo === 'entrada' && (m.clase ? m.clase === 'ingreso' : (m._esExtraIngreso || m._esDiferencialEncargo));
         // Sobrante del destape de la alcancía: plata que nunca estuvo en ninguna cuenta.
         var esExtraAlcancia = m.tipo === 'entrada' && m._esAlcancia && !m._esAlcanciaIngreso;
-        if (m._encMovId && !esIngresoReal) return false; // generado como efecto secundario de un encargo
+        if (m._encargoMovimientoId && !esIngresoReal) return false; // generado como efecto secundario de un encargo
         if (espejoDeudores[m.id]) return false; // espejo de un abono de "Me deben"
         if (m._esAlcancia && !esExtraAlcancia) return false; // movimientos internos de alcancía oculta (destape)
         // Ingresos neto-cero de depósitos sin cuenta de origen (yo-directo/regalo/mandado/split): antes se

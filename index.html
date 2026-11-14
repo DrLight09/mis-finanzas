@@ -31,7 +31,7 @@
          tenía además 2 oninput funcionales (metas de aportes) y 1 oninput
          + 2 onchange funcionales (filtro de movimientos), migrados a
          listeners delegados; encargos.js tenía 1 onclick en fila de
-         movimiento, migrado a data-action="core:abrirDetalleMov" (mismo
+         movimiento, migrado a data-action="core:abrirDetalleMovimiento" (mismo
          patrón que cuentas.js/prestado.js). Se revisaron los 29 archivos
          que conforman la app (todos los módulos de pantalla + los 5 de
          infraestructura: events.js, diferencial.js, split.js,
@@ -886,7 +886,7 @@
           </div>
           <div class="ix-div-057">
             <div class="sec-title ix-m0">Ingresos comprometidos</div>
-            <button class="btn-chip btn-chip-amber" type="button" data-action="cp:abrirNuevo" data-args="[]">
+            <button class="btn-chip btn-chip-amber" type="button" data-action="plata-comprometida:abrirNuevo" data-args="[]">
               <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nuevo
             </button>
@@ -1480,7 +1480,7 @@
             </div>
             <div class="ix-div-117">
               <button type="button" class="btn btn-primary ix-fx1"
-                id="btn-nueva-deuda-mov" data-action="prestado:abrirMovMiDeudaRecibido" data-args="[]">
+                id="btn-nueva-deuda-mov" data-action="prestado:abrirMovimientoMiDeudaRecibido" data-args="[]">
                 <span class="ix-span-080">
                   <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
                     stroke="#0a0a0a" stroke-width="2.5"
@@ -1489,7 +1489,7 @@
                   Nueva deuda
                 </span>
               </button>
-              <button type="button" class="btn ix-btn-registrar-abono" id="btn-pagar-mi-deuda" data-action="prestado:abrirMovMiDeudaPago" data-args="[]">
+              <button type="button" class="btn ix-btn-registrar-abono" id="btn-pagar-mi-deuda" data-action="prestado:abrirMovimientoMiDeudaPago" data-args="[]">
                 <span class="ix-span-080">
                   <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
@@ -1731,7 +1731,7 @@
               </button>
               <div class="cuenta-actions">
                 <button type="button" class="cuenta-action-btn ix-button-138"
-                  data-action="encargos:abrirMov" data-args='["entrada"]'>
+                  data-action="encargos:abrirMovimiento" data-args='["entrada"]'>
                   <svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5"
                     stroke-linecap="round"><line x1="12" y1="5" x2="12"
@@ -2437,21 +2437,21 @@
           <div class="ix-nc-color-picker"
             id="nc-color-picker">
             <div class="nc-color-opt ix-div-196" data-color="#60b0f0"
-              data-action="cuentas:selColorNC" data-args="[&quot;#60b0f0&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#60b0f0&quot;]"></div>
             <div class="nc-color-opt ix-div-197" data-color="#c8f060"
-              data-action="cuentas:selColorNC" data-args="[&quot;#c8f060&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#c8f060&quot;]"></div>
             <div class="nc-color-opt ix-div-198" data-color="#f0b840"
-              data-action="cuentas:selColorNC" data-args="[&quot;#f0b840&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#f0b840&quot;]"></div>
             <div class="nc-color-opt ix-div-199" data-color="#b090f0"
-              data-action="cuentas:selColorNC" data-args="[&quot;#b090f0&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#b090f0&quot;]"></div>
             <div class="nc-color-opt ix-div-200" data-color="#f06868"
-              data-action="cuentas:selColorNC" data-args="[&quot;#f06868&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#f06868&quot;]"></div>
             <div class="nc-color-opt ix-div-201" data-color="#60f0b0"
-              data-action="cuentas:selColorNC" data-args="[&quot;#60f0b0&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#60f0b0&quot;]"></div>
             <div class="nc-color-opt ix-div-202" data-color="#f090c0"
-              data-action="cuentas:selColorNC" data-args="[&quot;#f090c0&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#f090c0&quot;]"></div>
             <div class="nc-color-opt ix-div-203" data-color="#f0a060"
-              data-action="cuentas:selColorNC" data-args="[&quot;#f0a060&quot;]"></div>
+              data-action="cuentas:selColorNuevaCuenta" data-args="[&quot;#f0a060&quot;]"></div>
           </div>
         </div>
         <button type="button" class="btn btn-primary ix-mt12"
@@ -2776,7 +2776,7 @@
             <label for="movenc_cuenta" class="il" id="movenc_cuenta_label">¿En qué cuenta está esa
               plata?</label>
             <button type="button" id="movenc_split_toggle"
-              data-action="encargos:movSplitToggle"
+              data-action="encargos:movimientoSplitToggle"
               class="btn-split" style="display:none;">
               Dividir
             </button>
@@ -2790,7 +2790,7 @@
           <!-- Modo dividido (solo visible en salidas) -->
           <div id="movenc_cuenta_split" style="display:none;">
             <div id="movencSplitRows"></div>
-            <button type="button" data-action="encargos:movAgregarSplitRow"
+            <button type="button" data-action="encargos:movimientoAgregarSplitRow"
               class="btn-add-cuenta ix-mt4">
               + Agregar cuenta
             </button>
@@ -2834,7 +2834,7 @@
         <!-- DIFERENCIAL DE SALIDA -->
         <div class="ix-mt4" id="movenc-dif-wrap" style="display:none;">
           <div class="ix-div-227"
-            data-action="encargos:difToggle">
+            data-action="encargos:diferencialToggle">
             <div class="ix-div-228">
               <span class="ix-fs15-camber"><svg aria-hidden="true" class="ix-svg-230"
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path
@@ -2860,7 +2860,7 @@
             <div class="ix-div-235">Quién
               se quedó con qué (opcional)</div>
             <div id="movenc-dif-beneficiarios"></div>
-            <button class="ix-button-236" type="button" data-action="encargos:difAddBenef">
+            <button class="ix-button-236" type="button" data-action="encargos:diferencialAddBenef">
               + Agregar persona
             </button>
             <div class="ix-movenc-dif-resumen" id="movenc-dif-resumen"></div>
@@ -2868,14 +2868,14 @@
             <div class="ix-mt10" id="movenc-dif-mi-cuenta-wrap" style="display:none;">
               <div class="ix-div-239">
                 <label for="movenc_dif_mi_cuenta" class="il ix-caccent-mb0">¿A cuál cuenta entra el sobrante?</label>
-                <button type="button" id="movenc_dif_mi_toggle" data-action="encargos:difMiSplitToggle" class="btn-split">Dividir</button>
+                <button type="button" id="movenc_dif_mi_toggle" data-action="encargos:diferencialMiSplitToggle" class="btn-split">Dividir</button>
               </div>
               <div id="movenc_dif_mi_simple">
                 <div class="select-wrap"><select id="movenc_dif_mi_cuenta"><option value>Sin especificar</option></select></div>
               </div>
               <div id="movenc_dif_mi_split" style="display:none;">
                 <div id="movencDifMiRows"></div>
-                <button type="button" data-action="encargos:difMiAgregarRow" class="btn-add-cuenta ix-mt4">+ Agregar cuenta</button>
+                <button type="button" data-action="encargos:diferencialMiAgregarRow" class="btn-add-cuenta ix-mt4">+ Agregar cuenta</button>
               </div>
               <div class="ix-movenc-dif-mi-preview" id="movenc_dif_mi_preview"></div>
             </div>
@@ -3146,7 +3146,7 @@
         </div>
         <div class="ix-mt4" id="ctc-dif-wrap">
           <div class="ix-div-227"
-            data-action="encargos:ctcDifToggle">
+            data-action="encargos:compraConTcDiferencialToggle">
             <div class="ix-div-228">
               <span class="ix-fs15-camber"><svg aria-hidden="true" class="ix-svg-230"
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path
@@ -3173,7 +3173,7 @@
             <div class="ix-mt10" id="ctc-dif-margen-wrap" style="display:none;">
               <div class="ix-div-239">
               <label for="ctc_dif_margen_cuenta" class="il ix-caccent-mb0">¿A cuál cuenta entra el diferencial?</label>
-              <button type="button" id="ctc_dif_mi_toggle" data-action="encargos:ctcMiSplitToggle" class="btn-split">Dividir</button>
+              <button type="button" id="ctc_dif_mi_toggle" data-action="encargos:compraConTcMiSplitToggle" class="btn-split">Dividir</button>
             </div>
             <div id="ctc_dif_mi_simple">
               <div class="select-wrap"><select
@@ -3182,7 +3182,7 @@
             </div>
             <div id="ctc_dif_mi_split" style="display:none;">
               <div id="ctcDifMiRows"></div>
-              <button type="button" data-action="encargos:ctcMiAgregarRow" class="btn-add-cuenta ix-mt4">+ Agregar cuenta</button>
+              <button type="button" data-action="encargos:compraConTcMiAgregarRow" class="btn-add-cuenta ix-mt4">+ Agregar cuenta</button>
             </div>
             <div class="ix-movenc-dif-mi-preview" id="ctc_dif_mi_preview"></div>
             </div>
@@ -3285,7 +3285,7 @@
 
         <!-- Diferencial opcional -->
         <div class="ix-div-276"
-          data-action="encargos:usarParteDifToggle">
+          data-action="encargos:usarParteDiferencialToggle">
           <div class="ix-div-228">
             <span class="ix-fs15-camber"><svg aria-hidden="true" class="ix-svg-230"
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path
@@ -3362,7 +3362,7 @@
           <div class="field-header">
             <label class="il" for="moverenc_origen">¿De qué cuenta sale?</label>
             <button type="button" id="moverenc_split_toggle"
-              data-action="encargos:moverEncSplitToggle"
+              data-action="encargos:moverEncargoSplitToggle"
               class="btn-split">
               Dividir
             </button>
@@ -3376,7 +3376,7 @@
           <!-- Modo dividido: la plata sale de varias cuentas del encargo a la vez -->
           <div id="moverenc_origen_split" style="display:none;">
             <div id="moverencSplitRows"></div>
-            <button type="button" data-action="encargos:moverEncAgregarSplitRow"
+            <button type="button" data-action="encargos:moverEncargoAgregarSplitRow"
               class="btn-add-cuenta ix-mt4">
               + Agregar cuenta
             </button>
@@ -3479,7 +3479,7 @@
           <div class="field-header">
             <label for="md_cuenta" class="il ix-mb0" id="md_cuenta_label">¿A qué cuenta entró la
               plata?</label>
-            <button type="button" id="md_split_toggle" data-action="prestado:toggleMdSplit" data-args="[]"
+            <button type="button" id="md_split_toggle" data-action="prestado:toggleMisDeudasSplit" data-args="[]"
               class="btn-split">Dividir</button>
           </div>
           <!-- Modo simple -->
@@ -3492,7 +3492,7 @@
           <!-- Modo dividido -->
           <div id="md_cuenta_split" style="display:none;">
             <div id="md_split_rows"></div>
-            <button type="button" id="btn-add-md-split" data-action="prestado:mdAddSplitRow" data-args="[]"
+            <button type="button" id="btn-add-md-split" data-action="prestado:misDeudasAddSplitRow" data-args="[]"
               class="btn-add-cuenta ix-mb4">+ Agregar
               cuenta</button>
             <div class="ix-md-split-resumen" id="md_split_resumen"></div>
@@ -3523,7 +3523,7 @@
           <input type="text" id="md_nota" maxlength="60" placeholder="Ej: Abono parcial">
         </div>
         <button type="button" class="btn btn-primary"
-          id="btn-confirmar-mov-mi-deuda" data-action="prestado:confirmarMovMiDeuda" data-args="[]">Guardar</button>
+          id="btn-confirmar-mov-mi-deuda" data-action="prestado:confirmarMovimientoMiDeuda" data-args="[]">Guardar</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="mov-mi-deuda">Cancelar</button>
       </div>
@@ -3592,7 +3592,7 @@
 
         <!-- Diferencial opcional -->
         <div class="ix-div-276"
-          data-action="prestado:prtcDifToggle" data-args="[]">
+          data-action="prestado:prestamoConTcDiferencialToggle" data-args="[]">
           <div class="ix-div-228">
             <span class="ix-fs15-camber"><svg aria-hidden="true" class="ix-svg-230"
                 xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path
@@ -3690,7 +3690,7 @@
              cobras; "¿Cuánto era en realidad?" = lo que de verdad salió de tu cuenta. -->
         <div class="ix-mb10" id="mov-dif-wrap" style="display:none;">
           <div class="ix-div-276"
-            data-action="prestado:movDifToggle" data-args="[]">
+            data-action="prestado:movimientoDiferencialToggle" data-args="[]">
             <div class="ix-div-228">
               <span class="ix-fs15-camber"><svg aria-hidden="true" class="ix-svg-230"
                   xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path
@@ -3798,7 +3798,7 @@
               <div class="field-header">
                 <label class="il ix-mb0" for="mov_enc_cuenta">¿De
                   qué cuenta del encargo sale?</label>
-                <button type="button" id="mov_enc_cuenta_split_toggle" data-action="prestado:abonoEncCuentaSplitToggle" data-args="[]"
+                <button type="button" id="mov_enc_cuenta_split_toggle" data-action="prestado:abonoEncargoCuentaSplitToggle" data-args="[]"
                   class="btn-split">Dividir</button>
               </div>
               <!-- Modo simple -->
@@ -3811,7 +3811,7 @@
               <!-- Modo dividido: la plata sale de varias cuentas del encargo -->
               <div id="mov_enc_cuenta_split" style="display:none;">
                 <div id="mov_enc_cuenta_split_rows"></div>
-                <button type="button" data-action="prestado:abonoEncCuentaAgregarSplitRow" data-args="[]"
+                <button type="button" data-action="prestado:abonoEncargoCuentaAgregarSplitRow" data-args="[]"
                   class="btn-add-cuenta ix-mb4">+ Agregar
                   cuenta</button>
                 <div class="ix-md-split-resumen" id="mov_enc_cuenta_split_resumen"></div>
@@ -4721,8 +4721,8 @@
 <!--
 // js/core/color-picker.js — marcarColorSeleccionado(): marca el círculo de color elegido en los
 // selectores de color (Cuentas, Tarjetas de crédito, Prestado). Núcleo eager: lo usan tres módulos
-// lazy, así que no puede depender de que uno de ellos haya cargado. Sin este <script>, selColorNC /
-// selIconoNC (cuentas.js) lanzaban ReferenceError y el ícono/color elegido nunca se marcaba.
+// lazy, así que no puede depender de que uno de ellos haya cargado. Sin este <script>, selColorNuevaCuenta /
+// selIconoNuevaCuenta (cuentas.js) lanzaban ReferenceError y el ícono/color elegido nunca se marcaba.
 -->
 <script src="js/core/color-picker.js" defer></script>
 <!--
@@ -4837,10 +4837,10 @@
 
 // Módulo Tarjetas de Crédito migrado a js/modules/tarjetas-credito.js —
 // ver docs/tarjetas-credito.md. Cuando se migró (antes de que
-// abrirDetalleMov()/eliminarMovimiento() se extrajeran a
+// abrirDetalleMovimiento()/eliminarMovimiento() se extrajeran a
 // js/core/movimientos.js el 2026-07-26) no tenía dependencia real de
 // orden de carga. ESO YA NO ES CIERTO: tarjetas-credito.js referencia
-// abrirDetalleMov directo en su Events.registerAll('tarjetas', {...}),
+// abrirDetalleMovimiento directo en su Events.registerAll('tarjetas', {...}),
 // y ya no importa que cargue antes o después de js/core/movimientos.js
 // (línea de abajo) — el wrapper agregado el 2026-08-03 en
 // tarjetas-credito.js resuelve el nombre recién al hacer click, no al
@@ -4863,7 +4863,7 @@
 <!-- tarjetas-credito.js: ver js/core/lazy-loader.js (Loader.GROUPS.tarjetas) -->
 <script src="js/core/movimientos.js" defer></script>
 <!--
-// abrirDetalleMov()/eliminarMovimiento() y su registro Events.on('core:...')
+// abrirDetalleMovimiento()/eliminarMovimiento() y su registro Events.on('core:...')
 // se extrajeron a js/core/movimientos.js — ver cabecera de ese archivo para
 // el porqué de vivir en js/core/ y no en js/modules/.
 

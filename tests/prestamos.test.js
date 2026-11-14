@@ -163,7 +163,7 @@ describe('medeben', () => {
   test('Me deben — préstamo vía tarjeta: revertir baja la deuda de la TC y quita su cargo', () => {
     const ctx = freshApp();
     ctx.S.tarjetasCredito = [{ id: 'tc1', nombre: 'Visa', cupo: 100000, deuda: 30000, estado: 'activa', compras: [], pagos: [], saldoInicial: null }];
-    ctx.S.tcMovimientos = [{ id: 'x', tcId: 'tc1', tipo: 'cargo_prestamo', monto: 30000, _deudorMovId: 'mt' }];
+    ctx.S.tcMovimientos = [{ id: 'x', tcId: 'tc1', tipo: 'cargo_prestamo', monto: 30000, _deudorMovimientoId: 'mt' }];
     const d = ctx.S.deudores[0];
     d.movimientos.push({ id: 'mt', tipo: 'prestamo', monto: 30000, fecha: '2026-09-20', _viaTC: true, _tcId: 'tc1', _tcMonto: 30000 });
     ctx._revertirMovimientoDeudor(d, d.movimientos.find((m) => m.id === 'mt'));

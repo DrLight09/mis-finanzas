@@ -3,7 +3,7 @@
 
    Helper mínimo compartido para los selectores de color (círculos)
    que aparecen en Cuentas, Tarjetas de crédito y Prestado. Antes
-   cada módulo tenía su propia función de 5 líneas (selColorNC,
+   cada módulo tenía su propia función de 5 líneas (selColorNuevaCuenta,
    tcSelColor, selColor) haciendo exactamente lo mismo: marcar con
    borde el círculo cuyo dataset.color coincide con el elegido.
    Ahora hay una sola función; cada módulo la llama pasándole su

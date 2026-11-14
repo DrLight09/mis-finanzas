@@ -558,7 +558,7 @@ describe('periodo', () => {
       spotify: { historial: [
         { id: 'h1', spotifyId: 'x', tipo: 'cobro', monto: 5100, fecha: '2026-09-28', pendiente: 0, pendienteHistorial: [{ id: 'ab', monto: 2100, fecha: '2026-10-03' }] },
         { id: 'h2', spotifyId: 'y', tipo: 'cobro', monto: 5100, fecha: '2026-10-05', extra: 400, extraFuente: '' },
-        { id: 'h3', spotifyId: 'z', tipo: 'cobro', monto: 5100, fecha: '2026-10-06', extra: 700, extraFuente: 'cuenta:nequi', extraMovId: 'm1' },
+        { id: 'h3', spotifyId: 'z', tipo: 'cobro', monto: 5100, fecha: '2026-10-06', extra: 700, extraFuente: 'cuenta:nequi', extraMovimientoId: 'm1' },
       ] },
       movimientos: [{ id: 'm1', tipo: 'entrada', clase: 'ingreso', fuente: 'cuenta:nequi', monto: 700, fecha: '2026-10-06', _esExtraIngreso: true, _secundario: true, _origenSeccion: 'Spotify' }],
     });
@@ -653,9 +653,56 @@ describe('migraciones', () => {
   const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  test('datos nuevos (sin schemaVersion) nacen en la versión actual (11)', () => {
+  test('datos nuevos (sin schemaVersion) nacen en la versión actual (12)', () => {
     const d = plano(app().aplicarMigraciones({ cuentas: [] }));
-    assert.equal(d.schemaVersion, 11);
+    assert.equal(d.schemaVersion, 12);
+  });
+
+  describe('migración v12: campos de movimiento, encargo y operaciones con nombre completo', () => {
+    const CAMPOS = { _movId: '_movimientoId', _movSecId: '_movimientoSecId', movId: 'movimientoId', _encMovId: '_encargoMovimientoId', _encMovIds: '_encargoMovimientoIds',
+      _encNombre: '_encargoNombre', _encId: '_encargoId', _tcMovId: '_tcMovimientoId', _abonoDestinoMovId: '_abonoDestinoMovimientoId', _alcanciaMovId: '_alcanciaMovimientoId',
+      _deudorMovId: '_deudorMovimientoId', _deudaMovId: '_deudaMovimientoId', _miDeudaMovId: '_miDeudaMovimientoId', _abonoEncMovId: '_abonoEncargoMovimientoId',
+      _encExtraMovId: '_encargoExtraMovimientoId', _prestamoMovId: '_prestamoMovimientoId', _encargoOrigenMovId: '_encargoOrigenMovimientoId',
+      extraMovId: 'extraMovimientoId', movExtraId: 'movimientoExtraId', opsAviso: 'operacionesAviso', opsBloqueo: 'operacionesBloqueo' };
+    const viejo = () => {
+      const d = { schemaVersion: 11, config: { proteccionAntiguedad: { diasAviso: 7, diasBloqueo: 30, opsAviso: 20, opsBloqueo: 50 } }, movimientos: [], encargos: [], alcancia: { movimientos: [] }, deudores: [], misDeudas: [] };
+      // cada campo viejo en un objeto distinto y anidado (también dentro de arreglos de arreglos de objetos)
+      Object.keys(CAMPOS).filter(k => !k.startsWith('ops')).forEach((k, i) => { d.movimientos.push({ id: 'm' + i, [k]: 'v' + i, partes: [{ id: 'p' + i, [k]: 'anidado' + i }] }); });
+      d.encargos.push({ id: 'e1', movimientos: [{ id: 'x', _movId: 'enlazado', _encMovId: 'otro' }] });
+      return d;
+    };
+    test('renombra los 21 campos donde vivan (objetos, arreglos y anidados) y sube la versión', () => {
+      const d = plano(app().aplicarMigraciones(viejo()));
+      assert.equal(d.schemaVersion, 12);
+      Object.entries(CAMPOS).filter(([k]) => !k.startsWith('ops')).forEach(([k, n], i) => {
+        assert.equal(d.movimientos[i][n], 'v' + i, n); assert.equal(d.movimientos[i].partes[0][n], 'anidado' + i, n + ' anidado');
+      });
+      assert.deepEqual([d.config.proteccionAntiguedad.operacionesAviso, d.config.proteccionAntiguedad.operacionesBloqueo], [20, 50]);
+      assert.deepEqual(d.encargos[0].movimientos[0], { id: 'x', _movimientoId: 'enlazado', _encargoMovimientoId: 'otro' });
+    });
+    test('no deja ninguna clave vieja y no toca el resto', () => {
+      const d = plano(app().aplicarMigraciones(viejo()));
+      const texto = JSON.stringify(d);
+      for (const vieja of Object.keys(CAMPOS)) assert.ok(!new RegExp('"' + vieja + '"').test(texto), 'quedó «' + vieja + '»');
+      assert.equal(d.config.proteccionAntiguedad.diasAviso, 7);
+      assert.equal(d.config.proteccionAntiguedad.diasBloqueo, 30);
+    });
+    test('equivale a renombrar las claves en el texto del JSON (comprobación independiente)', () => {
+      let texto = JSON.stringify(viejo());
+      for (const [k, n] of Object.entries(CAMPOS)) texto = texto.split('"' + k + '":').join('"' + n + '":');
+      const esperado = JSON.parse(texto); esperado.schemaVersion = 12;
+      assert.deepEqual(plano(app().aplicarMigraciones(viejo())), esperado);
+    });
+    test('es idempotente y no pisa un nombre nuevo que ya exista', () => {
+      const ctx = app();
+      const una = plano(ctx.aplicarMigraciones(viejo()));
+      assert.deepEqual(plano(ctx.aplicarMigraciones(plano(una))), una);
+      const choque = plano(ctx.aplicarMigraciones({ schemaVersion: 11, movimientos: [{ id: 'a', _movId: 'viejo', _movimientoId: 'nuevo' }] }));
+      assert.deepEqual(choque.movimientos[0], { id: 'a', _movimientoId: 'nuevo' }, 'se conserva el nuevo y se descarta el viejo');
+    });
+    test('datos del esquema 11 (el anterior) se llevan al 12 al importarlos', () => {
+      assert.equal(plano(app().aplicarMigraciones({ schemaVersion: 11, cuentas: [] })).schemaVersion, 12);
+    });
   });
 
 
@@ -745,7 +792,7 @@ describe('backup-import', () => {
   });
   test('un backup exportado por esta versión se valida y no cambia al pasar por aplicarMigraciones', () => {
     const ctx = app();
-    const actual = { schemaVersion: 11, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
+    const actual = { schemaVersion: 12, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
     assert.deepEqual(plano(ctx._validarEstructuraJSON(actual)), []);
     assert.deepEqual(plano(ctx.aplicarMigraciones(plano(actual))), actual);
   });
@@ -756,7 +803,7 @@ describe('backup-import', () => {
 });
 
 describe('archivos-cargados', () => {
-  // Guardia contra el bug de color-picker.js: un archivo de js/ que ninguna página carga. selColorNC() lo usaba por nombre y,
+  // Guardia contra el bug de color-picker.js: un archivo de js/ que ninguna página carga. selColorNuevaCuenta() lo usaba por nombre y,
   // sin <script> en index.html ni grupo lazy, lanzaba ReferenceError en el navegador mientras todos los tests pasaban (los
   // tests cargan los archivos a mano). Cada archivo de js/core y js/modules tiene que llegar al navegador por alguna vía:
   //   · un <script src> en index.html, · un grupo de Loader.GROUPS (lazy-loader.js), · un `import` desde otro archivo.
@@ -883,7 +930,7 @@ describe('ingreso-real', () => {
       const a = app(BASE, { movimientos: [
         movimiento('perdon', 1, { fuente: '', _origenSeccion: 'Prestado · Yo debo', _esPerdonRecibido: true }),
         movimiento('extra', 2, { _secundario: true, _esEspejo: true, _origenSeccion: 'Prestado · Me deben', _esExtraIngreso: true }),
-        movimiento('dif', 3, { _encMovId: 'e1', _esDiferencialEncargo: true }),
+        movimiento('dif', 3, { _encargoMovimientoId: 'e1', _esDiferencialEncargo: true }),
       ] });
       assert.deepEqual(ids(a), ['dif', 'extra', 'perdon']);
     });
@@ -898,7 +945,7 @@ describe('ingreso-real', () => {
       neutro('tc', 6, { desc: 'Para pagar TC (Nu)' }),
       neutro('margen-viejo', 7, { desc: 'Margen de encargo' }),
       neutro('intercambio', 8, { _esIntercambioEncargo: true }),
-      neutro('encmov', 9, { _encMovId: 'e1' }),
+      neutro('encmov', 9, { _encargoMovimientoId: 'e1' }),
       neutro('alcancia', 10, { desc: 'Alcancía destapada' }),
       movimiento('salida', 11, { tipo: 'salida' }),
       movimiento('apertura', 13, { tipo: 'apertura', clase: 'ajuste' }),
@@ -1590,7 +1637,7 @@ describe('historial-patrimonio', () => {
   const plano = x => JSON.parse(JSON.stringify(x));
   const dia = off => { const d = new Date(Date.now() + off * 864e5); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   const ts = off => { const d = new Date(Date.now() + off * 864e5); d.setHours(12, 0, 0, 0); return d.getTime(); };
-  const boton = (tipo, id, fuente, monto) => { const item = { dataset: { movId: id, movTipo: tipo, movFuente: fuente, movMonto: String(monto), movFecha: dia(0) } }; return { closest: () => item }; };
+  const boton = (tipo, id, fuente, monto) => { const item = { dataset: { movimientoId: id, movimientoTipo: tipo, movimientoFuente: fuente, movimientoMonto: String(monto), movimientoFecha: dia(0) } }; return { closest: () => item }; };
 
   // DOM de jsdom que crea cualquier id que el código pida: sirve para pintar la gráfica real de Análisis.
   function docRico(htmlBase = '') {
@@ -1978,8 +2025,8 @@ describe('fila-movimiento', () => {
 
   test('filaMovimiento — esqueleto: nombre y fecha | monto y acciones | meta; el texto se escapa', () => {
     const ctx = app();
-    const h = String(ctx.filaMovimiento({ clase: 'tc-item', attrs: 'data-mov-id="7"', nombre: '<b>x</b>', sub: '2026-10-27', monto: '$ 5', montoClase: 'c-red', meta: ctx.html`<span class="badge">ok</span>` }));
-    assert.match(h, /^<div class="gasto-item tc-item" data-mov-id="7">/);
+    const h = String(ctx.filaMovimiento({ clase: 'tc-item', attrs: 'data-movimiento-id="7"', nombre: '<b>x</b>', sub: '2026-10-27', monto: '$ 5', montoClase: 'c-red', meta: ctx.html`<span class="badge">ok</span>` }));
+    assert.match(h, /^<div class="gasto-item tc-item" data-movimiento-id="7">/);
     assert.ok(h.includes('<div class="row-name row-name-13">&lt;b&gt;x&lt;/b&gt;</div>'), 'el nombre se escapa');
     assert.ok(h.includes('<span class="row-amount c-red">$ 5</span>'));
     assert.ok(h.includes('<div class="gasto-item-meta"><span class="badge">ok</span></div>'));

@@ -11,7 +11,7 @@
       y pagos de cada tarjeta, movimientos de cada deuda…). Cada fuente se describe una vez (registrarFuente); un módulo con
       historia nueva se suma describiéndola. CLASIFICACION dice qué es cada clave de primer nivel de S, y una prueba exige que
       ninguna clave quede sin clasificar: una colección nueva no puede pasar desapercibida.
-   2. GRAFO de enlaces POR VALOR. Los registros se apuntan entre sí con ~25 campos distintos (_encMovId, _transfId, _tcCompraId,
+   2. GRAFO de enlaces POR VALOR. Los registros se apuntan entre sí con ~25 campos distintos (_encargoMovimientoId, _transfId, _tcCompraId,
       origen.ref del libro…). En lugar de listarlos (y quedar desactualizados), dos registros están enlazados si uno contiene,
       en cualquier campo, el id del otro. Las componentes conexas son la UNIDAD ATÓMICA: se mueven completas o ninguna. Eso
       cubre transferencias con una pata a cada lado del corte, reversiones, pagos divididos y copias (alcancía), sin tocar los

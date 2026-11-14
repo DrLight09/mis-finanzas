@@ -305,7 +305,7 @@ describe('plata-comprometida', () => {
   const { createFakeDom } = require('./support/fake-dom');
   const RAIZ = path.join(__dirname, '..');
   const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
-  // El módulo vive dentro de una función: lo único que expone es lo que registra con Events.registerAll('cp', {...}).
+  // El módulo vive dentro de una función: lo único que expone es lo que registra con Events.registerAll('plata-comprometida', {...}).
   // Un archivo previo reemplaza ese registro para capturar los handlers (así es como la app misma los usa).
   const CAPTURA = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'cp-')), 'captura.js');
   fs.writeFileSync(CAPTURA, "Events.registerAll = function(ns, mapa){ (window.__reg = window.__reg || {})[ns] = mapa; };");
@@ -321,7 +321,7 @@ describe('plata-comprometida', () => {
     const dom = createFakeDom({ 'cp-recibir-fecha': { value: '2026-10-13' }, 'cp-recibir-sobrante-cuenta': { value: sobranteCuenta } });
     app.document = dom.document;
     app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {};
-    const plataComprometida = app.__reg.cp;
+    const plataComprometida = app.__reg['plata-comprometida'];
     const origenLibro = (ref, rev) => ({ origen: { modulo: 'plata-comprometida', ref, ...(rev ? { rev: true } : {}) } });
     const saldo = id => app.getSaldoFuente(id);
     const neto = () => { const n = {}; app.S.libro.forEach(e => { n[e.cuenta] = (n[e.cuenta] || 0) + e.monto; }); return n; };
@@ -354,7 +354,7 @@ describe('plata-comprometida', () => {
 
   test('eliminar un ingreso recibido que tenía un adelanto devuelve también el adelanto', async () => {
     const e = entorno(item([{ id: 'd1', tipo: 'reposicion', desc: 'Reponer', monto: 30000, cuentaId: 'cuenta:efectivo', yaSaque: true }]));
-    // el adelanto ya se había hecho antes de recibir (como lo deja _cpdConfirmar / _plataComprometidaGuardarMarcados)
+    // el adelanto ya se había hecho antes de recibir (como lo deja _destinoNuevoConfirmar / _plataComprometidaGuardarMarcados)
     e.app.sumarFuente('cuenta:efectivo', -30000, e.origenLibro('d1'));
     e.app.S.movimientos.push({ id: 'adel', tipo: 'salida', fuente: 'cuenta:efectivo', monto: 30000, fecha: '2026-10-01', desc: 'Adelanto comprometido: Reponer' });
     recibir(e);

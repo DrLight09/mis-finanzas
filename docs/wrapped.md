@@ -328,7 +328,7 @@ Se arma leyendo `slides._wrappedDebugInfo`, un snapshot que `_wrappedBuildSlides
 - los arquetipos de personalidad que aplicaron este año (no solo el principal/secundario que ya se muestra en el slide — para eso `_wrappedPersonalidad` ahora también devuelve `_candidatos`, la lista completa, con prefijo `_` porque ningún llamador productivo debe depender de ese campo);
 - la cantidad total de slides armadas.
 
-El panel nunca se inyecta al DOM si `_wrappedDebugOn()` es falso — mismo criterio que ya regía la consola. Lo que a propósito **no** se portó del mockup, además del resumen con agregados en crudo: no hay exportación/descarga de este panel — es una herramienta de inspección en pantalla, igual que la consola que reemplaza en parte.
+El panel nunca se inyecta al DOM si `_wrappedDebugOn()` es falso — mismo criterio que ya registrosía la consola. Lo que a propósito **no** se portó del mockup, además del resumen con agregados en crudo: no hay exportación/descarga de este panel — es una herramienta de inspección en pantalla, igual que la consola que reemplaza en parte.
 
 ---
 

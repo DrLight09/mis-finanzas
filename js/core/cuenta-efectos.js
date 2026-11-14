@@ -53,22 +53,22 @@ function registrarMovimientoEspejo(o) {
   const destino = _espejoLista(o.cuenta, o.flujo, true);
   if (!destino) return null;
   const id = uid();
-  const reg = { id, tipo: destino.tipo };
-  if (destino.conFuente) reg.fuente = o.cuenta;
-  reg.monto = o.monto;
-  reg.fecha = o.fecha;
-  reg[destino.campoTexto] = o.desc;
-  reg._secundario = true;
-  reg._esEspejo = true; // por defecto un espejo NO es ingreso; `extra` lo anula si es plata nueva (_esExtraIngreso, _esPerdonRecibido, _esDiferencialEncargo)
-  reg._origenSeccion = o.origen;
-  if (o.extra) Object.assign(reg, o.extra);
+  const registro = { id, tipo: destino.tipo };
+  if (destino.conFuente) registro.fuente = o.cuenta;
+  registro.monto = o.monto;
+  registro.fecha = o.fecha;
+  registro[destino.campoTexto] = o.desc;
+  registro._secundario = true;
+  registro._esEspejo = true; // por defecto un espejo NO es ingreso; `extra` lo anula si es plata nueva (_esExtraIngreso, _esPerdonRecibido, _esDiferencialEncargo)
+  registro._origenSeccion = o.origen;
+  if (o.extra) Object.assign(registro, o.extra);
   // `clase` (docs/analisis-financiero.md, «La respuesta está guardada en el movimiento»): explícita si el módulo la pasa; si no, se deduce
   // de las banderas de "plata nueva" de `extra` (hasta que cada llamador pase `clase` a mano) y,
   // por defecto, un espejo es 'neutro'. Las salidas de un espejo también son 'neutro'.
-  reg.clase = _claseValida(o.clase) ? o.clase
-    : (o.flujo !== 'salida' && (reg._esExtraIngreso || reg._esPerdonRecibido || reg._esDiferencialEncargo)) ? 'ingreso'
+  registro.clase = _claseValida(o.clase) ? o.clase
+    : (o.flujo !== 'salida' && (registro._esExtraIngreso || registro._esPerdonRecibido || registro._esDiferencialEncargo)) ? 'ingreso'
     : 'neutro';
-  destino.lista.push(reg);
+  destino.lista.push(registro);
   return id;
 }
 

@@ -34,8 +34,8 @@
 
    ── QUÉ SE MIGRÓ REALMENTE ──────────────────────────────────────
    Los 4 sheets estáticos en index.html YA usaban data-action para
-   sus toggles/agregar-persona (ej. "encargos:difToggle",
-   "encargos:difAddBenef") — esos disparan wrappers definidos en los
+   sus toggles/agregar-persona (ej. "encargos:diferencialToggle",
+   "encargos:diferencialAddBenef") — esos disparan wrappers definidos en los
    módulos externos, que a su vez llaman a las funciones genéricas
    de acá. Eso no se tocó: no hay visibilidad de este lado hacia esos
    wrappers y cambiar el nombre de la acción sin ver dónde se
@@ -74,7 +74,7 @@ var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests
  *     escribe en S.movimientos (margen e intercambios) se marcan _secundario:true + _origenSeccion, así
  *     eliminarMovimiento() (movimientos.js) NO los deja borrar sueltos y manda al usuario a borrar el
  *     movimiento principal. Definirlo SOLO si el módulo dueño revierte esos movimientos al borrar el
- *     principal (Encargos lo hace vía _encMovId en deleteMovimientoEncargo). Sin definir = comportamiento anterior.
+ *     principal (Encargos lo hace vía _encargoMovimientoId en deleteMovimientoEncargo). Sin definir = comportamiento anterior.
  *   permiteMiCuenta: bool — muestra selector de cuenta propia para el sobrante libre
  *   getDijo: () => number — de dónde sacar el monto "dijiste/correspondía"
  *   exigeMargenPositivo: bool — si true, margen<=0 se muestra como error (no permite "cobré de más")
@@ -374,7 +374,7 @@ function diffValidarMiCuenta(instanciaId) {
  * Aplica los efectos del diferencial sobre `movimiento` (un objeto que ya
  * existe — el préstamo, el abono, el movimiento del encargo, etc).
  * Genera el campo movimiento.diferencial = {dijo, real, margen, beneficiarios, miCuenta, yoMeQuedo}
- * y, si linkId está presente, encadena cada efecto secundario con _encMovId=linkId
+ * y, si linkId está presente, encadena cada efecto secundario con _encargoMovimientoId=linkId
  * para que deleteMovimientoEncargo() pueda revertirlos (mismo contrato que usaba el código viejo).
  *
  * Si cfg.permiteMiCuenta es false (ej. "Préstamo con TC": el margen quedó
@@ -430,13 +430,13 @@ function diffAplicar(instanciaId, movimiento, linkId) {
   // 1) Sobrante libre → ingreso a mi cuenta
   if (yoMeQuedo > 0 && miCuenta) {
     // Una entrada por cada cuenta donde el usuario repartió el sobrante
-    // (una sola si no usó "Dividir ÷"). Todas comparten _encMovId para poder revertirse juntas.
+    // (una sola si no usó "Dividir ÷"). Todas comparten _encargoMovimientoId para poder revertirse juntas.
     const destinosMi = (filasMi && filasMi.length) ? filasMi : [{ fuente: miCuenta, monto: yoMeQuedo }];
     destinosMi.forEach(r => {
       sumarFuente(r.fuente, r.monto, _origenLibroDiferencial);
       S.movimientos.push({
         id: uid(), tipo: 'entrada', fuente: r.fuente,
-        ...(linkId ? { _encMovId: linkId } : {}),
+        ...(linkId ? { _encargoMovimientoId: linkId } : {}),
         clase: 'ingreso', _esDiferencialEncargo: true,
         ..._sec,
         _diferencialDijo: dijo, _diferencialReal: real, _diferencialMargen: margen,
@@ -452,7 +452,7 @@ function diffAplicar(instanciaId, movimiento, linkId) {
   if (yoMeQuedoFantasma > 0) {
     S.movimientos.push({
       id: uid(), tipo: 'entrada', fuente: '',
-      ...(linkId ? { _encMovId: linkId } : {}),
+      ...(linkId ? { _encargoMovimientoId: linkId } : {}),
       clase: 'ingreso', _esDiferencialEncargo: true,
       ..._sec,
       _diferencialDijo: dijo, _diferencialReal: real, _diferencialMargen: margen,
@@ -474,7 +474,7 @@ function diffAplicar(instanciaId, movimiento, linkId) {
       descontarFuente(cuentaSalida, b.monto, _origenLibroDiferencial);
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaSalida, _fuenteDestino: cuentaEntrada || '',
-        ...(linkId ? { _encMovId: linkId } : {}),
+        ...(linkId ? { _encargoMovimientoId: linkId } : {}),
         clase: 'neutro', _esIntercambioEncargo: true, _intercambioSalida: true,
         ..._sec,
         monto: b.monto, fecha,
@@ -487,7 +487,7 @@ function diffAplicar(instanciaId, movimiento, linkId) {
       sumarFuente(cuentaEntrada, b.monto, _origenLibroDiferencial);
       S.movimientos.push({
         id: uid(), tipo: 'transferencia', fuente: cuentaEntrada, _fuenteDestino: cuentaSalida || '',
-        ...(linkId ? { _encMovId: linkId } : {}),
+        ...(linkId ? { _encargoMovimientoId: linkId } : {}),
         clase: 'neutro', _esIntercambioEncargo: true, _intercambioEntrada: true,
         ..._sec,
         monto: b.monto, fecha,
@@ -525,7 +525,7 @@ function diffHtmlBloque(ids, opts) {
     <div id="${ids.body}" class="diferencial-cuerpo" style="display:none;">
       <div class="ig diferencial-ig">
         <label class="il diferencial-lbl-amber">${opts.labelReal || '¿Cuánto era en realidad?'}</label>
-        <input type="text" inputmode="decimal" id="${ids.real}" placeholder="0,00" class="money-input diff-real-input" data-inst-id="${opts.instanciaId}">
+        <input type="text" inputmode="decimal" id="${ids.real}" placeholder="0,00" class="money-input diff-real-input" data-instancia-id="${opts.instanciaId}">
       </div>
       ${opts.permiteBeneficiarios ? `
       <div class="diferencial-seccion">Quién se quedó con qué (opcional)</div>
@@ -563,7 +563,7 @@ function diffRenderHistorial(diferencial) {
    Nota: diffToggle/diffAddParte quedan registradas para diffHtmlBloque()
    (la plantilla) y para cualquier sheet nuevo que use el namespace genérico
    directamente. Los 4 sheets existentes siguen usando sus propios wrappers
-   con nombres de módulo (encargos:difToggle, prestado:prtcDifToggle, etc.),
+   con nombres de módulo (encargos:diferencialToggle, prestado:prestamoConTcDiferencialToggle, etc.),
    definidos en sus respectivos archivos — no se tocaron. */
 Events.registerAll('diferencial', {
   toggle: diffToggle,

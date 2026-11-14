@@ -1830,7 +1830,7 @@ test('cobrar a una cuenta: sube el saldo, deja un espejo neutro y el ingreso se 
   const ctx = fresh({ nequi: 1000 });
   const { cobro } = cobrar(ctx, { destino: 'cuenta:nequi', monto: 2000 });
   assert.equal(saldo(ctx, 'nequi'), 3000);
-  const esp = ctx.S.movimientos.find(m => m.id === cobro._movSecId);
+  const esp = ctx.S.movimientos.find(m => m.id === cobro._movimientoSecId);
   assert.ok(esp && esp._secundario && esp._origenSeccion === 'Ingreso fijo' && esp.clase === 'neutro');
   assert.equal(esp.desc, 'Sueldo — cobro de Sep 2026');
   const ingreso = ingresosDelMes(ctx, '2026-09');

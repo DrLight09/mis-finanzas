@@ -44,7 +44,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/patrimonio.js` | de entrada (defer) | 26 | 1 |
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
-| `js/core/persistencia.js` | de entrada (defer) | 12 | 3 |
+| `js/core/persistencia.js` | de entrada (defer) | 13 | 3 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/plan-deudas.js` | de entrada (defer) | 1 | 0 |
@@ -314,7 +314,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ensureSpotify`, `aplicarMigraciones`, `claseEfectivaMovimiento`, `conEstadoAislado`, `fmtInput`, `load`, `movimientosSinClase`, `parseMoney`, `parsePct`, `registrarSonda`, `save`, `setMoneyInput`
+**Funciones:** `_ensureSpotify`, `_renombrarClavesEnArbol`, `aplicarMigraciones`, `claseEfectivaMovimiento`, `conEstadoAislado`, `fmtInput`, `load`, `movimientosSinClase`, `parseMoney`, `parsePct`, `registrarSonda`, `save`, `setMoneyInput`
 
 **Globales:** `MIGRACIONES`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`
 
@@ -514,15 +514,15 @@ Carga: de entrada (defer)
 
 Carga: lazy — grupo `comprometida`
 
-**Funciones:** `_cpdConfirmar`, `_cpdPoblarGastoSelectores`, `_cpdRepoblarFuentes`, `_cpdSetGastoOrigen`, `_cpdSetTipo`, `_cpdSetYaPague`, `_cpdSetYaSaque`, `_cpdTipoChange`, `_injectMasItem`, `_injectScreen`, `_injectSheet`, `_plataComprometidaAbrirEditar`, `_plataComprometidaAbrirNuevo`, `_plataComprometidaAbrirRecibir`, `_plataComprometidaAgregarDestino`, `_plataComprometidaCancelSheet`, `_plataComprometidaConfirmarRecibir`, `_plataComprometidaData`, `_plataComprometidaDiasHastaStr`, `_plataComprometidaEliminar`, `_plataComprometidaGuardar`, `_plataComprometidaGuardarMarcados`, `_plataComprometidaInit`, `_plataComprometidaInitSwipe`, `_plataComprometidaMarcarPagos`, `_plataComprometidaPoblarCuentas`, `_plataComprometidaPoblarPersonas`, `_plataComprometidaPoblarTC`, `_plataComprometidaQuitarDestino`, `_plataComprometidaRenderDestinosTmp`, `_plataComprometidaRenderLista`, `_plataComprometidaRenderMarcarList`, `_plataComprometidaToggleMarcar`
+**Funciones:** `_destinoNuevoConfirmar`, `_destinoNuevoPoblarGastoSelectores`, `_destinoNuevoRepoblarFuentes`, `_destinoNuevoSetGastoOrigen`, `_destinoNuevoSetTipo`, `_destinoNuevoSetYaPague`, `_destinoNuevoSetYaSaque`, `_destinoNuevoTipoChange`, `_injectMasItem`, `_injectScreen`, `_injectSheet`, `_plataComprometidaAbrirEditar`, `_plataComprometidaAbrirNuevo`, `_plataComprometidaAbrirRecibir`, `_plataComprometidaAgregarDestino`, `_plataComprometidaCancelSheet`, `_plataComprometidaConfirmarRecibir`, `_plataComprometidaData`, `_plataComprometidaDiasHastaStr`, `_plataComprometidaEliminar`, `_plataComprometidaGuardar`, `_plataComprometidaGuardarMarcados`, `_plataComprometidaInit`, `_plataComprometidaInitSwipe`, `_plataComprometidaMarcarPagos`, `_plataComprometidaPoblarCuentas`, `_plataComprometidaPoblarPersonas`, `_plataComprometidaPoblarTC`, `_plataComprometidaQuitarDestino`, `_plataComprometidaRenderDestinosTmp`, `_plataComprometidaRenderLista`, `_plataComprometidaRenderMarcarList`, `_plataComprometidaToggleMarcar`
 
 ### `js/modules/prestado.js`
 
 Carga: lazy — grupo `prestamos`
 
-**Funciones:** `_abonoEncargoCuentaSplitPreview`, `_abrirMovimientoMiDeudaPago`, `_abrirMovimientoMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncargoPreview`, `_aplicarAbonoEncargo`, `_aplicarAbonoNormal`, `_aplicarExtraPartes`, `_aplicarMovimiento`, `_aplicarMovimientoMiDeuda`, `_aplicarPerdon`, `_aplicarPrestamo`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMovimiento`, `_colorDeuda`, `_confirmarMovimientoConGuard`, `_confirmarMovimientoInterno`, `_crearGrupoDeudor`, `_deudaCuentasDe`, `_deudaOperacionesPosteriores`, `_deudaTieneCuentaAfectada`, `_enReversion`, `_errFilaSinCuenta`, `_errMonto`, `_errSumaCuentas`, `_getOrCrearHistorico`, `_gruposAbiertos`, `_htmlHistorialPorGrupos`, `_initGrupoSelector`, `_initMovimientoGrupoSelector`, `_irADeudor`, `_irAMiDeuda`, `_mdEl`, `_mdEsPerdon`, `_mdExtra`, `_mdPickColor`, `_mdTitulo`, `_mdTotalCuentas`, `_mostrarErrorPlan`, `_movimientoEsPerdon`, `_movimientoTieneEncargoVinculado`, `_onMovimientoMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaYoDebo`, `_optGanancia`, `_pintarEncabezadoDeuda`, `_pintarTabPrestamos`, `_planAbonoEncargo`, `_planAbonoNormal`, `_planErr`, `_planExtra`, `_planMovimiento`, `_planMovimientoMiDeuda`, `_planPrestamo`, `_prEnsureAlcancia`, `_prestMontoSalida`, `_renderListaDeudas`, `_resetEncargoCuentaSplitToggleStyle`, `_resolverGrupoIdMovimiento`, `_resolverGrupoIdSel`, `_revertirDestinoAbono`, `_revertirDestinosAbono`, `_revertirMovimientoDeudor`, `_revertirMovimientoDeudorImpl`, `_revertirMovimientoMiDeuda`, `_revertirMovimientoMiDeudaImpl`, `_updateMdSplitResumen`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovimientoMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovimientoMiDeuda`, `confirmarPrestamoTC`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovimientoDeudor`, `eliminarMovimientoMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `getGrupoSaldo`, `guardarEditarMiDeuda`, `initMovimientoSheet`, `onChangeMovimiento_encargo_cuenta`, `onChangeMovimiento_encargo_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMdExtra`, `toggleMdPerdon`, `toggleMovimientoPerdon`, `volverDeudores`, `volverMisDeudas`
+**Funciones:** `_abonoEncargoCuentaSplitPreview`, `_abrirMovimientoMiDeudaPago`, `_abrirMovimientoMiDeudaRecibido`, `_abrirPerfilDesdeDeudor`, `_abrirPerfilDesdeDeudorActual`, `_abrirPerfilDesdeMiDeuda`, `_abrirPerfilDesdeMiDeudaActual`, `_abrirSheetAbono`, `_abrirSheetNuevaDeuda`, `_abrirSheetNuevaPersona`, `_abrirSheetNuevoPrestamo`, `_abrirSheetPagoCompleto`, `_actualizarBtnPrestamoTC`, `_actualizarEncargoPreview`, `_aplicarAbonoEncargo`, `_aplicarAbonoNormal`, `_aplicarExtraPartes`, `_aplicarMovimiento`, `_aplicarMovimientoMiDeuda`, `_aplicarPerdon`, `_aplicarPrestamo`, `_autoCerrarGruposEnCero`, `_autoGrupoIdMovimiento`, `_colorDeuda`, `_confirmarMovimientoConGuard`, `_confirmarMovimientoInterno`, `_crearGrupoDeudor`, `_deudaCuentasDe`, `_deudaOperacionesPosteriores`, `_deudaTieneCuentaAfectada`, `_enReversion`, `_errFilaSinCuenta`, `_errMonto`, `_errSumaCuentas`, `_getOrCrearHistorico`, `_gruposAbiertos`, `_htmlHistorialPorGrupos`, `_initGrupoSelector`, `_initMovimientoGrupoSelector`, `_irADeudor`, `_irAMiDeuda`, `_misDeudasEl`, `_misDeudasEsPerdon`, `_misDeudasExtra`, `_misDeudasPickColor`, `_misDeudasTitulo`, `_misDeudasTotalCuentas`, `_mostrarErrorPlan`, `_movimientoEsPerdon`, `_movimientoTieneEncargoVinculado`, `_onMovimientoMontoInput`, `_onSelPersonaMeDeben`, `_onSelPersonaYoDebo`, `_optGanancia`, `_pintarEncabezadoDeuda`, `_pintarTabPrestamos`, `_planAbonoEncargo`, `_planAbonoNormal`, `_planErr`, `_planExtra`, `_planMovimiento`, `_planMovimientoMiDeuda`, `_planPrestamo`, `_prEnsureAlcancia`, `_prestMontoSalida`, `_renderListaDeudas`, `_resetEncargoCuentaSplitToggleStyle`, `_resolverGrupoIdMovimiento`, `_resolverGrupoIdSel`, `_revertirDestinoAbono`, `_revertirDestinosAbono`, `_revertirMovimientoDeudor`, `_revertirMovimientoDeudorImpl`, `_revertirMovimientoMiDeuda`, `_revertirMovimientoMiDeudaImpl`, `_updateMisDeudasSplitResumen`, `_updatePrestSplitResumen`, `_verificarIntegridadSaldoDeudor`, `abonoSplitResumen`, `abrirDeudor`, `abrirMiDeuda`, `abrirMovimientoMiDeuda`, `abrirSheetPrestamoTC`, `cambiarTabPrestamos`, `confirmarMovimiento`, `confirmarMovimientoMiDeuda`, `confirmarPrestamoTC`, `editarDeudorActual`, `editarMiDeudaActual`, `eliminarDeudorActual`, `eliminarMiDeuda`, `eliminarMovimientoDeudor`, `eliminarMovimientoMiDeuda`, `extAddParte`, `extDelParte`, `extRenderPartes`, `extResumenPartes`, `extSetCuenta`, `extSetDesc`, `extSetMonto`, `extSetQuien`, `extSetTipo`, `getGrupoSaldo`, `guardarEditarMiDeuda`, `initMovimientoSheet`, `onChangeMovimiento_encargo_cuenta`, `onChangeMovimiento_encargo_sel`, `renderDeudoresList`, `renderMisDeudasList`, `toggleDesdeEncargo`, `toggleExtraSection`, `toggleMisDeudasExtra`, `toggleMisDeudasPerdon`, `toggleMovimientoPerdon`, `volverDeudores`, `volverMisDeudas`
 
-**Globales:** `PERSONA_COLORES_MD`
+**Globales:** `PERSONA_COLORES_MIS_DEUDAS`
 
 **Asigna a `window`:** `_miDeudaEditColor`
 
@@ -653,14 +653,6 @@ Ninguno.
 | `_confirmarMovimientoConGuard` | `js/modules/prestado.js` |
 | `_confirmarMovimientoInterno` | `js/modules/prestado.js` |
 | `_confirmarUsarParte` | `js/modules/encargos.js` |
-| `_cpdConfirmar` | `js/modules/plata-comprometida.js` |
-| `_cpdPoblarGastoSelectores` | `js/modules/plata-comprometida.js` |
-| `_cpdRepoblarFuentes` | `js/modules/plata-comprometida.js` |
-| `_cpdSetGastoOrigen` | `js/modules/plata-comprometida.js` |
-| `_cpdSetTipo` | `js/modules/plata-comprometida.js` |
-| `_cpdSetYaPague` | `js/modules/plata-comprometida.js` |
-| `_cpdSetYaSaque` | `js/modules/plata-comprometida.js` |
-| `_cpdTipoChange` | `js/modules/plata-comprometida.js` |
 | `_crearEncargoPicker` | `js/modules/mesada.js` |
 | `_crearGrupoDeudor` | `js/modules/prestado.js` |
 | `_crearPersonaGlobal` | `js/modules/personas.js` |
@@ -674,6 +666,14 @@ Ninguno.
 | `_deBase64` | `js/core/payload-codec.js` |
 | `_descriptorCuenta` | `js/modules/cuentas.js` |
 | `_descriptorDeCuenta` | `js/modules/cuentas.js` |
+| `_destinoNuevoConfirmar` | `js/modules/plata-comprometida.js` |
+| `_destinoNuevoPoblarGastoSelectores` | `js/modules/plata-comprometida.js` |
+| `_destinoNuevoRepoblarFuentes` | `js/modules/plata-comprometida.js` |
+| `_destinoNuevoSetGastoOrigen` | `js/modules/plata-comprometida.js` |
+| `_destinoNuevoSetTipo` | `js/modules/plata-comprometida.js` |
+| `_destinoNuevoSetYaPague` | `js/modules/plata-comprometida.js` |
+| `_destinoNuevoSetYaSaque` | `js/modules/plata-comprometida.js` |
+| `_destinoNuevoTipoChange` | `js/modules/plata-comprometida.js` |
 | `_deudaCuentasDe` | `js/modules/prestado.js` |
 | `_deudaOperacionesPosteriores` | `js/modules/prestado.js` |
 | `_deudasPropias` | `js/modules/inicio.js` |
@@ -752,12 +752,6 @@ Ninguno.
 | `_listaFuentes` | `js/core/cuentas-fuentes.js` |
 | `_locallyModified` | `js/core/utilidades-ui.js` (window._locallyModified = …) |
 | `_luminancia` | `js/core/cuentas-fuentes.js` |
-| `_mdEl` | `js/modules/prestado.js` |
-| `_mdEsPerdon` | `js/modules/prestado.js` |
-| `_mdExtra` | `js/modules/prestado.js` |
-| `_mdPickColor` | `js/modules/prestado.js` |
-| `_mdTitulo` | `js/modules/prestado.js` |
-| `_mdTotalCuentas` | `js/modules/prestado.js` |
 | `_mensajePushError` | `js/core/notificaciones-push.js` |
 | `_mesadaAnioDeKey` | `js/modules/mesada.js` |
 | `_mesadaApiEncargos` | `js/modules/mesada.js` |
@@ -778,6 +772,12 @@ Ninguno.
 | `_miaResumenLado` | `js/modules/encargos.js` |
 | `_miDeudaEditColor` | `js/modules/prestado.js` (window._miDeudaEditColor = …) |
 | `_milesFormatear` | `js/core/money-input.js` |
+| `_misDeudasEl` | `js/modules/prestado.js` |
+| `_misDeudasEsPerdon` | `js/modules/prestado.js` |
+| `_misDeudasExtra` | `js/modules/prestado.js` |
+| `_misDeudasPickColor` | `js/modules/prestado.js` |
+| `_misDeudasTitulo` | `js/modules/prestado.js` |
+| `_misDeudasTotalCuentas` | `js/modules/prestado.js` |
 | `_montoAlEscribir` | `js/core/money-input.js` |
 | `_montoCursor` | `js/core/money-input.js` |
 | `_montoFormatear` | `js/core/money-input.js` |
@@ -885,6 +885,7 @@ Ninguno.
 | `_renderMetaAportes` | `js/modules/nu.js` |
 | `_renderTiposNuevaCuenta` | `js/modules/cuentas.js` |
 | `_rendimientoCDTaDias` | `js/core/nu-calc.js` |
+| `_renombrarClavesEnArbol` | `js/core/persistencia.js` |
 | `_rerenderCuentaActiva` | `js/core/movimientos.js` |
 | `_resetEncargoCuentaSplitToggleStyle` | `js/modules/prestado.js` |
 | `_resetSheetNuevaCuenta` | `js/modules/cuentas.js` |
@@ -938,8 +939,8 @@ Ninguno.
 | `_trDestinoCambio` | `js/modules/cuentas.js` |
 | `_trOrigenCambio` | `js/modules/cuentas.js` |
 | `_trPodarSelect` | `js/modules/cuentas.js` |
-| `_updateMdSplitResumen` | `js/modules/prestado.js` |
 | `_updateMetaCuotaPreview` | `js/modules/nu.js` |
+| `_updateMisDeudasSplitResumen` | `js/modules/prestado.js` |
 | `_updatePrestSplitResumen` | `js/modules/prestado.js` |
 | `_usarParteFuentePreview` | `js/modules/encargos.js` |
 | `_usarParteFuentes` | `js/modules/encargos.js` |
@@ -1488,7 +1489,7 @@ Ninguno.
 | `pedirPinAntesDe` | `js/core/utilidades-ui.js` |
 | `Periodo` | `js/core/periodo.js` |
 | `PERSONA_COLORES` | `js/modules/personas.js` |
-| `PERSONA_COLORES_MD` | `js/modules/prestado.js` |
+| `PERSONA_COLORES_MIS_DEUDAS` | `js/modules/prestado.js` |
 | `PersonaPicker` | `js/modules/personas.js` |
 | `pgfActualizarSaldo` | `js/modules/gastos.js` |
 | `pintarAvatarPersona` | `js/core/estado.js` |
@@ -1629,9 +1630,9 @@ Ninguno.
 | `toggleDesdeEncargo` | `js/modules/prestado.js` |
 | `toggleExtraordinario` | `js/core/movimientos.js` |
 | `toggleExtraSection` | `js/modules/prestado.js` |
-| `toggleMdExtra` | `js/modules/prestado.js` |
-| `toggleMdPerdon` | `js/modules/prestado.js` |
 | `toggleMetaMinWrap` | `js/modules/nu.js` |
+| `toggleMisDeudasExtra` | `js/modules/prestado.js` |
+| `toggleMisDeudasPerdon` | `js/modules/prestado.js` |
 | `toggleModulo` | `js/modules/configuracion.js` |
 | `toggleMovimientoPerdon` | `js/modules/prestado.js` |
 | `totalMisDeudasPendiente` | `js/core/calc-helpers.js` |

@@ -38,7 +38,7 @@ Este módulo **no define ni escribe datos**. Lee estas partes de `S`:
 
 | Fuente en `S` | Qué produce | Qué se excluye |
 |---|---|---|
-| `S.movimientos[]` (Nequi, Efectivo, cajitas Nu, cuentas personalizadas vía `fuente`) | `ingreso` (`+`) si `tipo === 'entrada'`, si no `gasto` (`-`). Subtítulo: nombre de la cuenta. | `apertura`, `transferencia`, `_encMovId`, `_esAlcancia`, `_esAlcanciaIngreso`, descripciones que empiezan por "margen de encargo" / "margen encargo", y los espejos que un abono de "Me deben" señala con `_abonoDestinoMovId` o `destinos[]._movId` (ese abono sale en `S.deudores`) |
+| `S.movimientos[]` (Nequi, Efectivo, cajitas Nu, cuentas personalizadas vía `fuente`) | `ingreso` (`+`) si `tipo === 'entrada'`, si no `gasto` (`-`). Subtítulo: nombre de la cuenta. | `apertura`, `transferencia`, `_encargoMovimientoId`, `_esAlcancia`, `_esAlcanciaIngreso`, descripciones que empiezan por "margen de encargo" / "margen encargo", y los espejos que un abono de "Me deben" señala con `_abonoDestinoMovimientoId` o `destinos[]._movimientoId` (ese abono sale en `S.deudores`) |
 | `S.gastosVar[]` | `gasto` (`-`). Subtítulo: categoría. Si `esPagoGastoFijo`, muestra la insignia "Gasto fijo". | `_esAlcancia` y `_esPagoTC` (el pago de tarjeta ya sale como "Abono a deuda"). Sí se muestran `_esExtraPrestamo` y los gastos de compra con TC (`_esCompraTC`) |
 | `S.deudores[].movimientos[]` | `prestamo` (`-`, "Préstamo a X") o `abono` (`+`, "Abono de X"). | `_perdon` |
 | `S.spotify.historial[]` | `spotify` (`+`, "Cobro Spotify · nombre"). | Todo lo que no sea `tipo === 'cobro'` |
@@ -110,7 +110,7 @@ Carga lazy del módulo → render inmediato al final del archivo
 | Cobro de Spotify | No duplica: `spotify.js` no escribe en `S.movimientos`; el cobro vive solo en `S.spotify.historial`. El pago del ciclo sale una vez, como gasto "Spotify Premium". |
 | Cajitas Nu | No hay lista aparte: su historial vive en `S.movimientos` con `fuente: 'cajita:ID'` (no existe `cajita.historial`), así que lo que entra a una cajita sale por la primera fila de la tabla y con las mismas exclusiones. |
 | Mesada | No duplica: `mesada.js` solo escribe el espejo (`_mesadaEntrar`) y el feed no lee `S.mesadas`, así que sale una vez, como "Ingreso". |
-| Encargos | No duplica (`encargos.js` deja sus espejos en `S.movimientos` con `_encMovId`, que se filtra). Márgenes y `_esAbonoDeudor` también filtrados. |
+| Encargos | No duplica (`encargos.js` deja sus espejos en `S.movimientos` con `_encargoMovimientoId`, que se filtra). Márgenes y `_esAbonoDeudor` también filtrados. |
 | Alcancía | No duplica: sus espejos van a `S.movimientos` con `_esAlcancia` (filtrados) y su `historial` es el de `S.alcancia`, no el de una cajita. |
 
 **Criterio para el fix:** se descarta por caso, no con un filtro general. Ni `_secundario` ni `_esEntradaEspejoNoIngreso()` sirven como filtro del feed: la primera también marca filas que no tienen otra fuente (el gasto "Spotify Premium", el perdón, los espejos de "Yo debo") y la segunda responde "¿es ingreso nuevo?", no "¿ya lo cubre otra fuente?". Por eso el espejo de "Me deben" se oculta solo cuando un abono lo referencia por id: un espejo sin referencia (por ejemplo la propina) sigue visible. Si un módulo nuevo crea un espejo, hay que revisar acá qué fuente lo cubre.

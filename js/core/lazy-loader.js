@@ -103,7 +103,7 @@ const Loader = (function () {
     // actividad-reciente.js), y tcNormalizarTarjetas()/renderTCDashboard()
     // (llamadas desde refresh()/save() en js/core/refresh.js, no desde acá) ya
     // tienen guard typeof — confirmado con el archivo real, ver
-    // auditoria-tecnica.md. Su wrapper de abrirDetalleMov (Events.registerAll
+    // auditoria-tecnica.md. Su wrapper de abrirDetalleMovimiento (Events.registerAll
     // más abajo en el archivo) ya resolvía el nombre en tiempo de click, no
     // de carga, así que es lazy-safe sin tocarlo. Efecto secundario aceptado,
     // no corregido: el gancho Ui.en("fuente-alerta") al final del

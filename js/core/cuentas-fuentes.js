@@ -207,11 +207,11 @@ const Libro = (() => {
         if (l && l.cuenta === cuenta && l.tipo === 'rendimiento' && String(l.fecha).slice(0, 7) === mes) { l.monto += monto; if (fecha > l.fecha) l.fecha = fecha; return l.id; }
       }
     }
-    const reg = { id: _id(), fecha, cuenta, monto, tipo };
-    if (o.desc) reg.desc = o.desc;
-    reg.origen = origenLibro;
-    estadoActual.libro.push(reg);
-    return reg.id;
+    const registro = { id: _id(), fecha, cuenta, monto, tipo };
+    if (o.desc) registro.desc = o.desc;
+    registro.origen = origenLibro;
+    estadoActual.libro.push(registro);
+    return registro.id;
   }
 
   // Saldo guardado vs suma del libro, por cuenta. ok=false → algún código movió un saldo sin pasar por la puerta única.

@@ -6,12 +6,12 @@
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 var Reversibles = (() => {
-  const _reg = new Map();
+  const _registro = new Map();
   return {
-    registrar(def) { [].concat(def.tipo).forEach(t => _reg.set(t, def)); },
-    tiene(tipo) { return _reg.has(tipo); },
+    registrar(def) { [].concat(def.tipo).forEach(t => _registro.set(t, def)); },
+    tiene(tipo) { return _registro.has(tipo); },
     async proteger(tipo, ref, ctx) {
-      const def = _reg.get(tipo);
+      const def = _registro.get(tipo);
       const p = def && def.proteccion ? def.proteccion(ref, ctx) : null;
       if (!p) return { ok: true, confirmado: false };
       const nivel = nivelAntiguedadMovimiento(p.fecha, p.operaciones, p.modulo);

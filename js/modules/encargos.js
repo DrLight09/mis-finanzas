@@ -458,7 +458,7 @@ function _pintarEncargoDetalle(id) {
     const _encargoAttrs=(m, origenLbl)=>{
       const sd=m._sd||_encargoSaldoPorId.get(m.id);
       if(!sd) return '';
-      return `data-mov-id="${m.id}" data-mov-tipo="${m.tipo}" data-mov-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-mov-origen="${escHtml(origenLbl)}" data-mov-saldo-antes="${sd.antes}" data-mov-saldo-despues="${sd.despues}" data-mov-saldo-label="Saldo de ${escHtml(encargo.nombre)}" data-mov-desc="${escHtml(m.desc||'')}" data-mov-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" data-action="core:abrirDetalleMov"`;
+      return `data-movimiento-id="${m.id}" data-movimiento-tipo="${m.tipo}" data-movimiento-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-movimiento-origen="${escHtml(origenLbl)}" data-movimiento-saldo-antes="${sd.antes}" data-movimiento-saldo-despues="${sd.despues}" data-movimiento-saldo-label="Saldo de ${escHtml(encargo.nombre)}" data-movimiento-desc="${escHtml(m.desc||'')}" data-movimiento-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" data-action="core:abrirDetalleMovimiento"`;
     };
     // Salidas divididas → una sola fila (ver _encargoGrupoSplit)
     const _gruposVistos = new Set();
@@ -487,7 +487,7 @@ function _pintarEncargoDetalle(id) {
           sub: `${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}`,
           monto: fmt(m.monto),
           montoClase: 'c-blue',
-          acciones: botonEliminarFila('encargos:deleteMov', [encargo.id, m.id], 'Eliminar saldo inicial'+(lblCuentaIni?' (también se descuenta de '+lblCuentaIni+')':'')),
+          acciones: botonEliminarFila('encargos:deleteMovimiento', [encargo.id, m.id], 'Eliminar saldo inicial'+(lblCuentaIni?' (también se descuenta de '+lblCuentaIni+')':'')),
           meta: html`<span class="badge bg-blue enc-fs9">Inicio</span>${lblCuentaIni?html`<span class="badge ${fuenteBadgeClass(m.cuenta)} enc-fs9">${lblCuentaIni}</span>`:''}`
         });
       }
@@ -508,7 +508,7 @@ function _pintarEncargoDetalle(id) {
         sub: `${m.fecha}${lblCuenta?' · '+lblCuenta:''}${tcNombreLbl?' · '+tcNombreLbl:''}${esMia?' · Yo puse la plata':''}`,
         monto: `${esEntrada?'+':'−'}${fmt(m.monto)}`,
         montoClase: esEntrada?'c-blue':esAbonoPrestamo?'c-amber':'c-red',
-        acciones: botonEliminarFila('encargos:deleteMov', [encargo.id, m.id], 'Eliminar (también elimina movimientos secundarios en tus cuentas)'),
+        acciones: botonEliminarFila('encargos:deleteMovimiento', [encargo.id, m.id], 'Eliminar (también elimina movimientos secundarios en tus cuentas)'),
         antesMeta: html`${m.nota&&!esTcEncargo&&!esMia?html`<div class="gasto-item-meta"><span class="enc-nota">${m.nota}</span></div>`:''}${esMia?html`<div class="gasto-item-meta enc-meta-mt3"><span class="enc-meta-txt"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="enc-meta-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg>Salió de <strong class="enc-c-text2">${miaSaleLbl}</strong>${miaEntraLbl?html` · Entró a <strong class="enc-c-text2">${miaEntraLbl}</strong>`:''}</span></div>`:''}`,
         meta: html`
           <span class="badge ${esEntrada?'bg-blue':esAbonoPrestamo?'bg-amber':esTcEncargo?'bg-blue':'bg-red'} enc-fs9">${esEntrada?'Entrada':esAbonoPrestamo?'Pago préstamo':esTcEncargo?'Pagado con TC':'Salida'}</span>
@@ -949,7 +949,7 @@ function _procesarMovimientoEncargoMia(movimiento) {
       tipo: 'transferencia',
       fuente: r.fuente,
       _fuenteDestino: destinoUnico,
-      _encMovId: movimiento.id,
+      _encargoMovimientoId: movimiento.id,
       clase: 'neutro',
       _esIntercambioEncargo: true,
       _intercambioSalida: true,
@@ -971,7 +971,7 @@ function _procesarMovimientoEncargoMia(movimiento) {
       tipo: 'transferencia',
       fuente: r.fuente,
       _fuenteDestino: origenUnico,
-      _encMovId: movimiento.id,
+      _encargoMovimientoId: movimiento.id,
       clase: 'neutro',
       _esIntercambioEncargo: true,
       _intercambioEntrada: true,
@@ -1066,7 +1066,7 @@ const _diferencial_usarParte = diffRegistrarInstancia('usarParte', {
     const parte = encargo ? (encargo.partes || []).find(p => p.id === _usarParteId) : null;
     return parte ? (parte.monto || 0) : 0;
   },
-  descMargen: (movimiento) => `Margen encargo ${movimiento._encNombre || ''} — `,
+  descMargen: (movimiento) => `Margen encargo ${movimiento._encargoNombre || ''} — `,
   getMiCuentaSplit: () => _usarParteMi.getData(),
   onReset: () => _usarParteMi.reset(),
   onResumen: () => _usarParteMi.preview()
@@ -1796,7 +1796,7 @@ function _movimientoEncargoFaltanteCuentaHint() {
 // préstamo es una deuda real que sigue existiendo sin importar qué pase
 // después con el encargo, así que no están encadenados para borrado en
 // cascada: cada uno se revierte con su flujo normal (deleteMovimientoEncargo /
-// eliminarMovDeudor). _encargoOrigenId/_encargoOrigenMovId en el movimiento
+// eliminarMovimientoDeudor). _encargoOrigenId/_encargoOrigenMovimientoId en el movimiento
 // del deudor son solo trazabilidad, no afectan el borrado de ninguno de los
 // dos lados.
 function _movimientoEncargoConfirmarPrestarFaltante() {
@@ -1873,7 +1873,7 @@ function _movimientoEncargoConfirmarPrestarFaltante() {
     nota: `Encargo "${encargo.nombre}": ${desc} (no alcanzaba ${fmt(libre)} del encargo)`,
     grupoId,
     _encargoOrigenId: encargo.id,
-    _encargoOrigenMovId: movimientoEncargoId,
+    _encargoOrigenMovimientoId: movimientoEncargoId,
     ts: Date.now() + 1
   });
   descontarFuente(fuentePrestamo, faltante, _origenLibroEncargo(movimientoEncargoId));
@@ -1956,9 +1956,9 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   if (movimiento && movimiento._esAbonoDeudor && movimiento._deudorId) {
     const d = Deudas.lista('favor').find(x => x.id === movimiento._deudorId);
     if (d) {
-      // Eliminar el abono correspondiente del deudor (vinculado por _encMovId,
-      // o por _encMovIds si el pago salió de varias cuentas del encargo)
-      d.movimientos = (d.movimientos || []).filter(x => !(x._viaEncargo && (x._encMovId === movimientoId || (x._encMovIds && x._encMovIds.includes(movimientoId)))));
+      // Eliminar el abono correspondiente del deudor (vinculado por _encargoMovimientoId,
+      // o por _encargoMovimientoIds si el pago salió de varias cuentas del encargo)
+      d.movimientos = (d.movimientos || []).filter(x => !(x._viaEncargo && (x._encargoMovimientoId === movimientoId || (x._encargoMovimientoIds && x._encargoMovimientoIds.includes(movimientoId)))));
     }
     // Si este pago salió de varias cuentas del encargo (mismo _grupoAbonoId),
     // borrar TODAS esas salidas ahora — no solo la que el usuario clickeó —
@@ -1985,15 +1985,15 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
 
     // Borrar el movimiento de historial de TC vinculado (paso 4)
     if (S.tcMovimientos) {
-      S.tcMovimientos = S.tcMovimientos.filter(t => t._encMovId !== movimientoId);
+      S.tcMovimientos = S.tcMovimientos.filter(t => t._encargoMovimientoId !== movimientoId);
     }
 
     // Borrar todos los S.movimientos vinculados (destino + diferencial, pasos 2 y 5)
     // y revertir sus sumas. Excluye los de intercambio — esos los maneja el bloque siguiente.
     if (S.movimientos) {
-      const diferencialMovimientos = S.movimientos.filter(m => m._encMovId === movimientoId && !m._esIntercambioEncargo);
+      const diferencialMovimientos = S.movimientos.filter(m => m._encargoMovimientoId === movimientoId && !m._esIntercambioEncargo);
       diferencialMovimientos.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true)); });
-      S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && !m._esIntercambioEncargo));
+      S.movimientos = S.movimientos.filter(m => !(m._encargoMovimientoId === movimientoId && !m._esIntercambioEncargo));
     }
   }
 
@@ -2014,14 +2014,14 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
     if (movimiento._destino && movimiento.monto) descontarFuente(movimiento._destino, movimiento.monto, _origenLibroEncargo(movimientoId, true));
     // Borrar el movimiento de ingreso vinculado (vive en S.movimientos, como el de toda cuenta).
     if (S.movimientos) {
-      S.movimientos = S.movimientos.filter(m => m._encMovId !== movimientoId);
+      S.movimientos = S.movimientos.filter(m => m._encargoMovimientoId !== movimientoId);
     }
   }
 
   // Revertir intercambios "lo pagué yo" del diferencial (salida normal sin _esTcEncargo)
   if (movimiento && movimiento.diferencial && (movimiento.diferencial.beneficiarios || []).some(b => b.pagadoPorMi)) {
     if (S.movimientos) {
-      const intercambioMovimientos = S.movimientos.filter(m => m._encMovId === movimientoId && m._esIntercambioEncargo);
+      const intercambioMovimientos = S.movimientos.filter(m => m._encargoMovimientoId === movimientoId && m._esIntercambioEncargo);
       intercambioMovimientos.forEach(m => {
         if (!m.fuente || !m.monto) return;
         if (m._intercambioSalida) {
@@ -2030,14 +2030,14 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
           descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true));
         }
       });
-      S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && m._esIntercambioEncargo));
+      S.movimientos = S.movimientos.filter(m => !(m._encargoMovimientoId === movimientoId && m._esIntercambioEncargo));
     }
   }
 
   // Revertir intercambio simple "Yo puse la plata" (sin diferencial — _miaCuentaSale en el mov principal)
   if (movimiento && movimiento._miaCuentaSale && !(movimiento.diferencial && (movimiento.diferencial.beneficiarios || []).some(b => b.pagadoPorMi))) {
     if (S.movimientos) {
-      const intercambioMovimientos = S.movimientos.filter(m => m._encMovId === movimientoId && m._esIntercambioEncargo);
+      const intercambioMovimientos = S.movimientos.filter(m => m._encargoMovimientoId === movimientoId && m._esIntercambioEncargo);
       intercambioMovimientos.forEach(m => {
         if (!m.fuente || !m.monto) return;
         if (m._intercambioSalida) {
@@ -2048,16 +2048,16 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
           descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true));
         }
       });
-      S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && m._esIntercambioEncargo));
+      S.movimientos = S.movimientos.filter(m => !(m._encargoMovimientoId === movimientoId && m._esIntercambioEncargo));
     }
   }
 
   // Revertir el margen que entró a mis cuentas (sobrante libre del diferencial — una entrada
   // por cuenta si se repartió con "Dividir"). La compra con TC ya lo limpió arriba.
   if (movimiento && movimiento.diferencial && !movimiento._esTcEncargo && S.movimientos) {
-    S.movimientos.filter(m => m._encMovId === movimientoId && m._esDiferencialEncargo)
+    S.movimientos.filter(m => m._encargoMovimientoId === movimientoId && m._esDiferencialEncargo)
       .forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true)); });
-    S.movimientos = S.movimientos.filter(m => !(m._encMovId === movimientoId && m._esDiferencialEncargo));
+    S.movimientos = S.movimientos.filter(m => !(m._encargoMovimientoId === movimientoId && m._esDiferencialEncargo));
   }
 
   encargo.movimientos = (encargo.movimientos||[]).filter(m => m.id!==movimientoId && !(_grupoDel && _grupoDel.some(x => x.id === m.id)));
@@ -2271,7 +2271,7 @@ function confirmarTraspasoEncargo() {
     monto,
     fecha,
     desc: desc + ' (de encargo ' + encargo.nombre + ')',
-    _encMovId: encargoMovimientoId,
+    _encargoMovimientoId: encargoMovimientoId,
     clase: 'ingreso',
     _esExtraIngreso: true   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
   });
@@ -2926,8 +2926,8 @@ const _diferencial_compraConTc = diffRegistrarInstancia('ctc', {
   placeholderSinReal: 'Ingresa el valor real para ver el resumen',
   labelMargenNegativo: 'El valor real debe ser menor que el monto del encargo',
   getDijo: () => parseMoney(document.getElementById('ctc_monto')?.value) || 0,
-  descMargen: (movimiento) => `Diferencial encargo ${movimiento._encNombre || ''} — `,
-  origenSeccion: 'Encargos', // ídem: deleteMovimientoEncargo limpia estos por _encMovId
+  descMargen: (movimiento) => `Diferencial encargo ${movimiento._encargoNombre || ''} — `,
+  origenSeccion: 'Encargos', // ídem: deleteMovimientoEncargo limpia estos por _encargoMovimientoId
   getMiCuentaSplit: () => _compraConTcMi.getData(),
   onReset: () => _compraConTcMi.reset(),
   onResumen: () => { _compraConTcMi.preview(); _compraConTcActualizarPreview(); }
@@ -3117,7 +3117,7 @@ function confirmarCompraConTC() {
     fecha,
     nota: nota || 'Compra de encargo pagada con TC — dinero convertido para pago de tarjeta.',
     _esTcEncargo: true,
-    _encId: encargo.id,      // guardar encargo origen para poder encontrar el raw desde detalle
+    _encargoId: encargo.id,      // guardar encargo origen para poder encontrar el raw desde detalle
     _destino: destino,   // guardar destino para poder revertir el sumarFuente al eliminar
     _tcId: tcId,         // guardar TC para revertir la deuda al eliminar
     _tcMonto: tcMonto,      // monto real cargado a la TC
@@ -3136,7 +3136,7 @@ function confirmarCompraConTC() {
     id: uid(),
     tipo: 'entrada',
     fuente: destino,
-    _encMovId: _encargoMovimientoId,
+    _encargoMovimientoId: _encargoMovimientoId,
     clase: 'neutro',
     _esTcEncargo: true,
     monto: tcMonto,
@@ -3163,12 +3163,12 @@ function confirmarCompraConTC() {
     fecha,
     nota: nota || 'Cargo de encargo — no es gasto propio',
     encargoId: encargo.id,
-    _encMovId: _encargoMovimientoId  // vínculo para poder limpiar al eliminar el movimiento del encargo
+    _encargoMovimientoId: _encargoMovimientoId  // vínculo para poder limpiar al eliminar el movimiento del encargo
   });
 
-  // ── 5. Si hay diferencial, registrar el margen vía el motor común (usa el mismo _encMovId para poder revertir)
+  // ── 5. Si hay diferencial, registrar el margen vía el motor común (usa el mismo _encargoMovimientoId para poder revertir)
   if (margen > 0.5) {
-    const movimientoTemp = { desc, fecha, _encNombre: encargo.nombre };
+    const movimientoTemp = { desc, fecha, _encargoNombre: encargo.nombre };
     const diferencial = diffAplicar('ctc', movimientoTemp, _encargoMovimientoId);
     if (diferencial) movimientoEncargo.diferencial = diferencial;
   }
@@ -3258,41 +3258,41 @@ function confirmarCompraConTC() {
 
 Events.registerAll('encargos', {
   nuevo:                  (...args) => abrirNuevoEncargo(...args),        // botón del estado vacío (el de pie usa un listener por id)
-  abrirMov:               (...args) => abrirMovimientoEncargo(...args),          // data-args: ["entrada"] | ["salida"]
+  abrirMovimiento:               (...args) => abrirMovimientoEncargo(...args),          // data-args: ["entrada"] | ["salida"]
   abrirSalidaMenu:        (...args) => abrirSalidaEncargoMenu(...args),
   salidaMenuIr:           (...args) => _salidaEncargoMenuIr(...args),         // data-args: ["normal"|"mio"|"otroEncargo"|"tc"]
   abrirMoverCuentas:      (...args) => abrirMoverEntreCuentasEncargo(...args),
-  moverEncSplitToggle:      (...args) => _moverEncargoSplitToggle(...args),
-  moverEncAgregarSplitRow:  (...args) => _spotify_moverenc.addRow(...args),
+  moverEncargoSplitToggle:      (...args) => _moverEncargoSplitToggle(...args),
+  moverEncargoAgregarSplitRow:  (...args) => _spotify_moverenc.addRow(...args),
   abrirNuevaParte:        (...args) => abrirNuevaParte(...args),
-  movSplitToggle:         (...args) => _spotify_movimientoEncargo.toggle(...args),
-  movAgregarSplitRow:     (...args) => _spotify_movimientoEncargo.addRow(...args),
-  difToggle:              (...args) => _diferencial_movimientoEncargo.toggle(...args),
-  difAddBenef:            (...args) => _diferencial_movimientoEncargo.addParte(...args),
+  movimientoSplitToggle:         (...args) => _spotify_movimientoEncargo.toggle(...args),
+  movimientoAgregarSplitRow:     (...args) => _spotify_movimientoEncargo.addRow(...args),
+  diferencialToggle:              (...args) => _diferencial_movimientoEncargo.toggle(...args),
+  diferencialAddBenef:            (...args) => _diferencial_movimientoEncargo.addParte(...args),
   miaToggle:              (...args) => _movimientoEncargoMiaToggle(...args),
   miaSaleSplitToggle:     (...args) => _spotify_miaSale.toggle(...args),
   miaSaleAgregarRow:      (...args) => _spotify_miaSale.addRow(...args),
   miaEntraSplitToggle:    (...args) => _spotify_miaEntra.toggle(...args),
   miaEntraAgregarRow:     (...args) => _spotify_miaEntra.addRow(...args),
-  difMiSplitToggle:       (...args) => _spotify_movimientoEncargoDiferencialMi.toggle(...args),
-  ctcMiSplitToggle:       (...args) => _compraConTcMiSplitToggle(...args),
-  ctcMiAgregarRow:        (...args) => _compraConTcMiAgregarRow(...args),
+  diferencialMiSplitToggle:       (...args) => _spotify_movimientoEncargoDiferencialMi.toggle(...args),
+  compraConTcMiSplitToggle:       (...args) => _compraConTcMiSplitToggle(...args),
+  compraConTcMiAgregarRow:        (...args) => _compraConTcMiAgregarRow(...args),
   usarParteMiSplitToggle: (...args) => _usarParteMiSplitToggle(...args),
   usarParteMiAgregarRow:  (...args) => _usarParteMiAgregarRow(...args),
-  difMiAgregarRow:        (...args) => _spotify_movimientoEncargoDiferencialMi.addRow(...args),
+  diferencialMiAgregarRow:        (...args) => _spotify_movimientoEncargoDiferencialMi.addRow(...args),
   confirmarPrestarFaltante: (...args) => _movimientoEncargoConfirmarPrestarFaltante(...args),
   guardarParte:           (...args) => guardarParte(...args),
   cerrarParteSheet:       (...args) => cerrarPartSheet(...args),
   usarParteSplitToggle:   (...args) => _spotify_usarParte.toggle(...args),
   usarParteAgregarSplitRow: (...args) => _spotify_usarParte.addRow(...args),
-  usarParteDifToggle:     (...args) => _diferencial_usarParte.toggle(...args),
+  usarParteDiferencialToggle:     (...args) => _diferencial_usarParte.toggle(...args),
   usarParteAddBenef:      (...args) => _diferencial_usarParte.addParte(...args),
   confirmarUsarParte:     (...args) => _confirmarUsarParte(...args),
-  ctcDifToggle:           (...args) => _diferencial_compraConTc.toggle(...args),
+  compraConTcDiferencialToggle:           (...args) => _diferencial_compraConTc.toggle(...args),
   // Con argumentos dinámicos (id de encargo / movimiento / parte):
   abrirDetalle:           (...args) => abrirEncargoDetalle(...args),       // (encargoId)
   abrirDesdeCuenta:       (...args) => abrirEncargoDesdeCuenta(...args),   // (encargoId)
-  deleteMov:              (...args) => deleteMovimientoEncargo(...args),         // (encargoId, movId)
+  deleteMovimiento:              (...args) => deleteMovimientoEncargo(...args),         // (encargoId, movimientoId)
   usarParte:              (...args) => usarParte(...args),                // (encargoId, parteId)
   editarParte:            (...args) => editarParte(...args),              // (encargoId, parteId)
   eliminarParte:          (...args) => eliminarParte(...args),             // (encargoId, parteId)

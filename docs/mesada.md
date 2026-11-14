@@ -63,13 +63,13 @@ S.mesadas = {
         fecha: "2026-07-05",
         destino: "nu",          // cuenta donde se metió la plata (modo simple) — nunca una TC
         splits: [                              // o bien, un arreglo si se dividió entre varias cuentas
-          { fuente: "nequi", monto: 50000, _movSecId: "abc123" },
-          { fuente: "cajita:xyz", monto: 30000, _movSecId: "def456" }
+          { fuente: "nequi", monto: 50000, _movimientoSecId: "abc123" },
+          { fuente: "cajita:xyz", monto: 30000, _movimientoSecId: "def456" }
         ],
         nota: "",
-        _movSecId: "abc123",    // id del movimiento espejo en la cuenta destino (solo modo simple)
+        _movimientoSecId: "abc123",    // id del movimiento espejo en la cuenta destino (solo modo simple)
         origenEncargo: {        // solo si se pagó con plata de un encargo (ver §2)
-          encargoId: "...", movId: "...", nombre: "Papá",
+          encargoId: "...", movimientoId: "...", nombre: "Papá",
           sumado: true          // la plata se sumó a una cuenta destino (false si el destino quedó vacío)
         },
 
@@ -77,7 +77,7 @@ S.mesadas = {
         cuotaEsperada: 80000,        // snapshot de la cuota cuando se marcó pendiente
         pendiente: 20000,            // cuánto falta por recibir (0 = ya saldado)
         pendienteHistorial: [        // abonos posteriores que fueron cerrando `pendiente`
-          { monto: 20000, fecha: "2026-07-20", destino: "nequi", nota: "", _movSecId: "ghi789",
+          { monto: 20000, fecha: "2026-07-20", destino: "nequi", nota: "", _movimientoSecId: "ghi789",
             origenEncargo: {...} }   // igual que arriba, si ese abono también salió de un encargo
         ]
       }
@@ -89,9 +89,9 @@ S.mesadas = {
 S.mesadaAnio  // año que se está viendo actualmente en la pantalla (nav ← →)
 ```
 
-**`origenEncargo`:** `movId` es la salida que se creó en el encargo al pagar; borrar el pago (o el abono) la quita de ahí.
+**`origenEncargo`:** `movimientoId` es la salida que se creó en el encargo al pagar; borrar el pago (o el abono) la quita de ahí.
 
-**`_movSecId`:** id del movimiento "espejo" generado en la cuenta destino (ver §7). Solo existe si el destino era una cuenta rastreable — si el destino quedó vacío ("No especificar / lo gasté"), no hay `_movSecId` porque no hubo ninguna cuenta que tocar.
+**`_movimientoSecId`:** id del movimiento "espejo" generado en la cuenta destino (ver §7). Solo existe si el destino era una cuenta rastreable — si el destino quedó vacío ("No especificar / lo gasté"), no hay `_movimientoSecId` porque no hubo ninguna cuenta que tocar.
 
 ---
 
@@ -159,11 +159,11 @@ Todas las reversiones de saldo usan `descontarFuente(..., { exacto: true })`: si
 
 ## 6. Casos especiales
 
-- **Subir la cuota a mitad de año** puede hacer que meses anteriores del mismo año (ya pagados completos en su momento) aparezcan sugeridos como "¿marcar como pendiente?" al abrir su detalle — porque la cuota se compara siempre contra el valor vigente hoy, no contra la que regía ese mes. No corrompe nada (es solo un botón sugerido, nada se marca solo), pero puede ser confuso si no se sabe que pasa esto.
+- **Subir la cuota a mitad de año** puede hacer que meses anteriores del mismo año (ya pagados completos en su momento) aparezcan sugeridos como "¿marcar como pendiente?" al abrir su detalle — porque la cuota se compara siempre contra el valor vigente hoy, no contra la que registrosía ese mes. No corrompe nada (es solo un botón sugerido, nada se marca solo), pero puede ser confuso si no se sabe que pasa esto.
 - **Sin destino especificado** ("No especificar / lo gasté"): el mes cuenta igual como recibido en las estadísticas, pero no mueve ningún saldo ni genera movimiento espejo.
 - **Un mes registrado con menos plata que la cuota pero nunca marcado como pendiente** (típico de registros viejos): muestra un aviso neutro para marcarlo retroactivamente como deuda, sin perder nada de lo ya guardado.
 - **Abono mal cargado:** se puede deshacer un abono puntual del historial de pendiente (con confirmación), revirtiendo su plata, su movimiento espejo, y devolviendo ese monto de `monto` a `pendiente`.
-- **La salida de un encargo creada por Mesada no se borra desde Encargos.** Su efecto real vive acá (suma a la cuenta destino + espejo); borrarla desde Encargos devolvería la plata al encargo pero dejaría el pago contándola. `deleteMovimientoEncargo` lo reconoce con `mesadaOrigenDeMovimientoEncargo(movId)` (`calc-helpers.js`; mira los pagos y abonos guardados, no una marca en el movimiento, así que también cubre las salidas anteriores a este cambio) y avisa que se borra desde Mesada.
+- **La salida de un encargo creada por Mesada no se borra desde Encargos.** Su efecto real vive acá (suma a la cuenta destino + espejo); borrarla desde Encargos devolvería la plata al encargo pero dejaría el pago contándola. `deleteMovimientoEncargo` lo reconoce con `mesadaOrigenDeMovimientoEncargo(movimientoId)` (`calc-helpers.js`; mira los pagos y abonos guardados, no una marca en el movimiento, así que también cubre las salidas anteriores a este cambio) y avisa que se borra desde Mesada.
 - **Limitación conocida del match por nombre:** "Papas" (la comida) es indistinguible de "Papás" (plural de papá) y entra como candidato, y un encargo que se llame de otra forma ("Carlos") no aparece. Es solo una opción de una lista; la solución es ponerle al encargo un nombre que diga papá/mamá. Si esto llega a ser un problema real, la alternativa sería guardar un vínculo explícito `S.mesadas[parent].personaId` (se probó el 2026-10-08 y se quitó por no hacer falta; ver `CHANGELOG.md#mesada`).
 - **Sin encargos cargados:** Mesada consulta a Encargos con guards, sin forzar su carga. Si el módulo todavía no cargó, o no hay un encargo con saldo que coincida con papá/mamá, la opción de pagar con encargo simplemente no aparece.
 - **Borrar un pago viejo:** si borrarlo movería el saldo de una cuenta o de un encargo, aplica la protección por antigüedad (ver `docs/proteccion-antiguedad-movimientos.md`): los muy viejos se bloquean y los viejos piden una confirmación específica. Las "operaciones posteriores" que cuentan son los pagos de mesada más nuevos que tocaron alguna de las mismas cuentas. Un pago 100% "Sin especificar" (sin cuenta ni encargo afectados) no tiene nada que proteger y se borra normal.
@@ -174,7 +174,7 @@ Todas las reversiones de saldo usan `descontarFuente(..., { exacto: true })`: si
 
 Cuando entra plata de mesada y se elige una cuenta destino, además de sumarle el saldo, mesada deja un **movimiento visible** en el historial de esa cuenta — el mismo mecanismo que usan Prestado, Encargos y Spotify. Aparece con un candado 🔒 y la etiqueta "Automático": indica que vino de otra sección y que solo se puede eliminar desde ahí, no directamente desde el historial de la cuenta.
 
-El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_movSecId` en el pago simple, en cada `split`, o en cada entrada de `pendienteHistorial`) para poder encontrarlo y borrarlo después sin ambigüedad.
+El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_movimientoSecId` en el pago simple, en cada `split`, o en cada entrada de `pendienteHistorial`) para poder encontrarlo y borrarlo después sin ambigüedad.
 
 > Cuentas (`getMovimientosCuenta()`) debe leer estos movimientos **únicamente** desde `S.movimientos` — nunca reconstruirlos a partir de `S.mesadas`: cada pago aparecería dos veces, el segundo sin candado.
 

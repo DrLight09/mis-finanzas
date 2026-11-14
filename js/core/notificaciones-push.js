@@ -83,14 +83,14 @@ function _mensajePushError(e, ent) {
 
 // getToken con un reintento: un «push service error» muchas veces viene de una suscripción vieja del navegador (hecha con otra
 // clave o ya caducada). Se borra esa suscripción y el token anterior y se vuelve a pedir una sola vez.
-async function _obtenerTokenPush(messaging, swReg) {
-  const pedir = () => messaging.getToken({ vapidKey: _FCM_VAPID_KEY, serviceWorkerRegistration: swReg });
+async function _obtenerTokenPush(messaging, swRegistration) {
+  const pedir = () => messaging.getToken({ vapidKey: _FCM_VAPID_KEY, serviceWorkerRegistration: swRegistration });
   try {
     return await pedir();
   } catch (e) {
     if (!/push service error|AbortError/i.test(String((e && (e.code || e.name)) || '') + ' ' + String((e && e.message) || e))) throw e;
     try { await messaging.deleteToken(); } catch (_) { /* no había token */ }
-    try { const sub = await swReg.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (_) { /* nada que borrar */ }
+    try { const sub = await swRegistration.pushManager.getSubscription(); if (sub) await sub.unsubscribe(); } catch (_) { /* nada que borrar */ }
     return await pedir();
   }
 }
@@ -131,8 +131,8 @@ async function activarNotificaciones() {
     const messaging = firebase.messaging(app);
 
     // Reusa el SW que sw.js ya registra al arrancar la app, en vez de que Firebase registre uno nuevo aparte.
-    const swReg = await navigator.serviceWorker.ready;
-    const token = await _obtenerTokenPush(messaging, swReg);
+    const swRegistration = await navigator.serviceWorker.ready;
+    const token = await _obtenerTokenPush(messaging, swRegistration);
     if (!token) throw new Error('No se pudo generar el token de notificaciones');
 
     const { db, doc, setDoc, arrayUnion } = window._firebase;

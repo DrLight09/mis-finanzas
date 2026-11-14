@@ -20,11 +20,11 @@ function entorno({ getToken, permiso = 'granted', online = true, setDoc, ua = 'C
   ctx.localStorage = { getItem: k => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: k => { delete store[k]; } };
   const toasts = []; ctx.toast = (m, t) => toasts.push({ m, t });
   const calls = { getToken: 0, deleteToken: 0, unsub: 0, setDoc: 0, permisoPedido: 0 };
-  const swReg = { pushManager: { getSubscription: async () => ({ unsubscribe: async () => { calls.unsub++; return true; } }) } };
+  const swRegistration = { pushManager: { getSubscription: async () => ({ unsubscribe: async () => { calls.unsub++; return true; } }) } };
   const messaging = { getToken: async () => { calls.getToken++; return getToken(calls.getToken); }, deleteToken: async () => { calls.deleteToken++; } };
   ctx.firebase = { apps: [], initializeApp: () => ({ name: 'messaging' }), messaging: () => messaging };
   ctx.Notification = { permission: permiso, requestPermission: async () => { calls.permisoPedido++; return permiso; } };
-  ctx.navigator = { serviceWorker: { ready: Promise.resolve(swReg) }, onLine: online, userAgent: ua, ...(brave ? { brave: { isBrave: async () => true } } : {}) };
+  ctx.navigator = { serviceWorker: { ready: Promise.resolve(swRegistration) }, onLine: online, userAgent: ua, ...(brave ? { brave: { isBrave: async () => true } } : {}) };
   ctx.window = ctx.window || ctx;
   ctx.window.Notification = ctx.Notification;
   ctx.window._firebaseUser = { uid: 'u1' };

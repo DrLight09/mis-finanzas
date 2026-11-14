@@ -17,6 +17,7 @@ const ABREVIATURAS = {
   inst: 'instancia', hist: 'historial', st: 'estadoActual', fb: 'firebase', og: 'origenLibro', ops: 'operaciones', chk: 'checkbox',
   dest: 'destino', cont: 'contenedor', tt: 'tooltip', ab: 'abono', liq: 'liquidez', nc: 'nuevaCuenta', ad: 'agregarDinero', mp: 'mesadaPago',
   sc: 'scroller', sl: 'slide', ae: 'elementoActivo', vk: 'tecladoVirtual',
+  md: 'misDeudas', cpd: 'destinoNuevo',
 };
 
 function archivos() {

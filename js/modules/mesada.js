@@ -63,8 +63,8 @@
 
    Modelo guardado (sin cambios, ver mesada.md §4):
      S.mesadas[parent].pagos['2026-3'] = {
-       monto, fecha, destino, nota, splits?, _movSecId?,
-       origenEncargo?: { encargoId, movId, nombre, sumado? },
+       monto, fecha, destino, nota, splits?, _movimientoSecId?,
+       origenEncargo?: { encargoId, movimientoId, nombre, sumado? },
        cuotaEsperada?, pendiente?, pendienteHistorial?: [abono...]
      }
    ═══════════════════════════════════════════════════════════════ */
@@ -219,7 +219,7 @@ function _mesadaQuitarSalidaEncargo(oe) {
   const encargo = api && oe ? api.get(oe.encargoId) : null;
   if (!encargo || !encargo.movimientos) return false;
   const antes = encargo.movimientos.length;
-  encargo.movimientos = encargo.movimientos.filter(m => m.id !== oe.movId);
+  encargo.movimientos = encargo.movimientos.filter(m => m.id !== oe.movimientoId);
   return encargo.movimientos.length < antes;
 }
 
@@ -236,26 +236,26 @@ function _mesadaValidarEncargo(encargo, monto) {
 //   b = { monto, fecha, nota, destino, splits|null }
 //   encargo = { enc, cuentaSel, nota } | null  (plata que ya estaba guardada en un encargo)
 function _mesadaAplicarEntrada(b, desc, encargo) {
-  const reg = { monto: b.monto, fecha: b.fecha, nota: b.nota };
+  const registro = { monto: b.monto, fecha: b.fecha, nota: b.nota };
   if (encargo) {
     const movimiento = _mesadaCrearSalidaEncargo(encargo.encargo, b.monto, encargo.cuentaSel, b.fecha, desc, encargo.nota);
-    reg.origenEncargo = { encargoId: encargo.encargo.id, movId: movimiento.id, nombre: encargo.encargo.nombre };
+    registro.origenEncargo = { encargoId: encargo.encargo.id, movimientoId: movimiento.id, nombre: encargo.encargo.nombre };
   }
   if (b.splits) {
-    reg.destino = '';
-    reg.splits = b.splits;
-    b.splits.forEach(s => { if (s.fuente) s._movSecId = _mesadaEntrar(s.fuente, s.monto, b.fecha, desc); });
+    registro.destino = '';
+    registro.splits = b.splits;
+    b.splits.forEach(s => { if (s.fuente) s._movimientoSecId = _mesadaEntrar(s.fuente, s.monto, b.fecha, desc); });
   } else {
-    reg.destino = b.destino || '';
-    if (reg.destino) reg._movSecId = _mesadaEntrar(reg.destino, b.monto, b.fecha, desc);
+    registro.destino = b.destino || '';
+    if (registro.destino) registro._movimientoSecId = _mesadaEntrar(registro.destino, b.monto, b.fecha, desc);
     // `sumado`: ¿esa plata del encargo entró de verdad a una cuenta? (si no, al borrar no hay saldo que devolver)
-    if (reg.origenEncargo) reg.origenEncargo.sumado = !!reg.destino;
+    if (registro.origenEncargo) registro.origenEncargo.sumado = !!registro.destino;
   }
-  return reg;
+  return registro;
 }
 
 // Vista normalizada de un mes: [pagoOriginal, ...abonosDelPendiente], todos con la forma
-//   { esOriginal, monto, fecha, nota, destino, splits, _movSecId, origenEncargo }
+//   { esOriginal, monto, fecha, nota, destino, splits, _movimientoSecId, origenEncargo }
 // `info.monto` incluye los abonos posteriores, así que el original = monto − Σ abonos.
 function mesadaAbonosDe(info) {
   const historial = info.pendienteHistorial || [];
@@ -263,7 +263,7 @@ function mesadaAbonosDe(info) {
   const norm = (x, esOriginal, monto) => ({
     esOriginal, monto, fecha: x.fecha, nota: x.nota,
     destino: x.destino || '', splits: x.splits || null,
-    _movSecId: x._movSecId || null, origenEncargo: x.origenEncargo || null,
+    _movimientoSecId: x._movimientoSecId || null, origenEncargo: x.origenEncargo || null,
   });
   return [norm(info, true, Math.max(0, (info.monto || 0) - totalHistorial))]
     .concat(historial.map(h => norm(h, false, h.monto || 0)));
@@ -277,11 +277,11 @@ function mesadaRevertirAbono(abono) {
   const oe = abono.origenEncargo;
   if (oe) _mesadaQuitarSalidaEncargo(oe);
   if (abono.splits && abono.splits.length) {
-    abono.splits.forEach(s => { if (s.fuente) _mesadaSacar(s.fuente, s.monto, s._movSecId, true); });
+    abono.splits.forEach(s => { if (s.fuente) _mesadaSacar(s.fuente, s.monto, s._movimientoSecId, true); });
     return;
   }
   // Con encargo, solo se había sumado a la cuenta si `sumado`; sin encargo, siempre.
-  _mesadaSacar(abono.destino, abono.monto, abono._movSecId, oe ? !!oe.sumado : true);
+  _mesadaSacar(abono.destino, abono.monto, abono._movimientoSecId, oe ? !!oe.sumado : true);
 }
 
 /* ── Casos de uso ─────────────────────────────────────────────────── */
@@ -306,7 +306,7 @@ function mesadaRegistrarPago(p) {
 
   // 2) Aplicar.
   const desc = 'Mesada — ' + mesadaNombrePadre(p.parent) + ' · ' + _mesNombreDeKey(p.key);
-  const reg = _mesadaAplicarEntrada(
+  const registro = _mesadaAplicarEntrada(
     { monto, fecha, nota: p.nota || '', destino: p.destino, splits },
     desc,
     val ? { encargo: val.encargo, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada' } : null
@@ -314,11 +314,11 @@ function mesadaRegistrarPago(p) {
   const cuotaDelMes = mesadaCuotaDeKey(p.parent, p.key);
   const pendiente = p.quedaDebiendo ? Math.max(0, cuotaDelMes - monto) : 0;
   if (pendiente > 0) {
-    reg.cuotaEsperada = cuotaDelMes;
-    reg.pendiente = pendiente;
-    reg.pendienteHistorial = [];
+    registro.cuotaEsperada = cuotaDelMes;
+    registro.pendiente = pendiente;
+    registro.pendienteHistorial = [];
   }
-  getMesadaData(p.parent)[p.key] = reg;
+  getMesadaData(p.parent)[p.key] = registro;
   return { ok: true, pendiente, usoEncargo: !!val };
 }
 
@@ -336,13 +336,13 @@ function mesadaAbonarPendiente(p) {
     if (!val.ok) return val;
   }
   const desc = 'Mesada (pendiente) — ' + mesadaNombrePadre(p.parent) + ' · ' + _mesNombreDeKey(p.key);
-  const reg = _mesadaAplicarEntrada(
+  const registro = _mesadaAplicarEntrada(
     { monto, fecha, nota: p.nota || '', destino: p.destino, splits: null },
     desc,
     val ? { encargo: val.encargo, cuentaSel: p.encargo.cuentaSel, nota: 'Usado para mesada (pendiente)' } : null
   );
   if (!info.pendienteHistorial) info.pendienteHistorial = [];
-  info.pendienteHistorial.push(reg);
+  info.pendienteHistorial.push(registro);
   info.pendiente = Math.max(0, info.pendiente - monto);
   info.monto = (info.monto || 0) + monto;
   return { ok: true, pendiente: info.pendiente, monto };

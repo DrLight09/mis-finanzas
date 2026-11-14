@@ -66,8 +66,8 @@ describe('mesada-reglas', () => {
     assert.equal(r.ok, true);
     assert.equal(saldo(ctx, 'cuenta:nequi'), 81000);
     const info = ctx.getMesadaData('papa')['2026-3'];
-    assert.deepEqual(Object.keys(info).sort(), ['_movSecId', 'destino', 'fecha', 'monto', 'nota']);
-    const esp = ctx.S.movimientos.find(m => m.id === info._movSecId);
+    assert.deepEqual(Object.keys(info).sort(), ['_movimientoSecId', 'destino', 'fecha', 'monto', 'nota']);
+    const esp = ctx.S.movimientos.find(m => m.id === info._movimientoSecId);
     assert.ok(esp && esp._secundario && esp._origenSeccion === 'Mesada' && esp.monto === 80000);
     assert.equal(esp.desc, 'Mesada — Papá · Abr 2026');
   });
@@ -89,7 +89,7 @@ describe('mesada-reglas', () => {
     const info = ctx.getMesadaData('papa')['2026-3'];
     assert.equal(info.destino, '');
     assert.equal(info.monto, 80000);
-    assert.ok(info.splits.every(s => s._movSecId));
+    assert.ok(info.splits.every(s => s._movimientoSecId));
     assert.equal(ctx.S.movimientos.length, 2);
   });
 
@@ -131,7 +131,7 @@ describe('mesada-reglas', () => {
     const r = pago(ctx, { destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     assert.equal(r.ok, true);
     const info = ctx.getMesadaData('papa')['2026-3'];
-    assert.deepEqual(clone(info.origenEncargo), { encargoId: 'e1', movId: info.origenEncargo.movId, nombre: 'Plata de papá', sumado: true });
+    assert.deepEqual(clone(info.origenEncargo), { encargoId: 'e1', movimientoId: info.origenEncargo.movimientoId, nombre: 'Plata de papá', sumado: true });
     assert.equal(ctx.encargoSaldo(ctx.S.encargos[0]), 20000);
     assert.equal(saldo(ctx, 'cuenta:nequi'), 80000);
   });
@@ -387,8 +387,8 @@ describe('mesada-reglas', () => {
     pago(ctx, { monto: 50000, destino: 'cuenta:nequi', quedaDebiendo: true, encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     ctx.mesadaAbonarPendiente({ parent: 'papa', key: '2026-3', monto: 10000, destino: '', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     const info = ctx.getMesadaData('papa')['2026-3'];
-    assert.deepEqual(clone(ctx.mesadaOrigenDeMovimientoEncargo(info.origenEncargo.movId)), { parent: 'papa', key: '2026-3' });
-    assert.deepEqual(clone(ctx.mesadaOrigenDeMovimientoEncargo(info.pendienteHistorial[0].origenEncargo.movId)), { parent: 'papa', key: '2026-3' });
+    assert.deepEqual(clone(ctx.mesadaOrigenDeMovimientoEncargo(info.origenEncargo.movimientoId)), { parent: 'papa', key: '2026-3' });
+    assert.deepEqual(clone(ctx.mesadaOrigenDeMovimientoEncargo(info.pendienteHistorial[0].origenEncargo.movimientoId)), { parent: 'papa', key: '2026-3' });
     assert.equal(ctx.mesadaOrigenDeMovimientoEncargo('m300000nequi'), null);
     assert.equal(ctx.mesadaOrigenDeMovimientoEncargo(''), null);
   });
@@ -396,7 +396,7 @@ describe('mesada-reglas', () => {
   test('mesadaOrigenDeMovimientoEncargo — tras borrar el mes ya no bloquea (la salida desapareció)', () => {
     const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
     pago(ctx, { destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
-    const movimientoId = ctx.getMesadaData('papa')['2026-3'].origenEncargo.movId;
+    const movimientoId = ctx.getMesadaData('papa')['2026-3'].origenEncargo.movimientoId;
     ctx.mesadaBorrarPago('papa', '2026-3');
     assert.equal(ctx.mesadaOrigenDeMovimientoEncargo(movimientoId), null);
   });

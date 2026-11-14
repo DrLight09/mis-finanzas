@@ -168,7 +168,7 @@ function renderAnalisis(){
       const pct=Math.max(total>0?Math.round((total/maxBar)*100):0,2);
       const pctI=Math.max(ingreso>0?Math.round((ingreso/maxBar)*100):0,2);
       const esMesActual=k===mes;
-      return`<div class="an-bar-par" data-bar-label="${label}" data-bar-val="${total}" data-bar-ing="${ingreso}" data-bar-mes="${k}"><div class="an-bar ${esMesActual?'an-bar-act':'an-bar-inact'}" style="height:${pct}%;min-height:${total>0?4:2}px;"></div><div class="an-bar an-bar-ing" style="height:${pctI}%;min-height:${ingreso>0?4:2}px;"></div></div>`;
+      return`<div class="an-bar-par" data-bar-label="${label}" data-bar-val="${total}" data-bar-ingreso="${ingreso}" data-bar-mes="${k}"><div class="an-bar ${esMesActual?'an-bar-act':'an-bar-inact'}" style="height:${pct}%;min-height:${total>0?4:2}px;"></div><div class="an-bar an-bar-ing" style="height:${pctI}%;min-height:${ingreso>0?4:2}px;"></div></div>`;
     }).join('');
     labEl.innerHTML=hoy12.map(({label,k})=>{
       const esMesActual=k===mes;
@@ -186,7 +186,7 @@ function renderAnalisis(){
       const fmt2 = fmt;
       const label = bar.dataset.barLabel || '';
       const val = parseFloat(bar.dataset.barVal) || 0;
-      const ingresoVal = parseFloat(bar.dataset.barIng) || 0;
+      const ingresoVal = parseFloat(bar.dataset.barIngreso) || 0;
       // Limpiar tooltip previo
       const old = document.getElementById('_bar-tt');
       if(old){ old.remove(); if(old._lastBar === bar){ return; } }

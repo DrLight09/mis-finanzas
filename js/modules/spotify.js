@@ -692,7 +692,7 @@ async function deleteSpotifyHistorial(i){
       return;
     }
     if(nivel==='viejo'){
-      const viaTC=!!h._tcMovId;
+      const viaTC=!!h._tcMovimientoId;
       const ok=await confirmarBorrarMovimientoViejo(fuenteLabel(h.fuente),h.monto||0,viaTC?'baja':'sube',viaTC?'deuda':'saldo');
       if(!ok)return;
       // Ya se confirmó con el aviso específico de arriba — no repetir con el genérico de abajo.
@@ -736,7 +736,7 @@ async function _borrarSpotifyHistorial(i,h){
     // Revertir el EXTRA (si dio de más): sale de su cuenta y se quita su movimiento espejo.
     if((h.extra||0)>0&&h.extraFuente){
       descontarFuente(h.extraFuente,h.extra,_origenLibroSpotify(h.id,true));
-      if(h.extraMovId)borrarMovimientoEspejo(h.extraFuente,h.extraMovId);
+      if(h.extraMovimientoId)borrarMovimientoEspejo(h.extraFuente,h.extraMovimientoId);
     }
     // Si este cobro estaba saldando deuda de un ciclo ya cerrado (_pagoIdCierre), devolver
     // esa plata al pendiente congelado de ese pago — si el pago referenciado ya no existe
@@ -768,8 +768,8 @@ async function _borrarSpotifyHistorial(i,h){
   } else if(h.tipo==='pago'){
     // Revertir el movimiento secundario: la plata que salió de la cuenta al pagar Spotify,
     // o el cargo hecho a la tarjeta de crédito si se pagó con TC (ver confirmarPagarSpotify).
-    if(h._tcMovId){
-      const movimiento=(S.tcMovimientos||[]).find(m=>m.id===h._tcMovId&&!m.eliminado);
+    if(h._tcMovimientoId){
+      const movimiento=(S.tcMovimientos||[]).find(m=>m.id===h._tcMovimientoId&&!m.eliminado);
       if(movimiento){
         // mov.eliminado se marca siempre (es solo un dato) aunque la carga de
         // tarjetas-credito.js falle o tarde — así el estado no queda a medias.
@@ -1123,14 +1123,14 @@ function confirmarSpotifyDestino(){
   // entra a la cuenta elegida y deja un movimiento espejo visible en su historial,
   // marcado como ingreso extra (_esExtraIngreso) y protegido contra borrado directo.
   if(extraSpotify>0){
-    const ultimoReg=S.spotify.historial[S.spotify.historial.length-1];
-    if(ultimoReg){
-      ultimoReg.extra=extraSpotify;
+    const ultimoRegistro=S.spotify.historial[S.spotify.historial.length-1];
+    if(ultimoRegistro){
+      ultimoRegistro.extra=extraSpotify;
       if(extraFuenteSpotify){
-        sumarFuente(extraFuenteSpotify,extraSpotify,_origenLibroSpotify(ultimoReg.id));
-        ultimoReg.extraFuente=extraFuenteSpotify;
+        sumarFuente(extraFuenteSpotify,extraSpotify,_origenLibroSpotify(ultimoRegistro.id));
+        ultimoRegistro.extraFuente=extraFuenteSpotify;
         const movimientoId=registrarMovimientoEspejo({cuenta:extraFuenteSpotify,flujo:'entrada',monto:extraSpotify,fecha:fechaCobro,desc:'Extra de Spotify · '+nombreActual,origen:'Spotify',clase:'ingreso',extra:{_esExtraIngreso:true}});
-        if(movimientoId)ultimoReg.extraMovId=movimientoId;
+        if(movimientoId)ultimoRegistro.extraMovimientoId=movimientoId;
       }
     }
   }
@@ -1449,7 +1449,7 @@ async function confirmarPagarSpotify(){
     if(pend>0)pendienteAlCerrar[x.id]=pend;
   });
 
-  const pagoObj={id:uid(),tipo:'pago',monto,fuente,splits:splits||undefined,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovId:tcMovimientoId};
+  const pagoObj={id:uid(),tipo:'pago',monto,fuente,splits:splits||undefined,fecha:fechaPago,nota,_gastoVarId:gastoId,_cuotaAdmin:cuotaAdminAhora,_estadoAntes:estadoAntesReset,_pendienteAlCerrar:pendienteAlCerrar,_tcMovimientoId:tcMovimientoId};
   S.spotify.historial=[...antesDelSegmento,...quedanCerrando,pagoObj,...pasanANuevo];
   // Reset pagados del ciclo — pero respeta a quienes ya prepagaron períodos futuros:
   // si su próxima fecha de cobro sigue en el futuro, su "Pagó" sigue vigente y no debe

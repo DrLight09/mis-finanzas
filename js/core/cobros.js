@@ -11,8 +11,8 @@
        mesCubre: '2026-10',   // a qué mes corresponde el pago (solo para saber qué mes está cobrado o pendiente)
        monto, fecha,          // cuánto y CUÁNDO entró la plata: la fecha decide el mes en que cuenta como ingreso
        destino,               // cuenta donde entró ('' = no especificar / ya estaba en tu saldo / lo gasté)
-       splits?, nota,         // o repartido entre varias cuentas: [{ fuente, monto, _movSecId }]
-       _movSecId?             // id del movimiento espejo en la cuenta destino
+       splits?, nota,         // o repartido entre varias cuentas: [{ fuente, monto, _movimientoSecId }]
+       _movimientoSecId?             // id del movimiento espejo en la cuenta destino
      }]
 
    Tres fechas, tres papeles (misma regla que la Mesada):
@@ -107,10 +107,10 @@ function cobroRegistrar(p) {
   if (splits) {
     cobro.destino = '';
     cobro.splits = splits;
-    splits.forEach(s => { if (s.fuente) s._movSecId = _cobroEntrar(s.fuente, s.monto, fecha, desc); });
+    splits.forEach(s => { if (s.fuente) s._movimientoSecId = _cobroEntrar(s.fuente, s.monto, fecha, desc); });
   } else {
     cobro.destino = p.destino || '';
-    if (cobro.destino) cobro._movSecId = _cobroEntrar(cobro.destino, monto, fecha, desc);
+    if (cobro.destino) cobro._movimientoSecId = _cobroEntrar(cobro.destino, monto, fecha, desc);
   }
   if (!Array.isArray(ingreso.cobros)) ingreso.cobros = [];
   ingreso.cobros.push(cobro);
@@ -120,8 +120,8 @@ function cobroRegistrar(p) {
 // Revierte los efectos de UN cobro sobre las cuentas (no lo quita de la lista).
 function cobroRevertir(c) {
   if (!c) return;
-  if (c.splits && c.splits.length) { c.splits.forEach(s => { if (s.fuente) _cobroSacar(s.fuente, s.monto, s._movSecId); }); return; }
-  _cobroSacar(c.destino, c.monto, c._movSecId);
+  if (c.splits && c.splits.length) { c.splits.forEach(s => { if (s.fuente) _cobroSacar(s.fuente, s.monto, s._movimientoSecId); }); return; }
+  _cobroSacar(c.destino, c.monto, c._movimientoSecId);
 }
 
 // Borra un cobro: revierte la plata donde entró y lo quita del ingreso fijo.

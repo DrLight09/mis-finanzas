@@ -67,8 +67,8 @@ describe('historial-cuenta', () => {
       { id: 'm03', tipo: 'entrada', fuente: 'cuenta:efectivo', monto: 800, fecha: D(1) },
       { id: 'm04', tipo: 'salida_manual', fuente: 'cuenta:nequi', monto: 700, fecha: D(1) },
       { id: 'm05', tipo: 'apertura', fuente: 'cuenta:nequi', monto: 60000, fecha: '2026-09-01' },
-      { id: 'm06', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioSalida: true, _fuenteDestino: 'cuenta:efectivo' },
-      { id: 'm07', tipo: 'transferencia', fuente: 'cuenta:efectivo', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encMovId: 'em1', _intercambioEntrada: true, _fuenteDestino: 'cuenta:nequi' },
+      { id: 'm06', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encargoMovimientoId: 'em1', _intercambioSalida: true, _fuenteDestino: 'cuenta:efectivo' },
+      { id: 'm07', tipo: 'transferencia', fuente: 'cuenta:efectivo', monto: 30, fecha: D(2), _esIntercambioEncargo: true, _encargoMovimientoId: 'em1', _intercambioEntrada: true, _fuenteDestino: 'cuenta:nequi' },
       { id: 'm08', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 12, fecha: D(2), _fuenteDestino: 'cuenta:efectivo' },
       { id: 'm09', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 50, fecha: D(2), _esReposicionPlataComprometida: true, desc: 'Reposición: algo' },
       { id: 'm10', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 60, fecha: D(2), desc: 'Margen de encargo' },
@@ -78,8 +78,8 @@ describe('historial-cuenta', () => {
       { id: 'm14', tipo: 'salida_manual', fuente: 'cajita:k2', monto: 40, fecha: D(3) },
       { id: 'm15', tipo: 'entrada', fuente: 'cuenta:z', monto: 70, fecha: D(3), desc: 'Propina' },
       { id: 'm16', tipo: 'salida_manual', fuente: 'cuenta:z', monto: 80, fecha: D(3), desc: 'Retiro S' },
-      { id: 'm17', tipo: 'transferencia', fuente: 'cuenta:z', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioSalida: true, _fuenteDestino: 'cuenta:nequi' },
-      { id: 'm18', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encMovId: 'em2', _intercambioEntrada: true, _fuenteDestino: 'cuenta:z' },
+      { id: 'm17', tipo: 'transferencia', fuente: 'cuenta:z', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encargoMovimientoId: 'em2', _intercambioSalida: true, _fuenteDestino: 'cuenta:nequi' },
+      { id: 'm18', tipo: 'transferencia', fuente: 'cuenta:nequi', monto: 25, fecha: D(4), _esIntercambioEncargo: true, _encargoMovimientoId: 'em2', _intercambioEntrada: true, _fuenteDestino: 'cuenta:z' },
       { id: 'm19', tipo: 'entrada', fuente: 'cuenta:z', monto: 6000, fecha: D(4), desc: 'Mesada mamá', _secundario: true, _origenSeccion: 'Mesada' },
       { id: 'm20', tipo: 'entrada', fuente: 'cuenta:z', monto: 99, fecha: D(4), _esAlcanciaIngreso: true },
       { id: 'm21', tipo: 'entrada', fuente: 'cuenta:z', monto: 45, fecha: D(4), desc: 'Encargo X' },
@@ -147,8 +147,8 @@ describe('historial-cuenta', () => {
     return app;
   }
   const filas = (app, tipo) => plano(app.getMovimientosCuenta(tipo));
-  const ids = (app, tipo) => filas(app, tipo).map(m => m._movId || '?');
-  const fila = (app, tipo, id) => filas(app, tipo).find(m => m._movId === id);
+  const ids = (app, tipo) => filas(app, tipo).map(m => m._movimientoId || '?');
+  const fila = (app, tipo, id) => filas(app, tipo).find(m => m._movimientoId === id);
 
   describe('qué filas muestra cada cuenta, y en qué orden (fecha desc; misma fecha: id más reciente primero)', () => {
     const ESPERADO = {
@@ -206,7 +206,7 @@ describe('historial-cuenta', () => {
   describe('reglas que la función debe cumplir', () => {
     test('un ingreso de Alcancía sin cuenta de origen no aparece en el historial', () => {
       const app = cargar();
-      for (const tipo of ['cuenta:nequi', 'cuenta:z']) assert.ok(!filas(app, tipo).some(m => m._movId === 'm12' || m._movId === 'm20'), tipo);
+      for (const tipo of ['cuenta:nequi', 'cuenta:z']) assert.ok(!filas(app, tipo).some(m => m._movimientoId === 'm12' || m._movimientoId === 'm20'), tipo);
     });
     test('un depósito a la alcancía sale como fila "alcancia" con monto oculto, en cuenta estándar y personalizada', () => {
       const app = cargar();
@@ -1385,7 +1385,7 @@ describe('eliminar-movimiento', () => {
     return { app, dialogos: () => dialogos, saldo: id => app.getSaldoFuente(id) };
   }
   // La fila que pinta la pantalla: los datos del movimiento viajan en dataset, y el botón sabe encontrar su fila.
-  const boton = (tipo, id, fuente, monto) => { const item = { dataset: { movId: id, movTipo: tipo, movFuente: fuente, movMonto: String(monto), movFecha: HOY } }; return { closest: () => item }; };
+  const boton = (tipo, id, fuente, monto) => { const item = { dataset: { movimientoId: id, movimientoTipo: tipo, movimientoFuente: fuente, movimientoMonto: String(monto), movimientoFecha: HOY } }; return { closest: () => item }; };
   const neto = S => { const t = {}; S.libro.forEach(e => { t[e.cuenta] = (t[e.cuenta] || 0) + e.monto; }); return t; };
 
   test('saldo inicial: eliminar lo deja en 0 (no en −10), con UN solo diálogo', async () => {
@@ -1492,7 +1492,7 @@ describe('eliminar-movimiento', () => {
     e.app.S.gastosVar.push(g);
     e.app.descontarFuente('cuenta:nequi', 2000, { origen: { modulo: 'gastos', ref: 'gs1' } });
     e.app.descontarFuente('cuenta:efectivo', 1000, { origen: { modulo: 'gastos', ref: 'gs1' } });
-    const fila = (cuenta) => plano(e.app.getMovimientosCuenta(cuenta)).filter(m => m._movId === 'gs1');
+    const fila = (cuenta) => plano(e.app.getMovimientosCuenta(cuenta)).filter(m => m._movimientoId === 'gs1');
     const fn = fila('cuenta:nequi'), fe = fila('cuenta:efectivo');
     assert.equal(fn.length, 1, 'aparece en Nequi'); assert.equal(fe.length, 1, 'aparece en Efectivo');
     assert.equal(fn[0].monto, -2000); assert.equal(fe[0].monto, -1000);
@@ -1507,8 +1507,8 @@ describe('eliminar-movimiento', () => {
 
 describe('cuenta-iconos-colores', () => {
   // "Nueva cuenta" / "Editar cuenta": el ícono y el color elegidos se marcan (cuentas.js + js/core/color-picker.js).
-  // Causa del bug: color-picker.js no tenía <script> en index.html, así que selColorNC() lanzaba ReferenceError antes de
-  // que selIconoNC() terminara de pintar; la cuenta se guardaba bien pero la pantalla seguía mostrando "Otra".
+  // Causa del bug: color-picker.js no tenía <script> en index.html, así que selColorNuevaCuenta() lanzaba ReferenceError antes de
+  // que selIconoNuevaCuenta() terminara de pintar; la cuenta se guardaba bien pero la pantalla seguía mostrando "Otra".
   const { test, describe } = require('node:test');
   const assert = require('node:assert/strict');
   const fs = require('node:fs');
@@ -2153,15 +2153,15 @@ describe('cuentas-nu-archivos', () => {
       }
       return claves;
     };
-    const reg = { cuentas: registrado('cuentas'), nu: registrado('nu') };
-    assert.ok(reg.cuentas.size > 3 && reg.nu.size > 10, 'no se pudieron leer los registros');
+    const registros = { cuentas: registrado('cuentas'), nu: registrado('nu') };
+    assert.ok(registros.cuentas.size > 3 && registros.nu.size > 10, 'no se pudieron leer los registros');
     const usadas = [];
     for (const f of fuentes) {
       const t = leer(f);
       for (const m of t.matchAll(/(?:data-action="|Events\.attr\(\s*')(cuentas|nu):([A-Za-z_]\w*)/g)) usadas.push([f, m[1], m[2]]);
     }
     assert.ok(usadas.length > 20, 'no se encontraron usos');
-    const rotas = usadas.filter(([, ns, nombre]) => !reg[ns].has(nombre)).map(([f, ns, n]) => f + ' → ' + ns + ':' + n);
+    const rotas = usadas.filter(([, ns, nombre]) => !registros[ns].has(nombre)).map(([f, ns, n]) => f + ' → ' + ns + ':' + n);
     assert.deepEqual([...new Set(rotas)], []);
   });
 
@@ -2194,7 +2194,7 @@ describe('cuentas-abono-con-extra', () => {
     const filas = Array.from(app.getMovimientosCuenta('cuenta:nequi'));
     assert.equal(filas.length, 1);
     assert.equal(filas[0].monto, 55000);
-    assert.equal(filas[0]._movId, 'm1');
+    assert.equal(filas[0]._movimientoId, 'm1');
     assert.equal(filas[0]._secundario, true, 'se sigue borrando desde el préstamo, no desde la cuenta');
   });
 

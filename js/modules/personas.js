@@ -226,9 +226,9 @@ function _renderListaPersonas() {
     }
     if (datos.encargos.length) partesFrag.push(html`${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}`);
     if (datos.misDeudas && datos.misDeudas.length) {
-      const saldoMD = datos.saldoMisDeudas;
-      partesFrag.push(saldoMD > 0
-        ? html`<span class="pe-c-red">Le debes ${fmt(saldoMD)}</span>`
+      const saldoMisDeudas = datos.saldoMisDeudas;
+      partesFrag.push(saldoMisDeudas > 0
+        ? html`<span class="pe-c-red">Le debes ${fmt(saldoMisDeudas)}</span>`
         : html`<span class="pe-c-accent">Deuda saldada</span>`);
     }
     // partesConSeparador: array plano de fragmentos html`` intercalados con
@@ -372,9 +372,9 @@ function _selPersonaFiltrar() {
     }
     if (datos.encargos.length) badges.push(html`<span class="badge bg-blue pe-fs9">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>`);
     if (datos.misDeudas && datos.misDeudas.length) {
-      const saldoMD = datos.saldoMisDeudas;
-      badges.push(saldoMD > 0
-        ? html`<span class="badge pe-badge-debes">Le debes ${fmt(saldoMD)}</span>`
+      const saldoMisDeudas = datos.saldoMisDeudas;
+      badges.push(saldoMisDeudas > 0
+        ? html`<span class="badge pe-badge-debes">Le debes ${fmt(saldoMisDeudas)}</span>`
         : html`<span class="badge bg-green pe-fs9">Deuda saldada</span>`);
     }
     return html`<div ${raw(Events.attr('personas:selElegir', p.id))} class="_sel-persona-row pe-sel-fila">

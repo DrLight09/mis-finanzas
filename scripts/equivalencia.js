@@ -1,4 +1,5 @@
 'use strict';
+// El backup tiene que ser del esquema 11 o posterior (exportado por la app actual): uno anterior se marca como «esquema anterior» y no se calcula bien.
 // Prueba de equivalencia (plan §6): ingresos, gastos y patrimonio por mes sobre un backup real.
 //
 //   node scripts/equivalencia.js <backup.json> [salida.json]       calcula y (opcional) guarda la foto

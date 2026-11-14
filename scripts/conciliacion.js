@@ -1,4 +1,5 @@
 'use strict';
+// El backup tiene que ser del esquema 11 o posterior (exportado por la app actual): uno anterior se marca como «esquema anterior» y no se calcula bien.
 // Conciliación: ¿lo que cambió el patrimonio lo explican los ingresos, gastos y rendimientos que calcula la app?
 //   node scripts/conciliacion.js backup.json [--umbral=30000]
 // Para cada mes compara  Δpatrimonio − montoBase  contra  ingresos + mesada − gastos − retiros − fijos (+ rendimientos), con Periodo.conciliar.

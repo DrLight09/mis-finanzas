@@ -658,43 +658,6 @@ describe('migraciones', () => {
     assert.equal(d.schemaVersion, 11);
   });
 
-  describe('migración v11: campos guardados con nombre completo', () => {
-    const CAMPOS = { rte: 'tasaRetencion', spId: 'spotifyId', _desdeCP: '_desdePlataComprometida', _esReposicionCP: '_esReposicionPlataComprometida',
-      _cpItemId: '_plataComprometidaItemId', _difDijo: '_diferencialDijo', _difReal: '_diferencialReal', _difMargen: '_diferencialMargen', _alcTipo: '_alcanciaTipo' };
-    const viejo = () => ({ schemaVersion: 10,
-      cajitas: [{ id: 'c1', cdts: [{ id: 'k1', monto: 1000, tasa: 9, rte: 4 }] }],
-      spotify: { personas: [], costo: 0, fuenteId: '', historial: [{ id: 'h1', tipo: 'cobro', spId: 'p1', monto: 5000 }] },
-      movimientos: [{ id: 'm1', _esReposicionCP: true, _cpItemId: 'i1', _difDijo: 700000, _difReal: 698000, _difMargen: 2000, _movId: 'se-queda' }],
-      tcMovimientos: [{ id: 't1', compras: [{ id: 'x', _desdeCP: true }] }],
-      alcancia: { movimientos: [{ id: 'a1', _alcTipo: 'regalo', movId: 'se-queda-tambien' }] } });
-    test('renombra cada campo donde viva (arreglos y objetos anidados) y sube la versión', () => {
-      const d = plano(app().aplicarMigraciones(viejo()));
-      assert.equal(d.schemaVersion, 11);
-      assert.equal(d.cajitas[0].cdts[0].tasaRetencion, 4);
-      assert.equal(d.spotify.historial[0].spotifyId, 'p1');
-      assert.deepEqual([d.movimientos[0]._esReposicionPlataComprometida, d.movimientos[0]._plataComprometidaItemId], [true, 'i1']);
-      assert.deepEqual([d.movimientos[0]._diferencialDijo, d.movimientos[0]._diferencialReal, d.movimientos[0]._diferencialMargen], [700000, 698000, 2000]);
-      assert.equal(d.tcMovimientos[0].compras[0]._desdePlataComprometida, true);
-      assert.equal(d.alcancia.movimientos[0]._alcanciaTipo, 'regalo');
-    });
-    test('no deja ninguna clave vieja en ninguna parte y no toca el resto', () => {
-      const d = plano(app().aplicarMigraciones(viejo()));
-      const texto = JSON.stringify(d);
-      for (const vieja of Object.keys(CAMPOS)) assert.ok(!new RegExp('"' + vieja + '"').test(texto), 'quedó «' + vieja + '»');
-      assert.equal(d.movimientos[0]._movId, 'se-queda', 'los campos que no se renombran quedan igual');
-      assert.equal(d.alcancia.movimientos[0].movId, 'se-queda-tambien');
-    });
-    test('es idempotente y no pisa un nombre nuevo que ya exista', () => {
-      const ctx = app();
-      const una = plano(ctx.aplicarMigraciones(viejo()));
-      assert.deepEqual(plano(ctx.aplicarMigraciones(plano(una))), una);
-      const choque = plano(ctx.aplicarMigraciones({ schemaVersion: 10, cajitas: [{ id: 'c', cdts: [{ id: 'k', rte: 4, tasaRetencion: 0 }] }] }));
-      assert.deepEqual(choque.cajitas[0].cdts[0], { id: 'k', tasaRetencion: 0 }, 'se conserva el nuevo y se descarta el viejo');
-    });
-    test('un backup del esquema 10 (el anterior) se lleva al esquema 11 al importarlo (la validación ya lo acepta: ver «backup-import»)', () => {
-      assert.equal(plano(app().aplicarMigraciones({ schemaVersion: 10, cuentas: [] })).schemaVersion, 11);
-    });
-  });
 
   describe('estado de Spotify (S.spotify, esquema 9)', () => {
     test('el estado por defecto y load() dejan S.spotify completo (sin guardas en el resto de la app)', () => {
@@ -731,7 +694,7 @@ describe('migraciones', () => {
   });
 
   test('datos de una versión ANTERIOR a la base no se tocan: se marcan (S._esquemaAnterior) para que la app avise y se empiece de cero', () => {
-    for (const v of [2, 7, 8]) {
+    for (const v of [2, 7, 8, 10]) {
       const d = plano(app().aplicarMigraciones({ schemaVersion: v, movimientos: [{ id: 'a' }] }));
       assert.equal(d.schemaVersion, v, 'no se sube la versión: los datos viejos NO están en la forma nueva');
       assert.equal(d._esquemaAnterior, v);
@@ -762,23 +725,23 @@ describe('backup-import', () => {
   const nuCta = (tasaEA) => ({ id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA });
   test('un backup exportado con una cuenta de ahorro sin tasa (tasaEA: null) se puede importar', () => {
     const ctx = app();
-    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 10, cuentas: [nuCta(null)], cajitas: [] })), []);
+    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 11, cuentas: [nuCta(null)], cajitas: [] })), []);
   });
   test('tasaEA numérica sigue siendo válida; texto u otro tipo se rechaza', () => {
     const ctx = app();
-    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 10, cuentas: [nuCta(9.3)], cajitas: [] })), []);
+    assert.deepEqual(plano(ctx._validarEstructuraJSON({ schemaVersion: 11, cuentas: [nuCta(9.3)], cajitas: [] })), []);
     for (const malo of ['9,3', true, {}, []]) {
-      assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 10, cuentas: [nuCta(malo)], cajitas: [] }).length, 1, JSON.stringify(malo));
+      assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 11, cuentas: [nuCta(malo)], cajitas: [] }).length, 1, JSON.stringify(malo));
     }
   });
   test('una cuenta sin tipo válido, o una cajita sin cuenta, se rechazan', () => {
     const ctx = app();
-    assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 10, cuentas: [{ id: 'x', nombre: 'X', tipo: 'nequi' }] }).length, 1);
-    assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 10, cuentas: [nuCta(9)], cajitas: [{ id: 'a', cuentaId: 'otra' }] }).length, 1);
+    assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 11, cuentas: [{ id: 'x', nombre: 'X', tipo: 'nequi' }] }).length, 1);
+    assert.equal(ctx._validarEstructuraJSON({ schemaVersion: 11, cuentas: [nuCta(9)], cajitas: [{ id: 'a', cuentaId: 'otra' }] }).length, 1);
   });
   test('un backup de un esquema anterior al actual se rechaza (la app nació limpia: no migra datos viejos)', () => {
     const ctx = app();
-    for (const v of [7, 8, 9]) assert.match(ctx._validarEstructuraJSON({ schemaVersion: v, cajitas: [] })[0], /versión anterior/, 'esquema ' + v);
+    for (const v of [7, 8, 9, 10]) assert.match(ctx._validarEstructuraJSON({ schemaVersion: v, cajitas: [] })[0], /versión anterior/, 'esquema ' + v);
   });
   test('un backup exportado por esta versión se valida y no cambia al pasar por aplicarMigraciones', () => {
     const ctx = app();

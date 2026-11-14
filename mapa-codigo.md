@@ -44,7 +44,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/patrimonio.js` | de entrada (defer) | 26 | 1 |
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
-| `js/core/persistencia.js` | de entrada (defer) | 13 | 3 |
+| `js/core/persistencia.js` | de entrada (defer) | 12 | 3 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/plan-deudas.js` | de entrada (defer) | 1 | 0 |
@@ -314,7 +314,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ensureSpotify`, `_renombrarClavesEnArbol`, `aplicarMigraciones`, `claseEfectivaMovimiento`, `conEstadoAislado`, `fmtInput`, `load`, `movimientosSinClase`, `parseMoney`, `parsePct`, `registrarSonda`, `save`, `setMoneyInput`
+**Funciones:** `_ensureSpotify`, `aplicarMigraciones`, `claseEfectivaMovimiento`, `conEstadoAislado`, `fmtInput`, `load`, `movimientosSinClase`, `parseMoney`, `parsePct`, `registrarSonda`, `save`, `setMoneyInput`
 
 **Globales:** `MIGRACIONES`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`
 
@@ -885,7 +885,6 @@ Ninguno.
 | `_renderMetaAportes` | `js/modules/nu.js` |
 | `_renderTiposNC` | `js/modules/cuentas.js` |
 | `_rendimientoCDTaDias` | `js/core/nu-calc.js` |
-| `_renombrarClavesEnArbol` | `js/core/persistencia.js` |
 | `_rerenderCuentaActiva` | `js/core/movimientos.js` |
 | `_resetEncargoCuentaSplitToggleStyle` | `js/modules/prestado.js` |
 | `_resetSheetNuevaCuenta` | `js/modules/cuentas.js` |

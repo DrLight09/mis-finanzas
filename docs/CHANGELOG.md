@@ -1,3 +1,10 @@
+## Mejora 12 (parte 6): se pliega la migración v11 (2026-11-13, SW v128)
+
+- **`SCHEMA_BASE` pasa de 10 a 11 y `MIGRACIONES` vuelve a quedar vacía.** Los nueve campos guardados con nombre completo (`tasaRetencion`, `spotifyId`, `_desdePlataComprometida`, `_esReposicionPlataComprometida`, `_plataComprometidaItemId`, `_diferencialDijo`/`_diferencialReal`/`_diferencialMargen`, `_alcanciaTipo`) son ahora parte del modelo. Se quitó también `_renombrarClavesEnArbol`, que solo servía a esa migración.
+- **Consecuencia:** datos o backups del esquema 10 ya no se migran: la app los marca como «versión anterior» (`S._esquemaAnterior`) y un backup de esa versión se rechaza al importar. Hay que exportar el backup con la app actual (esquema 11).
+- **Tests:** se quitaron los 4 de la migración; el test de «versión anterior a la base» ahora incluye el esquema 10, y los de validación de backup usan el 11 como válido y rechazan 7, 8, 9 y 10. Total 1040.
+- `scripts/equivalencia.js` y `scripts/conciliacion.js` avisan en su cabecera que el backup debe ser del esquema 11 o posterior. `docs/configuracion.md` y `docs/libro-de-movimientos.md` actualizados.
+
 ## Mejora 12 (parte 5): nueve campos guardados con nombre completo, esquema 11 (2026-11-12, SW v127)
 
 - **Primera migración real del modelo de datos (v11, en `MIGRACIONES`):** renombra en todo el árbol de datos, sin importar dónde viva cada uno, `rte` → `tasaRetencion` (retención del CDT), `spId` → `spotifyId` (cobros de Spotify), `_desdeCP` → `_desdePlataComprometida`, `_esReposicionCP` → `_esReposicionPlataComprometida`, `_cpItemId` → `_plataComprometidaItemId`, `_difDijo` / `_difReal` / `_difMargen` → `_diferencialDijo` / `_diferencialReal` / `_diferencialMargen` y `_alcTipo` → `_alcanciaTipo`. Es idempotente y, si el nombre nuevo ya existe en un objeto, conserva el nuevo y descarta el viejo. La opción de formulario `rteDefecto` (no es dato guardado) pasa a `tasaRetencionDefecto`.

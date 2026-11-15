@@ -25,6 +25,16 @@
         { clase: 'columna-riel', ids: ['s-attn-section', 'tc-deuda-card', 'inicio-salud'] },
       ],
     },
+    {
+      // Cuentas: lista | detalle de la cuenta abierta | movimientos. Los paneles del centro se alternan (uno a la vez) por la clase
+      // panel-activo; la columna de movimientos solo se ve con el detalle simple o el de Nu (css/pc.css, según data-panel-activo).
+      pantalla: 'cuentas',
+      columnas: [
+        { clase: 'columna-lista', ids: ['cuentas-selector'] },
+        { clase: 'columna-centro', ids: ['cuentas-archivadas', 'cuentas-detalle-simple', 'cuentas-detalle-nu', 'cuentas-detalle-cajita', 'cuentas-sub-meta', 'cuentas-sub-cdts'] },
+        { clase: 'columna-movimientos', ids: ['cuenta-movimientos-simple', 'cuenta-movimientos-nu'] },
+      ],
+    },
   ];
 
   function armar(d) {

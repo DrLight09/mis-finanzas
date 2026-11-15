@@ -81,6 +81,10 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
    la tarjeta (grid item) se encoja en vez de crecer con el número, overflow-wrap:anywhere lo baja
    a una segunda línea en vez de salirse (la tarjeta tiene overflow:hidden y lo ocultaba) y
    padding-right evita que pise la flecha. Mismo criterio que .stat-value. */
+/* Cuentas: un panel a la vez. _showCuentasPanel() (cuentas.js) marca el activo; en PC la lista (#cuentas-selector) siempre se ve (css/pc.css). */
+.cuentas-panel{display:none;}
+.cuentas-panel.panel-activo{display:block;}
+.cuenta-card-activa{box-shadow:0 0 0 1.5px var(--cuenta);} /* la cuenta abierta en la lista (en PC la lista siempre se ve) */
 .cuentas-selector-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
 .cuentas-selector-grid > .cuenta-card:last-child:nth-child(odd){grid-column:1 / -1;} /* cantidad impar: la última ocupa todo el ancho, sin hueco */
 .cuenta-card,.cuenta-pill{cursor:pointer;}

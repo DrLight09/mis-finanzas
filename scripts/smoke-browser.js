@@ -31,8 +31,12 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   let html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
   const tagEv = html.match(/<script[^>]*src="js\/core\/events\.js"[^>]*><\/script>/);
   if (tagEv) html = html.replace(tagEv[0], tagEv[0] + ESPIA); else console.log('AVISO: index.html no carga js/core/events.js; no se puede mapear las acciones registradas');
+  // matchMedia controlable: la FASE 5 lo pasa a «PC» (≥900 px) y de vuelta; el resto de las fases corre como celular (false).
+  const modoPc = { pc: false, oyentes: [] };
+  const matchMediaFalso = q => ({ media: q, get matches() { return /min-width:\s*900px/.test(q) ? modoPc.pc : false; },
+    addEventListener: (_, f) => { if (/min-width:\s*900px/.test(q)) modoPc.oyentes.push(f); }, removeEventListener() {}, addListener: f => { if (/min-width:\s*900px/.test(q)) modoPc.oyentes.push(f); }, removeListener() {} });
   const dom = new JSDOM(html, { runScripts: 'dangerously', resources: new Local(), pretendToBeVisual: true, virtualConsole: vc, url: ORIGEN + 'index.html',
-    beforeParse(win) { win.TextEncoder = TextEncoder; win.TextDecoder = TextDecoder; win.HTMLCanvasElement.prototype.getContext = () => ({ font: '', measureText: () => ({ width: 0 }) }); } });
+    beforeParse(win) { win.matchMedia = matchMediaFalso; win.TextEncoder = TextEncoder; win.TextDecoder = TextDecoder; win.HTMLCanvasElement.prototype.getContext = () => ({ font: '', measureText: () => ({ width: 0 }) }); } });
   const w = dom.window;
   w.addEventListener('error', e => uncaught.push('window.error: ' + e.message));
   w.addEventListener('unhandledrejection', e => uncaught.push('rechazo: ' + (e.reason && e.reason.message || e.reason)));
@@ -68,7 +72,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   // ── Fase 2: Cuentas y Nu con datos, navegando como el usuario ──
   const fallos = [];
   const chequea = (cond, msg) => { if (!cond) fallos.push(msg); };
-  const visibles = () => ev(`['selector','detalle-simple','detalle-nu','detalle-cajita','sub-meta','sub-cdts'].filter(i=>{const e=document.getElementById('cuentas-'+i);return e&&e.style.display!=='none'}).join(',')`);
+  const visibles = () => ev(`['selector','detalle-simple','detalle-nu','detalle-cajita','sub-meta','sub-cdts'].filter(i=>{const e=document.getElementById('cuentas-'+i);return e&&e.classList.contains('panel-activo')}).join(',')`);
   const hoy = new Date(), iso = n => { const d = new Date(hoy); d.setDate(d.getDate() + n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
   ev(`S.cuentas=[{id:'nequi',tipo:'billetera',nombre:'Nequi',saldo:0},{id:'efectivo',tipo:'efectivo',nombre:'Efectivo',saldo:0},{id:'nu',tipo:'ahorro',nombre:'Nu',tasaEA:9.25}];
       S.cajitas.push({id:'ca',cuentaId:'nu',nombre:'Mi cajita',saldo:100000,fecha:'${iso(-8)}',cdts:[{id:'cd1',monto:20000,tasa:9,tasaRetencion:0,inicio:'${iso(-3)}',vence:'${iso(60)}',nombre:'CDT uno'}]});
@@ -308,10 +312,42 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   const sinHandlerReales = [...new Set(sinHandler)].filter(a => !esDeModulo(a));
   const lanzanReales = lanzan.filter(l => !esDeModulo(l.split(' →')[0].trim()));
 
+  // ── Fase 5: distribución de PC (≥900 px): ida y vuelta sin perder lo que la persona tenía abierto ──
+  const fallos5 = [];
+  const c5 = (cond, msg) => { if (!cond) fallos5.push(msg); };
+  try {
+    const hijos = id => [...w.document.getElementById(id).children].map(e => e.id || e.className).join(',');
+    const cambiarModo = pc => { modoPc.pc = pc; modoPc.oyentes.forEach(f => f({ matches: pc })); };
+    ev(`S.cuentas=[{id:'nequi',tipo:'billetera',nombre:'Nequi',saldo:0},{id:'efectivo',tipo:'efectivo',nombre:'Efectivo',saldo:0}]; S.cajitas=[]; showScreen('cuentas'); volverSelector();`);
+    const inicioCelular = hijos('screen-inicio'), cuentasCelular = hijos('screen-cuentas');
+    const panel = () => ev(`document.getElementById('screen-cuentas').dataset.panelActivo`);
+    cambiarModo(true);
+    c5(hijos('screen-inicio') === 'columna-principal,columna-riel', 'PC: Inicio no quedó en columna principal + riel: ' + hijos('screen-inicio'));
+    c5(hijos('screen-cuentas') === 'columna-lista,columna-centro,columna-movimientos', 'PC: Cuentas no quedó en lista | centro | movimientos: ' + hijos('screen-cuentas'));
+    c5(panel() === 'cuentas-detalle-simple' && ev('cuentaActual') === 'cuenta:nequi', 'PC: al estar en Cuentas debe abrirse la primera cuenta (' + panel() + ', ' + ev('cuentaActual') + ')');
+    c5(ev(`document.querySelector('#selector-cuentas-lista .cuenta-card-activa')?.dataset.fuente`) === 'cuenta:nequi', 'PC: la cuenta abierta no está resaltada en la lista');
+    c5(ev(`['cuentas-selector','cuentas-detalle-simple'].filter(i=>document.getElementById(i).classList.contains('panel-activo')).join(',')`) === 'cuentas-detalle-simple', 'PC: solo el detalle debe tener panel-activo (la lista se muestra por CSS)');
+    // La apertura fue automática: al volver a celular regresa al selector y todo vuelve a su sitio.
+    cambiarModo(false);
+    c5(panel() === 'cuentas-selector' && ev('cuentaActual') === '', 'Celular: tras una apertura automática debe volver al selector (' + panel() + ')');
+    c5(hijos('screen-inicio') === inicioCelular, 'Celular: Inicio no recuperó su orden: ' + hijos('screen-inicio'));
+    c5(hijos('screen-cuentas') === cuentasCelular, 'Celular: Cuentas no recuperó su orden: ' + hijos('screen-cuentas'));
+    // Una cuenta que la persona abrió ella misma se conserva al achicar.
+    cambiarModo(true);
+    ev(`abrirCuenta('cuenta:efectivo')`);
+    cambiarModo(false);
+    c5(panel() === 'cuentas-detalle-simple' && ev('cuentaActual') === 'cuenta:efectivo', 'Celular: la cuenta abierta por la persona debe conservarse al achicar (' + panel() + ')');
+    c5(hijos('screen-cuentas') === cuentasCelular, 'Celular: Cuentas no recuperó su orden tras abrir una cuenta: ' + hijos('screen-cuentas'));
+    cambiarModo(true); cambiarModo(false); cambiarModo(true); cambiarModo(false);
+    c5(hijos('screen-inicio') === inicioCelular && hijos('screen-cuentas') === cuentasCelular, 'Varios cambios seguidos dejaron bloques fuera de su sitio');
+  } catch (e) { fallos5.push('excepción en la FASE 5: ' + e.message); }
+  console.log('FASE 5 (distribución de PC) fallos (' + fallos5.length + '):'); fallos5.forEach(f => console.log('  ' + f));
+
   const fallosReales = [];
   if (jsFaltan.length) fallosReales.push(`${jsFaltan.length} archivo(s) .js faltante(s): ${jsFaltan.join(', ')}`);
   if (antes > 0) fallosReales.push(`${antes} error(es) no atribuible(s) a un botón durante la carga (ver --verbose)`);
   if (fallos.length) fallosReales.push(`${fallos.length} fallo(s) en FASE 2: ${fallos.join(' | ')}`);
+  if (fallos5.length) fallosReales.push(`${fallos5.length} fallo(s) en FASE 5 (distribución de PC): ${fallos5.join(' | ')}`);
   if (fallos4.length) fallosReales.push(`${fallos4.length} fallo(s) en FASE 4 (estados vacíos): ${fallos4.join(' | ')}`);
   if (sinHandlerReales.length) fallosReales.push(`${sinHandlerReales.length} acción(es) sin handler real: ${sinHandlerReales.join(', ')}`);
   if (lanzanReales.length) fallosReales.push(`${lanzanReales.length} acción(es) que lanzan al tocar: ${lanzanReales.join(' | ')}`);

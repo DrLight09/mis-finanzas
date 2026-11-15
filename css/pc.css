@@ -54,6 +54,24 @@
   .columna-principal #inicio-gastos > .sec-title:first-child,
   .columna-principal #inicio-proyeccion > .sec-title:first-child,
   .columna-riel .sec-title{margin-top:0;}
+
+  /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
+  #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
+  .columna-lista{width:280px;flex-shrink:0;}
+  .columna-centro{flex:1;min-width:0;}
+  .columna-movimientos{display:none;width:340px;flex-shrink:0;}
+  /* La lista nunca se oculta (en celular se oculta al abrir una cuenta) y cada cuenta va en su propia fila. */
+  .columna-lista > .cuentas-panel{display:block;}
+  .columna-lista .cuentas-selector-grid{grid-template-columns:1fr;}
+  /* El volver al selector sobra: la lista está a la vista. (El de cajita → Nu y el de Archivadas se quedan.) */
+  .btn-volver-selector{display:none;}
+  /* Movimientos a la derecha solo con el detalle simple o el de Nu; la cajita, Archivadas y las subpantallas usan todo el ancho. */
+  .columna-movimientos > .cuenta-movs-bloque{display:none;}
+  #screen-cuentas[data-panel-activo="cuentas-detalle-simple"] .columna-movimientos,
+  #screen-cuentas[data-panel-activo="cuentas-detalle-nu"] .columna-movimientos{display:block;}
+  #screen-cuentas[data-panel-activo="cuentas-detalle-simple"] #cuenta-movimientos-simple,
+  #screen-cuentas[data-panel-activo="cuentas-detalle-nu"] #cuenta-movimientos-nu{display:block;}
+  .columna-movimientos .sec-title{margin-top:0;}
 }
 
 /* ── PC compacto: menú solo con íconos y riel debajo del contenido ─────────────────────────────────── */
@@ -67,6 +85,10 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Cuentas: lista más angosta y los movimientos pasan debajo del detalle. */
+  #screen-cuentas.en-columnas.active{flex-wrap:wrap;}
+  .columna-lista{width:240px;}
+  .columna-movimientos{width:auto;flex-basis:100%;order:3;}
 }
 
 /* Movimiento: la entrada de la hoja como ventana (aparece y crece un poco) solo si la persona no pidió reducirlo. */

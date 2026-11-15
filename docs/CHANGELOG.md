@@ -33,6 +33,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Versión PC, parte 2: Cuentas (2026-11-15, SW v134)
+
+- **Qué cambia en PC (≥900 px).** Lista de cuentas a la izquierda (una por fila, la cuenta abierta resaltada), detalle al centro y movimientos de la cuenta a la derecha. Al entrar a Cuentas se abre la primera cuenta activa; el «volver al selector» del detalle sobra y se oculta. La cajita, Archivadas y las subpantallas Meta/CDTs usan todo el ancho (no tienen lista de movimientos). Entre 900 y 1279 px la lista es más angosta y los movimientos pasan debajo del detalle. Por debajo de 900 px nada cambia.
+- **Estructura:** los siete paneles de `#screen-cuentas` se alternaban con `style.display` inline desde `_showCuentasPanel`; ahora lo hace la clase `panel-activo` (regla en `styles.css`) y la pantalla lleva `data-panel-activo` con el panel visible. Así en PC la lista nunca se oculta y el CSS sabe cuándo mostrar la columna de movimientos. Los dos bloques de movimientos (`cuenta-movs-bloque`) ganaron id (`cuenta-movimientos-simple`, `cuenta-movimientos-nu`) para poder moverlos a la columna derecha con `disposicion-pc.js`.
+- **Selección por defecto.** Es automática y solo existe en PC: si la ventana se achica a celular sin que la persona haya elegido otra cosa, se vuelve al selector. Cualquier cambio de panel hecho por la persona (otra cuenta, una cajita, Archivadas) borra la marca y se conserva al achicar.
+- **Smoke:** la FASE 5 de `scripts/smoke-browser.js` pasa la ventana a «PC» y de vuelta (con `matchMedia` controlable) y comprueba que Inicio y Cuentas se arman en columnas, que se abre la primera cuenta, que al volver a celular todo regresa a su orden original y que una cuenta abierta por la persona se conserva. La FASE 2 mide el panel visible por la clase `panel-activo`.
+- **No se copió del prototipo:** la tabla de movimientos, el buscador/segmento/mes propios del prototipo (la app tiene sus filtros), «Total» bajo Nu en la lista, las cajitas como subítems de la lista, «Agregar cuenta» en la cabecera, la barra Libre/CDT, el pie «se deshace desde su origen» y los pasos de «Nu sin configurar».
+
 ## Versión PC, parte 1: estructura compartida e Inicio (2026-11-15, SW v133)
 
 - **Qué es.** A partir de 900 px de ancho la app muestra un menú lateral (con grupos, o solo íconos entre 900 y 1279 px) en vez de la barra inferior, las hojas pasan a ventanas modales centradas y Inicio se reparte en columna principal + riel derecho (Necesita atención, Tarjetas de crédito, Salud financiera). Por debajo de 900 px todo sigue igual. Diseño y reglas: `version-pc.md`.

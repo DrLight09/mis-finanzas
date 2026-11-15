@@ -984,9 +984,9 @@
         </div>
 
         <!-- CUENTAS -->
-        <div class="screen" id="screen-cuentas">
+        <div class="screen" id="screen-cuentas" data-panel-activo="cuentas-selector">
           <!-- Selector de cuenta -->
-          <div id="cuentas-selector">
+          <div id="cuentas-selector" class="cuentas-panel panel-activo">
             <div class="sec-fila">
               <div class="sec-title">Selecciona una
                 cuenta</div>
@@ -1008,7 +1008,7 @@
           </div>
 
           <!-- Cuentas archivadas: pantalla aparte (el selector solo trae un botón con la cantidad) -->
-          <div id="cuentas-archivadas" style="display:none;">
+          <div id="cuentas-archivadas" class="cuentas-panel">
             <div class="detail-header">
               <button type="button" class="detail-header-back" id="btn-volver-archivadas" aria-label="Volver">
                 <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6" /></svg>
@@ -1022,7 +1022,7 @@
           <!-- Detalle de cuenta simple (banco, billetera, efectivo): una sola pantalla.
                La pinta renderDetalleCuenta() (cuentas.js); el color de la cuenta llega por las
                variables --cuenta / --cuenta-rgb puestas sobre este contenedor. -->
-          <div id="cuentas-detalle-simple" style="display:none;">
+          <div id="cuentas-detalle-simple" class="cuentas-panel">
             <div class="detail-header">
               <button type="button"
                 class="detail-header-back btn-volver-selector" aria-label="Volver">
@@ -1096,7 +1096,7 @@
             <div id="banner-archivada"></div>
             <div id="banner-apertura-cuenta"></div>
             <div id="det-cuenta-encargos"></div>
-            <div class="cuenta-movs-bloque">
+            <div class="cuenta-movs-bloque" id="cuenta-movimientos-simple">
               <div class="sec-title">Movimientos registrados</div>
               <div id="movs-filtros-cuenta" class="movs-filtros-wrap"></div>
               <div id="det-cuenta-movs"></div>
@@ -1104,7 +1104,7 @@
           </div>
 
           <!-- Detalle Nu -->
-          <div id="cuentas-detalle-nu" style="display:none;">
+          <div id="cuentas-detalle-nu" class="cuentas-panel">
             <div class="detail-header">
               <button type="button"
                 class="detail-header-back btn-volver-selector" aria-label="Volver">
@@ -1186,7 +1186,7 @@
             </button>
             <!-- Mismo orden que Nequi y las demás cuentas: Encargos → Movimientos -->
             <div id="det-nu-encargos"></div>
-            <div class="cuenta-movs-bloque">
+            <div class="cuenta-movs-bloque" id="cuenta-movimientos-nu">
               <div class="sec-title">Movimientos de la cuenta</div>
               <div id="movs-filtros-nu" class="movs-filtros-wrap"></div>
               <div id="det-nu-movs"></div>
@@ -1194,7 +1194,7 @@
           </div>
 
           <!-- ══ DETALLE DE CAJITA ══ -->
-          <div id="cuentas-detalle-cajita" style="display:none;">
+          <div id="cuentas-detalle-cajita" class="cuentas-panel">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
                 data-action="nu:volverANu" aria-label="Volver">
@@ -1301,7 +1301,7 @@
           </div>
 
           <!-- ══ SUB-PANTALLA: META DE CAJITA ══ -->
-          <div id="cuentas-sub-meta" style="display:none;">
+          <div id="cuentas-sub-meta" class="cuentas-panel">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
                 data-action="nu:volverADetalleCajita" aria-label="Volver">
@@ -1317,7 +1317,7 @@
           </div>
 
           <!-- ══ SUB-PANTALLA: CDTs DE CAJITA ══ -->
-          <div id="cuentas-sub-cdts" style="display:none;">
+          <div id="cuentas-sub-cdts" class="cuentas-panel">
             <div class="detail-header">
               <button type="button" class="detail-header-back"
                 data-action="nu:volverADetalleCajita" aria-label="Volver">

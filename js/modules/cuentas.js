@@ -71,6 +71,7 @@ function volverSelector() {
   _reiniciarPantallasCuenta();
   if (aArchivadas) { abrirArchivadas(); return; }
   _showCuentasPanel('cuentas-selector');
+  _abrirCuentaPorDefecto();
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
@@ -359,7 +360,7 @@ function _cuentaSelectorHtml(d){
   const vars='--cuenta:'+d.color+';--cuenta-rgb:'+d.rgb;
   const flecha=(cls,pts)=>html`<svg aria-hidden="true" class="${cls}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="${pts}"/></svg>`;
   if(d.estilo==='tarjeta'){
-    return html`<div class="cuenta-card${d.archivada?' cuenta-card-archivada':''}" data-fuente="${d.fuente}" style="${vars}">
+    return html`<div class="cuenta-card${d.archivada?' cuenta-card-archivada':''}${d.fuente===cuentaActual?' cuenta-card-activa':''}" data-fuente="${d.fuente}" style="${vars}">
       <div class="cuenta-card-head">
         ${d.iconoHtml(34)}
         <span class="cuenta-card-nombre">${d.nombre}</span>
@@ -660,8 +661,41 @@ function _showCuentasPanel(panelId){
   const panels=['cuentas-selector','cuentas-archivadas','cuentas-detalle-simple'].concat(...Object.values(CuentaPantallas).map(p=>p.paneles||[]));
   panels.forEach(id=>{
     const el=document.getElementById(id);
-    if(el) el.style.display = id===panelId ? '' : 'none';
+    if(el) el.classList.toggle('panel-activo', id===panelId);
   });
+  // El panel activo también queda en la pantalla: en PC (css/pc.css) decide si se ve la columna de movimientos.
+  const pantalla=document.getElementById('screen-cuentas');
+  if(pantalla) pantalla.dataset.panelActivo=panelId;
+  _seleccionAutomatica=false; // cualquier cambio de panel es de la persona; solo _abrirCuentaPorDefecto() lo vuelve a marcar
+  _marcarCuentaActivaEnSelector();
+}
+
+// ── PC (≥900 px): la lista y el detalle van lado a lado, así que siempre hay una cuenta abierta ─────────────────────────────
+// Al entrar a Cuentas (o al volver al «selector») se abre la primera cuenta activa. Esa apertura es automática: si la ventana se
+// achica a celular sin que la persona haya elegido otra cosa, se vuelve al selector en vez de dejar un detalle que no abrió.
+// Todo cambio de panel hecho por la persona (otra cuenta, una cajita, archivadas…) borra la marca (_showCuentasPanel).
+const _consultaPcCuentas = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
+let _seleccionAutomatica = false;
+function _abrirCuentaPorDefecto() {
+  if (!_consultaPcCuentas || !_consultaPcCuentas.matches) return;
+  const pantalla = document.getElementById('screen-cuentas');
+  if (!pantalla || pantalla.dataset.panelActivo !== 'cuentas-selector') return;
+  const primera = _activasEnOrden()[0];
+  if (!primera) return; // sin cuentas: la columna central queda vacía y la lista trae «Agregar cuenta»
+  abrirCuenta(fuenteDeCuenta(primera.id));
+  if (pantalla.dataset.panelActivo !== 'cuentas-selector') _seleccionAutomatica = true; // abrirCuenta no abre si su pantalla propia aún no cargó
+}
+// Resalta en la lista la cuenta abierta (la lista se vuelve a pintar a menudo: también lo hace _cuentaSelectorHtml).
+function _marcarCuentaActivaEnSelector() {
+  document.querySelectorAll('#selector-cuentas-lista [data-fuente]').forEach(el => el.classList.toggle('cuenta-card-activa', !!cuentaActual && el.dataset.fuente === cuentaActual));
+}
+if (_consultaPcCuentas) {
+  const alCambiarModo = e => {
+    if (e.matches) { const p = document.getElementById('screen-cuentas'); if (p && p.classList.contains('active')) _abrirCuentaPorDefecto(); }
+    else if (_seleccionAutomatica) volverSelector();
+  };
+  if (_consultaPcCuentas.addEventListener) _consultaPcCuentas.addEventListener('change', alCambiarModo);
+  else if (_consultaPcCuentas.addListener) _consultaPcCuentas.addListener(alCambiarModo);
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -1774,4 +1808,5 @@ Ui.pantalla('cuentas', () => {
   // Reflejar cambios hechos en otras pantallas: la cuenta abierta y la lista (las cajitas de Nu las pinta nu.js).
   if (typeof renderDetalleCuenta === 'function' && typeof cuentaActual !== 'undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
   if (typeof renderSelectorCuentas === 'function') renderSelectorCuentas();
+  if (typeof _abrirCuentaPorDefecto === 'function') _abrirCuentaPorDefecto();
 }, { key: 'cuentas-render' });

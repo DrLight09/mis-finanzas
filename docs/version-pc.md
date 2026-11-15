@@ -38,6 +38,16 @@ Bloques (en orden de celular): patrimonio (`inicio-patrimonio`: hero, cuentas, n
 
 En PC: columna principal = patrimonio, gastos y proyección lado a lado, plan de deudas (solo si hay deudas). Riel = necesita atención, tarjetas de crédito, salud financiera.
 
-## 6. Prueba
+## 6. Cuentas
 
-Redimensionar 1366 → 1100 → 800 → 430 → 360 → 1366 con una pantalla, una hoja y un formulario abiertos: no debe perderse ninguno ni quedar un bloque de Inicio fuera de su sitio al volver a celular.
+Paneles de `#screen-cuentas` (uno a la vez, por la clase `panel-activo`): selector, archivadas, detalle simple, detalle Nu, detalle de cajita, sub-meta y sub-CDTs. `_showCuentasPanel` también deja el panel visible en `data-panel-activo` de la pantalla.
+
+En PC: lista (`cuentas-selector`, siempre visible) | centro (el panel activo) | movimientos (`cuenta-movimientos-simple` o `cuenta-movimientos-nu`, solo con el detalle simple o el de Nu). La cajita, Archivadas y las subpantallas ocupan el centro y parte del ancho de la columna de movimientos. Entre 900 y 1279 px la columna de movimientos pasa debajo del centro.
+
+Selección por defecto (`_abrirCuentaPorDefecto`, `cuentas.js`): solo en PC y solo si no hay cuenta abierta; es automática y se deshace al achicar a celular mientras la persona no haya cambiado de panel.
+
+## 7. Prueba
+
+Automática: la FASE 5 de `npm run smoke` (ida y vuelta celular ↔ PC con Inicio y Cuentas).
+
+A mano: redimensionar 1366 → 1100 → 800 → 430 → 360 → 1366 con una pantalla, una hoja y un formulario abiertos: no debe perderse ninguno ni quedar un bloque fuera de su sitio al volver a celular.

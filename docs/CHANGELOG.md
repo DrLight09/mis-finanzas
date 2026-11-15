@@ -33,6 +33,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Versión PC, parte 3: Gastos y lista de cuentas compacta (2026-11-15, SW v135)
+
+- **Gastos en PC (≥900 px).** Los gastos variables a la izquierda (filtro de mes, lista y total) y los fijos mensuales en el riel derecho (barra de progreso, lista y total), los dos a la vez y sin la barra de pestañas; en su lugar se ven los títulos «Gastos» y «Fijos mensuales». Entre 900 y 1279 px los fijos pasan debajo. En celular nada cambia: siguen las pestañas.
+- **Estructura:** `switchGastoTab` (gastos.js) alternaba `panel-var` y `panel-fijo` con `style.display` inline; ahora lo hace la clase `panel-activo` (regla `.gastos-panel` en `styles.css`), igual que Cuentas. Los dos títulos (`gastos-panel-titulo`) están ocultos en celular y no son texto nuevo: son los de las pestañas. La barra de progreso de fijos (`gastos-fijos-progress.js`) ahora se inserta antes de la lista y no antes del título; el orden visible en celular no cambia.
+- **Lista de cuentas compacta (celular y PC).** Cada cuenta es una fila: ícono, nombre con su etiqueta debajo, saldo a la derecha y flecha; una sola columna (antes eran tarjetas grandes en dos columnas, y la última de una cantidad impar ocupaba todo el ancho). La cuenta abierta lleva el tono de su color. El nombre y el saldo usan el color de texto normal; el color de la cuenta queda en el ícono y en la fila abierta. El modo Ordenar usa la misma fila con el agarre a la derecha. Cambia `.cuenta-card*` y `.cuentas-selector-grid` en `styles.css`; el marcado no cambia.
+- **Smoke:** la FASE 5 también comprueba que las pestañas de Gastos dejan activo un solo panel.
+- **No se copió del prototipo:** las tres tarjetas de resumen (Gastado/Variables/Fijos pagados), el buscador y los chips de categoría, la tabla con columnas, «Cargar más», los avisos «Fijo»/«TC» y las pastillas «Pagado/En N días» de los fijos.
+
 ## Versión PC, parte 2: Cuentas (2026-11-15, SW v134)
 
 - **Qué cambia en PC (≥900 px).** Lista de cuentas a la izquierda (una por fila, la cuenta abierta resaltada), detalle al centro y movimientos de la cuenta a la derecha. Al entrar a Cuentas se abre la primera cuenta activa; el «volver al selector» del detalle sobra y se oculta. La cajita, Archivadas y las subpantallas Meta/CDTs usan todo el ancho (no tienen lista de movimientos). Entre 900 y 1279 px la lista es más angosta y los movimientos pasan debajo del detalle. Por debajo de 900 px nada cambia.

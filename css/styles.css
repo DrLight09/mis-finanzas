@@ -84,16 +84,20 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 /* Cuentas: un panel a la vez. _showCuentasPanel() (cuentas.js) marca el activo; en PC la lista (#cuentas-selector) siempre se ve (css/pc.css). */
 .cuentas-panel{display:none;}
 .cuentas-panel.panel-activo{display:block;}
-.cuenta-card-activa{box-shadow:0 0 0 1.5px var(--cuenta);} /* la cuenta abierta en la lista (en PC la lista siempre se ve) */
-.cuentas-selector-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
-.cuentas-selector-grid > .cuenta-card:last-child:nth-child(odd){grid-column:1 / -1;} /* cantidad impar: la última ocupa todo el ancho, sin hueco */
+/* Lista de cuentas (selector y archivadas): una fila compacta por cuenta — ícono, nombre con su etiqueta debajo, saldo a la derecha y flecha.
+   Una sola columna en celular y en PC; la cuenta abierta (.cuenta-card-activa) lleva el tono de su color. */
+.cuentas-selector-grid{display:grid;grid-template-columns:1fr;gap:6px;margin-bottom:12px;}
 .cuenta-card,.cuenta-pill{cursor:pointer;}
-.cuenta-card{min-width:0;position:relative;overflow:hidden;transition:all .15s;padding:18px 15px;border-radius:var(--radius);background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.18) 0%,rgba(var(--cuenta-rgb),.06) 100%);border:1px solid rgba(var(--cuenta-rgb),.35);}
-.cuenta-card-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
-.cuenta-card-nombre{font-size:14px;font-weight:600;color:var(--cuenta);}
-.cuenta-card-etiqueta{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;}
-.cuenta-card-saldo{font-size:20px;font-weight:500;font-family:'DM Mono',monospace;color:var(--cuenta);overflow-wrap:anywhere;word-break:break-word;line-height:1.25;padding-right:16px;}
-.cuenta-card-flecha{position:absolute;bottom:12px;right:12px;stroke:var(--cuenta);}
+.cuenta-card{min-width:0;position:relative;transition:background .15s,border-color .15s;padding:9px 12px;border-radius:14px;background:rgba(var(--cuenta-rgb),.07);border:1px solid rgba(var(--cuenta-rgb),.22);
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"icono nombre saldo flecha" "icono etiqueta saldo flecha";column-gap:10px;align-items:center;}
+.cuenta-card:hover{background:rgba(var(--cuenta-rgb),.12);}
+.cuenta-card-activa{background:rgba(var(--cuenta-rgb),.16);border-color:rgba(var(--cuenta-rgb),.55);}
+.cuenta-card-head{display:contents;} /* el ícono y el nombre pasan a ser celdas de la fila */
+.cuenta-card-head > :first-child{grid-area:icono;}
+.cuenta-card-nombre{grid-area:nombre;font-size:13px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cuenta-card-etiqueta{grid-area:etiqueta;font-size:10.5px;color:var(--text3);margin-top:2px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cuenta-card-saldo{grid-area:saldo;font-size:13px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text);text-align:right;letter-spacing:-.3px;}
+.cuenta-card-flecha{grid-area:flecha;stroke:var(--text3);}
 .cuenta-pill{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.12) 0%,rgba(var(--cuenta-rgb),.04) 100%);border:1px solid rgba(var(--cuenta-rgb),.35);}
 .cuenta-pill-info{display:flex;align-items:center;gap:10px;min-width:0;}
 .cuenta-pill-nombre{font-size:13px;font-weight:600;color:var(--cuenta);}
@@ -272,6 +276,10 @@ html.kb-open .sheet{transition:translate var(--kb-ms) var(--kb-ease),max-height 
 .gasto-item-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px;}
 .gasto-item-meta{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px;}
 /* TAB BAR */
+/* Gastos: un panel a la vez (switchGastoTab, gastos.js, marca el activo). En PC se ven los dos (css/pc.css) y los títulos reemplazan a las pestañas. */
+.gastos-panel{display:none;}
+.gastos-panel.panel-activo{display:block;}
+.gastos-panel-titulo{display:none;}
 .tab-bar{display:flex;gap:5px;margin-bottom:14px;background:var(--bg3);padding:4px;border-radius:11px;}
 .tab{flex:1;padding:9px 6px;text-align:center;font-size:12px;font-weight:500;border-radius:8px;cursor:pointer;background:transparent;border:none;color:var(--text3);transition:all .2s;}
 .tab.active{background:var(--bg2);border:1px solid var(--border2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3);}
@@ -2393,12 +2401,10 @@ button.inicio-pilar-accion{cursor:pointer;}
 .btn-ordenar-cuentas[hidden]{display:none;}
 .btn-ordenar-cuentas.activo{background:rgba(200,240,96,.15);border-color:rgba(200,240,96,.45);color:var(--accent);}
 .cuentas-ord-ayuda{font-size:12px;color:var(--text3);margin:0 2px 10px;line-height:1.5;}
-.cuentas-selector-ordenando > .cuenta-card:last-child:nth-child(odd){grid-column:auto;} /* en modo orden todas miden lo mismo: los huecos se intercambian */
 .cuenta-card-ord{cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;outline:1.5px dashed rgba(var(--cuenta-rgb),.45);outline-offset:-5px;transition:box-shadow .2s;}
-.cuenta-card-ord .cuenta-card-saldo{opacity:.55;font-size:16px;}
-.cuenta-ord-grip{position:absolute;top:6px;right:6px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:none;border-radius:10px;background:rgba(var(--cuenta-rgb),.14);color:var(--cuenta);cursor:grab;touch-action:none;}
+.cuenta-card-ord .cuenta-card-saldo{opacity:.55;}
+.cuenta-ord-grip{grid-area:flecha;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:none;border-radius:10px;background:rgba(var(--cuenta-rgb),.14);color:var(--cuenta);cursor:grab;touch-action:none;}
 .cuenta-ord-grip:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
-.cuentas-selector-ordenando .cuenta-card-head{padding-right:42px;}
 .reord-activo{cursor:grabbing;}
 .reord-activo .cuenta-card-ord{cursor:grabbing;}
 .reord-mueve{transition:transform .22s cubic-bezier(.2,.8,.2,1);will-change:transform;}

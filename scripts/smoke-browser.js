@@ -338,6 +338,10 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     cambiarModo(false);
     c5(panel() === 'cuentas-detalle-simple' && ev('cuentaActual') === 'cuenta:efectivo', 'Celular: la cuenta abierta por la persona debe conservarse al achicar (' + panel() + ')');
     c5(hijos('screen-cuentas') === cuentasCelular, 'Celular: Cuentas no recuperó su orden tras abrir una cuenta: ' + hijos('screen-cuentas'));
+    // Gastos: las pestañas alternan el panel por clase (en PC se ven los dos por CSS).
+    const activosGastos = () => ev(`['panel-var','panel-fijo'].filter(i=>document.getElementById(i).classList.contains('panel-activo')).join(',')`);
+    ev(`switchGastoTab('fijo')`); c5(activosGastos() === 'panel-fijo', 'Gastos: la pestaña Fijos no dejó solo panel-fijo activo: ' + activosGastos());
+    ev(`switchGastoTab('var')`); c5(activosGastos() === 'panel-var', 'Gastos: la pestaña Gastos no dejó solo panel-var activo: ' + activosGastos());
     cambiarModo(true); cambiarModo(false); cambiarModo(true); cambiarModo(false);
     c5(hijos('screen-inicio') === inicioCelular && hijos('screen-cuentas') === cuentasCelular, 'Varios cambios seguidos dejaron bloques fuera de su sitio');
   } catch (e) { fallos5.push('excepción en la FASE 5: ' + e.message); }

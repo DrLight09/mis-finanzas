@@ -131,8 +131,8 @@ function switchGastoTab(t) {
   gastoTab = t;
   document.getElementById('tab-var').classList.toggle('active', t === 'var');
   document.getElementById('tab-fijo').classList.toggle('active', t === 'fijo');
-  document.getElementById('panel-var').style.display = t === 'var' ? '' : 'none';
-  document.getElementById('panel-fijo').style.display = t === 'fijo' ? '' : 'none';
+  document.getElementById('panel-var').classList.toggle('panel-activo', t === 'var');
+  document.getElementById('panel-fijo').classList.toggle('panel-activo', t === 'fijo');
 }
 
 /* ---- ESTADO VACÍO: helpers que unifican el flujo con el botón fantasma ---- */

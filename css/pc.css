@@ -55,6 +55,16 @@
   .columna-principal #inicio-proyeccion > .sec-title:first-child,
   .columna-riel .sec-title{margin-top:0;}
 
+  /* ── Gastos: variables a la izquierda y fijos mensuales en el riel derecho, los dos a la vez (sin pestañas) ───────────────────── */
+  .scroll-area > #screen-gastos{max-width:none;margin-left:0;margin-right:0;}
+  #screen-gastos.active{display:flex;align-items:flex-start;gap:14px;}
+  #screen-gastos .tab-bar{display:none;}
+  #screen-gastos .gastos-panel{display:block;}
+  #screen-gastos .gastos-panel-titulo{display:block;margin-top:0;}
+  #panel-var{flex:1;min-width:0;}
+  #panel-fijo{width:var(--riel-ancho);flex-shrink:0;}
+  #screen-gastos .tab-bar + .gastos-panel{margin-top:0;}
+
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-lista{width:280px;flex-shrink:0;}
@@ -62,7 +72,6 @@
   .columna-movimientos{display:none;width:340px;flex-shrink:0;}
   /* La lista nunca se oculta (en celular se oculta al abrir una cuenta) y cada cuenta va en su propia fila. */
   .columna-lista > .cuentas-panel{display:block;}
-  .columna-lista .cuentas-selector-grid{grid-template-columns:1fr;}
   /* El volver al selector sobra: la lista está a la vista. (El de cajita → Nu y el de Archivadas se quedan.) */
   .btn-volver-selector{display:none;}
   /* Movimientos a la derecha solo con el detalle simple o el de Nu; la cajita, Archivadas y las subpantallas usan todo el ancho. */
@@ -85,6 +94,10 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Gastos: los fijos mensuales pasan debajo de los variables. */
+  #screen-gastos.active{flex-wrap:wrap;}
+  #panel-var{flex-basis:100%;}
+  #panel-fijo{width:auto;flex-basis:100%;}
   /* Cuentas: lista más angosta y los movimientos pasan debajo del detalle. */
   #screen-cuentas.en-columnas.active{flex-wrap:wrap;}
   .columna-lista{width:240px;}

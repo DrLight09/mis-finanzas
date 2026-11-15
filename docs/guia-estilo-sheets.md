@@ -23,6 +23,24 @@ Los sheets y pantallas **no llevan `style="…"` en el HTML ni en los strings de
 
 Las filas de movimientos de Tarjetas, Encargos, Gastos y Cuentas se arman con `filaMovimiento({…})` y su botón de borrar con `botonEliminarFila(accion, args, titulo)` (ambos en `js/core/utilidades-ui.js`); no se escribe a mano `.gasto-item-top`. El borde o color de una variante se pide con una clase en `clase` (`tc-item-b-*`, `enc-item-b-*`), nunca con estilo en línea. Los atributos `data-mov-*` van en `attrs`. Una prueba (`tests/nucleo.test.js`, bloque `fila-movimiento`) falla si un módulo vuelve a repetir el esqueleto.
 
+## 0 bis. Clases CSS nuevas: reglas
+
+`css/styles.css` tiene unas 1.900 clases, todas en `kebab-case` salvo 11. Lo que no se entiende son los **prefijos**: 1.206 empiezan con una abreviatura opaca (`ix` 374, `cp` 190, `an` 123, `enc`, `pe`, `alc`, `mdet`, `pr`, `ms`, `sp`, `cfg`, `fb`…). Esas clases viejas se renombran **pantalla por pantalla al rediseñarla**; lo que se escribe desde ahora sigue estas reglas. `tests/convenciones.test.js` vigila las cuatro primeras con un trinquete (`node scripts/convenciones-css.js` muestra el recuento; `--actualizar` registra lo que baja): el número solo puede bajar.
+
+1. **Solo `kebab-case`:** sin `_`, sin mayúsculas (`mesada-fila-pago`). Una clase no se arma con un valor guardado que lleve `_` (`abono_deuda`): se mapea a un nombre en kebab.
+2. **El prefijo es el nombre completo del módulo o de la pantalla:** `mesada-`, `alcancia-`, `prestado-`, `encargos-`, `cuentas-`. Solo se permiten las abreviaturas oficiales del glosario (`tc`, `nu`, `cdt`). No se crean clases con prefijos opacos aunque sea «para seguir el estilo» de la pantalla; si se rediseña una pantalla, se renombra todo su prefijo de una vez, en la misma entrega (HTML, JS y CSS).
+3. **Los componentes compartidos no llevan prefijo de módulo** y se nombran por lo que son (`btn-…`, `field-…`, `badge-…`, `empty-state`, `c-green`). Si dos pantallas usan lo mismo, es compartido y va sin prefijo.
+4. **Se nombra por función, no por apariencia:** `saldo-total`, no `texto-verde-grande`; nada de `rojo`, `azul`, `izquierda`, `grande` en el nombre (hoy `cuenta-action-btn--azul` lo incumple).
+5. **Colores, radios y tiempos salen de las variables de `:root`** (`var(--accent)`, `var(--radius)`). Si un diseño necesita un valor nuevo, se agrega primero como variable. Hoy hay 64 colores hex sueltos fuera de `:root`; no puede subir.
+6. **Nada de `!important`** (hoy 42; no puede subir): si hace falta, el problema es el orden o la especificidad de las reglas.
+7. **Nada de `style="…"`** en el HTML ni en los strings de JS, salvo valores calculados al ejecutar (ver §0).
+8. **No se estiliza por `id`:** los ids son para el JS y las etiquetas (`for`); los estilos van por clase.
+9. **Los nombres de clase no se arman concatenando texto** (`'alc-' + tipo`): se escriben completos o se mapean con un objeto. Así se pueden buscar, y algún día se podrá comprobar con una prueba que cada clase usada esté definida.
+10. **Al reemplazar un diseño se borra el CSS viejo en la misma entrega:** no se dejan clases muertas.
+11. **Estados:** una clase aparte con prefijo `is-` (`is-activo`, `is-abierto`), no una variante del nombre. *(Propuesta: hoy no hay un patrón único; al rediseñar, usar este y no mezclar.)*
+
+---
+
 ## 1. Regla general de orden
 
 Para cualquier sheet que registre un movimiento de plata, el orden es siempre:

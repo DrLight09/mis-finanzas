@@ -146,3 +146,16 @@ test('referencias a documentos: todo «algo.md» que citan js/, tests/ y scripts
   }
   assert.deepEqual(colgantes, [], 'Se cita un documento que no existe (¿se borró o se renombró?): ' + [...new Set(colgantes)].join('; '));
 });
+
+test('trinquete de CSS: no aparecen clases con prefijo abreviado ni fuera de kebab-case, ni más !important ni colores hex fuera de :root', () => {
+  // Reglas en docs/guia-estilo-sheets.md §0 bis. `node scripts/convenciones-css.js` muestra el recuento; `--actualizar` baja el trinquete.
+  const css = require('../scripts/convenciones-css');
+  const base = JSON.parse(fs.readFileSync(css.BASE, 'utf8'));
+  const d = css.comparar(css.medir(), base);
+  assert.deepEqual(d.opacasNuevas, [], 'Clases nuevas con prefijo abreviado (usa el nombre completo del módulo, ver guia-estilo-sheets.md §0 bis): ' + d.opacasNuevas.join(', '));
+  assert.deepEqual(d.noKebabNuevas, [], 'Clases nuevas que no son kebab-case: ' + d.noKebabNuevas.join(', '));
+  assert.ok(!d.importantesSuben, 'Hay más `!important` que en la base: arregla el orden de las reglas en vez de forzarlo');
+  assert.ok(!d.hexSuben, 'Hay más colores hex sueltos que en la base: usa una variable de :root (o agrégala allí)');
+  const bajan = [...d.opacasQueBajan, ...d.noKebabQueBajan];
+  assert.ok(!bajan.length && !d.importantesBajan && !d.hexBajan, 'Algo bajó (¡bien!): registra la mejora con `node scripts/convenciones-css.js --actualizar`');
+});

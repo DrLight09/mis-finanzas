@@ -20,6 +20,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cuentas-fuentes.js` | de entrada (defer) | 40 | 3 |
 | `js/core/dialogos.js` | de entrada (defer) | 10 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
+| `js/core/disposicion-pc.js` | de entrada (defer) | 0 | 0 |
 | `js/core/estado.js` | de entrada (defer) | 15 | 7 |
 | `js/core/eventos-base.js` | de entrada (defer) | 2 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
@@ -159,6 +160,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInstancia`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
+
+### `js/core/disposicion-pc.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** —
 
 ### `js/core/estado.js`
 

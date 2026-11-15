@@ -48,8 +48,8 @@ La columna «Equivalente en inglés» no se usa en el código: está para poder 
 | **reposición** | Devolver al encargo plata que se usó | | `replenishment` |
 | **diferencial** | «El valor real era diferente» (698.000 vs 700.000) | `dif`, «diferencia» | `priceDifference` |
 | **margen** | Lo que queda de un diferencial como ingreso | | `margin` |
-| **parte(s)** | Reparto de un monto entre cuentas | `splits` como dato (ver §4) | `parts` |
-| **split** | Solo el componente técnico de reparto (`split.js`, `crearSplitWidget`) | usarlo como dato guardado | `split` |
+| **parte(s)** | Las partes de una alcancía, un diferencial o un encargo (`partes[]`) | confundirlas con `splits` | `parts` |
+| **split** | Reparto de un monto entre cuentas (`[{ fuente, monto }]`): el widget `split.js` y el dato `splits` de Gastos, Mesada, Spotify y Cuentas. Es un concepto distinto de las `partes` y conserva su nombre | llamarle `partes` | `split` |
 | **persona** | Alguien registrado en la app | | `person` |
 | **bien** | Activo no líquido (moto, computador) | | `physicalAsset` |
 | **periodo / cierre** | Mes o ciclo / cierre de periodos | | `period` / `periodClose` |
@@ -59,19 +59,21 @@ La columna «Equivalente en inglés» no se usa en el código: está para poder 
 | **valor** | Valor de un bien o de un campo de formulario | `monto` | `value` |
 | **desc / nota** | `desc` = descripción del movimiento; `nota` = nota libre de otras entidades | mezclarlos | `description` / `note` |
 
-### «Cobro» tiene tres sentidos: en código nuevo se usan tres nombres
+### «Cobro» tiene tres sentidos, cada uno en su módulo
 
-| Sentido | Nombre para código nuevo |
+«Cobrar» es la palabra natural en los tres casos y **no se renombra**: ninguno comparte lista ni campo con otro, y el módulo ya dice de cuál se trata.
+
+| Sentido | Dónde vive |
 |---|---|
-| Spotify le cobra a un integrante | `cobroSpotify` |
-| Cobrar una deuda | `cobroDeuda` |
-| Recibir un ingreso fijo del mes | `recepcionIngreso` |
+| Spotify le cobra a un integrante | `S.spotify.historial` (`tipo: 'cobro'`) |
+| Cobrar una deuda | Prestado y Alcancía (`cobro_deuda`) |
+| Recibir un ingreso fijo del mes | `js/core/cobros.js`, `ingreso.cobros` |
 
 ## 3. Abreviaturas
 
 **Se conservan (oficiales):** `tc`, `cdt`, `ea`, `nu`, `id`, `ui`, `uid`, `url`, `el`, `btn`, `idx`, `fmt`, `msg`, `val`, `opts`, `args`, `cb`, `ctx`, `tmp`, `pct`, `pin`, `desc`, `cat`, `ts`. (`desc`, `cat` y `ts` también son campos guardados.) También se permite `diff` como término técnico en inglés (calcular la diferencia entre dos conjuntos); para el concepto del dominio se usa `diferencial`.
 
-**Se escriben completas** (las vigila `tests/convenciones.test.js`; el código viejo que aún las usa está en el trinquete `tests/fixtures/convenciones-base.json`, que solo puede bajar):
+**Se escriben completas** (las vigila `tests/convenciones.test.js`; el trinquete `tests/fixtures/convenciones-base.json` está en **0**: cualquier abreviatura nueva en el código falla la prueba. Solo cuentan los identificadores; los textos y los ids entre comillas no, pero también se escriben completos):
 
 | Abreviatura | Completo | Abreviatura | Completo |
 |---|---|---|---|
@@ -97,12 +99,28 @@ La columna «Equivalente en inglés» no se usa en el código: está para poder 
 
 **No se expanden de forma automática** (significan cosas distintas según el sitio): `reg` y `dd`. `reg` se renombró identificador por identificador: `saldoReg` → `saldoRegistrado`, `swReg` → `swRegistration`, `ultimoReg` → `ultimoRegistro`, `_reg` → `_registro` y la variable local `reg` según el archivo (`registro`, `registration`, `saldoRegistrado` o `registros`); no está vigilada porque `RegExp` la contiene y `__reg` es el registro que los tests inyectan como texto en la página. `dd` son variables locales sin relación entre sí (dígitos decimales, distancia al cuadrado, deudor, días de diferencia) y no se tocan. `md` es **mis deudas** (`S.misDeudas`; la hoja «Mis deudas» de Prestado) y `cpd` es el **destino nuevo** que se arma en la hoja de plata comprometida. `st` se escribe `estadoActual` y no `estado` porque `estado` ya es el parámetro de esas mismas funciones; `og` es el origen **del libro** (`Libro.origen(...)`), por eso `origenLibro` y no `origen`.
 
-## 4. Nombres antiguos que siguen en el código
+## 4. Valores guardados
 
-Se corrigen cuando se toca ese código, no en una campaña aparte:
+Los textos que se guardan en los datos (`tipo`, `origen`…) van en **`snake_case`** y, si tienen varios usos, como constante en `js/core/estado.js`; no se repiten como texto suelto (`tests/convenciones.test.js` lo vigila).
 
-- `cobros.js` y `tipo: 'cobro'` (los tres sentidos de «cobro»).
-- `splits` en `spotify.historial` (el mismo concepto que `partes` en Alcancía, Prestado y Encargos).
-- `plata_comprometida` como clave de `config.proteccionAntiguedad` (clave de datos: cambiarla exige migrar datos).
-- **Ids y clases del HTML cuyo prefijo es una abreviatura** (`gv_`, `sp_`, `mp_`, `mpp_`, `ctc_`, `prtc_`, `alc-`, `caj-`…), los prefijos con que los widgets de reparto arman sus ids, los ids `adAperturaWrap`, `adMenuDest`, `adMenuMonto` y `nuMovAperturaWrap`, y las claves `mp` y `mpp` del estado de Mesada (salen de ese mismo prefijo). Se dejaron porque cada id se escribe a mano en `index.html`, se compone con prefijos en el JavaScript y se usa en el CSS, y ningún test comprueba el aspecto visual.
-- Valores guardados con formatos mezclados (`pago-completo`, `abono_deuda`, `yo-cuenta`, `cargo_spotify`).
+| Valor | Dónde | Constante |
+|---|---|---|
+| `pago_completo` | movimiento de deuda que salda todo lo que faltaba (el parcial es `abono`) | `TIPO_PAGO_COMPLETO`; `esAbonoDeDeuda(tipo)` para «abono o pago completo» |
+| `yo_cuenta`, `yo_directo`, `regalo`, `mandado`, `cobro_deuda`, `multi` | `tipo` de los movimientos de Alcancía | `TIPO_ALCANCIA` |
+| `abono_deuda`, `cargo_spotify`, `cargo_encargo`… | otros `tipo` | texto (un solo archivo los usa) |
+
+La clave de `config.proteccionAntiguedad` para Plata comprometida es `plataComprometida`.
+
+**Prefijos de id del HTML** (los ids de los sheets llevan el nombre completo del flujo): `mesadaPago…` (Registrar pago de Mesada), `mesadaPagoPendiente…` (Pago de lo pendiente), `agregarDinero…` (menú y sheet de agregar dinero), `nuMovimiento…` (movimiento de Nu). Las claves de estado de Mesada son `registrarPago` y `pagoPendiente`.
+
+## 5. Lo que se dejó como está, a propósito
+
+No son pendientes: se evaluaron y se decidió no tocarlos (el razonamiento está en [`guia-de-renombres.md`](./guia-de-renombres.md)).
+
+- **Clases CSS con prefijo abreviado** (`ix-`, `cp-`, `an-`, `enc-`, `pe-`, `alc-`, `mdet-`, `pr-`, `ms-`, `sp-`…; 1.206 clases) y los ids del HTML de esos mismos módulos: el JavaScript los compone con prefijos y ningún test comprueba el aspecto. Se renombran al rediseñar cada pantalla; mientras tanto un trinquete (`scripts/convenciones-css.js`) impide que aparezcan clases nuevas con prefijo abreviado, y las reglas para clases nuevas están en `guia-estilo-sheets.md` §0 bis.
+- **`splits` vs `partes`:** dos conceptos distintos (ver §2).
+- **«Cobro»:** tres sentidos, uno por módulo (ver §2).
+- **`dd`:** variables locales sin relación entre sí.
+- **`mesadas.papa` / `mesadas.mama`:** claves fijas con nombres familiares; cambiarlas es rediseñar el modelo con una clave neutral.
+- **Ruta de Firestore `usuarios`:** cambiarla exige modificar las reglas en la consola de Firebase.
+- **Código en inglés:** la columna «Equivalente en inglés» existe por si algún día se publica el repo.

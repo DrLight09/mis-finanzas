@@ -1,0 +1,76 @@
+/* css/pc.css — distribución de PC. Se carga DESPUÉS de css/styles.css y todo lo que cambia está dentro de @media (min-width:900px):
+   por debajo de 900 px la app es la de celular, sin una sola regla de este archivo (salvo ocultar el menú lateral).
+   Solo reacomoda lo que ya existe: mismos componentes, colores, botones y textos. Sin !important, sin colores sueltos (variables de :root).
+   Dos modos, ambos solo CSS (no hay JS que decida el modo, así que redimensionar no recarga ni pierde nada):
+     · 1280 px o más: PC completo (menú con grupos, columna principal + riel derecho).
+     · 900 a 1279 px: PC compacto (menú solo con íconos, el riel pasa debajo del contenido).
+   Reparto de columnas por pantalla: js/core/disposicion-pc.js. Reglas y pruebas: docs/version-pc.md. */
+
+:root{--menu-lateral-ancho:216px;--menu-lateral-ancho-compacto:60px;--riel-ancho:330px;}
+
+/* En celular el menú lateral no existe (manda la barra inferior). */
+.menu-lateral{display:none;}
+
+@media (min-width:900px){
+
+  /* ── Estructura: menú lateral | cabecera + contenido ─────────────────────────────────────────────── */
+  .app{max-width:none;display:grid;grid-template-columns:var(--menu-lateral-ancho) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
+  .app > .header{grid-column:2;grid-row:1;padding-left:22px;padding-right:22px;}
+  .app > .scroll-area{grid-column:2;grid-row:2;padding:16px 22px 24px;}
+  .app > footer{display:none;} /* la barra inferior y su menú «Más» se reemplazan por el menú lateral */
+
+  /* Las pantallas que todavía no tienen su distribución de PC conservan su columna de celular, centrada. */
+  .scroll-area > .screen{max-width:640px;margin-left:auto;margin-right:auto;}
+  .scroll-area > .screen.en-columnas{max-width:none;margin-left:0;margin-right:0;}
+
+  /* ── Menú lateral ────────────────────────────────────────────────────────────────────────────────── */
+  .menu-lateral{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;min-height:0;background:var(--bg2);border-right:1px solid var(--border);padding:14px 10px 10px;}
+  .menu-lateral-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:1px;}
+  .menu-lateral-grupo{font-family:'DM Mono',monospace;font-size:9.5px;font-weight:500;letter-spacing:1.1px;text-transform:uppercase;color:var(--text3);padding:12px 10px 4px;}
+  .menu-lateral-grupo:first-child{padding-top:2px;}
+  .menu-lateral-item{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;border:0;border-radius:10px;background:none;color:var(--text2);font:500 12.5px 'DM Sans',sans-serif;text-align:left;cursor:pointer;}
+  .menu-lateral-item[hidden]{display:none;}
+  .menu-lateral-item:hover{background:var(--bg3);color:var(--text);}
+  .menu-lateral-item:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+  .menu-lateral-item.active{background:color-mix(in srgb,var(--accent) 9%,transparent);color:var(--accent);}
+  .menu-lateral-icono{width:17px;height:17px;flex-shrink:0;}
+  .menu-lateral-texto{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .menu-lateral-pie{display:flex;flex-direction:column;gap:6px;border-top:1px solid var(--border);padding-top:8px;margin-top:8px;}
+  .menu-lateral-sync{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;background:var(--bg3);color:var(--text2);font-size:11.5px;}
+  .menu-lateral-sync .fb-sync-dot{flex-shrink:0;}
+
+  /* ── Hojas: de «suben desde abajo» a ventana modal centrada ─────────────────────────────────────── */
+  .overlay{align-items:center;}
+  .sheet{max-width:520px;border-radius:22px;padding-bottom:26px;max-height:88svh;}
+
+  /* ── Inicio (columnas armadas por js/core/disposicion-pc.js) ─────────────────────────────────────── */
+  #screen-inicio.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
+  .columna-principal{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;row-gap:10px;align-content:start;}
+  .columna-principal > #inicio-patrimonio,
+  .columna-principal > #plan-deudas-card{grid-column:1 / -1;}
+  .columna-principal > #plan-deudas-card:empty{display:none;}
+  .columna-riel{width:var(--riel-ancho);flex-shrink:0;display:flex;flex-direction:column;gap:6px;}
+  /* El primer título de cada bloque ya no necesita el aire de arriba que tiene al ir apilado en celular. */
+  .columna-principal #inicio-gastos > .sec-title:first-child,
+  .columna-principal #inicio-proyeccion > .sec-title:first-child,
+  .columna-riel .sec-title{margin-top:0;}
+}
+
+/* ── PC compacto: menú solo con íconos y riel debajo del contenido ─────────────────────────────────── */
+@media (min-width:900px) and (max-width:1279px){
+  .app{grid-template-columns:var(--menu-lateral-ancho-compacto) minmax(0,1fr);}
+  .menu-lateral{padding-left:8px;padding-right:8px;}
+  .menu-lateral-grupo{height:1px;padding:0;margin:8px 6px;background:var(--border);font-size:0;}
+  .menu-lateral-grupo:first-child{display:none;}
+  .menu-lateral-item{justify-content:center;padding:9px 0;}
+  .menu-lateral-sync{justify-content:center;padding:10px 0;}
+  .menu-lateral-texto{display:none;}
+  #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
+  .columna-riel{width:auto;}
+}
+
+/* Movimiento: la entrada de la hoja como ventana (aparece y crece un poco) solo si la persona no pidió reducirlo. */
+@keyframes hoja-modal-in{from{opacity:0;transform:scale(.96);}}
+@media (min-width:900px) and (prefers-reduced-motion:no-preference){
+  .overlay.open .sheet{animation:hoja-modal-in var(--sheet-in-ms) cubic-bezier(.22,1,.36,1);}
+}

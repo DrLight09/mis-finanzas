@@ -21,6 +21,11 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     const txt = document.getElementById('fb-sync-text');
     if(dot) { dot.className = 'fb-sync-dot' + (state !== 'ok' ? ' '+state : ''); }
     if(txt) txt.textContent = text;
+    // Mismo estado en el pie del menú lateral de PC.
+    const dotLateral = document.getElementById('lateral-sync-dot');
+    const txtLateral = document.getElementById('lateral-sync-text');
+    if(dotLateral) { dotLateral.className = 'fb-sync-dot' + (state !== 'ok' ? ' '+state : ''); }
+    if(txtLateral) txtLateral.textContent = text;
   }
 
   // ── Guardar en Firestore con debounce ─────────────────────────────────────

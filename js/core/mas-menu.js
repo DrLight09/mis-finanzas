@@ -60,6 +60,11 @@
     if(masMesada && cfgMesada) {
       masMesada.style.display = cfgMesada.checked ? 'flex' : 'none';
     }
+    // Mismo estado en el menú lateral de PC (js/core/eventos-base.js los navega).
+    const lateralSpotify = document.getElementById('lateral-spotify');
+    if(lateralSpotify && cfgSpotify) lateralSpotify.hidden = !cfgSpotify.checked;
+    const lateralMesada = document.getElementById('lateral-mesada');
+    if(lateralMesada && cfgMesada) lateralMesada.hidden = !cfgMesada.checked;
   }, { key: 'mas-menu-modulos' });
   // Initial update
   setTimeout(window.applyModulos, 100);

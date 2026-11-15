@@ -364,6 +364,10 @@
          detalle completo de qué quedó ahí y por qué. -->
     <link rel="stylesheet" media="print" data-async-css href="css/styles.css">
     <noscript><link rel="stylesheet" href="css/styles.css"></noscript>
+    <!-- Distribución de PC (≥900 px): solo reglas dentro de @media; en celular no cambia nada. Va DESPUÉS de styles.css (mismo orden de
+         cascada aunque baje antes). Ver docs/version-pc.md. -->
+    <link rel="stylesheet" media="print" data-async-css href="css/pc.css">
+    <noscript><link rel="stylesheet" href="css/pc.css"></noscript>
     <!-- Reemplaza el onload="this.media='all'" inline que tenían estos 3 <link>
          (Font Awesome, Google Fonts, y ahora css/styles.css) — la CSP bloquea
          atributos de evento inline en script-src igual que <script> inline, y
@@ -599,6 +603,77 @@
           </div>
         </div>
       </div>
+      <!-- MENÚ LATERAL (solo PC, ≥900 px; en celular está oculto y manda la barra inferior). Mismos destinos que la barra inferior y el menú
+           «Más» (data-screen → showScreen). Spotify y Mesada siguen los módulos activos (js/core/mas-menu.js). Ver docs/version-pc.md. -->
+      <aside class="menu-lateral" aria-label="Menú principal">
+        <nav class="menu-lateral-nav">
+          <div class="menu-lateral-grupo">Mi plata</div>
+          <button type="button" class="menu-lateral-item" id="lateral-inicio" data-screen="inicio" title="Inicio">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1z" /><rect x="9" y="13" width="6" height="8" rx="1" /></svg>
+            <span class="menu-lateral-texto">Inicio</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-cuentas" data-screen="cuentas" title="Cuentas">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 10h20" /><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none" /><path d="M12 15h5" /></svg>
+            <span class="menu-lateral-texto">Cuentas</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-gastos" data-screen="gastos" title="Gastos">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 3 14 9 20 9" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>
+            <span class="menu-lateral-texto">Gastos</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-tarjetas" data-screen="tarjetas" title="Tarjetas de crédito">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 10h20" /><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none" /><path d="M12 15h5" /></svg>
+            <span class="menu-lateral-texto">Tarjetas de crédito</span>
+          </button>
+          <div class="menu-lateral-grupo">Con otras personas</div>
+          <button type="button" class="menu-lateral-item" id="lateral-prestamos" data-screen="prestamos" title="Prestado">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3" /><circle cx="16" cy="9" r="2.5" /><path d="M1 20c0-3.3 3.6-6 8-6s8 2.7 8 6" /><path d="M19 14c2.5.5 4 2 4 4" /></svg>
+            <span class="menu-lateral-texto">Prestado</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-encargos" data-screen="encargos" title="Encargos">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 00-4 0v2" /><path d="M8 7V5a2 2 0 00-4 0v2" /><line x1="12" y1="12" x2="12" y2="17" /><line x1="9.5" y1="14.5" x2="14.5" y2="14.5" /></svg>
+            <span class="menu-lateral-texto">Encargos</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-spotify" data-screen="spotify" title="Spotify">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>
+            <span class="menu-lateral-texto">Spotify</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-mesada" data-screen="mesada" title="Mesada de papás">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" /><path d="M2 12l10 5 10-5" /></svg>
+            <span class="menu-lateral-texto">Mesada de papás</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-personas" data-screen="personas" title="Personas">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7" /></svg>
+            <span class="menu-lateral-texto">Personas</span>
+          </button>
+          <div class="menu-lateral-grupo">Planear y entender</div>
+          <button type="button" class="menu-lateral-item" id="lateral-comprometida" data-screen="comprometida" title="Plata comprometida">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2" /><path d="M2 10h20" /><path d="M12 14v2M8 14h2M14 14h2" /><path d="M6 6V4M18 6V4" /></svg>
+            <span class="menu-lateral-texto">Plata comprometida</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-alcancia" data-screen="alcancia" title="Alcancía">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+            <span class="menu-lateral-texto">Alcancía</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-analisis" data-screen="analisis" title="Análisis financiero">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /></svg>
+            <span class="menu-lateral-texto">Análisis financiero</span>
+          </button>
+          <button type="button" class="menu-lateral-item" id="lateral-historial" data-screen="historial" title="Actividad reciente">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 15.5 14" /></svg>
+            <span class="menu-lateral-texto">Actividad reciente</span>
+          </button>
+        </nav>
+        <div class="menu-lateral-pie">
+          <button type="button" class="menu-lateral-item" id="lateral-config" data-screen="config" title="Configuración">
+            <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
+            <span class="menu-lateral-texto">Configuración</span>
+          </button>
+          <div class="menu-lateral-sync" title="Estado de sincronización">
+            <div class="fb-sync-dot" id="lateral-sync-dot"></div>
+            <span class="menu-lateral-texto" id="lateral-sync-text">Sincronizado con Firebase</span>
+          </div>
+        </div>
+      </aside>
       <header class="header">
         <div><h1>Mis finanzas</h1><p id="hDate"></p></div>
         <div class="ix-div-001">
@@ -648,6 +723,7 @@
 
         <!-- INICIO -->
         <div class="screen active" id="screen-inicio">
+          <div id="inicio-patrimonio">
           <div class="hero">
             <!-- Rediseño (docs/auditoria-tecnica.md, "Reservar espacio para
                  #hero-alcancia-indicator (CLS)"): el bloque con padding/borde
@@ -694,7 +770,9 @@
           </div>
           <div class="ix-s-disp-neto-tc" id="s-disp-neto-tc">
           </div>
+          </div><!-- /inicio-patrimonio -->
           <div id="tc-deuda-card" style="display:none;"></div>
+          <div id="inicio-gastos">
           <div class="sec-title">Gastos del mes</div>
           <div class="grid2 ix-mb9">
             <div class="stat"><div class="stat-label">Fijos</div><div
@@ -705,6 +783,8 @@
           <div class="card card-sm"><div class="row"><span class="ix-fs12-ctext2">Total gastado este
                 mes</span><span class="row-amount c-red"
                 id="s-gtotal">$0</span></div></div>
+          </div><!-- /inicio-gastos -->
+          <div id="inicio-salud">
           <!-- SALUD FINANCIERA -->
           <div class="sec-title">Salud financiera</div>
           <!-- min-height + skeleton: health-score-card arranca vacío y se llena
@@ -742,10 +822,13 @@
             </div>
           </div>
 
+          </div><!-- /inicio-salud -->
+
           <!-- PLAN DE DEUDAS (renderPlanDeudas, inicio.js): vacío si no hay deudas propias -->
           <div id="plan-deudas-card"></div>
 
           <!-- PROYECCIÓN -->
+          <div id="inicio-proyeccion">
           <div class="sec-title">Proyección financiera</div>
           <!-- Mismo criterio que health-score-card (ver comentario arriba);
                renderProyeccion() también sobreescribe todo el innerHTML en
@@ -763,6 +846,8 @@
               <div class="ix-div-029"></div>
             </div>
           </div>
+
+          </div><!-- /inicio-proyeccion -->
 
           <!-- ATENCIÓN HOY -->
           <div id="s-attn-section" style="display:none;">
@@ -4808,6 +4893,7 @@
 <script src="js/core/navegacion.js" defer></script>
 <script src="js/core/modulos-activos.js" defer></script>
 <script src="js/core/eventos-base.js" defer></script>
+<script src="js/core/disposicion-pc.js" defer></script>
 <!-- Módulo Préstamos — js/modules/prestado.js (lazy, grupo 'prestamos'; sin <script> propio).
      Depende de personas.js y navegacion.js, ambos de entrada, así que ya están cargados cuando
      el usuario entra a Préstamos. #screen-prestamos y #nav-prestamos son HTML estático. -->

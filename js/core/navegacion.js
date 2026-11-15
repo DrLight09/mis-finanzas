@@ -58,6 +58,7 @@ function showScreen(name){
   document.getElementById('screen-'+name).classList.add('active');
   const navEl=document.getElementById('nav-'+name);
   if(navEl)navEl.classList.add('active');
+  document.querySelectorAll('.menu-lateral-item').forEach(b=>b.classList.toggle('active',b.dataset.screen===name)); // menú lateral de PC
   document.getElementById('scrollArea').scrollTop=0;
   // Carga bajo demanda (docs/auditoria-tecnica.md #4, fase 1 de la
   // modularización — piloto: solo Alcancía por ahora, ver

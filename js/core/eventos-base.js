@@ -12,6 +12,21 @@ function _initEventListeners() {
     btn.addEventListener('click', () => showScreen(btn.dataset.screen));
   });
 
+  // --- Menú lateral (solo se ve en PC, ver css/pc.css y docs/version-pc.md): mismos destinos que la barra inferior ---
+  document.querySelectorAll('.menu-lateral-item[data-screen]').forEach(btn => {
+    btn.addEventListener('click', () => showScreen(btn.dataset.screen));
+  });
+
+  // --- Atajo de teclado de PC: Ctrl/Cmd + K abre la búsqueda global (mismo botón que el de la cabecera) ---
+  document.addEventListener('keydown', (e) => {
+    if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'k') return;
+    if (typeof window.matchMedia !== 'function' || !window.matchMedia('(min-width: 900px)').matches) return;
+    const btnBuscar = document.getElementById('btn-buscar-global');
+    if (!btnBuscar) return;
+    e.preventDefault();
+    btnBuscar.click();
+  });
+
   // --- Header add button ---
   const btnHeaderAdd = document.getElementById('btn-header-add');
   if (btnHeaderAdd) btnHeaderAdd.addEventListener('click', () => openSheet('menu'));

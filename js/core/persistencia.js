@@ -147,7 +147,7 @@ function load(){
   // ajustado a mano en los que ya existen. Antes esto solo corría si
   // proteccionAntiguedad faltaba por completo, así que agregar un módulo
   // nuevo (ver alcancia/plataComprometida, 2026-09-01) nunca llegaba a una
-  // cuenta con datos ya guardados — ver CHANGELOG.md#alcancía.
+  // cuenta con datos ya guardados — ver CHANGELOG.md.
   const _paDefaults={spotify:{operacionesAviso:2,operacionesBloqueo:5},mesada:{operacionesAviso:2,operacionesBloqueo:5},prestamos:{operacionesAviso:2,operacionesBloqueo:5},encargos:{operacionesAviso:2,operacionesBloqueo:5},tarjetas:{operacionesAviso:2,operacionesBloqueo:5},cuentas:{operacionesAviso:2,operacionesBloqueo:5},gastos:{operacionesAviso:2,operacionesBloqueo:5},alcancia:{operacionesAviso:2,operacionesBloqueo:5},plataComprometida:{operacionesAviso:2,operacionesBloqueo:5}};
   Object.keys(_paDefaults).forEach(k=>{ if(!S.config.proteccionAntiguedad[k])S.config.proteccionAntiguedad[k]=_paDefaults[k]; });
   // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)

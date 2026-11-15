@@ -58,7 +58,7 @@
         // persistence layer" y esa pestaña cae a memoria (pierde el cache
         // offline). persistentMultipleTabManager() hace que Firestore
         // coordine el cache entre pestañas en vez de pelear por él. Ver
-        // CHANGELOG.md#infraestructura--seguridad para el hallazgo completo
+        // changelog/infraestructura-seguridad.md para el hallazgo completo
         // (Lighthouse ya avisaba de esto: "There may be stored data
         // affecting loading performance in this location: IndexedDB").
         localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
@@ -75,7 +75,7 @@
       // Escuchar estado de auth y arrancar la app
       //
       // NOTA (arranque async, ver docs/auditoria-tecnica.md #4 y
-      // CHANGELOG.md#arranque): este archivo ahora carga con `async` en vez
+      // changelog/arranque.md): este archivo ahora carga con `async` en vez
       // de dejarlo como <script type="module"> normal (que el navegador
       // trata como defer). Esto deja correr la resolución de auth de
       // Firebase en paralelo con el JS clásico de la app, en vez de esperar
@@ -92,7 +92,7 @@
       // defensivo que ya usa el resto de la cadena (window._pendingPinGate,
       // window._authgateReadyTimeout) — sin él, esto sería exactamente el
       // tipo de carrera que causó el bug real de `window.Events` vs
-      // `typeof Events` documentado en CHANGELOG.md#infraestructura--seguridad.
+      // `typeof Events` documentado en changelog/infraestructura-seguridad.md.
       onAuthStateChanged(auth, (user) => {
         if (document.readyState === 'loading') {
           document.addEventListener('DOMContentLoaded', () => _onAuthState(user), { once: true });
@@ -150,7 +150,7 @@
           // el HTML) hasta que firebase-sync.js confirme que Events.registerAll
           // ('authgate', ...) ya corrió — evita la ventana en la que el botón
           // es visible pero su handler todavía no se registró (ver
-          // CHANGELOG.md#infraestructura--seguridad para el bug real que esto
+          // changelog/infraestructura-seguridad.md para el bug real que esto
           // reemplaza — no era una carrera de timing, pero la precaución
           // sigue siendo válida para cuando firebase-sync.js vuelva a ser un
           // archivo externo). Si en 8s no se confirma, se habilita igual con

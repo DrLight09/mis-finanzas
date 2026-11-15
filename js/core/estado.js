@@ -10,6 +10,16 @@ const CATS_VAR_DEFAULT=['Alimentación','Transporte','Salud','Entretenimiento','
 const CATS_FIJO_DEFAULT=['Vivienda','Transporte','Alimentación','Entretenimiento','Salud','Educación','Servicios','Suscripciones','Otro'];
 const MAX=10;
 
+/* Valores guardados de `tipo` con constante: un solo lugar y siempre en snake_case (docs/glosario-dominio.md §5). Un error de
+   tipeo en un texto suelto no falla (un `if` simplemente deja de cumplirse); con la constante, el error salta al ejecutar.
+   tests/convenciones.test.js vigila que estos cuatro valores no se escriban como texto suelto fuera de este archivo. */
+const TIPO_PAGO_COMPLETO='pago_completo';   // movimiento de deuda: el abono que salda todo lo que faltaba (el parcial es 'abono')
+const TIPO_ALCANCIA=Object.freeze({         // S.alcancia.movimientos[].tipo (un solo origen; con varios es 'multi')
+  yoCuenta:'yo_cuenta', yoDirecto:'yo_directo', regalo:'regalo', mandado:'mandado', cobroDeuda:'cobro_deuda', multi:'multi',
+});
+// ¿Es un movimiento de deuda que devuelve plata (abono parcial o pago completo)? Quien lo use debe excluir los perdones (`_perdon`).
+function esAbonoDeDeuda(tipo){return tipo==='abono'||tipo===TIPO_PAGO_COMPLETO;}
+
 // Retorna las categorías actuales (default + personalizadas guardadas en S)
 function getCatsVar(){return S.catsVar&&S.catsVar.length?S.catsVar:[...CATS_VAR_DEFAULT];}
 function getCatsFijo(){return S.catsFijo&&S.catsFijo.length?S.catsFijo:[...CATS_FIJO_DEFAULT];}
@@ -148,7 +158,7 @@ function mesKey(d){return d?d.substring(0,7):'';}
 // opacidad según el contexto (selector activo vs. avatar ya pintado en una
 // lista/detalle). Centralizado acá porque olvidarse de aplicarlo en un lugar
 // nuevo ya causó un bug real (renderEncargosList() sin esta lógica, ver
-// CHANGELOG.md#encargos) — con una sola función, ese olvido deja de ser posible.
+// changelog/encargos.md) — con una sola función, ese olvido deja de ser posible.
 //
 // opts.mostrar     — si el avatar arranca oculto (display:none) y hay que
 //                     mostrarlo (ej. justo después de elegir persona en un

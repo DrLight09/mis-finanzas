@@ -2,13 +2,13 @@
 
 Documentación de la pantalla `screen-analisis` (menú → Análisis) de **mis-finanzas**: qué muestra cada bloque, de dónde saca los números, y qué relación tiene con otras secciones de la app (Inicio, Salud financiera, Proyección).
 
-El historial de bugs corregidos en esta pantalla (y en los cálculos globales de patrimonio que la alimentan) vive en [`CHANGELOG.md`](./CHANGELOG.md#análisis-financiero) y en [`CHANGELOG.md`](./CHANGELOG.md#patrimonio-y-cálculos-globales), no acá.
+El historial de bugs corregidos en esta pantalla (y en los cálculos globales de patrimonio que la alimentan) vive en [`changelog/analisis-financiero.md`](./changelog/analisis-financiero.md) y en [`changelog/patrimonio-y-calculos-globales.md`](./changelog/patrimonio-y-calculos-globales.md), no acá.
 
 Función principal que renderiza toda la pantalla: **`renderAnalisis()`**.
 
 ---
 
-> **Cómo se compone el mes (2026-10-08):** todos los números de ingresos/gastos de esta pantalla (resumen, comparación con el mes anterior, barras de 12 meses, ranking, categorías, presupuestos) salen de `Periodo` (`js/core/periodo.js`), la misma fuente que usan Inicio, el cierre de mes, la exportación CSV y Wrapped. Un gasto fijo pertenece al mes de su clave en `S.pagosGastosFijos` y cuenta con el monto realmente pagado; la Mesada se busca con la clave `año-índice de mes (0-11)`. Ver `CHANGELOG.md#infraestructura--seguridad`.
+> **Cómo se compone el mes (2026-10-08):** todos los números de ingresos/gastos de esta pantalla (resumen, comparación con el mes anterior, barras de 12 meses, ranking, categorías, presupuestos) salen de `Periodo` (`js/core/periodo.js`), la misma fuente que usan Inicio, el cierre de mes, la exportación CSV y Wrapped. Un gasto fijo pertenece al mes de su clave en `S.pagosGastosFijos` y cuenta con el monto realmente pagado; la Mesada se busca con la clave `año-índice de mes (0-11)`. Ver `changelog/infraestructura-seguridad.md`.
 
 ## 1. Estructura de la pantalla (de arriba hacia abajo)
 
@@ -143,7 +143,7 @@ Ambos viven en `js/core/patrimonio.js`, no en `analisis.js` — por eso los pued
 - **`_esEntradaEspejoNoIngreso(m)`** — devuelve `true` cuando la `clase` guardada del movimiento no es `ingreso` (sin respaldo por descripción ni por banderas). Qué movimientos `tipo:'entrada'` de `S.movimientos` reciben `clase: 'ingreso'` y cuáles quedan como espejo de plata que ya se contó en otro lado (reposición de plata comprometida, intercambio/traspaso de Encargos, Mesada, Prestado) lo decide el módulo que los crea. **Excepción:** lo que lleva `_esExtraIngreso` sí es ingreso real, aunque tenga `_origenSeccion` de Prestado o `_encargoMovimientoId` de Encargos: el extra/propina de un pago de deuda guardado en una cuenta el traspaso "Me lo regalaron" de un encargo el margen de "Ya la usé" (`yoMeQuedo`), y todo margen que escribe el motor de diferencial (`_esDiferencialEncargo`: salida de encargo, compra con TC, Préstamo con TC).
 - **`_esGastoVarNoReal(g)`** — devuelve `true` si el gasto de `S.gastosVar` tiene una `clase` distinta de `gasto` (sin `clase` cuenta como real). Cada módulo le pone esa clase al crearlo; quedan fuera pagos de gasto fijo, pagos de TC (cancelación de deuda, no gasto nuevo), alcancía (sigue siendo plata propia) y extras de préstamo gastados de inmediato (`_esExtraPrestamo`, plata que nunca se contó como ingreso).
 
-Estos dos helpers **no son exclusivos de esta pantalla** — también los usan el dashboard de Inicio, la pantalla de Gastos, el resumen de cierre de mes y Salud financiera (ver §Relación con otras secciones). Son la única fuente de verdad de "qué es ingreso/gasto real" en toda la app: si se agrega una exclusión nueva, agregarla acá basta para que se propague a todas las pantallas — no hace falta (ni se debe) copiar la condición a mano en cada lugar. Antes de que existieran centralizados así, la misma exclusión llegó a faltar en 9 lugares distintos por estar duplicada a mano (ver `CHANGELOG.md#análisis-financiero`).
+Estos dos helpers **no son exclusivos de esta pantalla** — también los usan el dashboard de Inicio, la pantalla de Gastos, el resumen de cierre de mes y Salud financiera (ver §Relación con otras secciones). Son la única fuente de verdad de "qué es ingreso/gasto real" en toda la app: si se agrega una exclusión nueva, agregarla acá basta para que se propague a todas las pantallas — no hace falta (ni se debe) copiar la condición a mano en cada lugar. Antes de que existieran centralizados así, la misma exclusión llegó a faltar en 9 lugares distintos por estar duplicada a mano (ver `changelog/analisis-financiero.md`).
 
 ---
 
@@ -185,7 +185,7 @@ nu (cajitas Nu) + CDTs + Nequi + Efectivo + prestado (Me deben) + cuentas person
 
 Un saldo (Efectivo, Nequi, cuenta personalizada) puede quedar temporalmente negativo tras borrar un movimiento cuyo dinero ya se gastó (reversión sin piso en 0, 2026-09-30): el patrimonio lo suma tal cual, sin recortarlo, y vuelve al valor correcto al rehacer el movimiento.
 
-Todo lo que es plata **ajena** que solo estás cuidando (encargos, plata comprometida de otra persona, lo que le debés a alguien) se resta para que el patrimonio refleje solo lo que es realmente tuyo. Ver [`CHANGELOG.md`](./CHANGELOG.md#patrimonio-y-cálculos-globales) para el detalle de qué faltaba restar acá y ya se corrigió.
+Todo lo que es plata **ajena** que solo estás cuidando (encargos, plata comprometida de otra persona, lo que le debés a alguien) se resta para que el patrimonio refleje solo lo que es realmente tuyo. Ver [`changelog/patrimonio-y-calculos-globales.md`](./changelog/patrimonio-y-calculos-globales.md) para el detalle de qué faltaba restar acá y ya se corrigió.
 
 ## Historial de patrimonio: saldo inicial y selector (2026-11-06)
 

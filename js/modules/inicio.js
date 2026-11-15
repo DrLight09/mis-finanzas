@@ -848,7 +848,7 @@ function _checkGastoAlto() {
 
 /* ================================================================
    DISPONIBLE NETO DE DEUDA DE TC (2026-09-20: rehecho — ver
-   CHANGELOG.md#inicio)
+   changelog/inicio.md)
    ================================================================
    No toca tarjetas-credito.js ni le agrega fechas de corte/pago —
    esa es una decisión de diseño explícita de ese módulo (ver

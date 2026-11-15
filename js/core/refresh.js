@@ -80,7 +80,7 @@ function _refreshNucleo(){
   const disp=cajitasLibres+cuentasSaldo;
   // Expuesto para que inicio.js (Neto de TC) reste la deuda de TC de este
   // MISMO número en vez de recalcular "disponible" por su cuenta — evita
-  // que ambos cálculos se desalineen (ver CHANGELOG.md#inicio, 2026-09-20).
+  // que ambos cálculos se desalineen (ver changelog/inicio.md, 2026-09-20).
   window._dispActualHoy = disp;
   const mes=mesActual();
   // Gasto del mes: definición única en periodo.js (gastos fijos pagados con su monto pagado +

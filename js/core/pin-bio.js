@@ -7,7 +7,7 @@
 // archivo (registro de Events('pin',...) y el hook de refresh(), más
 // abajo). Se usa `import` en vez de asumir un global porque este archivo
 // carga como `type="module" async`, sin garantía de orden frente a ningún
-// <script defer>. Ver CHANGELOG.md#infraestructura--seguridad.
+// <script defer>. Ver changelog/infraestructura-seguridad.md.
 import { waitFor } from './wait-for-module.js';
 // El hook a refresh() ya no es un wrap de window.refresh: se registra con Refresh.registrar() (js/core/refresh.js), esperando a que exista.
 
@@ -552,7 +552,7 @@ import { waitFor } from './wait-for-module.js';
     });
     return true;
   }
-  // Antes era un setInterval propio (ver CHANGELOG.md#infraestructura--
+  // Antes era un setInterval propio (ver changelog/infraestructura-seguridad.md
   // seguridad, entrada de consolidación de este patrón). _registrarEventosPin
   // ya hace el registro Y devuelve si tuvo éxito, así que sirve directo como
   // checkFn — waitFor solo lo vuelve a llamar hasta que dé true.

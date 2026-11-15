@@ -792,7 +792,7 @@ function getMovimientosCuenta(tipo) {
   // NOTA (2026-08-30): no hay un bloque "Mesadas recibidas en esta cuenta": duplicaba cada pago de
   // mesada con un movimiento fantasma sin candado. mesada.js ya genera el espejo real vía
   // _registrarMovSecundarioMesada() (en S.movimientos con _secundario:true), que desdeMovimientos()
-  // recorre. No volver a sintetizar el pago desde S.mesadas. Ver CHANGELOG.md#mesada.
+  // recorre. No volver a sintetizar el pago desde S.mesadas. Ver changelog/mesada.md.
 
   // Cobros de Spotify a personas (los pagos del plan ya están en gastosVar) + abonos posteriores de lo
   // pendiente, cada uno como su propia fila. Cada abono puede haber ido a una cuenta distinta a la del
@@ -1048,25 +1048,25 @@ function abrirAgregarDinero(fuente,nombre){
   save();
   agregarDineroFuente=fuente;
   const label=nombre||fuenteLabel(fuente);
-  document.getElementById('adTitle').textContent='Agregar a '+label;
+  document.getElementById('agregarDineroTitle').textContent='Agregar a '+label;
   const actual=getSaldoFuente(fuente);
-  document.getElementById('adSaldoActual').textContent=fmt(actual);
-  document.getElementById('adMonto').value='';
-  document.getElementById('adDesc').value='';
-  document.getElementById('adFecha').value=hoy();
-  const _xa=document.getElementById('adEsExtra'); if(_xa)_xa.checked=false;
-  const agregarDineroNotaEl=document.getElementById('adNota');
+  document.getElementById('agregarDineroSaldoActual').textContent=fmt(actual);
+  document.getElementById('agregarDineroMonto').value='';
+  document.getElementById('agregarDineroDesc').value='';
+  document.getElementById('agregarDineroFecha').value=hoy();
+  const _xa=document.getElementById('agregarDineroEsExtra'); if(_xa)_xa.checked=false;
+  const agregarDineroNotaEl=document.getElementById('agregarDineroNota');
   if(agregarDineroNotaEl)agregarDineroNotaEl.value='';
-  document.getElementById('adPreview').textContent='';
+  document.getElementById('agregarDineroPreview').textContent='';
   // Reset apertura toggle
-  const checkbox=document.getElementById('adEsApertura');
+  const checkbox=document.getElementById('agregarDineroEsApertura');
   if(checkbox){checkbox.checked=false;}
-  const lbl=document.getElementById('adDescLabel');
+  const lbl=document.getElementById('agregarDineroDescLabel');
   if(lbl)lbl.innerHTML='¿De dónde viene esta plata? <span class="c-red">*</span>';
-  const inp=document.getElementById('adDesc');
+  const inp=document.getElementById('agregarDineroDesc');
   if(inp)inp.placeholder='Ej: Mesada, regalo, venta, sueldo...';
   openSheet('agregar-dinero');
-  focusSheetField('adDesc');
+  focusSheetField('agregarDineroDesc');
 }
 
 /* ---- SALDO INICIAL / APERTURA — núcleo reutilizable ----
@@ -1076,7 +1076,7 @@ function abrirAgregarDinero(fuente,nombre){
      1) _aperturaToggleUI(ids)   -> maneja el cambio de label/placeholder al marcar/desmarcar
      2) registrarEntradaConApertura(...) -> aplica el saldo + crea el movimiento correcto
    Así, agregar un nuevo sheet con este patrón es solo: poner el wrap HTML
-   (copiando el de adAperturaWrap), darle ids propios, y llamar estas 2 funciones. */
+   (copiando el de agregarDineroAperturaWrap), darle ids propios, y llamar estas 2 funciones. */
 
 function _aperturaToggleUI(ids){
   // ids = {checkbox, lbl, inp, notaPlaceholder, descPlaceholder}
@@ -1133,30 +1133,30 @@ function registrarSalida(fuente,monto,fecha,desc,nota){
 }
 
 function toggleAgregarDineroApertura(){
-  _aperturaToggleUI({checkbox:'adEsApertura',lbl:'adDescLabel',inp:'adDesc'});
+  _aperturaToggleUI({checkbox:'agregarDineroEsApertura',lbl:'agregarDineroDescLabel',inp:'agregarDineroDesc'});
 }
 
 document.addEventListener('input',function(e){
-  if(e.target.id==='adMonto'){
+  if(e.target.id==='agregarDineroMonto'){
     const v=parseMoney(e.target.value)||0;
     const actual=getSaldoFuente(agregarDineroFuente);
-    const prev=document.getElementById('adPreview');
+    const prev=document.getElementById('agregarDineroPreview');
     if(v>0){prev.textContent=fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);prev.style.color='var(--accent)';}
     else{prev.textContent='';}
   }
 });
 
 function confirmarAgregarDinero(){
-  const v=parseMoney(document.getElementById('adMonto').value)||0;
-  const desc=document.getElementById('adDesc').value.trim();
-  const fecha=document.getElementById('adFecha').value||hoy();
-  const nota=document.getElementById('adNota')?.value.trim()||'';
-  const esApertura=document.getElementById('adEsApertura')?.checked||false;
+  const v=parseMoney(document.getElementById('agregarDineroMonto').value)||0;
+  const desc=document.getElementById('agregarDineroDesc').value.trim();
+  const fecha=document.getElementById('agregarDineroFecha').value||hoy();
+  const nota=document.getElementById('agregarDineroNota')?.value.trim()||'';
+  const esApertura=document.getElementById('agregarDineroEsApertura')?.checked||false;
   if(!esApertura&&!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v){toast('Ingresa un monto válido','err');return;}
   if(!agregarDineroFuente)return;
   // Los intereses de una cajita se materializan solos al sumar (sumarFuente, js/core/cuentas-fuentes.js).
-  const descFinal=registrarEntradaConApertura(agregarDineroFuente,v,fecha,desc,esApertura,nota,document.getElementById('adEsExtra')?.checked||false);
+  const descFinal=registrarEntradaConApertura(agregarDineroFuente,v,fecha,desc,esApertura,nota,document.getElementById('agregarDineroEsExtra')?.checked||false);
   save();
   closeSheet('agregar-dinero');
   refresh();
@@ -1166,50 +1166,50 @@ toast(fmt(v) + (esApertura?' registrado como saldo inicial':' agregado — ' + d
 }
 
 function openSheet_agregarDineroMenu(){
-  poblarFuente('adMenuDest');
+  poblarFuente('agregarDineroMenuDestino');
   // Replace options with all accounts including all cajitas (sin tarjetas de crédito — no son destino válido)
-  const sel=document.getElementById('adMenuDest');
+  const sel=document.getElementById('agregarDineroMenuDestino');
   const fuentes=getFuentesSinTC();
   sel.innerHTML=html`${fuentes.map(f=>html`<option value="${f.val}">${f.label}</option>`)}`;
   actualizarAgregarDineroMenuSaldo();
-  document.getElementById('adMenuMonto').value='';
-  document.getElementById('adMenuDesc').value='';
-  document.getElementById('adMenuFecha').value=hoy();
-  const _xm=document.getElementById('adMenuEsExtra'); if(_xm)_xm.checked=false;
-  const agregarDineroMenuNotaEl=document.getElementById('adMenuNota');
+  document.getElementById('agregarDineroMenuMonto').value='';
+  document.getElementById('agregarDineroMenuDesc').value='';
+  document.getElementById('agregarDineroMenuFecha').value=hoy();
+  const _xm=document.getElementById('agregarDineroMenuEsExtra'); if(_xm)_xm.checked=false;
+  const agregarDineroMenuNotaEl=document.getElementById('agregarDineroMenuNota');
   if(agregarDineroMenuNotaEl)agregarDineroMenuNotaEl.value='';
-  document.getElementById('adMenuPreview').textContent='';
+  document.getElementById('agregarDineroMenuPreview').textContent='';
 }
 
 function actualizarAgregarDineroMenuSaldo(){
-  const fuente=document.getElementById('adMenuDest').value;
+  const fuente=document.getElementById('agregarDineroMenuDestino').value;
   const actual=getSaldoFuente(fuente);
-  document.getElementById('adMenuSaldo').textContent='Saldo actual: '+fmt(actual);
+  document.getElementById('agregarDineroMenuSaldo').textContent='Saldo actual: '+fmt(actual);
   actualizarAgregarDineroMenuPreview();
 }
 
 function actualizarAgregarDineroMenuPreview(){
-  const fuente=document.getElementById('adMenuDest').value;
-  const v=parseMoney(document.getElementById('adMenuMonto').value)||0;
+  const fuente=document.getElementById('agregarDineroMenuDestino').value;
+  const v=parseMoney(document.getElementById('agregarDineroMenuMonto').value)||0;
   const actual=getSaldoFuente(fuente);
-  const prev=document.getElementById('adMenuPreview');
+  const prev=document.getElementById('agregarDineroMenuPreview');
   if(v>0){prev.textContent=fmt(actual)+' + '+fmt(v)+' = '+fmt(actual+v);prev.style.color='var(--accent)';}
   else{prev.textContent='';}
 }
 
 function confirmarAgregarDineroMenu(){
-  const fuente=document.getElementById('adMenuDest').value;
-  const v=parseMoney(document.getElementById('adMenuMonto').value)||0;
-  const desc=document.getElementById('adMenuDesc').value.trim();
-  const fecha=document.getElementById('adMenuFecha').value||hoy();
-  const nota=document.getElementById('adMenuNota')?.value.trim()||'';
+  const fuente=document.getElementById('agregarDineroMenuDestino').value;
+  const v=parseMoney(document.getElementById('agregarDineroMenuMonto').value)||0;
+  const desc=document.getElementById('agregarDineroMenuDesc').value.trim();
+  const fecha=document.getElementById('agregarDineroMenuFecha').value||hoy();
+  const nota=document.getElementById('agregarDineroMenuNota')?.value.trim()||'';
   if(!desc){toast('Describe de dónde viene esta plata','err');return;}
   if(!v||!fuente)return;
   // Registrar movimiento de entrada
   if(!S.movimientos)S.movimientos=[];
   const _movimientoAgregarDineroMenu={id:uid(),tipo:'entrada',clase:'ingreso',fuente,monto:v,fecha,desc};
   if(nota)_movimientoAgregarDineroMenu.nota=nota;
-  if(document.getElementById('adMenuEsExtra')?.checked)_movimientoAgregarDineroMenu.extraordinario=true;
+  if(document.getElementById('agregarDineroMenuEsExtra')?.checked)_movimientoAgregarDineroMenu.extraordinario=true;
   S.movimientos.push(_movimientoAgregarDineroMenu);
   sumarFuente(fuente,v,_origenLibroCta(_movimientoAgregarDineroMenu.id));
   save();
@@ -1271,7 +1271,7 @@ function abrirRegistrarApertura(fuente){
   abrirAgregarDinero(fuente, nombre);
   // Forzar toggle activo después de que abra
   setTimeout(()=>{
-    const checkbox=document.getElementById('adEsApertura');
+    const checkbox=document.getElementById('agregarDineroEsApertura');
     if(checkbox&&!checkbox.checked){
       checkbox.checked=true;
       toggleAgregarDineroApertura();
@@ -1626,7 +1626,6 @@ function confirmarTransferir() {
 Events.registerAll('cuentas', {
   // Crear / editar / archivar cuentas
   selIconoNuevaCuenta: selIconoNuevaCuenta,
-  selTipoNuevaCuenta: selTipoNuevaCuenta,
   alternarAhorroNuevaCuenta: alternarAhorroNuevaCuenta,
   ocultarInvitacionCuentas,
   abrirArchivadas,
@@ -1728,10 +1727,10 @@ if (_detalleSimple) _detalleSimple.addEventListener('click', e => {
 });
 
 // --- Agregar dinero (menú combinado, selector de cuenta destino) ---
-const adMenuDest = document.getElementById('adMenuDest');
-if (adMenuDest) adMenuDest.addEventListener('change', actualizarAgregarDineroMenuSaldo);
-const adMenuMonto = document.getElementById('adMenuMonto');
-if (adMenuMonto) adMenuMonto.addEventListener('input', actualizarAgregarDineroMenuPreview);
+const agregarDineroMenuDestino = document.getElementById('agregarDineroMenuDestino');
+if (agregarDineroMenuDestino) agregarDineroMenuDestino.addEventListener('change', actualizarAgregarDineroMenuSaldo);
+const agregarDineroMenuMonto = document.getElementById('agregarDineroMenuMonto');
+if (agregarDineroMenuMonto) agregarDineroMenuMonto.addEventListener('input', actualizarAgregarDineroMenuPreview);
 
 // --- Transferir: selects y monto (preview en vivo + exclusión mutua origen/destino) ---
 const trOrigen = document.getElementById('tr_origen');
@@ -1742,7 +1741,7 @@ const trMonto = document.getElementById('tr_monto');
 if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
 
 /* ---- WIRING de controles que no son data-action simples ----
-   El wrapper de "toggle apertura" (adAperturaWrap/nuMovAperturaWrap) usa
+   El wrapper de "toggle apertura" (agregarDineroAperturaWrap/nuMovimientoAperturaWrap) usa
    el patrón label-click-delegado: clic en cualquier parte de la fila activa
    el checkbox, y el checkbox detiene la propagación para no re-disparar el
    clic del wrapper. Ninguno de los dos es una acción con argumentos — es
@@ -1751,7 +1750,7 @@ if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
    en vez de pasar por el despachador de data-action.
    El 'change' de cada checkbox (antes onchange="toggleAgregarDineroApertura()" /
    onchange="_nuMovimientoToggleApertura()" inline en el HTML; el de Nu vive en nu.js) se agrega acá mismo. */
-[['adAperturaWrap','adEsApertura',toggleAgregarDineroApertura]].forEach(([wrapId,checkboxId,onChangeFn])=>{
+[['agregarDineroAperturaWrap','agregarDineroEsApertura',toggleAgregarDineroApertura]].forEach(([wrapId,checkboxId,onChangeFn])=>{
   const wrap=document.getElementById(wrapId);
   const checkbox=document.getElementById(checkboxId);
   if(wrap&&checkbox){

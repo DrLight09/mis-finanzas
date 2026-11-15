@@ -275,7 +275,7 @@
     });
 
     // Depósitos a la alcancía desde una cuenta real (S.transferencias, destino:'alcancia').
-    // Desde el 2026-09-27 viven acá en vez de en S.gastosVar (ver CHANGELOG.md#alcancia) —
+    // Desde el 2026-09-27 viven acá en vez de en S.gastosVar (ver CHANGELOG.md) —
     // mismo criterio de monto oculto que ya aplicaba antes del cambio (ver alcancia.md §3).
     (S.transferencias||[]).forEach(t => {
       if(t.destino !== 'alcancia') return;

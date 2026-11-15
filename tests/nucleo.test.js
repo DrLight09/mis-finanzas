@@ -467,7 +467,7 @@ describe('periodo — ayudantes de la revisión de Análisis', () => {
 describe('periodo', () => {
   // Periodo (js/core/periodo.js): la ÚNICA definición de ingresos/gastos de un mes.
   // Estos tests fijan las reglas y, en particular, los desalineamientos que tenían las pantallas
-  // antes de centralizarlo (ver CHANGELOG.md#infraestructura--seguridad, 2026-10-08).
+  // antes de centralizarlo (ver changelog/infraestructura-seguridad.md, 2026-10-08).
   const test = require('node:test');
   const assert = require('node:assert/strict');
   const path = require('node:path');

@@ -9,7 +9,7 @@
    una revelación por pantalla completa, avanzando con tap, swipe o
    flechas del teclado, con una barra de progreso tipo stories arriba.
    Reemplaza la versión anterior de una sola pantalla con scroll de
-   tarjetas apiladas (ver CHANGELOG.md#wrapped) — era el punto abierto
+   tarjetas apiladas (ver changelog/wrapped.md) — era el punto abierto
    de diseño documentado en wrapped.md §7 ("reconsiderar UX hacia una
    presentación tipo slide/story tap-through").
 
@@ -2180,7 +2180,7 @@ function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
       if(m.tipo === 'prestamo'){ totalPrestado += (m.monto||0); prestadoAEsta += (m.monto||0); nPrestamosAEsta++; }
       // Un perdón de deuda ("¿Se lo regalas?", m._perdon) es un 'pago_completo' que NO
       // devolvió plata: no cuenta como devuelto (ya cuenta como gasto real, ver gastos.md).
-      else if((m.tipo === 'abono' || m.tipo === 'pago_completo') && !m._perdon){ totalDevuelto += (m.monto||0); }
+      else if(esAbonoDeDeuda(m.tipo) && !m._perdon){ totalDevuelto += (m.monto||0); }
     });
     if(prestadoAEsta > 0 && (!topDeudor || prestadoAEsta > topDeudor.monto)){
       topDeudor = { nombre: d.nombre, personaId: d.personaId || null, monto: prestadoAEsta, n: nPrestamosAEsta };
@@ -2895,7 +2895,7 @@ function _wrappedRecuperacionMasRapida(S, anioK){
     if(movimientos.length !== 2) return;
     const [primero, segundo] = movimientos;
     if(primero.tipo !== 'prestamo') return;
-    if(!(segundo.tipo === 'abono' || segundo.tipo === 'pago_completo')) return;
+    if(!esAbonoDeDeuda(segundo.tipo)) return;
     if(segundo._perdon) return; // perdonada ≠ recuperada: no es una devolución rápida
     if((segundo.monto||0) < (primero.monto||0)) return;
     if(primero.fecha.slice(0,4) !== anioK) return;
@@ -3922,7 +3922,7 @@ function _wrappedCerrar(){
   //
   // 'config' ya no es una suposición: Wrapped se abre ahora desde
   // Configuración → Herramientas → "Tu resumen" (antes vivía en el menú
-  // "Más", ver CHANGELOG.md#wrapped), así que volver a 'config' es
+  // "Más", ver changelog/wrapped.md), así que volver a 'config' es
   // exactamente la pantalla de la que se entró — mismo patrón que ya usa
   // Actividad reciente para volver a Configuración.
   //

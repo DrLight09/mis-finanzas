@@ -2,7 +2,7 @@
 
 Documentación de la tarjeta **Salud financiera** (`health-score-card`, pantalla Inicio) de `mis-finanzas` (`index.html`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos usa y cómo fluye el cálculo. Los detalles de implementación (funciones, ids de DOM) aparecen al final, como referencia rápida.
 
-El historial de bugs corregidos vive en [`CHANGELOG.md`](./CHANGELOG.md#salud-financiera), no acá.
+El historial de bugs corregidos vive en [`changelog/salud-financiera.md`](./changelog/salud-financiera.md), no acá.
 
 ---
 

@@ -20,7 +20,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cuentas-fuentes.js` | de entrada (defer) | 40 | 3 |
 | `js/core/dialogos.js` | de entrada (defer) | 10 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
-| `js/core/estado.js` | de entrada (defer) | 14 | 5 |
+| `js/core/estado.js` | de entrada (defer) | 15 | 7 |
 | `js/core/eventos-base.js` | de entrada (defer) | 2 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
 | `js/core/fecha.js` | de entrada (defer) | 1 | 0 |
@@ -164,9 +164,9 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `crearMovimientoApertura`, `Dinero`, `escHtml`, `fmt`, `fmtNoCents`, `fmtSaldoSelector`, `getCatsFijo`, `getCatsVar`, `hoy`, `medirAnchoTexto`, `mesKey`, `pintarAvatarPersona`, `poblarCatSelect`, `uid`
+**Funciones:** `crearMovimientoApertura`, `Dinero`, `esAbonoDeDeuda`, `escHtml`, `fmt`, `fmtNoCents`, `fmtSaldoSelector`, `getCatsFijo`, `getCatsVar`, `hoy`, `medirAnchoTexto`, `mesKey`, `pintarAvatarPersona`, `poblarCatSelect`, `uid`
 
-**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `MAX`, `MC`, `S`
+**Globales:** `CATS_FIJO_DEFAULT`, `CATS_VAR_DEFAULT`, `MAX`, `MC`, `S`, `TIPO_ALCANCIA`, `TIPO_PAGO_COMPLETO`
 
 ### `js/core/eventos-base.js`
 
@@ -1343,6 +1343,7 @@ Ninguno.
 | `encargoLibre` | `js/modules/encargos.js` |
 | `encargoSaldo` | `js/modules/encargos.js` |
 | `entradasIngresoReal` | `js/core/ingresos.js` |
+| `esAbonoDeDeuda` | `js/core/estado.js` |
 | `escHtml` | `js/core/estado.js` |
 | `escHtml2` | `js/modules/wrapped.js` |
 | `esCuentaAhorro` | `js/core/cuentas-fuentes.js` |
@@ -1622,6 +1623,8 @@ Ninguno.
 | `tcNormalizarTarjetas` | `js/modules/tarjetas-credito.js` |
 | `tcRecalcular` | `js/modules/tarjetas-credito.js` |
 | `tcSelColor` | `js/modules/tarjetas-credito.js` |
+| `TIPO_ALCANCIA` | `js/core/estado.js` |
+| `TIPO_PAGO_COMPLETO` | `js/core/estado.js` |
 | `TIPOS_CUENTA` | `js/core/cuentas-fuentes.js` |
 | `toast` | `js/core/dialogos.js` |
 | `toggleAgregarDineroApertura` | `js/modules/cuentas.js` |

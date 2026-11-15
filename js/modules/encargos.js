@@ -29,7 +29,7 @@
    - La integración cruzada con Préstamos ("Pago de una deuda con
      plata de un encargo", dentro del sheet de abono de deudor) no se
      tocó: es código de Deudores que consume datos de Encargos, no al
-     revés, y Deudores todavía no se migró (ver plan-migracion-personas.md).
+     revés, y Deudores todavía no se migró.
 
    ── Correcciones de este mismo cambio ────────────────────────────
    Se migraron los onclick="..." inline de este módulo a data-action
@@ -40,7 +40,7 @@
    envuelto en una función auxiliar. Acá la función era fuenteLabel()
    (nombre de cajita/cuenta personalizada/tarjeta — todos campos de
    texto libre del usuario) e iniciales(). Detalle completo en
-   CHANGELOG.md#encargos.
+   changelog/encargos.md.
    ═══════════════════════════════════════════════════════════════ */
 
 // ── Libro (js/core/cuentas-fuentes.js): origen de cada cambio de saldo ────────────────────────────────────────────────
@@ -1363,7 +1363,7 @@ function abrirMovimientoEncargo(tipo) {
   const sel = document.getElementById('movenc_cuenta');
   const _movimientoEncargoHintEl = document.getElementById('movenc_cuenta_hint');
   // true cuando el select ya pinta el saldo en cada <option> — en ese caso el
-  // hint de abajo sería redundante. Ver reglas-visuales.md#selectores-con-saldo.
+  // hint de abajo sería redundante.
   let _movimientoEncargoMuestraSaldoEnOpcion = false;
 
   // Cambiar label según tipo y mostrar/ocultar botón dividir
@@ -1894,7 +1894,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   // con un id fijo ('__saldo_ini__', igual en todo encargo) solo para pintarlo
   // en el historial (ver renderEncargoDetalle()). Antes no tenía botón de
   // eliminar porque el flujo de abajo (que busca en enc.movimientos) nunca
-  // lo hubiera encontrado — ver CHANGELOG.md#encargos (2026-08-30).
+  // lo hubiera encontrado — ver changelog/encargos.md (2026-08-30).
   if (movimientoId === '__saldo_ini__') {
     if (!(encargo.saldoInicial > 0)) return;
     // El saldo inicial es plata AJENA que ya estaba guardada en esa cuenta: nunca formó parte de `c.saldo` (el saldo propio),
@@ -1936,7 +1936,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   // "lo cubrí yo", "lo adelanté yo"), así que el aviso de nivel 'viejo' queda
   // genérico en vez de arriesgar un dato incorrecto.
   // Ops posteriores: se cuenta contra el ENCARGO completo, no solo contra
-  // mov.cuenta (2026-09-01, revisión de diseño — ver CHANGELOG.md#encargos).
+  // mov.cuenta (2026-09-01, revisión de diseño — ver changelog/encargos.md).
   // Un encargo con plata repartida en varias cuentas (o sin cuenta asignada)
   // sigue siendo una sola bolsa de plata que se mezcla con cada movimiento
   // nuevo, toque o no la misma cuenta externa — filtrar por cuenta subestimaba
@@ -2155,7 +2155,7 @@ function abrirTraspasoEncargo() {
     _traspasoOrigenMuestraSaldoEnOpcion = true;
   }
   // El hint de saldo solo aporta info nueva cuando el select no la muestra ya
-  // en cada opción. Ver reglas-visuales.md#selectores-con-saldo.
+  // en cada opción.
   const _traspasoOrigenHintEl = document.getElementById('traspaso_origen_hint');
   if (_traspasoOrigenHintEl) _traspasoOrigenHintEl.style.display = _traspasoOrigenMuestraSaldoEnOpcion ? 'none' : '';
   if (!_traspasoOrigenMuestraSaldoEnOpcion) _actualizarTraspasoOrigenHint(encargo);
@@ -2375,7 +2375,7 @@ function abrirMoverEntreCuentasEncargo() {
 function _actualizarMoverEncargoOrigenHint(encargo) {
   // El <option> de moverenc_origen ya trae el saldo en su texto siempre
   // ("Nequi (150.000 del encargo)") — este hint sería puro eco. Se deja
-  // oculto. Ver reglas-visuales.md#selectores-con-saldo.
+  // oculto.
   const hint = document.getElementById('moverenc_origen_hint');
   if (hint) hint.style.display = 'none';
 }
@@ -2966,7 +2966,7 @@ function abrirCompraConTC() {
     _compraConTcCuentaEncargoMuestraSaldoEnOpcion = true;
   }
   // El hint solo aporta info nueva cuando el select no la muestra ya en cada
-  // opción. Ver reglas-visuales.md#selectores-con-saldo.
+  // opción.
   const _compraConTcCuentaEncargoHintEl = document.getElementById('ctc_cuenta_enc_hint');
   if (_compraConTcCuentaEncargoHintEl) _compraConTcCuentaEncargoHintEl.style.display = _compraConTcCuentaEncargoMuestraSaldoEnOpcion ? 'none' : '';
   if (!_compraConTcCuentaEncargoMuestraSaldoEnOpcion) _compraConTcActualizarCuentaEncargoHint();
@@ -3316,7 +3316,7 @@ Events.registerAll('encargos', {
    orden entre <script defer>. Lo único que este bloque necesita a
    nivel superior (crearEncargo, renderEncargosList, abrirEncargoDetalle,
    openSheet) ya está definido arriba, en este mismo archivo. Fusión
-   verificada con node --check; ver CHANGELOG.md#encargos para el detalle.
+   verificada con node --check; ver changelog/encargos.md para el detalle.
    ═══════════════════════════════════════════════════════════════ */
 
 function _irAEncargo(encargoId) {

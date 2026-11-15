@@ -71,7 +71,7 @@ El movimiento queda como `'abono'` con `_perdon: true` si es una parte, y como `
 
 Al borrar un `'prestamo'`: revierte el saldo de la(s) fuente(s) con `sumarFuente` (o `descontarFuente` de las fuentes según corresponda). No hay movimiento secundario que limpiar. Si el préstamo tenía `m.diferencial` ("El valor real era diferente"), borra además el ingreso del margen (`_esDiferencialEncargo` con `_encargoMovimientoId === m.id`), que no tiene cuenta y por eso no hay saldo que revertir.
 
-**Toda reversión que resta saldo (borrar un abono, la parte "guardar" de un extra, un "me pagaron") usa `descontarFuente(..., { exacto: true })`**, sin piso en 0: así borrar y rehacer un movimiento no deja la cuenta con un saldo inflado. Ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
+**Toda reversión que resta saldo (borrar un abono, la parte "guardar" de un extra, un "me pagaron") usa `descontarFuente(..., { exacto: true })`**, sin piso en 0: así borrar y rehacer un movimiento no deja la cuenta con un saldo inflado. Ver `changelog/patrimonio-y-calculos-globales.md` (2026-09-30).
 
 **Excepción — préstamo con tarjeta (`_viaTC`, `confirmarPrestamoTC()`):** además de revertir la deuda de la TC y su cargo en `S.tcMovimientos` (por `_deudorMovimientoId`), borra el ingreso del margen del diferencial (`_esDiferencialEncargo` con `_encargoMovimientoId === m.id`). Ese ingreso se escribe sin cuenta (`fuente: ''`), así que no hay saldo que revertir; solo se quita para que deje de contar como ingreso. Desde 2026-09-30 `confirmarPrestamoTC()` pasa el id del préstamo a `diffAplicar('prtc', …, movimientoId)` para dejar ese vínculo. Los préstamos con TC guardados antes no lo tienen: si se borran, su margen queda como ingreso huérfano (limitación conocida, sin migrar).
 
@@ -114,7 +114,7 @@ m.grupoId = 'g_xxx'
 
 **Auto-cierre (`_autoCerrarGruposEnCero`)** — tras registrar o eliminar un movimiento, cualquier grupo cuyo saldo quede en $0 se marca `cerrado: true` automáticamente (se oculta de los selectores y del listado de "abiertos"), **excepto "Histórico"**, que nunca se cierra solo así su saldo llegue a $0 — es el balde por defecto y debe seguir contando como "1 grupo abierto" para que un préstamo nuevo nunca dispare la creación automática de otro grupo. Si luego se borra un movimiento de un grupo no-histórico y eso hace que su saldo deje de ser $0, se reabre solo.
 
-*(Cambiado 2026-09-07 — antes, 0 grupos abiertos creaba un grupo nuevo con nombre de fecha en vez de usar "Histórico", y "Histórico" no tenía trato especial en el auto-cierre; eso hacía que cualquier deudor cuyo único grupo llegara a $0 y se cerrara solo, terminara con un grupo/acordeón nuevo sin que el usuario lo pidiera. Ver `CHANGELOG.md#prestado`.)*
+*(Cambiado 2026-09-07 — antes, 0 grupos abiertos creaba un grupo nuevo con nombre de fecha en vez de usar "Histórico", y "Histórico" no tenía trato especial en el auto-cierre; eso hacía que cualquier deudor cuyo único grupo llegara a $0 y se cerrara solo, terminara con un grupo/acordeón nuevo sin que el usuario lo pidiera. Ver `changelog/prestado.md`.)*
 
 **Render del detalle (`abrirDeudor`):** con un solo grupo, el historial se ve exactamente igual que antes de que existiera esta feature (sin acordeón). Con ≥2 grupos, cada uno se muestra como una tarjeta `<details>` colapsable con su nombre y saldo — los grupos abiertos aparecen primero (más nuevo primero), los cerrados al final.
 

@@ -1,7 +1,7 @@
 // Sync con Firestore: setSyncStatus, _firebaseSaveToCloud (guardado con debounce),
 // _firebaseLoadData, onSnapshot, registro de Events('authgate',...) + habilitación
 // del botón de login — extraído de index.html (era <script type="module">
-// inline). Ver auditoria-tecnica.md #2 y CHANGELOG.md#infraestructura--seguridad.
+// inline). Ver auditoria-tecnica.md #2 y changelog/infraestructura-seguridad.md.
 //
 // import de waitFor (js/core/wait-for-module.js — versión ES module
 // independiente de js/core/wait-for.js, ver ese archivo para el porqué):
@@ -10,7 +10,7 @@
 // Events('authgate',...), más abajo). Se usa `import` en vez de asumir un
 // global porque este archivo carga como `type="module" async`, sin
 // garantía de orden frente a ningún <script defer>. Ver
-// CHANGELOG.md#infraestructura--seguridad.
+// changelog/infraestructura-seguridad.md.
 import { waitFor } from './wait-for-module.js';
 import { codificarPayload, decodificarPayload } from './payload-codec.js';
 import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusionar, leerRespaldo, borrarRespaldosNube, almacenIndexedDB, fechaLocal } from './respaldos.js';
@@ -383,7 +383,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   }
 
   // Antes era un setTimeout recursivo propio, cada 20ms, sin tope de
-  // intentos (ver CHANGELOG.md#infraestructura--seguridad, entrada de
+  // intentos (ver changelog/infraestructura-seguridad.md, entrada de
   // consolidación de este patrón). Mismo intervalo de 20ms preservado —
   // se eligió corto a propósito para minimizar el retraso antes de pintar
   // tras resolver auth.
@@ -437,7 +437,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     // posterior). Antes: si la primera entrega venía del caché local
     // (fromCache=true), NO se pintaba nada — se esperaba hasta 8s la
     // confirmación del servidor "para no mostrar datos obsoletos" (ver
-    // CHANGELOG.md#arranque). En la práctica esos 8s eran casi siempre
+    // changelog/arranque.md). En la práctica esos 8s eran casi siempre
     // puro spinner: el caché de persistentLocalCache() es el mismo
     // dispositivo releyendo su propio último guardado (setDoc), así que
     // casi nunca es "obsoleto" — y aunque lo fuera, un snapshot del
@@ -1054,7 +1054,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     document.querySelectorAll('[data-action^="authgate:"]').forEach(function(b){ b.disabled = false; });
     return true;
   }
-  // Antes era un setInterval propio (ver CHANGELOG.md#infraestructura--
+  // Antes era un setInterval propio (ver changelog/infraestructura-seguridad.md
   // seguridad, entrada de consolidación de este patrón). _registrarEventosAuthgate
   // ya hace el registro Y devuelve si tuvo éxito, así que sirve directo como
   // checkFn — waitFor solo lo vuelve a llamar hasta que dé true.

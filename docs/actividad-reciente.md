@@ -55,7 +55,7 @@ Campos que el feed asume opcionales: `fecha` (si falta, `0000-00-00` → agrupa 
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `changelog/infraestructura-seguridad.md`.
 
 El feed decide si un movimiento de encargo es un "ingreso real" que debe mostrarse (`esIngresoReal`) con la misma `clase` (`ingreso`) que usan los totales del mes, con las banderas antiguas (`_esExtraIngreso` / `_esDiferencialEncargo`) solo como respaldo para movimientos sin `clase`. Ya no mantiene su propia copia de la regla.
 
@@ -162,4 +162,4 @@ Carga lazy del módulo → render inmediato al final del archivo
 - `window.logCambio`: sin llamadores en los archivos revisados.
 - Si algún día se agrega un acceso directo desde el nav o el menú "Más", hay que sumar su selector al listener de clic.
 
-**Sin verificar:** en navegador real, ni con `html\`\`` / `raw()` reales simulando payloads maliciosos (la migración se hizo sin `html-tag.js` a la vista; ver `CHANGELOG.md#actividad-reciente`).
+**Sin verificar:** en navegador real, ni con `html\`\`` / `raw()` reales simulando payloads maliciosos (la migración se hizo sin `html-tag.js` a la vista; ver `changelog/actividad-reciente.md`).

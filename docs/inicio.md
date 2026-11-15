@@ -2,7 +2,7 @@
 
 Documenta la pantalla `#screen-inicio` y su código en `js/modules/inicio.js`. A diferencia del resto de los módulos documentados (`cuentas.md`, `mesada.md`, `spotify.md`, `prestado.md`, `encargos.md`, `personas.md`), Inicio **no tiene sheets propios** — es una pantalla de solo lectura que resume el estado de los demás módulos. Por eso este documento no sigue el inventario de [`guia-estilo-sheets.md`](./guia-estilo-sheets.md); esa guía sigue siendo la referencia si Inicio llegara a necesitar un sheet en el futuro.
 
-> Los cambios puntuales de la sesión en que se migró este módulo no viven acá — ver [`CHANGELOG.md`](./CHANGELOG.md#inicio) y [`auditoria-tecnica.md`](./auditoria-tecnica.md) (nota del 2026-07-22).
+> Los cambios puntuales de la sesión en que se migró este módulo no viven acá — ver [`changelog/inicio.md`](./changelog/inicio.md) y [`auditoria-tecnica.md`](./auditoria-tecnica.md) (nota del 2026-07-22).
 
 ---
 
@@ -36,13 +36,13 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 
 **`calcHealthScore()`** — calcula el puntaje de salud financiera (0-100) a partir de: fondo de emergencia (liquidez vs gastos mensuales), ratio de deuda TC vs ingresos, plata prestada a otros vs liquidez, ratio gastos/ingresos, CDTs activos, gastos fijos configurados, y diversidad de categorías de gasto. Devuelve `{ score, tips, ingresosMes, rendimientoCDTMes }`; `rendimientoCDTMes` (informativo, no entra en `ingresosMes`) trae desde 2026-10-09 los rendimientos del mes de cajitas + CDT (`Periodo.rendimientosDelMes`). Los gastos del mes incluyen los retiros manuales ("Restar dinero") y los ingresos incluyen los extras guardados en cajitas, ambos vía `Periodo`.
 
-**`renderHealthScore()`** — pinta el anillo SVG y los tips de `calcHealthScore()` en `#health-score-card`. El círculo de progreso usa `transform="rotate(-90 38 38)"` para que el relleno empiece arriba (a las 12) y avance en sentido horario, en vez de arrancar en el punto por defecto de un `<circle>` SVG (a las 3) — ver `CHANGELOG.md#inicio` (2026-08-30) por qué no se usa `stroke-dashoffset` para esto.
+**`renderHealthScore()`** — pinta el anillo SVG y los tips de `calcHealthScore()` en `#health-score-card`. El círculo de progreso usa `transform="rotate(-90 38 38)"` para que el relleno empiece arriba (a las 12) y avance en sentido horario, en vez de arrancar en el punto por defecto de un `<circle>` SVG (a las 3) — ver `changelog/inicio.md` (2026-08-30) por qué no se usa `stroke-dashoffset` para esto.
 
 **`renderProyeccion()`** — calcula la tendencia mensual de patrimonio (trimmed mean sobre los últimos 90 días de `S.patrimonioHistorial`, con mínimo de 30 días reales para no extrapolar de un solo movimiento grande; con menos muestra «Tendencia en construcción: llevas N de 30 días») y proyecta a 3/6/12 meses en `#proyeccion-card`. Incluye tooltips táctiles con el detalle de cada proyección.
 
 **`_checkGastoAlto()`** — compara el gasto del mes contra el **ingreso de referencia** (el mayor entre lo ingresado este mes y el ingreso típico; el mismo de la Salud), no contra lo disponible (que ya descuenta ese gasto y con disponible ≤ 0 no avisaba nada). `UMBRALES.gastoAlto.fraccionDelIngreso` = 0,8. Se engancha a `refresh()` mediante `hookGlobal`. Usa clases (`ix-hero-alerta-*`), no estilos inline.
 
-**`_renderDispNetoTC()`** — pinta `#s-disp-neto-tc` con `window._dispActualHoy` (el mismo `disp` que `refresh()`, en `js/core/refresh.js`, acaba de usar para pintar `#s-disp` — no se recalcula acá, ver `CHANGELOG.md#inicio` 2026-09-20) menos la deuda TOTAL de las tarjetas de crédito (con piso en 0 por tarjeta, para que un saldo a favor no reste del total), sin descontar lo confirmado como ajeno — la app no puede saber si esa parte ajena ya te la devolvieron por fuera de un pago a la tarjeta, así que asume el peor caso. Vacía el texto si no hay nada que restar. Se engancha a `refresh()` en el mismo monkey-patch que `_checkGastoAlto()`, DESPUÉS de que `refresh()` original corra (para que `window._dispActualHoy` ya esté actualizado).
+**`_renderDispNetoTC()`** — pinta `#s-disp-neto-tc` con `window._dispActualHoy` (el mismo `disp` que `refresh()`, en `js/core/refresh.js`, acaba de usar para pintar `#s-disp` — no se recalcula acá, ver `changelog/inicio.md` 2026-09-20) menos la deuda TOTAL de las tarjetas de crédito (con piso en 0 por tarjeta, para que un saldo a favor no reste del total), sin descontar lo confirmado como ajeno — la app no puede saber si esa parte ajena ya te la devolvieron por fuera de un pago a la tarjeta, así que asume el peor caso. Vacía el texto si no hay nada que restar. Se engancha a `refresh()` en el mismo monkey-patch que `_checkGastoAlto()`, DESPUÉS de que `refresh()` original corra (para que `window._dispActualHoy` ya esté actualizado).
 
 **IIFE de reposicionamiento** — mueve `#s-attn-section` justo debajo del `.hero` de Inicio al cargar el módulo (antes vivía más abajo en el DOM estático).
 
@@ -53,7 +53,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 | `refresh()` | Orquestador central compartido por las 13 pantallas — no es lógica de Inicio, aunque escribe varios de sus elementos (`#heroTotal`, `#s-disp`, etc.) |
 | `_renderMejoras()` / `_hookRefreshMejoras()` | Además de llamar a `renderHealthScore()`/`renderProyeccion()`, dispara `renderPresupuestos()` (módulo de Análisis) — infraestructura compartida entre dos módulos |
 | Selectores de cuenta (`#nuTotalDisp`, `#sel-nequi-saldo`, etc.) | Se actualizan dentro de `refresh()` junto con los de Inicio porque comparten las mismas variables calculadas (`nu`, `nequi`, `ef`), pero pertenecen a la pantalla Cuentas, no a Inicio |
-| `window._dispActualHoy` | Variable global que `refresh()` (`js/core/refresh.js`) expone con el mismo `disp` que pinta en `#s-disp`, para que `_renderDispNetoTC()` la reste en vez de recalcular "disponible" por su cuenta (ver `CHANGELOG.md#inicio`, 2026-09-20) |
+| `window._dispActualHoy` | Variable global que `refresh()` (`js/core/refresh.js`) expone con el mismo `disp` que pinta en `#s-disp`, para que `_renderDispNetoTC()` la reste en vez de recalcular "disponible" por su cuenta (ver `changelog/inicio.md`, 2026-09-20) |
 
 ## 5. Seguridad — hallazgos de esta migración
 

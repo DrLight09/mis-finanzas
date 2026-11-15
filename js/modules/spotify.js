@@ -467,7 +467,7 @@ function renderSpotifyHistorial(){
         </div>`
       :yaSaldado?html`<div class="sp-saldo-ok"><i class="fa-solid fa-check sp-mr-3"></i>Saldó lo pendiente</div>`:'';
     // Cada abono de lo pendiente, como su propia línea — antes quedaban invisibles,
-    // fundidos dentro de h.monto (ver CHANGELOG.md#spotify, fix de visibilidad de abonos).
+    // fundidos dentro de h.monto (ver changelog/spotify.md, fix de visibilidad de abonos).
     const abonosHtml=(h.pendienteHistorial&&h.pendienteHistorial.length)
       ?html`<div class="sp-abonos">${h.pendienteHistorial.map((abono,abonoIdx)=>html`<div class="sp-abono-fila"><span class="sp-flex1"><span class="c-green">+ ${fmt(abono.monto)}</span> · ${abono.fecha}${abono.destino?' · '+fuenteLabel(abono.destino):''}${abono.nota?html` · <span class="c-blue">${abono.nota}</span>`:''}</span><span class="sp-deshacer" ${raw(Events.attr('spotify:deshacerAbonoPendiente', h._realIdx, abonoIdx))}>deshacer</span></div>`)}</div>`
       :'';

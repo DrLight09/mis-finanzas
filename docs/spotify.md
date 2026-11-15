@@ -2,7 +2,7 @@
 
 Documentación de la sección **Spotify** de `mis-finanzas` (`js/modules/spotify.js`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué, cómo fluye la información, y qué decisiones de diseño se tomaron. Los detalles de implementación (funciones, ids) aparecen al final, como referencia rápida.
 
-El historial de bugs corregidos vive en [`CHANGELOG.md`](./CHANGELOG.md#spotify), no acá.
+El historial de bugs corregidos vive en [`changelog/spotify.md`](./changelog/spotify.md), no acá.
 
 ---
 
@@ -144,7 +144,7 @@ S.spotify.historial = [
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `changelog/infraestructura-seguridad.md`.
 
 - Extra/propina de un cobro ("te dieron de más"): espejo con `clase: 'ingreso'`. Si el destino es una **cajita de Nu**, desde 2026-10-09 cuenta como ingreso del mes aunque nunca pase por Nequi/Efectivo (antes subía el patrimonio pero no el ingreso).
 - Cobros, pagos y abonos normales: espejos `neutro`. El gasto del plan de Spotify (`S.gastosVar`, `_origenSeccion: 'Spotify'`): `clase: 'gasto'`.
@@ -309,7 +309,7 @@ Pago:
 
 Al borrar un cobro con `extra`, también se revierte el extra (`descontarFuente` exacto sobre `extraFuente` + `borrarMovimientoEspejo`).
 
-Las reversiones de saldo (cobro, abonos del pendiente y "Deshacer abono") usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
+Las reversiones de saldo (cobro, abonos del pendiente y "Deshacer abono") usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `changelog/patrimonio-y-calculos-globales.md` (2026-09-30).
 
 ---
 

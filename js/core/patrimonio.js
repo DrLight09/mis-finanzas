@@ -130,7 +130,7 @@ function calcPatrimonioDesglose(){
   // real de la cuenta (a diferencia de una cajita de ahorro, donde sí forma parte
   // de la base que gana interés en calcC()/_saldoEncargosEnCajita()). Restarla
   // acá contaba de menos un patrimonio que en realidad nunca se sumó. Ver
-  // CHANGELOG.md#encargos.
+  // changelog/encargos.md.
   const cuentas=saldoCuentas(); // todas las cuentas con saldo propio (las de ahorro cuentan por sus cajitas, arriba)
   // Deudas (calc-helpers.js, carga de entrada) — calcPatrimonioTotal() corre en
   // CADA save() de la app (vía snapshotPatrimonio), no solo en refresh().
@@ -315,8 +315,8 @@ function _movimientosDeudaSinCuenta(estado){
     else if(reduce.indexOf(m.tipo)!==-1) signo=abre===ME_DEBEN_ABRE?-1:1;
     if(signo) out.push({m,deuda:d,fecha:m.fecha,monto:signo*m.monto,clase:m.clase});
   }));
-  veces(estadoActual.deudores,ME_DEBEN_ABRE,['abono','pago_completo']);
-  veces(estadoActual.misDeudas,YO_DEBO_ABRE,['pago','abono','pago_completo']);
+  veces(estadoActual.deudores,ME_DEBEN_ABRE,['abono',TIPO_PAGO_COMPLETO]);
+  veces(estadoActual.misDeudas,YO_DEBO_ABRE,['pago','abono',TIPO_PAGO_COMPLETO]);
   return out;
 }
 const ME_DEBEN_ABRE=['prestamo'], YO_DEBO_ABRE=['recibido'];
@@ -359,7 +359,7 @@ function snapshotPatrimonio(){
   if(val==null||isNaN(val)){
     // Mismo motivo que el guard de refresh() más abajo: antes esto fallaba
     // en silencio total (ni siquiera un $0 en pantalla, solo un snapshot que
-    // nunca se grababa). Ver CHANGELOG.md#patrimonio-y-cálculos-globales.
+    // nunca se grababa). Ver changelog/patrimonio-y-calculos-globales.md.
     console.error('[snapshotPatrimonio] calcPatrimonioTotal() dio', val, '— no se graba el punto de hoy. Revisar fechas corruptas u otra fuente de NaN.');
     return;
   }

@@ -45,7 +45,7 @@
    el mismo lugar donde vivía el <script> inline original.
 
    Carga LAZY desde una sesión posterior (docs/auditoria-tecnica.md #4,
-   CHANGELOG.md#arranque): el <script> se sacó de index.html — ahora lo
+   changelog/arranque.md): el <script> se sacó de index.html — ahora lo
    descarga js/core/lazy-loader.js (Loader.GROUPS.comprometida) la
    primera vez que alguien entra a la pantalla. El HTML que
    _injectScreen() y _injectMasItem() (más abajo en este archivo)
@@ -993,7 +993,7 @@ function _destinoNuevoConfirmar(){
     } catch(e){ toast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
 
-  // FIX (2026-09-10, ver CHANGELOG.md#plata-comprometida): si ya pagó un
+  // FIX (2026-09-10, ver changelog/plata-comprometida.md): si ya pagó un
   // Gasto (cajita o TC) al momento de crearlo, hay que moverle la plata YA
   // MISMO — igual que la reposición de arriba —, no solo guardar el flag
   // `yaPague:true`. Antes esta rama no existía acá: marcar "ya pagué" al
@@ -1878,7 +1878,7 @@ async function _plataComprometidaEliminar(id){
 // punto, el guard `typeof` simplemente no enganchaba nada, en silencio,
 // para siempre. Ui.en('atencion') cierra ese caso límite: renderAttencion() emite el evento al terminar, exista o no ya este módulo; si carga después, el
 // siguiente renderAttencion() ya lo incluye. (Antes: hookGlobal() esperaba con
-// waitFor() en vez de rendirse. Ver CHANGELOG.md#infraestructura--seguridad.
+// waitFor() en vez de rendirse. Ver changelog/infraestructura-seguridad.md.
 (function(){
   Ui.en('atencion', function(){
     // Agregar alertas de plata que llega pronto o ya llegó

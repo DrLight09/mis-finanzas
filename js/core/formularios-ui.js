@@ -28,7 +28,7 @@
     'spotify': 'sp_n',
     'nuevo-encargo': 'enc_nombre',
     'nueva-cuenta': 'nc_nombre',
-    'agregar-dinero': 'adDesc',
+    'agregar-dinero': 'agregarDineroDesc',
     'restar-dinero': 'rdDesc',
     // 'mesada-pago' y 'mesada-pend' NO se enfocan a propósito: abren con el monto ya
     // precargado (la cuota del mes / lo pendiente), que casi siempre es el correcto;
@@ -48,7 +48,7 @@ function mostrarAlertaFuente(prefix){
   // Un módulo puede encargarse del aviso (Tarjetas de crédito con fuentes «tc:…»): su gancho devuelve true.
   if(Ui.emitir('fuente-alerta',prefix).includes(true))return;
   // visibility, no display: el hint siempre ocupa su espacio (mismo criterio
-  // que .field-hint/min-height en los demás hints, ver reglas-visuales.md#hints-vacíos)
+  // que .field-hint/min-height en los demás hints,)
   // para que elegir una cuenta no empuje de golpe los botones de más abajo.
   // EXCEPCIÓN (2026-09-25): en "Registrar gasto" (prefix='gv') se prefirió lo
   // contrario — que #gv_fuente_hint/#gv_fuente_saldo no ocupen espacio estando

@@ -81,7 +81,7 @@ window.addEventListener('beforeunload', function() {
 // viejo había quedado desactualizado — Gastos ya había migrado sin que
 // nadie lo actualizara. Se saca la rama entera (no solo el comentario) para
 // que ningún módulo futuro pueda reintroducir un onclick inline acá por
-// costumbre. Ver auditoria-tecnica.md #1 y CHANGELOG.md#infraestructura--seguridad.
+// costumbre. Ver auditoria-tecnica.md #1 y changelog/infraestructura-seguridad.md.
 const ICONO_VACIO_CUENTAS = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16" cy="14" r="1.2"/></svg>';
 // ÚNICO estado vacío de la app. Dos formas, según el sitio:
 //   emptyState(icon, title, sub, btnLabel, btnFn, opts)  bloque con icono, título, texto y botón opcional (listas y pantallas

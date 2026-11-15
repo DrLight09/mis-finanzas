@@ -28,7 +28,7 @@
    Nota: las filas ahora usan input type="text" + class="money-input"
    (igual que el resto de la app, parseMoney) en vez del type="number"
    + parseFloat que tenía Mesada — eso era una inconsistencia real
-   preexistente (mpMonto, el campo padre, ya usaba money-input), no
+   preexistente (mesadaPagoMonto, el campo padre, ya usaba money-input), no
    un cambio de comportamiento que se inventa este refactor.
 
    ── QUÉ CAMBIÓ EN ESTA MIGRACIÓN (respecto a index.html) ─────────

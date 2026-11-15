@@ -126,7 +126,7 @@ function _segmentosTasa(cuentaId,desdeStr,hastaStr){
 // movimientos del encargo hasta esa fecha inclusive) — a diferencia de
 // _saldoEncargosEnCajita()/_saldoEncargosEnCuenta(), que siempre da el saldo de HOY.
 // Se usa en calcC() para no darle intereses retroactivos a plata de un encargo que
-// todavía no había entrado en tramos anteriores del periodo (ver CHANGELOG.md#cuentas).
+// todavía no había entrado en tramos anteriores del periodo (ver changelog/cuentas.md).
 function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
   const cuentaKey='cajita:'+cajitaId;
   let total=0;
@@ -174,7 +174,7 @@ function calcC(c,hastaStr){
   // de esta cajita — así una plata de encargo que entra a mitad del periodo solo compone
   // intereses desde el día en que realmente llegó, no desde la última vez que se
   // materializó la cajita completa.
-  // Corregido (ver CHANGELOG.md#cuentas): antes se usaba el saldo de encargos DE HOY
+  // Corregido (ver changelog/cuentas.md): antes se usaba el saldo de encargos DE HOY
   // aplicado a TODO el periodo compuesto, dándole intereses retroactivos a cualquier plata
   // de encargo recién depositada.
   const saldoPropio=c.saldo||0;

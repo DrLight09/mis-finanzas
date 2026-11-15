@@ -13,7 +13,7 @@ Es un proyecto de un solo desarrollador, para uso personal, pensado para mantene
 - **Desplegada en GitHub Pages.**
 - **Estado global (`S`)**: un objeto central que se sincroniza bidireccionalmente con Firestore y contiene todos los datos de la app — cuentas, movimientos, préstamos, encargos, tarjetas, mesadas, Spotify, personas, etc. Todo el HTML se re-renderiza a partir de `S`.
 - **Sin backend propio**: toda la lógica de negocio (cálculos, validaciones, reversión de movimientos) vive en el cliente.
-- **Un archivo por dominio, con carga lazy:** cada pantalla tiene su propio archivo en `js/modules/` (mismo scope global, `<script>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Los 11 módulos de pantalla son grupos lazy (`js/core/lazy-loader.js`, `Loader.GROUPS`) que cargan bajo demanda al entrar a cada pantalla, con `Loader.ensureAll()` precargando los 11 en paralelo en segundo plano tras el primer dato real. `js/core/calc-helpers.js` expone un puñado de funciones puras de Mesada/TC/Préstamos/Spotify para que Inicio ("Necesita atención") no tenga que cargar esos módulos completos. Ver "Estructura de archivos" más abajo para el archivo de cada uno, y [`CHANGELOG.md#infraestructura--seguridad`](./CHANGELOG.md#infraestructura--seguridad) para el detalle de esa modularización; [`auditoria-tecnica.md`](./auditoria-tecnica.md) solo lista lo que sigue pendiente.
+- **Un archivo por dominio, con carga lazy:** cada pantalla tiene su propio archivo en `js/modules/` (mismo scope global, `<script>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Los 11 módulos de pantalla son grupos lazy (`js/core/lazy-loader.js`, `Loader.GROUPS`) que cargan bajo demanda al entrar a cada pantalla, con `Loader.ensureAll()` precargando los 11 en paralelo en segundo plano tras el primer dato real. `js/core/calc-helpers.js` expone un puñado de funciones puras de Mesada/TC/Préstamos/Spotify para que Inicio ("Necesita atención") no tenga que cargar esos módulos completos. Ver "Estructura de archivos" más abajo para el archivo de cada uno, y [`changelog/infraestructura-seguridad.md`](./changelog/infraestructura-seguridad.md) para el detalle de esa modularización; [`auditoria-tecnica.md`](./auditoria-tecnica.md) solo lista lo que sigue pendiente.
 
 ## Estructura de archivos — `js/core/`
 
@@ -163,7 +163,7 @@ Cada módulo se documenta en su propio `.md`, siguiendo la estructura definida e
 |---|---|
 | `plantilla-modulo.md` | La guía de estructura que siguen todos los `.md` de módulo — ver más arriba. |
 | `guia-estilo-sheets.md` | Orden estándar de campos e inventario de sheets de toda la app. |
-| `auditoria-tecnica.md` | Hallazgos técnicos **pendientes** de seguridad, arquitectura o rendimiento — lo ya resuelto vive en `CHANGELOG.md#infraestructura--seguridad`. |
+| `auditoria-tecnica.md` | Hallazgos técnicos **pendientes** de seguridad, arquitectura o rendimiento — lo ya resuelto vive en `changelog/infraestructura-seguridad.md`. |
 | `CHANGELOG.md` | Historial de bugs corregidos y limpieza de código de todos los módulos, en un solo archivo compartido. |
 
 `configuracion.js` y `actividad-reciente.js` (pantallas de utilidad/infraestructura, no un dominio financiero propio) tienen su propio documento: [`configuracion.md`](./configuracion.md) y [`actividad-reciente.md`](./actividad-reciente.md).

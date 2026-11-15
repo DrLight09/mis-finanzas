@@ -37,7 +37,7 @@ const Loader = (function () {
     // ese HTML tal cual a index.html (#screen-comprometida,
     // #mas-comprometida) para que el ítem de menú exista desde el
     // arranque — si no, no habría nada que el usuario pudiera tocar
-    // para disparar la carga lazy en primer lugar. Ver CHANGELOG.md#arranque.
+    // para disparar la carga lazy en primer lugar. Ver changelog/arranque.md.
     comprometida: ['js/modules/plata-comprometida.js'],
     // Tercer grupo lazy. Más simple que los dos anteriores: #screen-config
     // y #mas-config YA eran HTML estático desde antes (no hubo que copiar
@@ -46,7 +46,7 @@ const Loader = (function () {
     // piloto de Alcancía. gastos.js quedó afuera a propósito: navegacion.js
     // (núcleo) parchea addGastoVar/addGastoFijo a nivel superior de SU
     // propio archivo — haría lazy-loading imposible sin tocar antes ese
-    // núcleo. Ver CHANGELOG.md#arranque.
+    // núcleo. Ver changelog/arranque.md.
     //
     // 2026-08-30: era ['js/modules/configuracion.js', 'js/modules/import-validado.js']
     // — import-validado.js (validación de estructura del JSON, MEJORA 5)
@@ -54,7 +54,7 @@ const Loader = (function () {
     // por eso necesitaba cargar DESPUÉS y el orden del array importaba. Se
     // fusionó dentro de configuracion.js (una sola función real, sin
     // depender del orden de carga entre dos archivos) — ver
-    // CHANGELOG.md#configuración. import-validado.js ya no existe.
+    // changelog/configuracion.md. import-validado.js ya no existe.
     config: ['js/modules/configuracion.js'],
     // Cuarto grupo lazy. Entrada única: el botón "Actividad reciente"
     // dentro de Configuración (#cfg-historial-row, data-action=
@@ -69,7 +69,7 @@ const Loader = (function () {
     // appDataLoaded/clic, los 3 eventos que con carga lazy ya pasaron
     // para cuando el archivo llega a existir — se agregó un cuarto
     // trigger sin condición de evento al final del archivo. Ver ese
-    // archivo y CHANGELOG.md#arranque para el detalle.
+    // archivo y changelog/arranque.md para el detalle.
     historial: ['js/modules/actividad-reciente.js'],
     // Quinto grupo lazy (2026-08-02). #screen-mesada y #mas-mesada ya eran
     // HTML estático desde antes, así que no hubo que copiar/inyectar nada
@@ -285,7 +285,7 @@ const Loader = (function () {
   }
 
   // FIX (2026-08-17, confirmado con dos corridas reales de Lighthouse — ver
-  // CHANGELOG.md#infraestructura--seguridad): el disparo inmediato de acá
+  // changelog/infraestructura-seguridad.md): el disparo inmediato de acá
   // abajo SÍ contaba dentro de la ventana que Lighthouse mide como Total
   // Blocking Time. Prueba encontrada en los propios reportes: "Avoid long
   // main-thread tasks" mostraba tareas de cuentas.js/plata-comprometida.js/
@@ -318,7 +318,7 @@ const Loader = (function () {
     ensureAll().then(() => {
       // Bandera global: marca que la precarga terminó. inicio.js
       // (renderAttencion) la lee para no comparar/guardar el fingerprint de
-      // "Necesita atención" antes de ese punto (ver CHANGELOG.md#sheets--ui).
+      // "Necesita atención" antes de ese punto (ver changelog/sheets-ui.md).
       window._appFullyLoaded = true;
       if (typeof refresh === 'function') refresh();
       if (typeof applyModulos === 'function') applyModulos();
@@ -344,7 +344,7 @@ const Loader = (function () {
   // llama desde _launchApp() (pin-bio.js) — y ahí SIEMPRE después de
   // _hidePin() (que ya sacó la clase 'open'). No hay ningún camino de
   // código en el que este evento pueda disparar con el PIN todavía en
-  // pantalla. Ver CHANGELOG.md#infraestructura--seguridad para el detalle
+  // pantalla. Ver changelog/infraestructura-seguridad.md para el detalle
   // completo de la investigación y qué explica el TBT real medido.
   window.addEventListener('appDataLoaded', function () {
     if (typeof requestIdleCallback === 'function') {

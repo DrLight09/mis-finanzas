@@ -15,7 +15,7 @@
 // anterior de unificarlos en un solo archivo híbrido rompió en producción
 // con `ReferenceError: waitFor is not defined` en los consumidores
 // clásicos — ver el comentario en js/core/wait-for.js y
-// CHANGELOG.md#infraestructura--seguridad para el detalle completo.
+// changelog/infraestructura-seguridad.md para el detalle completo.
 //
 // Uso: import { waitFor } from './wait-for-module.js';
 //      waitFor(() => typeof miFuncion === 'function', () => miFuncion());

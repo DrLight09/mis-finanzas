@@ -95,7 +95,7 @@ function _initEventListeners() {
   // --- Cuenta selector, Nequi/Efectivo, Nu (entró/salió plata) y
   // cajita (agregar): migrados a js/modules/cuentas.js. ---
 
-  // --- mpSplitToggle / btn-add-split-row: migrados a js/modules/mesada.js ---
+  // --- mesadaPagoSplitToggle / btn-add-split-row: migrados a js/modules/mesada.js ---
 
   // --- Inputs que escriben directo en S (data-s-bind) ---
   // S es la única fuente de verdad: el input actualiza S en cada cambio y luego se
@@ -107,9 +107,9 @@ function _initEventListeners() {
   // mov_fuente: migrado a js/modules/prestado.js junto con el resto del
   // sheet "Registrar movimiento" — ver nota más arriba.
   // spPagarFuente/spPagarMonto: migrados a js/modules/spotify.js.
-  // mpDestino/mpMonto, mpDebeWrap/mpQuedaDebiendo, mppDestino/mppMonto:
+  // mesadaPagoDestino/mesadaPagoMonto, mesadaPagoDebeWrap/mesadaPagoQuedaDebiendo, mesadaPagoPendienteDestino/mesadaPagoPendienteMonto:
   // migrados a js/modules/mesada.js.
-  // adMenuDest/adMenuMonto, nuRate, tr_origen/tr_destino/tr_monto:
+  // agregarDineroMenuDestino/agregarDineroMenuMonto, nuRate, tr_origen/tr_destino/tr_monto:
   // migrados a js/modules/cuentas.js (su propio wiring).
 }
 

@@ -4,7 +4,7 @@
 // para los <script> CLÁSICOS (defer). Consumidor directo hoy: personas-init.js.
 // (hook-global.js, que también lo usaba, se eliminó: los ganchos de hojas/pantallas pasan por js/core/ui.js.)
 // Antes cada archivo reimplementaba a mano su propio setInterval + contador de reintentos
-// (ver CHANGELOG.md#infraestructura--seguridad).
+// (ver changelog/infraestructura-seguridad.md).
 //
 // NOTA — por qué NO es un ES module (corrección tras un intento fallido):
 // La primera versión de este archivo intentó ser un solo archivo híbrido

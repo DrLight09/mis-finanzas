@@ -509,7 +509,7 @@ function abrirDeudor(id) {
   const saldo = getDeudorSaldo(d);
   const totalPrestado = (d.movimientos || []).filter(m => m.tipo === 'prestamo').reduce((a, m) => a + m.monto, 0);
   // Lo perdonado (_perdon) NO es plata que pagó: no entra en "Pagado" (queda en el historial como "Perdonado").
-  const totalAbonado = (d.movimientos || []).filter(m => (m.tipo === 'abono' || m.tipo === 'pago_completo') && !m._perdon).reduce((a, m) => a + m.monto, 0);
+  const totalAbonado = (d.movimientos || []).filter(m => esAbonoDeDeuda(m.tipo) && !m._perdon).reduce((a, m) => a + m.monto, 0);
 
   _pintarEncabezadoDeuda({ avatar: 'ddAvatar', nombre: 'ddNombre', saldo: 'ddSaldoLabel', total1: 'ddDebe', total2: 'ddPago' }, d,
     saldo > 0 ? 'Te debe ' + fmt(saldo) : saldo < 0 ? 'Saldo a su favor: ' + fmt(-saldo) : 'Está al día',
@@ -533,7 +533,7 @@ function abrirDeudor(id) {
     const _porGrupo = {}; // grupoId -> [cardHtml (fragmento html``), ...]
     movimientos.forEach(m => {
       const esPrestamo = m.tipo === 'prestamo';
-      const esPagoCompleto = m.tipo === 'pago_completo';
+      const esPagoCompleto = m.tipo === TIPO_PAGO_COMPLETO;
       const efectoDeuda = esPrestamo ? +m.monto : -m.monto; // cuánto sumó/restó esta entry a la deuda
       const saldoDespuesDeuda = saldoCorriente;
       const saldoAntesDeuda = saldoCorriente - efectoDeuda;
@@ -869,7 +869,7 @@ function initMovimientoSheet(tipo) {
   FuentesFiltro.podar('mov_fuente', FuentesFiltro.PRESET.SALIDA);
   // ext selects se pueblan dinámicamente en extRenderPartes()
   const esPrestamo = tipo === 'prestamo';
-  const esPagoCompleto = tipo === 'pago_completo';
+  const esPagoCompleto = tipo === TIPO_PAGO_COMPLETO;
   const esAbono = tipo === 'abono' || esPagoCompleto;
   document.getElementById('movSheetTitle').textContent = esPrestamo ? 'Nuevo préstamo' : esPagoCompleto ? 'Pagar préstamo completo' : 'Registrar abono';
   document.getElementById('movBtnConfirm').textContent = esPrestamo ? 'Guardar préstamo' : esPagoCompleto ? 'Confirmar pago total' : 'Guardar abono';
@@ -985,7 +985,7 @@ function _movimientoTieneEncargoVinculado() {
 // fijo en lo que falta. Ver CHANGELOG 2026-09-19 y 2026-10-03.
 function _movimientoEsPerdon() {
   const checkbox = document.getElementById('mov_perdon');
-  return (movimientoTipo === 'pago_completo' || movimientoTipo === 'abono') && !!(checkbox && checkbox.checked);
+  return esAbonoDeDeuda(movimientoTipo) && !!(checkbox && checkbox.checked);
 }
 function toggleMovimientoPerdon() {
   const perdon = _movimientoEsPerdon();
@@ -1000,7 +1000,7 @@ function toggleMovimientoPerdon() {
   document.getElementById('mov_extra_wrap').style.display = perdon ? 'none' : '';
   const encargoWrap = document.getElementById('mov_enc_wrap');
   if (encargoWrap) encargoWrap.style.display = (!perdon && _movimientoTieneEncargoVinculado()) ? '' : 'none';
-  const completo = movimientoTipo === 'pago_completo';
+  const completo = movimientoTipo === TIPO_PAGO_COMPLETO;
   document.getElementById('movSheetTitle').textContent = perdon
     ? (completo ? 'Perdonar deuda' : 'Perdonar parte de la deuda')
     : (completo ? 'Pagar préstamo completo' : 'Registrar abono');
@@ -1080,7 +1080,7 @@ function confirmarMovimiento() {
       const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
       const monto = parseMoney(document.getElementById('mov_monto').value) || 0;
       const saldo = d ? getDeudorSaldo(d) : 0;
-      if (d && saldo > 0 && monto > 0 && Math.abs(monto - saldo) <= Deudas.TOL_FINO) movimientoTipo = 'pago_completo';
+      if (d && saldo > 0 && monto > 0 && Math.abs(monto - saldo) <= Deudas.TOL_FINO) movimientoTipo = TIPO_PAGO_COMPLETO;
     }
     return _confirmarMovimientoInterno();
   } finally {
@@ -1170,7 +1170,7 @@ function _aplicarPerdon(p) {
     clase: 'gasto', _esPerdonDeuda: true, _deudorId: d.id, _deudorMovimientoId: perdonMovimientoId
   });
   d.movimientos.push({
-    id: perdonMovimientoId, tipo: esTodo ? 'pago_completo' : 'abono', monto, fecha, destino: '', nota,
+    id: perdonMovimientoId, tipo: esTodo ? TIPO_PAGO_COMPLETO : 'abono', monto, fecha, destino: '', nota,
     grupoId: p.grupoId, ts: Date.now(), _perdon: true, _gastoPerdonId: gastoPerdonId
   });
 }
@@ -1400,8 +1400,8 @@ function _aplicarAbonoEncargo(p) {
 
   // 2. El dinero llega a una cuenta del usuario
   const abonMovimientoId = uid();
-  const esPagoCompleto = p.tipo === 'pago_completo';
-  const tipoGuardar = esPagoCompleto ? 'pago_completo' : 'abono';
+  const esPagoCompleto = p.tipo === TIPO_PAGO_COMPLETO;
+  const tipoGuardar = esPagoCompleto ? TIPO_PAGO_COMPLETO : 'abono';
   const descDestino = esPagoCompleto
     ? `Pago de deuda completo — ${d.nombre} (vía encargo ${encargo.nombre})`
     : `Abono de deuda — ${d.nombre} (vía encargo ${encargo.nombre})`;
@@ -1473,8 +1473,8 @@ function _planAbonoNormal(base) {
 
 function _aplicarAbonoNormal(p) {
   const { d, monto, fecha, nota, destinos, destino, tieneExtra } = p;
-  const esPagoCompleto = p.tipo === 'pago_completo';
-  const tipoGuardar = esPagoCompleto ? 'pago_completo' : 'abono';
+  const esPagoCompleto = p.tipo === TIPO_PAGO_COMPLETO;
+  const tipoGuardar = esPagoCompleto ? TIPO_PAGO_COMPLETO : 'abono';
   const desc = esPagoCompleto ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
   let movimiento;
   if (destinos) {
@@ -1670,7 +1670,7 @@ function _actualizarEncargoPreview(encargo) {
     const saldoEnCuenta = esSinEsp ? _getEncargoSaldoSinCuenta(encargo) : _getEncargoSaldoEnCuenta(encargo, _abonoEncargoCuenta);
     // El hint estático ("Disponible en X: $Y") es redundante: el <option> de
     // mov_enc_cuenta ya muestra ese mismo monto en su texto (ver onChangeMovimiento_encargo_sel
-    // más arriba). Se deja oculto — ver reglas-visuales.md#selectores-con-saldo.
+    // más arriba). Se deja oculto
     if (hint) hint.style.display = 'none';
     preview.style.color = monto > saldoEnCuenta ? 'var(--red)' : 'var(--accent)';
     preview.textContent = monto > saldoEnCuenta
@@ -2541,7 +2541,7 @@ function _abrirSheetPagoCompleto() {
   const saldo = getDeudorSaldo(d);
   if (saldo <= 0) { toast('No hay saldo pendiente', 'info'); return; }
   openSheet('registrar-movimiento');
-  initMovimientoSheet('pago_completo');
+  initMovimientoSheet(TIPO_PAGO_COMPLETO);
   document.getElementById('mov_monto').value = fmtInput(saldo);
 }
 
@@ -2699,7 +2699,7 @@ if (movimientoFuente) movimientoFuente.addEventListener('change', () => mostrarA
    prestado-personas.js + deudores-personas.js) se movió a cargar
    después de personas.js Y después de navegacion.js (que define
    openSheet, necesario por deudores-personas.js más abajo) — ver el
-   nuevo comentario de posición en index.html y CHANGELOG.md#préstamos.
+   nuevo comentario de posición en index.html y changelog/prestamos.md.
    ═══════════════════════════════════════════════════════════════ */
 
 function _irADeudor(deudorId) {

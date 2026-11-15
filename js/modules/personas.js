@@ -560,7 +560,7 @@ function abrirPerfilPersona(personaId) {
     const prestamos = movimientos.filter(m => m.tipo === 'prestamo');
     // Lo perdonado (m._perdon, "¿Se lo regalas?" en Préstamos) NO es plata que
     // te devolvió: no cuenta en "Abonado", ni en el progreso de pago, ni en "Mayor abono".
-    const abonos   = movimientos.filter(m => (m.tipo === 'abono' || m.tipo === 'pago_completo') && !m._perdon);
+    const abonos   = movimientos.filter(m => esAbonoDeDeuda(m.tipo) && !m._perdon);
     const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
     const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
     const color2 = saldo > 0 ? 'pe-c-amber' : saldo < 0 ? 'pe-c-red' : 'pe-c-accent';
@@ -621,7 +621,7 @@ function abrirPerfilPersona(personaId) {
         </div>` : ''}
       </div>
       ${ultimoMovimiento ? html`<div class="pe-ultimo">
-        Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'prestamo' ? 'Préstamo' : (ultimoMovimiento._perdon ? 'Deuda perdonada' : (ultimoMovimiento.tipo === 'pago_completo' ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
+        Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'prestamo' ? 'Préstamo' : (ultimoMovimiento._perdon ? 'Deuda perdonada' : (ultimoMovimiento.tipo === TIPO_PAGO_COMPLETO ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
       </div>` : ''}
     </div>`);
   }
@@ -793,7 +793,7 @@ function abrirPerfilPersona(personaId) {
         </div>` : ''}
       </div>
       ${ultimoMovimiento ? html`<div class="pe-ultimo">
-        Último mov: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
+        Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
       </div>` : ''}
     </div>`);
   }

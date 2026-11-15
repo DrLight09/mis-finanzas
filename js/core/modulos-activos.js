@@ -26,11 +26,11 @@ function applyModulos(){
   const bannerApertura=document.getElementById('banner-apertura-cuenta');
   if(bannerApertura)bannerApertura.style.display=mostrarBanners?'':'none';
   // Ocultar el toggle "Es saldo inicial" en el sheet de agregar dinero
-  const adAperturaWrap=document.getElementById('adAperturaWrap');
-  if(adAperturaWrap)adAperturaWrap.style.display=mostrarBanners?'flex':'none';
+  const agregarDineroAperturaWrap=document.getElementById('agregarDineroAperturaWrap');
+  if(agregarDineroAperturaWrap)agregarDineroAperturaWrap.style.display=mostrarBanners?'flex':'none';
   // Ocultar el toggle "Es saldo inicial" en el sheet de Nu (entra plata)
-  const nuMovAperturaWrap=document.getElementById('nuMovAperturaWrap');
-  if(nuMovAperturaWrap&&!mostrarBanners)nuMovAperturaWrap.style.display='none';
+  const nuMovimientoAperturaWrap=document.getElementById('nuMovimientoAperturaWrap');
+  if(nuMovimientoAperturaWrap&&!mostrarBanners)nuMovimientoAperturaWrap.style.display='none';
   // Actualizar "Necesita atención" en Inicio para reflejar el nuevo estado de módulos
   // (ej: avisos de Spotify deben aparecer/desaparecer al activar/desactivar el módulo)
   if(typeof renderAttencion==='function') renderAttencion();

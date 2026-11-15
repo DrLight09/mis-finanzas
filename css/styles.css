@@ -751,7 +751,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-mb0{margin-bottom:0;}
 .ms-preview{font-size:12px;font-family:'DM Mono',monospace;min-height:18px;margin-bottom:4px;color:var(--accent);}
 .ms-preview-amber{color:var(--amber);}
-/* Sin texto no ocupa lugar: el JS lo deja vacío con textContent = '' (mpPreview y mppPreview) */
+/* Sin texto no ocupa lugar: el JS lo deja vacío con textContent = '' (mesadaPagoPreview y mesadaPagoPendientePreview) */
 .ms-preview:empty{display:none;}
 .ms-aviso-mes{font-size:12px;line-height:1.4;color:var(--amber);margin:-6px 0 14px;}
 .ms-aviso-mes:empty{display:none;}

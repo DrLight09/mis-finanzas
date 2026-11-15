@@ -2,7 +2,7 @@
 
 Documentación de la sección **Plata Comprometida** de `mis-finanzas` (`index.html` → `js/modules/plata-comprometida.js`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué, cómo fluye la información, y qué decisiones de diseño se tomaron. Los detalles de implementación (funciones, ids de sheets) aparecen al final, como referencia rápida — no como el foco del documento.
 
-El historial de bugs corregidos vive en [`CHANGELOG.md`](./CHANGELOG.md#plata-comprometida), no acá.
+El historial de bugs corregidos vive en [`changelog/plata-comprometida.md`](./changelog/plata-comprometida.md), no acá.
 
 ---
 
@@ -84,7 +84,7 @@ Todo vive en `S.plataComprometida[]`:
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `changelog/infraestructura-seguridad.md`.
 
 - Reposiciones de plata comprometida a una cajita (`_esReposicionPlataComprometida`): `neutro` (reponer lo que ya tenías comprometido no es plata nueva).
 - Ingreso libre (`_esSobrante`) y el ingreso de la cuenta personalizada de una ganancia: `ingreso`.
@@ -153,7 +153,7 @@ Si corresponde, chequear antigüedad de los movimientos afectados
 Confirmar → revertir → sacar el ingreso de S.plataComprometida
 ```
 
-Las reversiones que restan saldo (reposición a cada destino, cajita usada para pagar TC, reposición de un gasto de cajita) usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `CHANGELOG.md#patrimonio-y-cálculos-globales` (2026-09-30).
+Las reversiones que restan saldo (reposición a cada destino, cajita usada para pagar TC, reposición de un gasto de cajita) usan `descontarFuente(..., { exacto: true })`, sin piso en 0 — ver `changelog/patrimonio-y-calculos-globales.md` (2026-09-30).
 
 ## 6. Casos especiales
 
@@ -162,7 +162,7 @@ Las reversiones que restan saldo (reposición a cada destino, cajita usada para 
 - **Botón Eliminar no visible para ingresos ya recibidos con pagos pendientes** (solo aparece "Marcar como pagado" en esa sección de la pantalla) — pero `_plataComprometidaEliminar()` sabe revertir un ingreso recibido si se llega a invocar por otro camino; es código defensivo, no una ruta normal de uso.
 - **Errores parciales al recibir:** cada destino se ejecuta dentro de su propio `try/catch` — si uno falla, los demás se siguen procesando igual, y al final se avisa con un solo toast qué destinos tuvieron problemas, en vez de frenar toda la distribución por un error puntual.
 - **Protección por antigüedad al eliminar:** no hay una fecha propia guardada por cada adelanto/marca individual (solo el booleano `yaSaque`/`yaPague`), así que se usa `fechaRecibido` (si ya se recibió) o `fechaLlegada` como mejor aproximación disponible para decidir si el movimiento es demasiado viejo para revertir con confianza.
-- **Marcar "ya pagué" en un Gasto, al crearlo, mueve la plata en el acto** — igual que marcar "ya saqué" en una Reposición. No siempre fue así: hasta el 2026-09-10 esa rama solo existía para Reposición; un Gasto marcado como pagado al momento de crearlo guardaba el flag pero nunca descontaba la cajita ni cargaba la tarjeta, y como el sheet "Marcar pagos" solo actúa sobre transiciones (pendiente→pagado), un destino que ya nacía marcado jamás pasaba por ahí — la plata quedaba "pagada" solo en apariencia, sin ningún movimiento real detrás, sin ningún error visible. Corregido — ver `CHANGELOG.md#plata-comprometida`.
+- **Marcar "ya pagué" en un Gasto, al crearlo, mueve la plata en el acto** — igual que marcar "ya saqué" en una Reposición. No siempre fue así: hasta el 2026-09-10 esa rama solo existía para Reposición; un Gasto marcado como pagado al momento de crearlo guardaba el flag pero nunca descontaba la cajita ni cargaba la tarjeta, y como el sheet "Marcar pagos" solo actúa sobre transiciones (pendiente→pagado), un destino que ya nacía marcado jamás pasaba por ahí — la plata quedaba "pagada" solo en apariencia, sin ningún movimiento real detrás, sin ningún error visible. Corregido — ver `changelog/plata-comprometida.md`.
 - **Alertas en "Necesita atención":** un ingreso pendiente que llega en ≤3 días (o que ya debería haber llegado) genera un aviso; un gasto de cajita ya recibido pero sin pagar con fecha de pago próxima genera otro, por separado — ambos llevan directo a la pantalla al tocarlos.
 
 ## 7. Decisiones de diseño

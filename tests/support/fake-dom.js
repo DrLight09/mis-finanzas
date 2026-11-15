@@ -5,7 +5,7 @@
  * disparar). No es un navegador: no hay layout, ni CSS, ni parseo de HTML (salvo armar `options`
  * con el `value` de cada <option> al asignar innerHTML).
  *
- *   const dom = createFakeDom({ mpMonto: { value: '80000' } });
+ *   const dom = createFakeDom({ mesadaPagoMonto: { value: '80000' } });
  *   ctx.document = dom.document;          // reemplaza el stub del harness
  *   dom.fire('btn-confirmar-mesada', 'click');
  */
@@ -22,7 +22,7 @@ function createFakeDom(initial = {}) {
       querySelector() { return null; }, querySelectorAll() { return []; },
       setAttribute() {}, getAttribute() { return null; }, appendChild() {}, remove() {},
       focus() {},
-      click() { if (this.type === 'checkbox' || /^(mpp?UsarEncargo|mpQuedaDebiendo)$/.test(id)) this.checked = !this.checked; fire(id, 'change'); fire(id, 'click', { target: el }); },
+      click() { if (this.type === 'checkbox' || /^(mesadaPago(Pendiente)?UsarEncargo|mesadaPagoQuedaDebiendo)$/.test(id)) this.checked = !this.checked; fire(id, 'change'); fire(id, 'click', { target: el }); },
       _handlers: handlers,
     };
     // Como el DOM real: lo asignado a innerHTML se convierte a string y, si trae <option>, arma `options`

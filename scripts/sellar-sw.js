@@ -2,7 +2,7 @@
 /* ═══════════════════════════════════════════════════════════════
    scripts/sellar-sw.js — sella el Service Worker con una huella del contenido desplegable
 
-   Problema que resuelve (mejoras-mis-finanzas.md §A10): `VERSION` en sw.js se sube a mano. Si se olvida, el navegador conserva la
+   Problema que resuelve (revisión de mejoras, A10: docs/changelog/cronologico-2026-11.md): `VERSION` en sw.js se sube a mano. Si se olvida, el navegador conserva la
    caché vieja y sirve los .js anteriores por «stale-while-revalidate» sin avisar. Ahora el nombre de la caché es
    `${VERSION}-${BUILD}`, y BUILD es un hash (SHA-256, 12 caracteres) de los archivos que se despliegan: cualquier cambio en
    index.html, css/, js/, manifest o icons/ cambia BUILD → el SW nuevo se instala y borra la caché anterior, aunque se olvide subir VERSION.

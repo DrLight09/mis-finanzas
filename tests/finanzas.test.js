@@ -6,7 +6,7 @@ const { describe: _describe } = require('node:test');
 
 _describe('escenarios-financieros', () => {
 // tests/escenarios-financieros.test.js — Escenarios NEGATIVOS y de borde de Salud, Proyección, Hero, Wrapped, Análisis y push.
-// Un estado sintético por escenario de mejoras-mis-finanzas.md (ya resueltas; ver CHANGELOG.md): la app estaba pensada para quien tiene
+// Un estado sintético por escenario de la revisión de mejoras del 2026-11-03 (ya resueltas; ver docs/changelog/cronologico-2026-11.md): la app estaba pensada para quien tiene
 // plata y crece, y en deuda, con patrimonio negativo o con una caída sostenida a veces mostraba algo engañoso o se quedaba callada.
 // Corre con:  node --test tests/escenarios-financieros.test.js   (o todo: npm test)
 'use strict';
@@ -1024,7 +1024,7 @@ test('B3. con saldos pero sin historial la tarjeta de Salud es un solo bloque (�
 });
 
 test('Saldo inicial gastado sin ingresos registrados: estado neutro, no «Estable», y ninguna conclusión de déficit', () => {
-  // Escenario de mejoras.md §3: 2.000.000 de saldo inicial (apertura) y 2.000.000 gastados en dos días, sin ingresos anotados.
+  // Escenario de la revisión de mejoras §3: 2.000.000 de saldo inicial (apertura) y 2.000.000 gastados en dos días, sin ingresos anotados.
   const hoyStr = new Date().toISOString().slice(0, 10);
   const ctx = app({
     cuentas: cuentas(0),

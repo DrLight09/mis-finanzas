@@ -2,7 +2,7 @@
 
 Documentación de la sección **Personas** de `mis-finanzas` (`js/modules/personas.js`). Pensada para volver a leerla en unos meses y entender el módulo sin releer el código: qué problema resuelve, qué reglas no se deben romper, qué datos guarda y por qué, cómo fluye la información, y qué decisiones de diseño se tomaron. Los detalles de implementación (funciones, ids) aparecen al final, como referencia rápida.
 
-El historial de bugs corregidos vive en [`CHANGELOG.md`](./CHANGELOG.md#personas), no acá.
+El historial de bugs corregidos vive en [`changelog/personas.md`](./changelog/personas.md), no acá.
 
 ---
 
@@ -168,7 +168,7 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 ### Integración con otros módulos
 
-La integración de cada módulo con Personas **no vive en `personas.js`**, sino dentro del propio módulo (los archivos `*-personas.js` que existieron se fusionaron de vuelta el 2026-08-03; ver `CHANGELOG.md#encargos`, `#spotify` y `#préstamos`):
+La integración de cada módulo con Personas **no vive en `personas.js`**, sino dentro del propio módulo (los archivos `*-personas.js` que existieron se fusionaron de vuelta el 2026-08-03; ver `changelog/encargos.md`, `#spotify` y `#préstamos`):
 
 | Módulo | Archivo |
 |---|---|

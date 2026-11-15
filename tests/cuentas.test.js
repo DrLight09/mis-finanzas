@@ -721,7 +721,7 @@ describe('chequeo-nu', () => {
       aplicar(app.S, { cajitas: [], movimientos: [], gastosVar: [],
         cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 1000 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }] });
       const el = (x = {}) => ({ value: '', textContent: '', innerHTML: '', checked: false, style: {}, focus() {}, ...x });
-      const campos = { adTitle: el(), adSaldoActual: el(), adMonto: el(), adDesc: el(), adFecha: el(), adNota: el(), adPreview: el(), adEsApertura: el(), adDescLabel: el() };
+      const campos = { agregarDineroTitle: el(), agregarDineroSaldoActual: el(), agregarDineroMonto: el(), agregarDineroDesc: el(), agregarDineroFecha: el(), agregarDineroNota: el(), agregarDineroPreview: el(), agregarDineroEsApertura: el(), agregarDineroDescLabel: el() };
       app.document.getElementById = id => campos[id] || null;
       const toasts = [], cerrados = [];
       let guardados = 0;
@@ -733,7 +733,7 @@ describe('chequeo-nu', () => {
       app.fuenteLabel = f => ({ 'cuenta:nequi': 'Nequi' }[f] || f);
       app.abrirAgregarDinero('cuenta:nequi', 'Nequi');
       guardados = 0;
-      campos.adMonto.value = monto; campos.adDesc.value = desc; campos.adFecha.value = '2026-10-05';
+      campos.agregarDineroMonto.value = monto; campos.agregarDineroDesc.value = desc; campos.agregarDineroFecha.value = '2026-10-05';
       return { app, toasts, cerrados, guardados: () => guardados, saldo: () => app.getSaldoFuente('cuenta:nequi') };
     }
     test('un monto válido suma, registra y cierra', () => {
@@ -793,7 +793,7 @@ describe('nu-cdt', () => {
     const campos = domFalso(app);
     // La cajita única se auto-selecciona al abrir: se simula el click que dispara el handler real.
     const cajitaEl = { dataset: { nuCajita: 'cajita:a' }, style: {}, handlers: {}, addEventListener(ev, fn) { this.handlers[ev] = fn; }, click() { this.handlers.click.call(this); } };
-    campos.nuMovCajitasWrap = { innerHTML: '', querySelectorAll: () => [cajitaEl], querySelector: () => cajitaEl };
+    campos.nuMovimientoCajitasWrap = { innerHTML: '', querySelectorAll: () => [cajitaEl], querySelector: () => cajitaEl };
     const toasts = [], cerrados = [];
     let guardados = 0;
     app.toast = (msg, t, ms) => toasts.push({ msg, tipo: t, ms });
@@ -804,7 +804,7 @@ describe('nu-cdt', () => {
     abrirAhorro(app);
     app.abrirNuMovimiento(tipo);
     guardados = 0;
-    campos.nuMovMonto.value = monto; campos.nuMovDesc.value = desc; campos.nuMovFecha.value = '2026-10-05';
+    campos.nuMovimientoMonto.value = monto; campos.nuMovimientoDesc.value = desc; campos.nuMovimientoFecha.value = '2026-10-05';
     const saldoCajita = () => app.getSaldoFuente('cajita:a');
     return { app, toasts, cerrados, guardados: () => guardados, saldoCajita, cajita: () => app.S.cajitas[0] };
   }
@@ -2049,7 +2049,7 @@ describe('cuentas-textos', () => {
   test('los sheets y mensajes del retiro y del movimiento de Nu usan "retirar"/"agregar", no "restar"/"entró"/"salió"', () => {
     assert.match(index, /id="rdTitle">Retirar dinero</);
     assert.match(index, /id="btn-confirmar-restar">\s*Retirar\s+del saldo/);
-    assert.match(index, /id="nuMovTitle">Agregar a la cuenta</);
+    assert.match(index, /id="nuMovimientoTitle">Agregar a la cuenta</);
     for (const f of ['js/modules/cuentas.js', 'js/modules/nu.js']) assert.doesNotMatch(leer(f), /'Entró plata a |'Salió plata de |'Restar de /, f);
   });
   const etiquetaInput = id => { const i = index.indexOf('id="' + id + '"'); return index.slice(index.lastIndexOf('<', i), index.indexOf('>', i)); };

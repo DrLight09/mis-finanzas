@@ -108,7 +108,7 @@ El abono espejo en `d.movimientos[]` (Prestado) lleva `destino: ''`, `_viaAlcanc
 
 ### Clase de los movimientos (2026-10-09)
 
-Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `CHANGELOG.md#infraestructura--seguridad`.
+Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `gasto` · `neutro` · `ajuste`), escrita al crearlo, y los totales del mes (`Periodo`) la leen en vez de deducirla de etiquetas. Ver `libro-de-movimientos.md` (el libro no clasifica: lo hace `clase`) y `changelog/infraestructura-seguridad.md`.
 
 | Movimiento | `clase` |
 |---|---|

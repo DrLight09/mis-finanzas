@@ -25,7 +25,7 @@
    compartida .btn-delete-hover (index.html), al detectarse que la CSP
    también bloquea handlers inline generados dinámicamente, no solo
    los que vienen del HTML estático — ver auditoria-tecnica.md #1 y
-   CHANGELOG.md#infraestructura--seguridad. El resto de los módulos
+   changelog/infraestructura-seguridad.md. El resto de los módulos
    con el mismo patrón sigue pendiente.
 
    .innerHTML sin escapar: repetido un quinto módulo seguido — texto
@@ -552,7 +552,7 @@ async function deleteGastoVar(id) {
   // de una cuenta (rama 'gasto' de eliminarMovimiento() en movimientos.js,
   // que ya la tenía) — duplicado acá porque este botón (pantalla de Gastos)
   // es un segundo punto de entrada que no pasaba por esa función, dejando
-  // este camino sin ninguna protección. Ver CHANGELOG.md#gastos (2026-09-01).
+  // este camino sin ninguna protección. Ver changelog/gastos.md (2026-09-01).
   // `confirmado` evita pedir dos confirmaciones seguidas cuando el nivel es
   // 'viejo' (mismo patrón que eliminarMovimiento() en movimientos.js).
   const prot = await Reversibles.proteger('gasto', g);

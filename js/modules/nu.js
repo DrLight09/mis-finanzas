@@ -487,7 +487,7 @@ function _calcPrestadoMeta(cajitaId){
         }
       }
       // restar abonos que pueden haber regresado a la cajita
-      if(m.tipo==='abono' || m.tipo==='pago_completo'){
+      if(esAbonoDeDeuda(m.tipo)){
         // destino simple
         if(m.destino==='cajita:'+cajitaId) total -= m.monto;
         // destino dividido
@@ -1281,14 +1281,14 @@ function abrirNuMovimiento(tipo) {
   _nuMovimientoCajitaSel = null;
   const esEntrada = tipo === 'entrada';
 
-  document.getElementById('nuMovTitle').textContent = esEntrada ? 'Agregar a ' + _nombreAhorro() : 'Retirar de ' + _nombreAhorro();
-  document.getElementById('nuMovSubtitle').innerHTML = esEntrada
+  document.getElementById('nuMovimientoTitle').textContent = esEntrada ? 'Agregar a ' + _nombreAhorro() : 'Retirar de ' + _nombreAhorro();
+  document.getElementById('nuMovimientoSubtitle').innerHTML = esEntrada
     ? 'El valor se <b class="nu-c-nu">sumará</b> a la cajita que elijas y contará como ingreso del mes.'
     : 'El valor se <b class="nu-c-red">restará</b> de la cajita que elijas.';
-  document.getElementById('nuMovDescLabel').innerHTML = esEntrada
+  document.getElementById('nuMovimientoDescLabel').innerHTML = esEntrada
     ? '¿De dónde viene esta plata? <span class="nu-c-red">*</span>'
     : '¿En qué se gastó o a dónde fue? <span class="nu-c-red">*</span>';
-  document.getElementById('nuMovMontoLabel').textContent = esEntrada ? '¿Cuánto recibiste?' : '¿Cuánto vas a restar?';
+  document.getElementById('nuMovimientoMontoLabel').textContent = esEntrada ? '¿Cuánto recibiste?' : '¿Cuánto vas a restar?';
   const btnConf = document.getElementById('btn-confirmar-nu-mov');
   if (btnConf) {
     btnConf.textContent = esEntrada ? 'Registrar ingreso' : 'Registrar salida';
@@ -1297,29 +1297,29 @@ function abrirNuMovimiento(tipo) {
   }
 
   // Ocultar toggle apertura en salida, y también si la config lo desactiva
-  const aperturaWrap = document.getElementById('nuMovAperturaWrap');
+  const aperturaWrap = document.getElementById('nuMovimientoAperturaWrap');
   const _mostrarApertura = esEntrada && (S.modulos?.corregirSaldo !== false);
   if (aperturaWrap) aperturaWrap.style.display = _mostrarApertura ? 'flex' : 'none';
-  const checkbox = document.getElementById('nuMovEsApertura');
+  const checkbox = document.getElementById('nuMovimientoEsApertura');
   if (checkbox) checkbox.checked = false;
 
   // Resetear campos
-  document.getElementById('nuMovDesc').value = '';
-  document.getElementById('nuMovMonto').value = '';
-  document.getElementById('nuMovFecha').value = hoy();
-  const nuMovimientoNotaEl = document.getElementById('nuMovNota');
+  document.getElementById('nuMovimientoDesc').value = '';
+  document.getElementById('nuMovimientoMonto').value = '';
+  document.getElementById('nuMovimientoFecha').value = hoy();
+  const nuMovimientoNotaEl = document.getElementById('nuMovimientoNota');
   if (nuMovimientoNotaEl) nuMovimientoNotaEl.value = '';
-  document.getElementById('nuMovPreview').textContent = '';
+  document.getElementById('nuMovimientoPreview').textContent = '';
 
   // Renderizar selector de cajitas
   _nuMovimientoRenderCajitas();
 
   openSheet('nu-movimiento');
-  focusSheetField('nuMovDesc');
+  focusSheetField('nuMovimientoDesc');
 }
 
 function _nuMovimientoRenderCajitas() {
-  const wrap = document.getElementById('nuMovCajitasWrap');
+  const wrap = document.getElementById('nuMovimientoCajitasWrap');
   if (!wrap) return;
   const cajitas = _cajitasAhorroActual();
   if (!cajitas.length) {
@@ -1334,7 +1334,7 @@ function _nuMovimientoRenderCajitas() {
         <div class="nu-sel-nombre">${c.nombre||'Cajita'}</div>
         <div class="nu-sel-saldo">${fmt(saldo)}</div>
       </div>
-      <div id="_nuMovCheck_${c.id}" class="nu-sel-radio"></div>
+      <div id="_nuMovimientoCheck_${c.id}" class="nu-sel-radio"></div>
     </div>`;
   })}`;
 
@@ -1346,13 +1346,13 @@ function _nuMovimientoRenderCajitas() {
         e.style.borderColor = 'var(--border2)';
         e.style.background = 'var(--bg3)';
         const cid = e.dataset.nuCajita.split(':')[1];
-        const checkboxEl = document.getElementById('_nuMovCheck_'+cid);
+        const checkboxEl = document.getElementById('_nuMovimientoCheck_'+cid);
         if (checkboxEl) checkboxEl.innerHTML = '';
       });
       this.style.borderColor = 'var(--nu-light)';
       this.style.background = 'rgba(192,96,240,.08)';
       const selId = _nuMovimientoCajitaSel.split(':')[1];
-      const checkboxEl = document.getElementById('_nuMovCheck_'+selId);
+      const checkboxEl = document.getElementById('_nuMovimientoCheck_'+selId);
       if (checkboxEl) checkboxEl.innerHTML = '<svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--nu-light)" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
       _nuMovimientoActualizarPreview();
     });
@@ -1366,13 +1366,13 @@ function _nuMovimientoRenderCajitas() {
 }
 
 function _nuMovimientoToggleApertura() {
-  _aperturaToggleUI({checkbox:'nuMovEsApertura',lbl:'nuMovDescLabel',inp:'nuMovDesc',descPlaceholder:'Ej: Salario, mesada, bono...'});
+  _aperturaToggleUI({checkbox:'nuMovimientoEsApertura',lbl:'nuMovimientoDescLabel',inp:'nuMovimientoDesc',descPlaceholder:'Ej: Salario, mesada, bono...'});
 }
 
 function _nuMovimientoActualizarPreview() {
-  const prev = document.getElementById('nuMovPreview');
+  const prev = document.getElementById('nuMovimientoPreview');
   if (!prev || !_nuMovimientoCajitaSel) return;
-  const v = parseMoney(document.getElementById('nuMovMonto').value) || 0;
+  const v = parseMoney(document.getElementById('nuMovimientoMonto').value) || 0;
   if (!v) { prev.textContent = ''; return; }
   const cid = _nuMovimientoCajitaSel.split(':')[1];
   const cajita = (S.cajitas || []).find(x => x.id === cid);
@@ -1389,11 +1389,11 @@ function _nuMovimientoActualizarPreview() {
 }
 
 function confirmarNuMovimiento() {
-  const v = parseMoney(document.getElementById('nuMovMonto').value) || 0;
-  const desc = document.getElementById('nuMovDesc').value.trim();
-  const fecha = document.getElementById('nuMovFecha').value || hoy();
-  const nota = document.getElementById('nuMovNota')?.value.trim() || '';
-  const esApertura = _nuMovimientoTipo === 'entrada' && (document.getElementById('nuMovEsApertura')?.checked || false);
+  const v = parseMoney(document.getElementById('nuMovimientoMonto').value) || 0;
+  const desc = document.getElementById('nuMovimientoDesc').value.trim();
+  const fecha = document.getElementById('nuMovimientoFecha').value || hoy();
+  const nota = document.getElementById('nuMovimientoNota')?.value.trim() || '';
+  const esApertura = _nuMovimientoTipo === 'entrada' && (document.getElementById('nuMovimientoEsApertura')?.checked || false);
 
   if (!_nuMovimientoCajitaSel) { toast('Selecciona una cajita', 'err'); return; }
   if (!v) { toast('Ingresa el monto', 'err'); return; }
@@ -1520,7 +1520,7 @@ if (btnNuSalio) btnNuSalio.addEventListener('click', () => abrirNuMovimiento('sa
 const btnNuMovimientoConf = document.getElementById('btn-confirmar-nu-mov');
 if (btnNuMovimientoConf) btnNuMovimientoConf.addEventListener('click', confirmarNuMovimiento);
 document.addEventListener('input', function(e) {
-  if (e.target.id === 'nuMovMonto') _nuMovimientoActualizarPreview();
+  if (e.target.id === 'nuMovimientoMonto') _nuMovimientoActualizarPreview();
 });
 
 // --- Cajita: agregar ---
@@ -1595,8 +1595,8 @@ Events.registerAll('nu', {
 
 // El 'change' del toggle "es saldo inicial" del sheet de Agregar/Retirar de Nu (antes onchange inline en el HTML).
 (function(){
-  const wrap=document.getElementById('nuMovAperturaWrap');
-  const checkbox=document.getElementById('nuMovEsApertura');
+  const wrap=document.getElementById('nuMovimientoAperturaWrap');
+  const checkbox=document.getElementById('nuMovimientoEsApertura');
   if(wrap&&checkbox){
     wrap.addEventListener('click', () => checkbox.click());
     checkbox.addEventListener('click', e => e.stopPropagation());

@@ -4101,76 +4101,76 @@
     <div class="overlay" id="sheet-mesada-pago" data-sheet-id="mesada-pago">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title" id="mpTitle">Mesada recibida</div>
-        <p class="ms-desc" id="mpDesc">¿Cuándo te pagó y qué hiciste con esa plata?</p>
+        <div class="sheet-title" id="mesadaPagoTitle">Mesada recibida</div>
+        <p class="ms-desc" id="mesadaPagoDesc">¿Cuándo te pagó y qué hiciste con esa plata?</p>
         <div class="ig">
-          <label class="il" for="mpMonto">Monto recibido</label>
-          <input type="text" inputmode="decimal" id="mpMonto"
+          <label class="il" for="mesadaPagoMonto">Monto recibido</label>
+          <input type="text" inputmode="decimal" id="mesadaPagoMonto"
             placeholder="80000" class="money-input">
         </div>
         <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
-        <div id="mpEncargoBox" class="ms-enc-box" style="display:none;">
-          <div class="ms-enc-toggle" id="mpEncargoToggleWrap">
-            <input type="checkbox" id="mpUsarEncargo" class="ms-chk ms-chk-blue">
+        <div id="mesadaPagoEncargoBox" class="ms-enc-box" style="display:none;">
+          <div class="ms-enc-toggle" id="mesadaPagoEncargoToggleWrap">
+            <input type="checkbox" id="mesadaPagoUsarEncargo" class="ms-chk ms-chk-blue">
             <div class="ms-flex-1">
-              <div class="ms-enc-label" id="mpEncargoLabel">Me pagó con plata que ya le tenía
+              <div class="ms-enc-label" id="mesadaPagoEncargoLabel">Me pagó con plata que ya le tenía
                 guardada</div>
-              <div class="ms-sub" id="mpEncargoSub"></div>
+              <div class="ms-sub" id="mesadaPagoEncargoSub"></div>
             </div>
           </div>
-          <div id="mpEncargoDetalle" class="ms-enc-detalle" style="display:none;">
-            <div class="ig ms-mb8" id="mpEncargoSelWrap" style="display:none;">
-              <label class="il" for="mpEncargoSel">¿Cuál encargo?</label>
-              <div class="select-wrap"><select id="mpEncargoSel"></select>
+          <div id="mesadaPagoEncargoDetalle" class="ms-enc-detalle" style="display:none;">
+            <div class="ig ms-mb8" id="mesadaPagoEncargoSelWrap" style="display:none;">
+              <label class="il" for="mesadaPagoEncargoSel">¿Cuál encargo?</label>
+              <div class="select-wrap"><select id="mesadaPagoEncargoSel"></select>
               </div>
             </div>
             <div class="ig ms-mb0">
-              <label class="il" for="mpEncargoCuentaSel">¿De cuál cuenta
+              <label class="il" for="mesadaPagoEncargoCuentaSel">¿De cuál cuenta
                 sale esa plata?</label>
               <div class="select-wrap"><select
-                  id="mpEncargoCuentaSel"></select></div>
+                  id="mesadaPagoEncargoCuentaSel"></select></div>
             </div>
           </div>
         </div>
         <!-- Modo destino: simple o dividido -->
         <div class="field-header ms-mb8">
-          <label for="mpDestino" class="il ms-mb0">¿Qué hiciste con esa
+          <label for="mesadaPagoDestino" class="il ms-mb0">¿Qué hiciste con esa
             plata?</label>
-          <button type="button" id="mpSplitToggle"
+          <button type="button" id="mesadaPagoSplitToggle"
             class="btn-split">Dividir</button>
         </div>
         <!-- Modo simple -->
-        <div id="mpModoSimple" class="ig">
-          <div class="select-wrap"><select id="mpDestino">
+        <div id="mesadaPagoModoSimple" class="ig">
+          <div class="select-wrap"><select id="mesadaPagoDestino">
               <option value>No especificar / lo gasté</option>
             </select></div>
         </div>
         <!-- Modo dividido -->
-        <div id="mpModoDividido" style="display:none;">
-          <div id="mpSplitRows"></div>
+        <div id="mesadaPagoModoDividido" style="display:none;">
+          <div id="mesadaPagoSplitRows"></div>
           <button type="button" id="btn-add-split-row"
             class="btn-add-cuenta ms-mb8">+
             Agregar cuenta</button>
         </div>
-        <div id="mpPreview" class="ms-preview"></div>
+        <div id="mesadaPagoPreview" class="ms-preview"></div>
         <!-- Toggle: la diferencia quedó debiendo -->
-        <div id="mpDebeWrap" class="ms-debe-box" style="display:none;">
-          <input type="checkbox" id="mpQuedaDebiendo" class="ms-chk ms-chk-amber">
+        <div id="mesadaPagoDebeWrap" class="ms-debe-box" style="display:none;">
+          <input type="checkbox" id="mesadaPagoQuedaDebiendo" class="ms-chk ms-chk-amber">
           <div class="ms-flex-1">
-            <div class="ms-debe-label" id="mpDebeLabel">Te está debiendo la diferencia</div>
+            <div class="ms-debe-label" id="mesadaPagoDebeLabel">Te está debiendo la diferencia</div>
             <div class="ms-sub">Si
               no marcas esto, el mes queda cerrado con lo que recibiste — sin
               deuda</div>
           </div>
         </div>
         <div class="ig">
-          <label class="il" for="mpFecha">Fecha en que te pagó</label>
-          <input type="date" id="mpFecha">
+          <label class="il" for="mesadaPagoFecha">Fecha en que te pagó</label>
+          <input type="date" id="mesadaPagoFecha">
         </div>
-        <div id="mpAvisoMes" class="ms-aviso-mes"></div>
+        <div id="mesadaPagoAvisoMes" class="ms-aviso-mes"></div>
         <div class="ig">
-          <label class="il" for="mpNota">Nota (opcional)</label>
-          <input type="text" id="mpNota" maxlength="60"
+          <label class="il" for="mesadaPagoNota">Nota (opcional)</label>
+          <input type="text" id="mesadaPagoNota" maxlength="60"
             placeholder="Ej: 42k Mesada Nu, el resto en Nequi">
         </div>
         <button type="button" class="btn btn-primary"
@@ -4195,51 +4195,51 @@
     <div class="overlay" id="sheet-mesada-pend" data-sheet-id="mesada-pend">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title" id="mppTitle">Pago de lo pendiente</div>
-        <p class="ms-desc" id="mppDesc">¿Cuánto te dio de lo que te quedó debiendo?</p>
+        <div class="sheet-title" id="mesadaPagoPendienteTitle">Pago de lo pendiente</div>
+        <p class="ms-desc" id="mesadaPagoPendienteDesc">¿Cuánto te dio de lo que te quedó debiendo?</p>
         <div class="ig">
-          <label class="il" for="mppMonto">Monto recibido</label>
-          <input type="text" inputmode="decimal" id="mppMonto"
+          <label class="il" for="mesadaPagoPendienteMonto">Monto recibido</label>
+          <input type="text" inputmode="decimal" id="mesadaPagoPendienteMonto"
             placeholder="20000" class="money-input">
         </div>
         <!-- ¿Pagó con plata que ya le tenía guardada en un encargo? -->
-        <div id="mppEncargoBox" class="ms-enc-box" style="display:none;">
-          <div class="ms-enc-toggle" id="mppEncargoToggleWrap">
-            <input type="checkbox" id="mppUsarEncargo" class="ms-chk ms-chk-blue">
+        <div id="mesadaPagoPendienteEncargoBox" class="ms-enc-box" style="display:none;">
+          <div class="ms-enc-toggle" id="mesadaPagoPendienteEncargoToggleWrap">
+            <input type="checkbox" id="mesadaPagoPendienteUsarEncargo" class="ms-chk ms-chk-blue">
             <div class="ms-flex-1">
-              <div class="ms-enc-label" id="mppEncargoLabel">Me pagó con plata que ya le tenía
+              <div class="ms-enc-label" id="mesadaPagoPendienteEncargoLabel">Me pagó con plata que ya le tenía
                 guardada</div>
-              <div class="ms-sub" id="mppEncargoSub"></div>
+              <div class="ms-sub" id="mesadaPagoPendienteEncargoSub"></div>
             </div>
           </div>
-          <div id="mppEncargoDetalle" class="ms-enc-detalle" style="display:none;">
-            <div class="ig ms-mb8" id="mppEncargoSelWrap" style="display:none;">
-              <label class="il" for="mppEncargoSel">¿Cuál encargo?</label>
-              <div class="select-wrap"><select id="mppEncargoSel"></select>
+          <div id="mesadaPagoPendienteEncargoDetalle" class="ms-enc-detalle" style="display:none;">
+            <div class="ig ms-mb8" id="mesadaPagoPendienteEncargoSelWrap" style="display:none;">
+              <label class="il" for="mesadaPagoPendienteEncargoSel">¿Cuál encargo?</label>
+              <div class="select-wrap"><select id="mesadaPagoPendienteEncargoSel"></select>
               </div>
             </div>
             <div class="ig ms-mb0">
-              <label class="il" for="mppEncargoCuentaSel">¿De cuál cuenta
+              <label class="il" for="mesadaPagoPendienteEncargoCuentaSel">¿De cuál cuenta
                 sale esa plata?</label>
               <div class="select-wrap"><select
-                  id="mppEncargoCuentaSel"></select></div>
+                  id="mesadaPagoPendienteEncargoCuentaSel"></select></div>
             </div>
           </div>
         </div>
-        <div class="ig" id="mppDestinoWrap">
-          <label class="il" for="mppDestino">¿Dónde la metiste?</label>
-          <div class="select-wrap"><select id="mppDestino">
+        <div class="ig" id="mesadaPagoPendienteDestinoWrap">
+          <label class="il" for="mesadaPagoPendienteDestino">¿Dónde la metiste?</label>
+          <div class="select-wrap"><select id="mesadaPagoPendienteDestino">
               <option value>No especificar / lo gasté</option>
             </select></div>
         </div>
-        <div id="mppPreview" class="ms-preview ms-preview-amber"></div>
+        <div id="mesadaPagoPendientePreview" class="ms-preview ms-preview-amber"></div>
         <div class="ig">
-          <label class="il" for="mppFecha">Fecha en que te pagó</label>
-          <input type="date" id="mppFecha">
+          <label class="il" for="mesadaPagoPendienteFecha">Fecha en que te pagó</label>
+          <input type="date" id="mesadaPagoPendienteFecha">
         </div>
         <div class="ig">
-          <label class="il" for="mppNota">Nota (opcional)</label>
-          <input type="text" id="mppNota" maxlength="60"
+          <label class="il" for="mesadaPagoPendienteNota">Nota (opcional)</label>
+          <input type="text" id="mesadaPagoPendienteNota" maxlength="60"
             placeholder="Ej: Me dio el resto en efectivo">
         </div>
         <button type="button" class="btn btn-primary"
@@ -4265,15 +4265,15 @@
       data-sheet-id="agregar-dinero">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title" id="adTitle">Agregar dinero</div>
+        <div class="sheet-title" id="agregarDineroTitle">Agregar dinero</div>
         <p class="ix-div-211">El
           valor que ingreses se <b class="ix-caccent">sumará</b> al
           saldo actual. No reemplaza, solo suma.</p>
         <div class="ig"><div class="il">Saldo actual</div><div class="ix-adsaldoactual"
-            id="adSaldoActual">$0</div></div>
+            id="agregarDineroSaldoActual">$0</div></div>
         <!-- Toggle apertura -->
-        <div class="ix-adaperturawrap" id="adAperturaWrap">
-          <input class="ix-adesapertura" type="checkbox" id="adEsApertura">
+        <div class="ix-adaperturawrap" id="agregarDineroAperturaWrap">
+          <input class="ix-adesapertura" type="checkbox" id="agregarDineroEsApertura">
           <div class="ix-fx1-minw0">
             <div class="ix-spextralabel">Es
               saldo inicial (ya lo tenía)</div>
@@ -4281,27 +4281,27 @@
               contará como ingreso del mes ni aparecerá en estadísticas</div>
           </div>
         </div>
-        <label class="ix-adaperturawrap" id="adEsExtraWrap">
-          <input class="ix-adesapertura" type="checkbox" id="adEsExtra">
+        <label class="ix-adaperturawrap" id="agregarDineroEsExtraWrap">
+          <input class="ix-adesapertura" type="checkbox" id="agregarDineroEsExtra">
           <div class="ix-fx1-minw0">
             <div class="ix-spextralabel">Es extraordinario (no se repite)</div>
             <div class="ix-div-310">Aguinaldo, venta, premio: cuenta como ingreso, pero no como tu ritmo normal del mes</div>
           </div>
         </label>
-        <div class="ig"><label class="il" for="adDesc" id="adDescLabel">¿De
+        <div class="ig"><label class="il" for="agregarDineroDesc" id="agregarDineroDescLabel">¿De
             dónde viene esta plata? <span class="ix-cred">*</span></label><input
-            type="text" id="adDesc"
+            type="text" id="agregarDineroDesc"
             placeholder="Ej: Mesada, regalo, venta, sueldo..."
             maxlength="80"></div>
-        <div class="ig"><label class="il" for="adMonto">¿Cuánto
+        <div class="ig"><label class="il" for="agregarDineroMonto">¿Cuánto
             recibiste?</label><input type="text" inputmode="decimal"
-            id="adMonto" placeholder="0,00" class="money-input" autofocus></div>
-        <div class="ig"><label class="il" for="adFecha">Fecha</label><input
-            type="date" id="adFecha"></div>
-        <div class="ig"><label class="il" for="adNota">Nota <span class="ix-span-262">(opcional)</span></label><input
-            type="text" id="adNota" maxlength="60"
+            id="agregarDineroMonto" placeholder="0,00" class="money-input" autofocus></div>
+        <div class="ig"><label class="il" for="agregarDineroFecha">Fecha</label><input
+            type="date" id="agregarDineroFecha"></div>
+        <div class="ig"><label class="il" for="agregarDineroNota">Nota <span class="ix-span-262">(opcional)</span></label><input
+            type="text" id="agregarDineroNota" maxlength="60"
             placeholder="Detalle adicional"></div>
-        <div class="ix-adpreview" id="adPreview"></div>
+        <div class="ix-adpreview" id="agregarDineroPreview"></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-agregar-dinero">Agregar al saldo</button>
         <button type="button" class="btn btn-ghost"
@@ -4330,31 +4330,31 @@
                 points="12 5 19 12 12 19" /></svg></button>
         </div>
         <div class="ig">
-          <label class="il" for="adMenuDest">Cuenta destino</label>
-          <div class="select-wrap"><select id="adMenuDest"></select></div>
+          <label class="il" for="agregarDineroMenuDestino">Cuenta destino</label>
+          <div class="select-wrap"><select id="agregarDineroMenuDestino"></select></div>
         </div>
-        <div class="ix-admenusaldo" id="adMenuSaldo"></div>
-        <label class="ix-adaperturawrap" id="adMenuEsExtraWrap">
-          <input class="ix-adesapertura" type="checkbox" id="adMenuEsExtra">
+        <div class="ix-admenusaldo" id="agregarDineroMenuSaldo"></div>
+        <label class="ix-adaperturawrap" id="agregarDineroMenuEsExtraWrap">
+          <input class="ix-adesapertura" type="checkbox" id="agregarDineroMenuEsExtra">
           <div class="ix-fx1-minw0">
             <div class="ix-spextralabel">Es extraordinario (no se repite)</div>
             <div class="ix-div-310">Aguinaldo, venta, premio: cuenta como ingreso, pero no como tu ritmo normal del mes</div>
           </div>
         </label>
-        <div class="ig"><label class="il" for="adMenuDesc">¿De dónde viene esta
+        <div class="ig"><label class="il" for="agregarDineroMenuDesc">¿De dónde viene esta
             plata? <span class="ix-cred">*</span></label><input
-            type="text" id="adMenuDesc"
+            type="text" id="agregarDineroMenuDesc"
             placeholder="Ej: Mesada, regalo, venta, sueldo..."
             maxlength="80"></div>
-        <div class="ig"><label class="il" for="adMenuMonto">¿Cuánto
+        <div class="ig"><label class="il" for="agregarDineroMenuMonto">¿Cuánto
             recibiste?</label><input type="text" inputmode="decimal"
-            id="adMenuMonto" placeholder="0,00" class="money-input"></div>
-        <div class="ig"><label class="il" for="adMenuFecha">Fecha</label><input
-            type="date" id="adMenuFecha"></div>
-        <div class="ig"><label class="il" for="adMenuNota">Nota <span class="ix-span-262">(opcional)</span></label><input
-            type="text" id="adMenuNota" maxlength="60"
+            id="agregarDineroMenuMonto" placeholder="0,00" class="money-input"></div>
+        <div class="ig"><label class="il" for="agregarDineroMenuFecha">Fecha</label><input
+            type="date" id="agregarDineroMenuFecha"></div>
+        <div class="ig"><label class="il" for="agregarDineroMenuNota">Nota <span class="ix-span-262">(opcional)</span></label><input
+            type="text" id="agregarDineroMenuNota" maxlength="60"
             placeholder="Detalle adicional"></div>
-        <div class="ix-adpreview" id="adMenuPreview"></div>
+        <div class="ix-adpreview" id="agregarDineroMenuPreview"></div>
         <button type="button" class="btn btn-primary"
           id="btn-confirmar-agregar-dinero-menu">Agregar al saldo</button>
         <button type="button" class="btn btn-ghost"
@@ -4367,20 +4367,20 @@
     <div class="overlay" id="sheet-nu-movimiento" data-sheet-id="nu-movimiento">
       <div class="sheet">
         <div class="sheet-handle"></div>
-        <div class="sheet-title" id="nuMovTitle">Agregar a la cuenta</div>
-        <p class="ix-div-211" id="nuMovSubtitle">El valor
+        <div class="sheet-title" id="nuMovimientoTitle">Agregar a la cuenta</div>
+        <p class="ix-div-211" id="nuMovimientoSubtitle">El valor
           se <b class="ix-cnu-light">sumará</b> a la cajita que
           elijas.</p>
 
         <!-- Selector de cajita -->
         <div class="ig">
           <div class="il">¿A qué cajita? <span class="ix-cred">*</span></div>
-          <div class="ix-numovcajitaswrap" id="nuMovCajitasWrap"></div>
+          <div class="ix-numovcajitaswrap" id="nuMovimientoCajitasWrap"></div>
         </div>
 
         <!-- Toggle saldo inicial -->
-        <div class="ix-numovaperturawrap" id="nuMovAperturaWrap">
-          <input class="ix-adesapertura" type="checkbox" id="nuMovEsApertura">
+        <div class="ix-numovaperturawrap" id="nuMovimientoAperturaWrap">
+          <input class="ix-adesapertura" type="checkbox" id="nuMovimientoEsApertura">
           <div class="ix-fx1-minw0">
             <div class="ix-spextralabel">Es
               saldo inicial (ya lo tenía)</div>
@@ -4390,24 +4390,24 @@
         </div>
 
         <div class="ig">
-          <label for="nuMovDesc" class="il" id="nuMovDescLabel">¿De dónde viene esta plata?
+          <label for="nuMovimientoDesc" class="il" id="nuMovimientoDescLabel">¿De dónde viene esta plata?
             <span class="ix-cred">*</span></label>
-          <input type="text" id="nuMovDesc"
+          <input type="text" id="nuMovimientoDesc"
             placeholder="Ej: Salario, mesada, bono..." maxlength="80">
         </div>
         <div class="ig">
-          <label for="nuMovMonto" class="il" id="nuMovMontoLabel">¿Cuánto recibiste?</label>
-          <input type="text" inputmode="decimal" id="nuMovMonto"
+          <label for="nuMovimientoMonto" class="il" id="nuMovimientoMontoLabel">¿Cuánto recibiste?</label>
+          <input type="text" inputmode="decimal" id="nuMovimientoMonto"
             placeholder="0,00" class="money-input">
         </div>
         <div class="ig">
-          <label class="il" for="nuMovFecha">Fecha</label>
-          <input type="date" id="nuMovFecha">
+          <label class="il" for="nuMovimientoFecha">Fecha</label>
+          <input type="date" id="nuMovimientoFecha">
         </div>
-        <div class="ig"><label class="il" for="nuMovNota">Nota <span class="ix-span-262">(opcional)</span></label><input
-            type="text" id="nuMovNota" maxlength="60"
+        <div class="ig"><label class="il" for="nuMovimientoNota">Nota <span class="ix-span-262">(opcional)</span></label><input
+            type="text" id="nuMovimientoNota" maxlength="60"
             placeholder="Detalle adicional"></div>
-        <div class="ix-adpreview" id="nuMovPreview"></div>
+        <div class="ix-adpreview" id="nuMovimientoPreview"></div>
         <button type="button" class="btn btn-primary ix-btn-confirmar-nu-mov" id="btn-confirmar-nu-mov">Confirmar</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="nu-movimiento">Cancelar</button>

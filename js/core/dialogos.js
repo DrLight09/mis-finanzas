@@ -100,7 +100,7 @@ function avisarNoSePuede(titulo,motivo){
 // con `vence` sin padear dejó `calcCDT().val` en NaN, que subió a
 // `_patrimonioVisible` en refresh() y mostró "Patrimonio visible $0" y
 // "CDTs Nu $0" con datos reales de sobra en las demás cuentas. Ver
-// CHANGELOG.md#patrimonio-y-cálculos-globales.
+// changelog/patrimonio-y-calculos-globales.md.
 //
 // Por la UI normal esto no puede pasar (los `<input type="date">` siempre
 // devuelven YYYY-MM-DD con ceros a la izquierda) — apareció por una edición

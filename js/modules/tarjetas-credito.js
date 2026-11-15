@@ -27,7 +27,7 @@
      `closeMas(); showScreen('tarjetas');` — mismo patrón que ya usa
      mas-menu.js para sus propios ítems — y con eso `navTo()` se quedó
      sin ningún caller conocido y se retiró junto con js/core/nav.js.
-     Ver CHANGELOG.md#infraestructura--seguridad.
+     Ver changelog/infraestructura-seguridad.md.
    - El "Feed de actividad financiera" — un módulo distinto que
      compartía el mismo tag <script> por casualidad de cómo estaba
      armado el archivo, no por relación real con Tarjetas de Crédito.
@@ -1061,7 +1061,7 @@ Events.registerAll('tarjetas', {
   eliminarPago:     eliminarPagoTC,
   seleccionarColor: tcSelColor,          // usada por los 8 círculos de color estáticos en #sheet-nueva-tc
   verMovimiento:           (...args) => abrirDetalleMovimiento(...args), // función compartida (js/core/movimientos.js), envuelta por el mismo motivo que en prestado.js: se define más abajo (en movimientos.js, que carga DESPUÉS de este archivo), así que pasarla directo la capturaría como undefined al cargar. Envuelta así, la búsqueda del nombre global ocurre recién al hacer click.
-  verTodo:          () => { closeMas(); showScreen('tarjetas'); } // antes navTo('tarjetas') — ver CHANGELOG.md#infraestructura--seguridad (2026-09-10, retiro de nav.js)
+  verTodo:          () => { closeMas(); showScreen('tarjetas'); } // antes navTo('tarjetas') — ver changelog/infraestructura-seguridad.md (2026-09-10, retiro de nav.js)
 });
 // ── Conectar botones TC al formulario y selects ───────────────────
 // Nota (2026-08-02): antes esto esperaba 'DOMContentLoaded'. Si este

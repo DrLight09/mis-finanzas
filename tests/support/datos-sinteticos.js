@@ -5,7 +5,7 @@
 // libro se escriben con las funciones REALES de la app (sumarFuente/descontarFuente con Libro.conOrigen, registrarMovimientoEspejo,
 // tcRecalcular), de modo que las invariantes (el libro cuadra, deuda de tarjeta calculada…) se prueban contra el comportamiento
 // real y no contra una copia. Lo que no tiene una función pura (bolsa de un encargo, movimientos de una deuda) se arma con la forma
-// que documentan docs/encargos.md y docs/prestamos.md.
+// que documentan docs/encargos.md y docs/prestado.md.
 //
 // Determinista: misma semilla → mismos datos. Los ids son 'x00001'… (el uid() real mezcla Date.now() y puede repetirse dentro de
 // un mismo milisegundo al generar miles de registros; un id repetido se leería como el mismo registro).

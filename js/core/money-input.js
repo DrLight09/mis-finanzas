@@ -7,7 +7,7 @@
 // sin que salte al final. El punto es solo visual: al leer, parseMoney()/parseMiles() lo quitan.
 // Depende de parseMoney() (js/core/persistencia.js) — variables globales compartidas entre scripts clásicos,
 // no imports; por eso este archivo debe seguir cargando como <script> normal (sin type="module").
-// Ver auditoria-tecnica.md #2/#4 y CHANGELOG.md#infraestructura--seguridad.
+// Ver auditoria-tecnica.md #2/#4 y changelog/infraestructura-seguridad.md.
 
 const _MONTO_MAX_ENTEROS = 12;
 

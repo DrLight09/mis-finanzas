@@ -1,6 +1,6 @@
 # Auditoría técnica — mis-finanzas (pendientes)
 
-> Este documento es distinto a los demás: no describe cómo funciona un módulo ni un bug ya corregido — es la lista de lo que sigue **genuinamente pendiente** de seguridad, arquitectura o rendimiento. Todo lo que ya se resolvió (CSP, escapado de `.innerHTML`, la modularización completa a 14 archivos + carga lazy, y la mayor parte del trabajo de rendimiento) se condensó en [`CHANGELOG.md`](./CHANGELOG.md#infraestructura--seguridad) el 2026-09-22 — este archivo llegó a 886 líneas, casi todas de hallazgos ya cerrados narrados sesión por sesión, y se redujo a esto.
+> Este documento es distinto a los demás: no describe cómo funciona un módulo ni un bug ya corregido — es la lista de lo que sigue **genuinamente pendiente** de seguridad, arquitectura o rendimiento. Todo lo que ya se resolvió (CSP, escapado de `.innerHTML`, la modularización completa a 14 archivos + carga lazy, y la mayor parte del trabajo de rendimiento) se condensó en [`changelog/infraestructura-seguridad.md`](./changelog/infraestructura-seguridad.md) el 2026-09-22 — este archivo llegó a 886 líneas, casi todas de hallazgos ya cerrados narrados sesión por sesión, y se redujo a esto.
 
 ---
 

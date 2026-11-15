@@ -71,3 +71,78 @@ test('atributos data-*: todo dataset / getAttribute / selector que el código le
   const sinEscribir = [...leidos].filter(([k]) => !escritos.has(k) && !EXCEPCIONES.has(k)).map(([k, f]) => 'data-' + k + ' (' + [...f].join(', ') + ')');
   assert.deepEqual(sinEscribir, [], 'Se lee un atributo que ninguna plantilla escribe (¿se renombró solo uno de los dos lados?): ' + sinEscribir.join('; '));
 });
+
+// ── Helpers de lectura estática (sin parser: comentarios fuera y búsqueda por patrones) ──────────────────────────────────────────────
+const archivosApp = () => {
+  const out = ['index.html'];
+  (function recorrer(d) { for (const f of fs.readdirSync(path.join(raiz, d))) { const rel = d + '/' + f; if (fs.statSync(path.join(raiz, rel)).isDirectory()) recorrer(rel); else if (/\.js$/.test(f)) out.push(rel); } })('js');
+  return out;
+};
+// Quita comentarios (bloque y línea; un «//» precedido de «:» o de comilla es parte de una URL o de un texto y se conserva).
+const sinComentarios = (rel, s) => rel.endsWith('.html')
+  ? s.replace(/<!--[\s\S]*?-->/g, '')
+  : s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/[^\n]*/g, '$1');
+const leerSinComentarios = rel => sinComentarios(rel, fs.readFileSync(path.join(raiz, rel), 'utf8'));
+
+test('valores guardados con constante (estado.js): no se escriben como texto suelto en el resto de js/', () => {
+  // Cada valor tiene su constante en js/core/estado.js (TIPO_PAGO_COMPLETO, TIPO_ALCANCIA). El texto suelto solo se permite allí.
+  const VALORES = { pago_completo: 'TIPO_PAGO_COMPLETO', yo_cuenta: 'TIPO_ALCANCIA.yoCuenta', yo_directo: 'TIPO_ALCANCIA.yoDirecto', cobro_deuda: 'TIPO_ALCANCIA.cobroDeuda' };
+  const sueltos = [];
+  for (const rel of archivosApp()) {
+    if (rel === 'js/core/estado.js' || rel === 'index.html') continue;
+    const s = leerSinComentarios(rel);
+    for (const [valor, constante] of Object.entries(VALORES))
+      if (new RegExp('[\'"`]' + valor + '[\'"`]').test(s)) sueltos.push(rel + ': «' + valor + '» → ' + constante);
+  }
+  assert.deepEqual(sueltos, [], 'Usa la constante en vez del texto suelto: ' + sueltos.join('; '));
+});
+
+test('data-action: toda acción que una plantilla escribe está registrada, y toda acción registrada se usa en algún sitio', () => {
+  // Registradas: Events.on('ns:accion', fn) y Events.registerAll('ns', { accion: fn, ... }).
+  const bloque = (s, i) => { let d = 0, j = i; for (; j < s.length; j++) { if (s[j] === '{') d++; else if (s[j] === '}') { d--; if (d === 0) break; } } return s.slice(i, j + 1); };
+  const registradas = new Map(), escritas = new Map(), mencionadas = new Set();
+  const sumar = (mapa, k, f) => { if (!mapa.has(k)) mapa.set(k, new Set()); mapa.get(k).add(f); };
+  for (const rel of archivosApp()) {
+    const s = leerSinComentarios(rel);
+    for (const m of s.matchAll(/Events\.on\(\s*['"`]([\w-]+:[\w-]+)['"`]/g)) sumar(registradas, m[1], rel);
+    for (const m of s.matchAll(/Events\.registerAll\(\s*['"`]([\w-]+)['"`]\s*,\s*\{/g)) {
+      const cuerpo = bloque(s, m.index + m[0].length - 1).slice(1, -1);
+      let prof = 0, actual = '';
+      const partes = [];
+      for (const c of cuerpo) {
+        if ('{(['.includes(c)) prof++; else if ('})]'.includes(c)) prof--;
+        if (c === ',' && prof === 0) { partes.push(actual); actual = ''; } else actual += c;
+      }
+      partes.push(actual);
+      for (const p of partes) { const k = p.trim().match(/^['"]?([\w-]+)['"]?\s*(?::|$|\()/); if (k) sumar(registradas, m[1] + ':' + k[1], rel); }
+    }
+    for (const m of s.matchAll(/data-action=\\?"([\w-]+:[\w-]+)\\?"/g)) sumar(escritas, m[1], rel);
+    for (const m of s.matchAll(/(?:Events\.)?attr\(\s*['"`]([\w-]+:[\w-]+)['"`]/g)) sumar(escritas, m[1], rel);
+    // «Mencionada»: cualquier texto 'ns:accion' que no sea el propio registro (hay plantillas que arman la acción con una variable).
+    for (const m of s.matchAll(/['"`]([\w-]+:[\w-]+)['"`]/g)) if (!/Events\.on\(\s*['"`]$/.test(s.slice(Math.max(0, m.index - 14), m.index + 1))) mencionadas.add(m[1]);
+  }
+  assert.ok(registradas.size > 150 && escritas.size > 150, 'el análisis dejó de ver las acciones (¿cambió la forma de registrarlas?): ' + registradas.size + ' / ' + escritas.size);
+  const sinRegistrar = [...escritas.keys()].filter(a => !registradas.has(a)).map(a => a + ' (' + [...escritas.get(a)].join(', ') + ')');
+  assert.deepEqual(sinRegistrar, [], 'Acción escrita en una plantilla que nadie registra (¿se renombró solo un lado?): ' + sinRegistrar.join('; '));
+  const sinUso = [...registradas.keys()].filter(a => !escritas.has(a) && !mencionadas.has(a));
+  assert.deepEqual(sinUso, [], 'Acción registrada que ninguna plantilla escribe (código muerto o nombre desfasado): ' + sinUso.join(', '));
+});
+
+test('referencias a documentos: todo «algo.md» que citan js/, tests/ y scripts/ existe en docs/ (o en docs/changelog/)', () => {
+  const existentes = new Set();
+  (function recorrer(d) { for (const f of fs.readdirSync(path.join(raiz, d))) { const rel = d + '/' + f; if (fs.statSync(path.join(raiz, rel)).isDirectory()) recorrer(rel); else if (f.endsWith('.md')) existentes.add(rel.slice('docs/'.length)); } })('docs');
+  const fuera = new Set(['README.md', 'mapa-codigo.md', 'pendientes-mejora-12.md']);
+  const colgantes = [];
+  for (const dir of ['js', 'tests', 'scripts']) {
+    (function recorrer(d) {
+      for (const f of fs.readdirSync(path.join(raiz, d))) {
+        const rel = d + '/' + f;
+        if (fs.statSync(path.join(raiz, rel)).isDirectory()) { if (f !== 'fixtures') recorrer(rel); continue; }
+        if (!f.endsWith('.js') || rel === 'tests/convenciones.test.js') continue;
+        for (const m of fs.readFileSync(path.join(raiz, rel), 'utf8').matchAll(/(?<![\w/.-])(?:docs\/)?((?:changelog\/)?[a-z0-9-]+\.md)\b/g))
+          if (!existentes.has(m[1]) && !fuera.has(m[1])) colgantes.push(rel + ' → ' + m[1]);
+      }
+    })(dir);
+  }
+  assert.deepEqual(colgantes, [], 'Se cita un documento que no existe (¿se borró o se renombró?): ' + [...new Set(colgantes)].join('; '));
+});

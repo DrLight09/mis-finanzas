@@ -443,13 +443,13 @@ describe('mesada-ui', () => {
   test('UI — registrar un pago simple de punta a punta (abrir, escribir, confirmar)', () => {
     const { ctx, d } = ui();
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
-    assert.equal(d.el('mpTitle').textContent, 'Papá · Abr 2026');
+    assert.equal(d.el('mesadaPagoTitle').textContent, 'Papá · Abr 2026');
     // Precargado con separador de miles (mejora 1), igual que cuando se escribe; y se lee de vuelta como 80000.
-    assert.equal(d.el('mpMonto').value, '80.000');
-    assert.equal(ctx.parseMoney(d.el('mpMonto').value), 80000);
-    d.el('mpMonto').value = '80000'; d.el('mpFecha').value = '2026-04-05'; d.el('mpDestino').value = 'cuenta:nequi';
-    d.fire('mpMonto', 'input');
-    assert.match(d.el('mpPreview').textContent, /\+/);
+    assert.equal(d.el('mesadaPagoMonto').value, '80.000');
+    assert.equal(ctx.parseMoney(d.el('mesadaPagoMonto').value), 80000);
+    d.el('mesadaPagoMonto').value = '80000'; d.el('mesadaPagoFecha').value = '2026-04-05'; d.el('mesadaPagoDestino').value = 'cuenta:nequi';
+    d.fire('mesadaPagoMonto', 'input');
+    assert.match(d.el('mesadaPagoPreview').textContent, /\+/);
     d.fire('btn-confirmar-mesada', 'click');
     assert.equal(ctx.S.cuentas[0].saldo, 81000);
     assert.equal(ctx.getMesadaData('papa')['2026-3'].destino, 'cuenta:nequi');
@@ -458,13 +458,13 @@ describe('mesada-ui', () => {
   test('UI — con encargo: el widget aparece, valida saldo y descuenta al confirmar', () => {
     const { ctx, d } = ui({ encargos: [encargo('e1', 'Plata de papá', 100000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
-    assert.equal(d.el('mpEncargoBox').style.display, '');
-    assert.match(d.el('mpEncargoSub').textContent, /^Tienes .* guardados de Papá en encargos$/);
-    d.el('mpMonto').value = '80000'; d.el('mpFecha').value = '2026-04-05';
-    d.el('mpUsarEncargo').click();
-    d.el('mpEncargoCuentaSel').value = 'cuenta:nequi';
-    assert.equal(d.el('mpEncargoDetalle').style.display, '');
-    d.el('mpDestino').value = 'cuenta:nequi';
+    assert.equal(d.el('mesadaPagoEncargoBox').style.display, '');
+    assert.match(d.el('mesadaPagoEncargoSub').textContent, /^Tienes .* guardados de Papá en encargos$/);
+    d.el('mesadaPagoMonto').value = '80000'; d.el('mesadaPagoFecha').value = '2026-04-05';
+    d.el('mesadaPagoUsarEncargo').click();
+    d.el('mesadaPagoEncargoCuentaSel').value = 'cuenta:nequi';
+    assert.equal(d.el('mesadaPagoEncargoDetalle').style.display, '');
+    d.el('mesadaPagoDestino').value = 'cuenta:nequi';
     d.fire('btn-confirmar-mesada', 'click');
     assert.equal(ctx.encargoSaldo(ctx.S.encargos[0]), 20000);
     assert.equal(ctx.S.cuentas[0].saldo, 81000);
@@ -473,15 +473,15 @@ describe('mesada-ui', () => {
   test('UI — sin candidatos el widget de encargo queda oculto', () => {
     const { ctx, d } = ui({ encargos: [encargo('e1', 'Carlos', 100000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
-    assert.equal(d.el('mpEncargoBox').style.display, 'none');
+    assert.equal(d.el('mesadaPagoEncargoBox').style.display, 'none');
   });
 
   test('REGRESIÓN bug 3 — el nombre del encargo va como texto (no HTML) en el toast de saldo insuficiente', () => {
     const nombre = 'Papá <img src=x onerror=alert(1)>';
     const { ctx, d, toasts } = ui({ encargos: [encargo('e1', nombre, 1000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
-    d.el('mpMonto').value = '80000';
-    d.el('mpUsarEncargo').click();
+    d.el('mesadaPagoMonto').value = '80000';
+    d.el('mesadaPagoUsarEncargo').click();
     d.fire('btn-confirmar-mesada', 'click');
     assert.equal(toasts.length, 1);
     // toast() pinta texto (textContent): el nombre viaja tal cual y el navegador no lo interpreta como HTML (tests/toast.test.js)
@@ -493,15 +493,15 @@ describe('mesada-ui', () => {
   test('UI — dividido que excede muestra el aviso y NO deja la salida del encargo huérfana', () => {
     const { ctx, d } = ui({ encargos: [encargo('e1', 'Papá', 200000, 'cuenta:nequi')] });
     ctx.abrirRegistrarMesada('papa', '2026-3', 'Abr 2026');
-    d.el('mpMonto').value = '80000';
-    d.el('mpUsarEncargo').click();
-    d.el('mpEncargoCuentaSel').value = 'cuenta:nequi';
-    d.el('mpSplitRows').children = [
+    d.el('mesadaPagoMonto').value = '80000';
+    d.el('mesadaPagoUsarEncargo').click();
+    d.el('mesadaPagoEncargoCuentaSel').value = 'cuenta:nequi';
+    d.el('mesadaPagoSplitRows').children = [
       { style: {}, querySelector: q => q === 'select' ? { value: 'cuenta:nequi' } : q === 'input' ? { value: '99999' } : null },
     ];
-    ctx.splitToggle('mp'); // modo dividido
+    ctx.splitToggle('mesadaPago'); // modo dividido
     d.fire('btn-confirmar-mesada', 'click');
-    assert.match(d.el('mpPreview').textContent, /supera el monto/);
+    assert.match(d.el('mesadaPagoPreview').textContent, /supera el monto/);
     assert.equal(ctx.encargoSaldo(ctx.S.encargos[0]), 200000);
     assert.equal(ctx.S.mesadas.papa.pagos['2026-3'], undefined);
   });
@@ -510,10 +510,10 @@ describe('mesada-ui', () => {
     const { ctx, d } = ui();
     ctx.mesadaRegistrarPago({ parent: 'papa', key: '2026-3', monto: 60000, fecha: '2026-04-05', destino: 'cuenta:nequi', quedaDebiendo: true });
     ctx.abrirResolverPendiente('papa', '2026-3');
-    assert.equal(d.el('mppDesc').textContent.startsWith('Te debía'), true);
-    d.el('mppMonto').value = '20000'; d.el('mppDestino').value = 'cuenta:efectivo';
-    d.fire('mppMonto', 'input');
-    assert.match(d.el('mppPreview').textContent, /saldado/);
+    assert.equal(d.el('mesadaPagoPendienteDesc').textContent.startsWith('Te debía'), true);
+    d.el('mesadaPagoPendienteMonto').value = '20000'; d.el('mesadaPagoPendienteDestino').value = 'cuenta:efectivo';
+    d.fire('mesadaPagoPendienteMonto', 'input');
+    assert.match(d.el('mesadaPagoPendientePreview').textContent, /saldado/);
     d.fire('btn-confirmar-mesada-pend', 'click');
     assert.equal(ctx.getMesadaData('papa')['2026-3'].pendiente, 0);
     assert.equal(ctx.S.cuentas[1].saldo, 20000);
@@ -556,14 +556,14 @@ describe('mesada-ui', () => {
     ctx.abrirRegistrarMesada('papa', '2026-0', 'Ene 2026');
     // Se abre con la fecha de hoy: enero no es el mes en curso → avisa (con «este mes» si hoy es de otro mes).
     const hoyMes = ctx.mesActual();
-    assert.equal(d.el('mpAvisoMes').textContent, hoyMes === '2026-01' ? '' : 'Cubre Ene 2026, pero cuenta como ingreso de este mes: el mes en que te la pagan.');
+    assert.equal(d.el('mesadaPagoAvisoMes').textContent, hoyMes === '2026-01' ? '' : 'Cubre Ene 2026, pero cuenta como ingreso de este mes: el mes en que te la pagan.');
     // Cambiar la fecha actualiza el aviso al escribir.
-    d.el('mpFecha').value = '2026-03-15'; d.fire('mpFecha', 'input');
-    assert.equal(d.el('mpAvisoMes').textContent, 'Cubre Ene 2026, pero cuenta como ingreso de Mar 2026: el mes en que te la pagan.');
-    d.el('mpFecha').value = '2026-01-20'; d.fire('mpFecha', 'change');
-    assert.equal(d.el('mpAvisoMes').textContent, '', 'la fecha cae en el mes que cubre: sin aviso');
-    d.el('mpFecha').value = ''; d.fire('mpFecha', 'input');
-    assert.equal(d.el('mpAvisoMes').textContent, '', 'sin fecha no hay nada que avisar');
+    d.el('mesadaPagoFecha').value = '2026-03-15'; d.fire('mesadaPagoFecha', 'input');
+    assert.equal(d.el('mesadaPagoAvisoMes').textContent, 'Cubre Ene 2026, pero cuenta como ingreso de Mar 2026: el mes en que te la pagan.');
+    d.el('mesadaPagoFecha').value = '2026-01-20'; d.fire('mesadaPagoFecha', 'change');
+    assert.equal(d.el('mesadaPagoAvisoMes').textContent, '', 'la fecha cae en el mes que cubre: sin aviso');
+    d.el('mesadaPagoFecha').value = ''; d.fire('mesadaPagoFecha', 'input');
+    assert.equal(d.el('mesadaPagoAvisoMes').textContent, '', 'sin fecha no hay nada que avisar');
   });
 
   test('UI — mesadaAvisoMesPago: casos de borde (diciembre, año distinto, clave inválida)', () => {

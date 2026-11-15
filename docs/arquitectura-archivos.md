@@ -2,7 +2,7 @@
 
 Reglas y advertencias **escritas a mano** sobre cómo se reparte el código entre archivos. Complementa a [`mapa-codigo.md`](./mapa-codigo.md), que es **generado** y responde "¿en qué archivo vive esta función?".
 
-Aquí no va comportamiento de negocio (eso es de cada `modulo.md`) ni bugs corregidos (eso es de `CHANGELOG.md`).
+Aquí no va comportamiento de negocio (eso es de cada `modulo.md`) ni bugs corregidos (eso es de `CHANGELOG.md` y de `docs/changelog/`: el primero trae las entradas recientes y un índice; el resto del historial está por tema, un archivo por módulo, y por fecha).
 
 ---
 
@@ -54,6 +54,9 @@ El núcleo y Inicio llaman a lo que viva en un módulo lazy **siempre con guard 
 - **Un concepto, una palabra.** El vocabulario oficial y los sinónimos que no se usan están en [`glosario-dominio.md`](./glosario-dominio.md); un término de dominio nuevo se agrega ahí antes de usarlo.
 - **Sin abreviaturas opacas** (`ctc`, `prtc`, `mpp`, `gv`, `gf`, `cp`, `enc`…): se escriben completas. Las oficiales (`tc`, `cdt`, `ea`…) están en el glosario.
 - **Archivos:** `kebab-case`, minúsculas, sin `_` ni tildes. Los de dominio en español (`tarjetas-credito.js`), los técnicos en inglés (`lazy-loader.js`), los mixtos «tema + rol» (`nu-calc.js`, `personas-init.js`). Excepciones: `README.md`, `CHANGELOG.md`.
+- **Valores guardados:** los de formato fijo se escriben una sola vez, en `snake_case`, como constante en `js/core/estado.js` (`TIPO_PAGO_COMPLETO`, `TIPO_ALCANCIA`, y `esAbonoDeDeuda()` para el «abono o pago completo»). No se repiten como texto suelto: `tests/convenciones.test.js` lo vigila. Un valor nuevo con varios usos se agrega ahí y a esa prueba.
+- **Acciones de `data-action`:** `modulo:accion`. La misma prueba comprueba que toda acción que escribe una plantilla (o `index.html`) esté registrada con `Events.on` / `Events.registerAll`, y que toda registrada se use: así un renombre hecho solo de un lado falla en los tests y no en la pantalla.
+- **Ids del HTML:** los de los sheets llevan el nombre completo del flujo como prefijo (`mesadaPago…`, `mesadaPagoPendiente…`, `agregarDinero…`, `nuMovimiento…`), sin abreviaturas.
 - **Carpetas:** plural si agrupan elementos del mismo tipo (`modules`, `docs`, `scripts`, `tests`); singular si son un concepto único (`core`, `support`, `css`, `js`).
 - **No se cambia por uniformar:** un nombre existente solo cambia si rompe el formato o confunde de verdad. Las claves de datos, ids del HTML y clases CSS no se renombran sin una razón de producto.
 - **Cómo se hace cumplir:** `tests/convenciones.test.js` (formato de archivos, abreviaturas que no pueden crecer y glosario al día). Si una abreviatura baja, `node scripts/convenciones.js --actualizar` registra la mejora.

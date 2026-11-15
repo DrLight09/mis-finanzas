@@ -103,7 +103,7 @@ mismo orden que `index.html`: el núcleo → `cuenta-efectos.js` → `calc-helpe
 Ojo en modo `permissive`: no falla con un error, **da resultados en silencio**
 (la función faltante cae a un no-op que devuelve `undefined`, y
 `totalPrestadoPendiente()` da 0). Así fue como falló en CI
-la suite `totalPrestadoPendiente` (`tests/prestamos.test.js`) — ver `CHANGELOG.md#infraestructura--seguridad`.
+la suite `totalPrestadoPendiente` (`tests/prestamos.test.js`) — ver `changelog/infraestructura-seguridad.md`.
 
 ## GitHub Action (corre solo en cada push)
 

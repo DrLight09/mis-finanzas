@@ -126,7 +126,7 @@ No usar "Sumar"/"Restar", "Entró plata"/"Salió plata" en Cuentas. **Encargos**
 
 **`sheet-nueva-cuenta`** — Nueva cuenta: Nombre → Saldo inicial → Ícono → Color
 
-Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — desde el 2026-09-03 reutiliza `sheet-agregar-dinero`/`sheet-restar-dinero`/`sheet-editar-apertura` de la sección de abajo, exactamente con el mismo orden de campos que Nequi/Efectivo (incluido el toggle "Es saldo inicial"). El sheet viejo, `sheet-mov-cuenta-custom` (Descripción opcional → Monto → Fecha, sin ese toggle), se retiró — ver `CHANGELOG.md#cuentas`.
+Agregar/Retirar dinero de una cuenta personalizada ya no tiene sheet propio — desde el 2026-09-03 reutiliza `sheet-agregar-dinero`/`sheet-restar-dinero`/`sheet-editar-apertura` de la sección de abajo, exactamente con el mismo orden de campos que Nequi/Efectivo (incluido el toggle "Es saldo inicial"). El sheet viejo, `sheet-mov-cuenta-custom` (Descripción opcional → Monto → Fecha, sin ese toggle), se retiró — ver `changelog/cuentas.md`.
 
 ### Nequi, Efectivo y cuentas personalizadas
 

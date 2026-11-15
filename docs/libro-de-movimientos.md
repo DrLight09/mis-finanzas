@@ -1,6 +1,6 @@
 # Libro de movimientos
 
-Infraestructura transversal del núcleo: la lista de entradas de plata de las cuentas con saldo. Explica cómo funciona **hoy**; el historial de cambios vive en [`CHANGELOG.md`](./CHANGELOG.md#libro-de-movimientos).
+Infraestructura transversal del núcleo: la lista de entradas de plata de las cuentas con saldo. Explica cómo funciona **hoy**; el historial de cambios vive en [`changelog/libro-de-movimientos.md`](./changelog/libro-de-movimientos.md).
 
 ---
 

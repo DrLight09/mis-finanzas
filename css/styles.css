@@ -94,9 +94,9 @@ body{font-family:'DM Sans',sans-serif;color:var(--text);}
 .cuenta-card-activa{background:rgba(var(--cuenta-rgb),.16);border-color:rgba(var(--cuenta-rgb),.55);}
 .cuenta-card-head{display:contents;} /* el ícono y el nombre pasan a ser celdas de la fila */
 .cuenta-card-head > :first-child{grid-area:icono;}
-.cuenta-card-nombre{grid-area:nombre;font-size:13px;font-weight:600;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cuenta-card-nombre{grid-area:nombre;font-size:13px;font-weight:600;color:var(--cuenta);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .cuenta-card-etiqueta{grid-area:etiqueta;font-size:10.5px;color:var(--text3);margin-top:2px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.cuenta-card-saldo{grid-area:saldo;font-size:13px;font-weight:500;font-family:'DM Mono',monospace;color:var(--text);text-align:right;letter-spacing:-.3px;}
+.cuenta-card-saldo{grid-area:saldo;font-size:13px;font-weight:500;font-family:'DM Mono',monospace;color:var(--cuenta);text-align:right;letter-spacing:-.3px;}
 .cuenta-card-flecha{grid-area:flecha;stroke:var(--text3);}
 .cuenta-pill{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-radius:var(--radius-sm);background:linear-gradient(135deg,rgba(var(--cuenta-rgb),.12) 0%,rgba(var(--cuenta-rgb),.04) 100%);border:1px solid rgba(var(--cuenta-rgb),.35);}
 .cuenta-pill-info{display:flex;align-items:center;gap:10px;min-width:0;}
@@ -280,6 +280,7 @@ html.kb-open .sheet{transition:translate var(--kb-ms) var(--kb-ease),max-height 
 .gastos-panel{display:none;}
 .gastos-panel.panel-activo{display:block;}
 .gastos-panel-titulo{display:none;}
+.gastos-resumen{display:none;} /* el resumen del mes solo se ve en PC (css/pc.css) */
 .tab-bar{display:flex;gap:5px;margin-bottom:14px;background:var(--bg3);padding:4px;border-radius:11px;}
 .tab{flex:1;padding:9px 6px;text-align:center;font-size:12px;font-weight:500;border-radius:8px;cursor:pointer;background:transparent;border:none;color:var(--text3);transition:all .2s;}
 .tab.active{background:var(--bg2);border:1px solid var(--border2);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.3);}
@@ -1097,6 +1098,7 @@ button.inicio-pilar-accion{cursor:pointer;}
 .an-hero-msg{font-size:11px;color:var(--text3);}
 .an-hero-rend{font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border2);}
 .an-opaco{opacity:.7;}
+.analisis-flecha{vertical-align:-1px;margin:0 2px;} /* flecha «antes → después» en los textos de Análisis (antes era el símbolo de texto →) */
 .an-conc{padding:12px 15px;margin-bottom:9px;}
 .an-conc-tit{font-size:13px;font-weight:600;margin-bottom:6px;}
 .an-conc-txt{font-size:12.5px;line-height:1.45;color:var(--text2);}

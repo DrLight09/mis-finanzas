@@ -47,6 +47,8 @@ window.addEventListener('beforeunload', function() {
   // Esto evita que abrir la app en PC/otra pestaña con datos desactualizados pise
   // los cambios recientes hechos desde otro dispositivo (ej: celular todo el día).
   if (!window._locallyModified) return;
+  // Importar/restaurar ya guardó y recarga a propósito: escribir otra vez aquí chocaría con el guardado de la página nueva.
+  if (window._recargandoPorImport) return;
   // Siempre intentar guardar al cerrar si hay datos cargados, haya o no timer pendiente
   if (window._firebaseUser && window._firebase && window.S) {
     try {

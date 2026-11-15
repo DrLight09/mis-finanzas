@@ -57,7 +57,10 @@
 
   /* ── Gastos: variables a la izquierda y fijos mensuales en el riel derecho, los dos a la vez (sin pestañas) ───────────────────── */
   .scroll-area > #screen-gastos{max-width:none;margin-left:0;margin-right:0;}
-  #screen-gastos.active{display:flex;align-items:flex-start;gap:14px;}
+  #screen-gastos.active{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px;}
+  #screen-gastos .gastos-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;flex:0 0 100%;}
+  #screen-gastos .gastos-resumen .stat{padding:15px 16px;}
+  #screen-gastos .gastos-resumen .stat-value{font-size:22px;}
   #screen-gastos .tab-bar{display:none;}
   #screen-gastos .gastos-panel{display:block;}
   #screen-gastos .gastos-panel-titulo{display:block;margin-top:0;}

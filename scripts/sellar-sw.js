@@ -16,7 +16,7 @@
                                             (lo corre `npm test`, tests/sesion-y-despliegue.test.js)
 
    Sin dependencias. Determinista: los saltos de línea se normalizan a LF (Windows con autocrlf da el mismo hash) y las rutas se
-   ordenan. Qué entra: index.html, manifest.webmanifest, css/**, js/**, icons/**. Qué NO entra: sw.js (se sella a sí mismo),
+   ordenan. Qué entra: index.html, manifest.webmanifest, css/**, js/**, icons/**. Qué NO entra: cualquier .zip, sw.js (se sella a sí mismo),
    docs/, tests/, scripts/, node_modules/ (no se despliegan).
    ═══════════════════════════════════════════════════════════════ */
 'use strict';
@@ -28,12 +28,15 @@ const RAIZ = path.resolve(process.argv.find(a => !a.startsWith('-') && a !== pro
 const ARCHIVOS_RAIZ = ['index.html', 'manifest.webmanifest'];
 const CARPETAS = ['css', 'js', 'icons'];
 const TEXTO = /\.(html|css|js|json|webmanifest|svg|md|txt)$/i;
+// Archivos que nunca se despliegan aunque estén dentro de css/, js/ o icons/ (p. ej. un js.zip armado para compartir): si entraran al PRECACHE
+// darían 404 en GitHub Pages y el precaché atómico impediría instalar la versión nueva.
+const IGNORAR = /\.zip$/i;
 
 function listar(dir, acc) {
   if (!fs.existsSync(dir)) return acc;
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
-    if (e.isDirectory()) listar(p, acc); else acc.push(p);
+    if (e.isDirectory()) listar(p, acc); else if (!IGNORAR.test(e.name)) acc.push(p);
   }
   return acc;
 }

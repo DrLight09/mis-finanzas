@@ -48,11 +48,11 @@ Selección por defecto (`_abrirCuentaPorDefecto`, `cuentas.js`): solo en PC y so
 
 ## 7. Gastos
 
-Panel de variables (`panel-var`: filtro de mes, lista, total) y panel de fijos (`panel-fijo`: barra de progreso, lista, total), alternados en celular por las pestañas (`switchGastoTab`, clase `panel-activo`). En PC se ven los dos a la vez: variables a la izquierda, fijos en el riel derecho (`--riel-ancho`); la barra de pestañas se oculta y se muestran los títulos `gastos-panel-titulo`. No hay reparto de columnas por JS: los dos paneles ya son hermanos contiguos en el HTML.
+Panel de variables (`panel-var`: filtro de mes, lista, total) y panel de fijos (`panel-fijo`: barra de progreso, lista, total), alternados en celular por las pestañas (`switchGastoTab`, clase `panel-activo`). En PC, arriba va el resumen del mes (`gastos-resumen`: total gastado, variables y fijos, pintados por `refresh()` con los mismos números de Inicio; oculto en celular); debajo, los dos paneles a la vez: variables a la izquierda, fijos en el riel derecho (`--riel-ancho`); la barra de pestañas se oculta y se muestran los títulos `gastos-panel-titulo`. No hay reparto de columnas por JS: los dos paneles ya son hermanos contiguos en el HTML.
 
 ## 8. Lista de cuentas
 
-Fila compacta por cuenta (`.cuenta-card`): ícono, nombre y etiqueta, saldo, flecha; una columna, igual en celular y en PC. Es una decisión de Sebas (le gustó más cómo se ve en el prototipo que las tarjetas grandes).
+Fila compacta por cuenta (`.cuenta-card`): ícono, nombre y etiqueta, saldo, flecha; una columna, igual en celular y en PC. Es una decisión de Sebas (le gustó más cómo se ve en el prototipo que las tarjetas grandes). Nombre y saldo en el color de la cuenta; el texto blanco se veía demasiado.
 
 ## 9. Prueba
 

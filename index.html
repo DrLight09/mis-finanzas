@@ -1335,6 +1335,12 @@
 
         <!-- GASTOS -->
         <div class="screen" id="screen-gastos">
+          <!-- Resumen del mes (solo PC, ≥900 px): los mismos tres números de «Gastos del mes» de Inicio; los pinta refresh() junto a s-gf/s-gv/s-gtotal. -->
+          <div class="gastos-resumen">
+            <div class="stat"><div class="stat-label">Total gastado este mes</div><div class="stat-value c-red" id="g-resumen-total">$0</div></div>
+            <div class="stat"><div class="stat-label">Variables</div><div class="stat-value c-red" id="g-resumen-variables">$0</div></div>
+            <div class="stat"><div class="stat-label">Fijos</div><div class="stat-value c-red" id="g-resumen-fijos">$0</div></div>
+          </div>
           <div class="tab-bar">
             <div class="tab active" id="tab-var" data-tab="var">Gastos</div>
             <div class="tab" id="tab-fijo" data-tab="fijo">Fijos mensuales</div>

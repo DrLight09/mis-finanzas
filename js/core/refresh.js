@@ -143,6 +143,8 @@ function _refreshNucleo(){
   document.getElementById('s-gf').textContent=fmtNoCents(gastoFijoTotal);
   document.getElementById('s-gv').textContent=fmtNoCents(gastoVariableMes);
   document.getElementById('s-gtotal').textContent=fmtNoCents(gastoFijoTotal+gastoVariableMes);
+  // Mismos tres números en el resumen de la pantalla Gastos (solo se ve en PC, css/pc.css).
+  [['g-resumen-total',gastoFijoTotal+gastoVariableMes],['g-resumen-variables',gastoVariableMes],['g-resumen-fijos',gastoFijoTotal]].forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=fmtNoCents(v);});
   // El total de la cuenta de ahorro abierta y sus intereses de hoy los pinta su pantalla (nu.js, renderDetalleAhorro).
 
   // Si hay una cuenta abierta, actualizar su detalle

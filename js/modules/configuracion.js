@@ -281,6 +281,10 @@ async function _reemplazarDatos(data,motivoPin,msgOk){
   toast('Guardando en la nube…','info',3000);
   const _saveResult = await window._firebaseSaveToCloud({ forzar: true }); // pisa la nube a propósito (no se trata como conflicto)
   if(_saveResult && _saveResult.ok){
+    // La página va a recargarse: su `beforeunload` NO debe volver a escribir (escribiría rev+1 sin actualizar `_revNube` y el guardado
+    // de arranque de la página nueva chocaría con esa escritura: falso «Otro dispositivo guardó antes que tú»).
+    window._locallyModified = false;
+    window._recargandoPorImport = true;
     toast(msgOk,'ok');
     // Recargar solo una vez confirmado el guardado (ya no hace falta
     // esperar un tiempo fijo — el await de arriba ya cubrió el debounce

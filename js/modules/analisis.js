@@ -533,8 +533,15 @@ function renderSimulador(){
     set('an-sim-gasto-v','−'+_anSim.gastoPct+' %'); set('an-sim-ing-v','+'+fmt(_anSim.ingresoExtra)); set('an-sim-pago-v',fmt(_anSim.pagoDeuda));
     const r=Salud.simular(m,_anSim);
     const sg=n=>(n>=0?'+':'−')+fmt(Math.abs(n));
-    const lineas=[`Balance mensual típico: <b class="${r.balance>=0?'c-green':'c-red'}">${sg(r.balance)}</b>`+(Math.abs(r.mejoraMensual)>=1?` <span class="an-opaco">(${sg(r.mejoraMensual)} frente a hoy)</span>`:'')];
-    if(r.mesesCubiertos!=null) lineas.push(`Tus reservas cubrirían <b>${r.mesesCubiertos.toFixed(1).replace('.',',')}</b> meses de gastos`);
+    // Con algún deslizador movido se muestra el ANTES (hoy) y el DESPUÉS; con todos en 0 solo la situación de hoy.
+    const cambia=Math.abs(r.mejoraMensual)>=1, cl=n=>n>=0?'c-green':'c-red';
+    const lineas=[cambia
+      ?`Balance mensual típico: hoy <b class="${cl(r.balanceBase)}">${sg(r.balanceBase)}</b> <svg aria-hidden="true" class="analisis-flecha" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> <b class="${cl(r.balance)}">${sg(r.balance)}</b> <span class="an-opaco">(${sg(r.mejoraMensual)} al mes)</span>`
+      :`Balance mensual típico hoy: <b class="${cl(r.balance)}">${sg(r.balance)}</b>`];
+    const mesesHoy=m.gastoTipico>0&&m.liquidezNeta>0?m.liquidezNeta/m.gastoTipico:null, f1=n=>n.toFixed(1).replace('.',',');
+    if(r.mesesCubiertos!=null) lineas.push(mesesHoy!=null&&Math.abs(r.mesesCubiertos-mesesHoy)>=0.05
+      ?`Tus reservas cubrirían: hoy <b>${f1(mesesHoy)}</b> <svg aria-hidden="true" class="analisis-flecha" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg> <b>${f1(r.mesesCubiertos)}</b> meses de gastos`
+      :`Tus reservas cubrirían <b>${f1(r.mesesCubiertos)}</b> meses de gastos`);
     if(m.deudaPropia>0) lineas.push(r.deudaPropia<=0?'Quedarías <b>sin deudas propias</b>':`Deuda propia: <b>${fmt(r.deudaPropia)}</b>`+(r.mesesLibre!=null?` · libre en unos <b>${r.mesesLibre}</b> ${r.mesesLibre===1?'mes':'meses'} con ese ritmo`:' · con este balance no baja'));
     if(r.ahorroIntereses>=1) lineas.push(`Te ahorrarías cerca de <b>${fmt(r.ahorroIntereses)}</b> al mes en intereses`);
     const res=document.getElementById('an-sim-res'); if(res) res.innerHTML=lineas.map(l=>`<div class="an-sim-lin">${l}</div>`).join('');

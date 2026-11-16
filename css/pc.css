@@ -43,6 +43,28 @@
   .overlay{align-items:center;}
   .sheet{max-width:520px;border-radius:22px;padding-bottom:26px;max-height:88svh;}
 
+  /* ── Cajas: en PC la información va dentro de un cuadro (--bg2 con borde) sobre el fondo, y lo de adentro un tono más claro (--bg3) ──
+     Solo PC: en celular cada tarjeta sigue directamente sobre el fondo. */
+  #panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,.columna-lista,.columna-movimientos{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;}
+  :is(#panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,.columna-movimientos) :is(.card,.stat,.gasto-item){background:var(--bg3);}
+  #tc-lista > .empty-state{background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
+
+  /* ── Lista de cuentas en PC: filas compactas (en celular se conservan las tarjetas de dos por fila) ───────────────────────────── */
+  .cuentas-selector-grid{grid-template-columns:1fr;gap:6px;}
+  .cuenta-card{padding:9px 12px;border-radius:14px;overflow:visible;background:rgba(var(--cuenta-rgb),.07);border-color:rgba(var(--cuenta-rgb),.22);
+    display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;grid-template-areas:"icono nombre saldo flecha" "icono etiqueta saldo flecha";column-gap:10px;align-items:center;}
+  .cuenta-card:hover{background:rgba(var(--cuenta-rgb),.12);}
+  .cuenta-card-activa{background:rgba(var(--cuenta-rgb),.16);border-color:rgba(var(--cuenta-rgb),.55);box-shadow:none;}
+  .cuenta-card-head{display:contents;} /* el ícono y el nombre pasan a ser celdas de la fila */
+  .cuenta-card-head > :first-child{grid-area:icono;}
+  .cuenta-card-nombre{grid-area:nombre;font-size:13px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cuenta-card-etiqueta{grid-area:etiqueta;font-size:10.5px;text-transform:none;letter-spacing:0;font-family:inherit;margin:2px 0 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .cuenta-card-saldo{grid-area:saldo;font-size:13px;line-height:normal;padding-right:0;text-align:right;letter-spacing:-.3px;overflow-wrap:normal;word-break:normal;}
+  .cuenta-card-flecha{position:static;grid-area:flecha;stroke:var(--text3);}
+  .cuenta-card-ord .cuenta-card-saldo{font-size:13px;}
+  .cuenta-ord-grip{position:static;grid-area:flecha;}
+  .cuentas-selector-ordenando .cuenta-card-head{padding-right:0;}
+
   /* ── Inicio (columnas armadas por js/core/disposicion-pc.js) ─────────────────────────────────────── */
   #screen-inicio.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-principal{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;row-gap:10px;align-content:start;}
@@ -78,11 +100,17 @@
   /* ── Prestado: las dos listas (Me deben / Yo debo) a la izquierda, siempre visibles, y el detalle de la persona abierta a la derecha ──
      Sin pestañas. El detalle que se ve lo decide la clase panel-activo (prestado.js); las dos listas se muestran siempre. */
   .scroll-area > #screen-prestamos{max-width:none;margin-left:0;margin-right:0;}
-  #screen-prestamos.active{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:16px;align-items:start;}
+  #screen-prestamos.active{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);grid-template-rows:auto auto 1fr;column-gap:16px;align-items:start;}
+  #screen-prestamos .prestamos-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
+  #screen-prestamos .prestamos-resumen .stat{padding:15px 16px;}
+  #screen-prestamos .prestamos-resumen .stat-value{font-size:22px;}
   #prestamos-tabs{display:none;}
-  #screen-prestamos #deudoresView{display:block;grid-column:1;grid-row:1;}
-  #screen-prestamos #misDeudasView{display:block;grid-column:1;grid-row:2;}
-  #deudorDetalle,#miDeudaDetalle{grid-column:2;grid-row:1 / span 2;}
+  #screen-prestamos #deudoresView{display:block;grid-column:1;grid-row:2;}
+  #screen-prestamos #misDeudasView{display:block;grid-column:1;grid-row:3;}
+  #deudorDetalle,#miDeudaDetalle{grid-column:2;grid-row:2 / span 2;}
+  /* Sin nadie abierto (todavía no hay personas): las dos listas lado a lado, a todo el ancho, y sin panel de detalle. */
+  #screen-prestamos[data-panel-activo="deudoresView"],#screen-prestamos[data-panel-activo="misDeudasView"]{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto;}
+  #screen-prestamos[data-panel-activo="deudoresView"] #misDeudasView,#screen-prestamos[data-panel-activo="misDeudasView"] #misDeudasView{grid-column:2;grid-row:2;}
   #btn-volver-deudores,#btn-volver-mis-deudas{display:none;} /* la lista está a la vista */
 
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */

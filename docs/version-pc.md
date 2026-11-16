@@ -52,7 +52,7 @@ Panel de variables (`panel-var`: filtro de mes, lista, total) y panel de fijos (
 
 ## 8. Lista de cuentas
 
-Fila compacta por cuenta (`.cuenta-card`): ícono, nombre y etiqueta, saldo, flecha; una columna, igual en celular y en PC. Es una decisión de Sebas (le gustó más cómo se ve en el prototipo que las tarjetas grandes). Nombre y saldo en el color de la cuenta; el texto blanco se veía demasiado.
+Fila compacta por cuenta (`.cuenta-card`) solo en PC: ícono, nombre y etiqueta, saldo, flecha; una columna. Solo en PC (decisión de Sebas: le gustó más en el prototipo que las tarjetas grandes). En celular se conservan las tarjetas de dos por fila, sin que la última de una cantidad impar ocupe todo el ancho. Nombre y saldo en el color de la cuenta.
 
 ## 9. Tarjetas de crédito
 
@@ -60,9 +60,13 @@ Fila compacta por cuenta (`.cuenta-card`): ícono, nombre y etiqueta, saldo, fle
 
 ## 10. Prestado
 
-Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC: cuadrícula de dos columnas; `deudoresView` y `misDeudasView` siempre visibles a la izquierda (filas 1 y 2) y el detalle activo a la derecha (ocupa las dos filas); las pestañas se ocultan. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js), igual que `_abrirCuentaPorDefecto` en Cuentas.
+Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC: arriba el resumen (`prestamos-resumen`: Me deben, Yo debo y Neto, pintados por `refresh()`; oculto en celular); debajo, cuadrícula de dos columnas con `deudoresView` y `misDeudasView` siempre visibles a la izquierda y el detalle activo a la derecha (ocupa las dos filas); las pestañas se ocultan. Sin nadie abierto (sin personas) las dos listas van lado a lado a todo el ancho y no hay panel de detalle. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js), igual que `_abrirCuentaPorDefecto` en Cuentas.
 
-## 11. Prueba
+## 11. Cajas (solo PC)
+
+La información va dentro de un cuadro (`--bg2`, borde, radio 14, relleno 14) sobre el fondo; lo de adentro (`.card`, `.stat`, `.gasto-item`) usa `--bg3`. Selectores en `pc.css`: `#panel-var`, `#panel-fijo`, `#deudoresView`, `#misDeudasView`, `#deudorDetalle`, `#miDeudaDetalle`, `.columna-lista`, `.columna-movimientos` y `#tc-lista > .empty-state`. Las pantallas que falten deben usar el mismo criterio (un cuadro por bloque de información, no la información suelta sobre el fondo).
+
+## 12. Prueba
 
 Automática: la FASE 5 de `npm run smoke` (ida y vuelta celular ↔ PC con Inicio y Cuentas).
 

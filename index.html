@@ -608,7 +608,7 @@
       <aside class="menu-lateral" aria-label="Menú principal">
         <nav class="menu-lateral-nav">
           <div class="menu-lateral-grupo">Mi plata</div>
-          <button type="button" class="menu-lateral-item" id="lateral-inicio" data-screen="inicio" title="Inicio">
+          <button type="button" class="menu-lateral-item active" id="lateral-inicio" data-screen="inicio" title="Inicio">
             <svg aria-hidden="true" class="menu-lateral-icono" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H5a1 1 0 01-1-1z" /><rect x="9" y="13" width="6" height="8" rx="1" /></svg>
             <span class="menu-lateral-texto">Inicio</span>
           </button>
@@ -1387,6 +1387,12 @@
 
         <!-- PRESTAMOS -->
         <div class="screen" id="screen-prestamos" data-panel-activo="deudoresView">
+          <!-- Resumen (solo PC, ≥900 px): los totales de Me deben y Yo debo (Deudas.totalPendiente, los mismos de Inicio) y su diferencia; los pinta refresh(). -->
+          <div class="prestamos-resumen">
+            <div class="stat"><div class="stat-label">Me deben</div><div class="stat-value c-amber" id="p-resumen-me-deben">$0</div></div>
+            <div class="stat"><div class="stat-label">Yo debo</div><div class="stat-value c-red" id="p-resumen-yo-debo">$0</div></div>
+            <div class="stat"><div class="stat-label">Neto</div><div class="stat-value" id="p-resumen-neto">$0</div></div>
+          </div>
           <div class="ix-prestamos-tabs"
             id="prestamos-tabs">
             <button type="button" class="btn ix-tab-me-deben" id="tab-me-deben"

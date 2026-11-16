@@ -534,9 +534,12 @@ function _abrirPersonaPorDefectoPrestamos() {
   const pantalla = document.getElementById('screen-prestamos');
   const panel = pantalla && pantalla.dataset.panelActivo;
   if (panel !== 'deudoresView' && panel !== 'misDeudasView') return;
-  const dir = panel === 'misDeudasView' ? 'contra' : 'favor';
-  const primera = [...Deudas.lista(dir)].sort((a, b) => Deudas.saldo(b) - Deudas.saldo(a))[0];
-  if (!primera) return; // sin personas: el detalle queda vacío y la lista trae su estado vacío
+  const masPesada = dir => [...Deudas.lista(dir)].sort((a, b) => Deudas.saldo(b) - Deudas.saldo(a))[0];
+  // Se abre la primera persona de la lista de la pestaña que estaba (Me deben por defecto); si esa lista está vacía, la de la otra.
+  const orden = panel === 'misDeudasView' ? ['contra', 'favor'] : ['favor', 'contra'];
+  const dir = orden.find(d => masPesada(d));
+  if (!dir) return; // sin personas: las dos listas quedan a todo el ancho con su estado vacío
+  const primera = masPesada(dir);
   if (dir === 'favor') abrirDeudor(primera.id); else abrirMiDeuda(primera.id);
   if (pantalla.dataset.panelActivo !== panel) _seleccionAutomaticaPrestamos = true;
 }

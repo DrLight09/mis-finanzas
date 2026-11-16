@@ -74,6 +74,9 @@ function _refreshNucleo(){
   // guard — mismo patrón de fallback (0) que ya usa inicio.js línea ~253
   // (window.totalPrestadoPendiente?...:0) para el mismo caso.
   const prest=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
+  // Resumen de la pantalla Préstamos (solo se ve en PC, css/pc.css): mismos totales que Inicio y el patrimonio.
+  {const debo=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
+   [['p-resumen-me-deben',prest],['p-resumen-yo-debo',debo],['p-resumen-neto',prest-debo]].forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=fmtNoCents(v);});}
   // CDTs value comes from calcCDT nested in cajitas
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);

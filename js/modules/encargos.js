@@ -319,7 +319,7 @@ function _pintarEncargosList() {
     const avatar = per
       ? html`<div class="avatar enc-av-det enc-av-perfil" title="Ver perfil" ${raw(Events.attr('personas:abrirPerfil', per.id))} style="color:${colorPer};background:${colorPer}1a;border-color:${colorPer}33;">${ini}</div>`
       : html`<div class="avatar enc-av-det">${ini}</div>`;
-    return html`<div class="card card-sm enc-card-click" data-encargo-id="${encargo.id}" ${raw(Events.attr('encargos:abrirDetalle', encargo.id))}>
+    return html`<div class="card card-sm enc-card-click${encargo.id === encargoActualId ? ' encargo-card-activa' : ''}" data-encargo-id="${encargo.id}" ${raw(Events.attr('encargos:abrirDetalle', encargo.id))}>
       <div class="row">
         <div class="enc-pers-cab">
           ${avatar}
@@ -336,6 +336,44 @@ function _pintarEncargosList() {
       </div>
     </div>`;
   })}`;
+}
+
+/* ── Paneles de la pantalla: uno a la vez en celular; en PC la lista siempre se ve y el detalle va a la derecha (css/pc.css) ──────────
+   Antes se alternaban con style.display inline en dos sitios; ahora un solo lugar marca el panel activo (clase panel-activo, regla en
+   styles.css) y deja su nombre en data-panel-activo de la pantalla. Mismo patrón que Cuentas y Prestado. */
+const _PANELES_ENCARGOS = ['encargosListView', 'encargoDetalle'];
+const _consultaPcEncargos = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
+let _seleccionAutomaticaEncargos = false;
+function _mostrarPanelEncargos(panelId) {
+  _PANELES_ENCARGOS.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('panel-activo', id === panelId); });
+  const pantalla = document.getElementById('screen-encargos');
+  if (pantalla) pantalla.dataset.panelActivo = panelId;
+  _seleccionAutomaticaEncargos = false; // cualquier cambio de panel es de la persona; solo _abrirEncargoPorDefecto() lo vuelve a marcar
+  _marcarEncargoActivoEnLista();
+}
+// Resalta en la lista el encargo abierto (la lista se vuelve a pintar a menudo: también lo hace _pintarEncargosList).
+function _marcarEncargoActivoEnLista() {
+  document.querySelectorAll('#encargosList [data-encargo-id]').forEach(el => el.classList.toggle('encargo-card-activa', !!encargoActualId && el.dataset.encargoId === encargoActualId));
+}
+// PC (≥900 px): siempre hay un encargo abierto. Al entrar (o al volver a la lista) se abre el primero. Esa apertura es automática: si la
+// ventana se achica a celular sin que la persona haya elegido otra cosa, se vuelve a la lista (cualquier cambio de panel hecho por la
+// persona borra la marca).
+function _abrirEncargoPorDefecto() {
+  if (!_consultaPcEncargos || !_consultaPcEncargos.matches) return;
+  const pantalla = document.getElementById('screen-encargos');
+  if (!pantalla || pantalla.dataset.panelActivo !== 'encargosListView') return;
+  const primero = (S.encargos || [])[0];
+  if (!primero) return; // sin encargos: la lista queda a todo el ancho con su estado vacío
+  abrirEncargoDetalle(primero.id);
+  if (pantalla.dataset.panelActivo !== 'encargosListView') _seleccionAutomaticaEncargos = true;
+}
+if (_consultaPcEncargos) {
+  const alCambiarModo = e => {
+    if (e.matches) { const p = document.getElementById('screen-encargos'); if (p && p.classList.contains('active')) _abrirEncargoPorDefecto(); }
+    else if (_seleccionAutomaticaEncargos) volverEncargosLista();
+  };
+  if (_consultaPcEncargos.addEventListener) _consultaPcEncargos.addEventListener('change', alCambiarModo);
+  else if (_consultaPcEncargos.addListener) _consultaPcEncargos.addListener(alCambiarModo);
 }
 
 function abrirEncargoDetalle(id) {
@@ -355,8 +393,7 @@ function _pintarEncargoDetalle(id) {
   const entradas = (encargo.movimientos||[]).filter(m=>m.tipo==='entrada').reduce((a,m)=>a+m.monto,0)+(encargo.saldoInicial||0);
   const salidas = (encargo.movimientos||[]).filter(m=>m.tipo==='salida').reduce((a,m)=>a+m.monto,0);
 
-  document.getElementById('encargosListView').style.display = 'none';
-  document.getElementById('encargoDetalle').style.display = '';
+  _mostrarPanelEncargos('encargoDetalle');
   document.getElementById('encargoAvatar').textContent = iniciales(encargo.nombre);
   document.getElementById('encargoNombreDet').textContent = encargo.nombre;
   document.getElementById('encargoSaldoLabel').textContent = encargo.nota||'';
@@ -716,9 +753,9 @@ function _encargoDetallePartes(encargo) {
 
 function volverEncargosLista() {
   encargoActualId = null;
-  document.getElementById('encargoDetalle').style.display = 'none';
-  document.getElementById('encargosListView').style.display = '';
+  _mostrarPanelEncargos('encargosListView');
   renderEncargosList();
+  _abrirEncargoPorDefecto();
 }
 
 function crearEncargo() {
@@ -3383,4 +3420,4 @@ function _encargoDetallePersona(encargo) {
   }
 }
 
-Ui.pantalla('encargos', () => { if (typeof renderEncargosList === 'function') renderEncargosList(); }, { key: 'encargos-render' });
+Ui.pantalla('encargos', () => { if (typeof renderEncargosList === 'function') renderEncargosList(); if (typeof _abrirEncargoPorDefecto === 'function') _abrirEncargoPorDefecto(); }, { key: 'encargos-render' });

@@ -70,9 +70,13 @@ Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deud
 
 Spotify: `spotify-principal` (costo y cuenta, resumen, integrantes, estadísticas) y `spotify-historial` (historial de pagos, en caja) como dos columnas; entre 900 y 1279 px el historial va debajo. Buscador: en PC el botón `btn-buscar-global` muestra `buscar-texto` y `buscar-atajo` (ocultos en celular) y se ve como el campo del prototipo; el atajo Ctrl/Cmd + K lo acciona (`eventos-base.js`).
 
+## 10 quater. Encargos, Alcancía y Plata comprometida
+
+Encargos: paneles `encargosListView` y `encargoDetalle` (por clase `panel-activo`, `data-panel-activo` en la pantalla); en PC, lista | detalle, con selección por defecto del primer encargo (`_abrirEncargoPorDefecto`, encargos.js). Alcancía: cuadrícula de dos columnas; `alcancia-no-iniciada` / `alcancia-activa` a la izquierda y `alcancia-progreso` (progreso entre ciclos e historial) en el riel; entre 900 y 1279 px el riel va debajo. Plata comprometida: `#cp-lista` en cuadrícula (`minmax(380px,1fr)`).
+
 ## 11. Cajas (solo PC)
 
-La información va dentro de un cuadro (`--bg2`, borde, radio 14, relleno 14) sobre el fondo; lo de adentro (`.card`, `.stat`, `.gasto-item`) usa `--bg3`. Selectores en `pc.css`: `#panel-var`, `#panel-fijo`, `#deudoresView`, `#misDeudasView`, `#deudorDetalle`, `#miDeudaDetalle`, `#spotify-historial`, `.columna-lista`, `.columna-movimientos` y `#tc-lista > .empty-state`. Las pantallas que falten deben usar el mismo criterio (un cuadro por bloque de información, no la información suelta sobre el fondo).
+La información va dentro de un cuadro (`--bg2`, borde, radio 14, relleno 14) sobre el fondo; lo de adentro (`.card`, `.stat`, `.gasto-item`) usa `--bg3`. Selectores en `pc.css`: `#panel-var`, `#panel-fijo`, `#deudoresView`, `#misDeudasView`, `#deudorDetalle`, `#miDeudaDetalle`, `#spotify-historial`, `#encargosListView`, `#encargoDetalle`, `#alcancia-activa`, `.columna-lista`, `.columna-movimientos` y `#tc-lista > .empty-state`. Las pantallas que falten deben usar el mismo criterio (un cuadro por bloque de información, no la información suelta sobre el fondo).
 
 ## 12. Prueba
 

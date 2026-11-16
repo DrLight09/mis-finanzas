@@ -69,7 +69,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
 | `js/modules/configuracion.js` | lazy — grupo `config` | 20 | 0 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 87 | 2 |
-| `js/modules/encargos.js` | lazy — grupo `encargos` | 85 | 0 |
+| `js/modules/encargos.js` | lazy — grupo `encargos` | 88 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
 | `js/modules/inicio.js` | de entrada (defer) | 29 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 56 | 1 |
@@ -479,7 +479,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: lazy — grupo `encargos`
 
-**Funciones:** `_actualizarMoverEncargoDestinoHint`, `_actualizarMoverEncargoOrigenHint`, `_actualizarMoverEncargoPreview`, `_actualizarMovimientoEncargoCuentaHint`, `_actualizarPartePreview`, `_actualizarTransfEncargoPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_compraConTcActualizarCuentaEncargoHint`, `_compraConTcActualizarDestinoHint`, `_compraConTcActualizarPreview`, `_compraConTcMiAgregarRow`, `_compraConTcMiSplitToggle`, `_confirmarMoverEncargoCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_diferencialMiSplitPreview`, `_diferencialRenderHistorialParte`, `_encargoDetallePartes`, `_encargoDetallePersona`, `_encargoGrupoSplit`, `_encargoPicker`, `_encargoSplitCarrier`, `_encargoSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_irAEncargo`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_moverEncargoGetFuentesOptions`, `_moverEncargoSplitPreview`, `_moverEncargoSplitToggle`, `_movimientoEncargoActualizarFaltante`, `_movimientoEncargoConfirmarPrestarFaltante`, `_movimientoEncargoFaltanteCuentaHint`, `_movimientoEncargoMiaPreview`, `_movimientoEncargoMiaToggle`, `_movimientoEncargoSplitPreview`, `_pintarEncargoDetalle`, `_pintarEncargosList`, `_procesarDiferencial`, `_procesarMovimientoEncargoMia`, `_salidaEncargoMenuIr`, `_usarParteFuentePreview`, `_usarParteFuentes`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_validarMovimientoEncargoMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMoverEntreCuentasEncargo`, `abrirMovimientoEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMoverEncargoCuentas`, `confirmarMovimientoEncargo`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovimientoEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
+**Funciones:** `_abrirEncargoPorDefecto`, `_actualizarMoverEncargoDestinoHint`, `_actualizarMoverEncargoOrigenHint`, `_actualizarMoverEncargoPreview`, `_actualizarMovimientoEncargoCuentaHint`, `_actualizarPartePreview`, `_actualizarTransfEncargoPreview`, `_actualizarTraspasoHint`, `_actualizarTraspasoOrigenHint`, `_actualizarTraspasoPreview`, `_compraConTcActualizarCuentaEncargoHint`, `_compraConTcActualizarDestinoHint`, `_compraConTcActualizarPreview`, `_compraConTcMiAgregarRow`, `_compraConTcMiSplitToggle`, `_confirmarMoverEncargoCuentasSplit`, `_confirmarUsarParte`, `_crearSplitSobrante`, `_diferencialMiSplitPreview`, `_diferencialRenderHistorialParte`, `_encargoDetallePartes`, `_encargoDetallePersona`, `_encargoGrupoSplit`, `_encargoPicker`, `_encargoSplitCarrier`, `_encargoSplitKey`, `_getEncargoSaldoEnCuenta`, `_getEncargoSaldoPorCuenta`, `_getEncargoSaldoSinCuenta`, `_irAEncargo`, `_marcarEncargoActivoEnLista`, `_miaLeerCuentas`, `_miaMontoEfectivo`, `_miaResumenLado`, `_mostrarPanelEncargos`, `_moverEncargoGetFuentesOptions`, `_moverEncargoSplitPreview`, `_moverEncargoSplitToggle`, `_movimientoEncargoActualizarFaltante`, `_movimientoEncargoConfirmarPrestarFaltante`, `_movimientoEncargoFaltanteCuentaHint`, `_movimientoEncargoMiaPreview`, `_movimientoEncargoMiaToggle`, `_movimientoEncargoSplitPreview`, `_pintarEncargoDetalle`, `_pintarEncargosList`, `_procesarDiferencial`, `_procesarMovimientoEncargoMia`, `_salidaEncargoMenuIr`, `_usarParteFuentePreview`, `_usarParteFuentes`, `_usarParteMiAgregarRow`, `_usarParteMiSplitToggle`, `_validarMovimientoEncargoMia`, `abrirCompraConTC`, `abrirEncargoDesdeCuenta`, `abrirEncargoDetalle`, `abrirMoverEntreCuentasEncargo`, `abrirMovimientoEncargo`, `abrirNuevaParte`, `abrirNuevoEncargo`, `abrirSalidaEncargoMenu`, `abrirTransferenciaEncargo`, `abrirTraspasoEncargo`, `abrirUsarParteSheet`, `cerrarPartSheet`, `confirmarCompraConTC`, `confirmarMoverEncargoCuentas`, `confirmarMovimientoEncargo`, `confirmarTransferenciaEncargo`, `confirmarTraspasoEncargo`, `crearEncargo`, `deleteMovimientoEncargo`, `editarEncargoActual`, `editarParte`, `eliminarEncargoActual`, `eliminarParte`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getEncargo`, `guardarEditarEncargo`, `guardarParte`, `renderEncargoParts`, `renderEncargosEnCuenta`, `renderEncargosList`, `usarParte`, `volverEncargosLista`
 
 ### `js/modules/gastos.js`
 
@@ -572,6 +572,7 @@ Ninguno.
 | `_abrirConfirmarTasaNu` | `js/modules/nu.js` |
 | `_abrirCrearPersonaGlobal` | `js/modules/personas.js` |
 | `_abrirCuentaPorDefecto` | `js/modules/cuentas.js` |
+| `_abrirEncargoPorDefecto` | `js/modules/encargos.js` |
 | `_abrirListaPersonas` | `js/modules/personas.js` |
 | `_abrirMovimientoMiDeudaPago` | `js/modules/prestado.js` |
 | `_abrirMovimientoMiDeudaRecibido` | `js/modules/prestado.js` |
@@ -762,6 +763,7 @@ Ninguno.
 | `_locallyModified` | `js/core/utilidades-ui.js` (window._locallyModified = …) |
 | `_luminancia` | `js/core/cuentas-fuentes.js` |
 | `_marcarCuentaActivaEnSelector` | `js/modules/cuentas.js` |
+| `_marcarEncargoActivoEnLista` | `js/modules/encargos.js` |
 | `_marcarPersonaActivaEnListas` | `js/modules/prestado.js` |
 | `_mensajePushError` | `js/core/notificaciones-push.js` |
 | `_mesadaAnioDeKey` | `js/modules/mesada.js` |
@@ -793,6 +795,7 @@ Ninguno.
 | `_montoCursor` | `js/core/money-input.js` |
 | `_montoFormatear` | `js/core/money-input.js` |
 | `_mostrarErrorPlan` | `js/modules/prestado.js` |
+| `_mostrarPanelEncargos` | `js/modules/encargos.js` |
 | `_mostrarPanelPrestamos` | `js/modules/prestado.js` |
 | `_mostrarTipoNuevaCuenta` | `js/modules/cuentas.js` |
 | `_motivoNoArchivar` | `js/modules/cuentas.js` |

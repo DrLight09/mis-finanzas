@@ -49,8 +49,8 @@
 
   /* ── Cajas: en PC la información va dentro de un cuadro (--bg2 con borde) sobre el fondo, y lo de adentro un tono más claro (--bg3) ──
      Solo PC: en celular cada tarjeta sigue directamente sobre el fondo. */
-  #panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,#spotify-historial,.columna-lista,.columna-movimientos{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;}
-  :is(#panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,#spotify-historial,.columna-movimientos) :is(.card,.stat,.gasto-item){background:var(--bg3);}
+  #panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,#spotify-historial,#encargosListView,#encargoDetalle,#alcancia-activa,.columna-lista,.columna-movimientos{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;}
+  :is(#panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,#spotify-historial,#encargosListView,#encargoDetalle,#alcancia-activa,.columna-movimientos) :is(.card,.stat,.gasto-item){background:var(--bg3);}
   #tc-lista > .empty-state{background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
 
   /* ── Lista de cuentas en PC: filas compactas (en celular se conservan las tarjetas de dos por fila) ───────────────────────────── */
@@ -132,6 +132,29 @@
   #spotify-historial{width:var(--riel-ancho);flex-shrink:0;}
   #spotify-historial > .sec-title{margin-top:0;}
 
+  /* ── Encargos: la lista a la izquierda (siempre visible) y el detalle del encargo abierto a la derecha ─────────────────────────────── */
+  .scroll-area > #screen-encargos{max-width:none;margin-left:0;margin-right:0;}
+  #screen-encargos.active{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);column-gap:14px;align-items:start;}
+  #screen-encargos #encargosListView{display:block;grid-column:1;}
+  #encargoDetalle{grid-column:2;grid-row:1;}
+  /* Sin encargos (no hay nada que abrir): la lista ocupa todo el ancho con su estado vacío. */
+  #screen-encargos[data-panel-activo="encargosListView"]{grid-template-columns:minmax(0,1fr);}
+  #btn-volver-encargos{display:none;} /* la lista está a la vista */
+
+  /* ── Alcancía: lo de siempre a la izquierda y el progreso entre ciclos (si ya hay dos o más) en el riel derecho ──────────────────── */
+  .scroll-area > #screen-alcancia{max-width:none;margin-left:0;margin-right:0;}
+  #screen-alcancia.active{display:grid;grid-template-columns:minmax(0,1fr) var(--riel-ancho);column-gap:14px;align-items:start;}
+  #screen-alcancia > .hero{grid-column:1 / -1;}
+  #alcancia-no-iniciada,#alcancia-activa{grid-column:1;}
+  #alcancia-progreso{grid-column:2;grid-row:2;}
+  #alcancia-progreso > .sec-title{margin-top:0;}
+
+  /* ── Plata comprometida: los ingresos en una cuadrícula en vez de apilados (cada uno ya trae su resumen y su distribución) ───────── */
+  .scroll-area > #screen-comprometida{max-width:none;margin-left:0;margin-right:0;}
+  #cp-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;align-items:start;}
+  #cp-lista > .card{margin-bottom:0;}
+  #cp-lista > .empty-state{grid-column:1 / -1;background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
+
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-lista{width:280px;flex-shrink:0;}
@@ -161,6 +184,9 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Encargos y Alcancía: se conserva el reparto; el riel de Alcancía pasa debajo. */
+  #screen-alcancia.active{grid-template-columns:minmax(0,1fr);}
+  #alcancia-progreso{grid-column:1;grid-row:3;}
   /* Spotify: el historial pasa debajo. */
   #screen-spotify.active{flex-wrap:wrap;}
   #spotify-principal{flex-basis:100%;}

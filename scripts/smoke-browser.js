@@ -346,6 +346,15 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     const panelPrestamos = () => ev(`['deudoresView','deudorDetalle','misDeudasView','miDeudaDetalle'].filter(i=>document.getElementById(i).classList.contains('panel-activo')).join(',')`);
     ev(`cambiarTabPrestamos('yo-debo')`); c5(panelPrestamos() === 'misDeudasView', 'Prestado: la pestaña Yo debo no dejó solo misDeudasView activo: ' + panelPrestamos());
     ev(`cambiarTabPrestamos('me-deben')`); c5(panelPrestamos() === 'deudoresView' && ev(`document.getElementById('screen-prestamos').dataset.panelActivo`) === 'deudoresView', 'Prestado: la pestaña Me deben no dejó solo deudoresView activo: ' + panelPrestamos());
+    // Encargos: en PC se abre el primer encargo; al achicar sin haber elegido otro se vuelve a la lista.
+    ev(`S.encargos=[{id:'enc-prueba',nombre:'Santiago',nota:'',movimientos:[],saldoInicial:0}]; showScreen('encargos')`);
+    const panelEncargos = () => ev(`document.getElementById('screen-encargos').dataset.panelActivo`);
+    c5(panelEncargos() === 'encargosListView', 'Encargos: en celular debe verse la lista (' + panelEncargos() + ')');
+    cambiarModo(true);
+    c5(panelEncargos() === 'encargoDetalle' && ev('encargoActualId') === 'enc-prueba', 'Encargos: en PC debe abrirse el primer encargo (' + panelEncargos() + ')');
+    cambiarModo(false);
+    c5(panelEncargos() === 'encargosListView' && ev('encargoActualId') === null, 'Encargos: al achicar tras una apertura automática debe volver a la lista (' + panelEncargos() + ')');
+    ev(`S.encargos=[]; showScreen('inicio')`);
     cambiarModo(true); cambiarModo(false); cambiarModo(true); cambiarModo(false);
     c5(hijos('screen-inicio') === inicioCelular && hijos('screen-cuentas') === cuentasCelular, 'Varios cambios seguidos dejaron bloques fuera de su sitio');
   } catch (e) { fallos5.push('excepción en la FASE 5: ' + e.message); }

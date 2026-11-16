@@ -948,9 +948,11 @@
                en cualquier momento (no solo en el instante de destapar) —
                poblado por renderAlcancia(), oculto si hay menos de 2 ciclos
                en el historial (no hay nada que comparar todavía). -->
+          <div id="alcancia-progreso">
           <div class="ix-mb14" id="alcancia-wrapped-progreso" style="display:none;"></div>
           <div class="sec-title ix-mt4" id="alcancia-historial-titulo" style="display:none;">Historial de alcancías</div>
           <div id="alcancia-historial-lista" style="display:none;"></div>
+          </div><!-- /alcancia-progreso -->
         </div>
 
         <!-- PLATA COMPROMETIDA (docs/auditoria-tecnica.md #4 — estaticada para
@@ -1763,9 +1765,9 @@
         </div>
 
         <!-- ENCARGOS -->
-        <div class="screen" id="screen-encargos">
+        <div class="screen" id="screen-encargos" data-panel-activo="encargosListView">
           <!-- Vista lista de encargos -->
-          <div id="encargosListView">
+          <div id="encargosListView" class="encargos-panel panel-activo">
             <div class="sec-title ix-mt4">Plata que
               administro</div>
             <p class="ix-p-130">Plata
@@ -1782,7 +1784,7 @@
             </button>
           </div>
           <!-- Vista detalle de un encargo -->
-          <div id="encargoDetalle" style="display:none;">
+          <div id="encargoDetalle" class="encargos-panel">
             <div class="detail-header ix-mb14">
               <button type="button" class="detail-header-back btn-icon"
                 id="btn-volver-encargos" aria-label="Volver">

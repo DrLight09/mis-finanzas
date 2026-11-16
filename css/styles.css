@@ -1573,6 +1573,10 @@ button.inicio-pilar-accion{cursor:pointer;}
 .enc-lista-der{text-align:right;flex-shrink:0;margin-left:8px;}
 .enc-lista-pie{display:flex;justify-content:space-between;align-items:center;padding-top:8px;margin-top:4px;}
 .enc-card-click, .card.enc-card-click{cursor:pointer;margin-bottom:8px;}
+/* Encargos: un panel a la vez (_mostrarPanelEncargos, encargos.js, marca el activo). En PC la lista siempre se ve (css/pc.css). */
+.encargos-panel{display:none;}
+.encargos-panel.panel-activo{display:block;}
+.encargo-card-activa{border-color:var(--accent);} /* el encargo abierto en la lista (en PC la lista siempre se ve) */
 .enc-pers-cab{display:flex;align-items:center;gap:10px;}
 .enc-av-det, .avatar.enc-av-det{background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);flex-shrink:0;}
 .enc-txt-der{text-align:right;}

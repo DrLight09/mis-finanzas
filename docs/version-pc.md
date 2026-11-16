@@ -54,7 +54,15 @@ Panel de variables (`panel-var`: filtro de mes, lista, total) y panel de fijos (
 
 Fila compacta por cuenta (`.cuenta-card`): ícono, nombre y etiqueta, saldo, flecha; una columna, igual en celular y en PC. Es una decisión de Sebas (le gustó más cómo se ve en el prototipo que las tarjetas grandes). Nombre y saldo en el color de la cuenta; el texto blanco se veía demasiado.
 
-## 9. Prueba
+## 9. Tarjetas de crédito
+
+`#tc-lista` en cuadrícula (`minmax(380px,1fr)`); sin reparto de columnas por JS. Las acciones y los movimientos de cada tarjeta siguen siendo los de la app (botones de la tarjeta y hoja «Ver»).
+
+## 10. Prestado
+
+Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC: cuadrícula de dos columnas; `deudoresView` y `misDeudasView` siempre visibles a la izquierda (filas 1 y 2) y el detalle activo a la derecha (ocupa las dos filas); las pestañas se ocultan. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js), igual que `_abrirCuentaPorDefecto` en Cuentas.
+
+## 11. Prueba
 
 Automática: la FASE 5 de `npm run smoke` (ida y vuelta celular ↔ PC con Inicio y Cuentas).
 

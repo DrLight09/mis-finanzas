@@ -2024,6 +2024,11 @@ button.inicio-pilar-accion{cursor:pointer;}
 .ix-taright{text-align:right;}
 .ix-totalgvfilttc{font-size:10px;color:var(--red);font-family:'DM Mono',monospace;}
 .ix-prestamos-tabs{display:flex;gap:6px;margin-bottom:14px;}
+/* Préstamos: un panel a la vez (_mostrarPanelPrestamos, prestado.js, marca el activo). En PC las dos listas siempre se ven (css/pc.css). */
+.prestamos-panel{display:none;}
+.prestamos-panel.panel-activo{display:block;}
+.prestamos-tabs-oculto{display:none;} /* las pestañas Me deben / Yo debo se ocultan dentro del detalle de una persona */
+.persona-card-activa{border-color:var(--accent);} /* la persona abierta en la lista (en PC la lista siempre se ve) */
 .ix-tab-me-deben, .btn.ix-tab-me-deben{flex:1;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.4);color:var(--accent);}
 .ix-ddavatar, .avatar.ix-ddavatar{width:38px;height:38px;font-size:14px;margin-right:0;flex-shrink:0;cursor:pointer;}
 .ix-fx1-minw0{flex:1;min-width:0;}

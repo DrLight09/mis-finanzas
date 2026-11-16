@@ -68,6 +68,23 @@
   #panel-fijo{width:var(--riel-ancho);flex-shrink:0;}
   #screen-gastos .tab-bar + .gastos-panel{margin-top:0;}
 
+  /* ── Tarjetas de crédito: las tarjetas en una cuadrícula en vez de apiladas (cada una ya trae Compra / Pagar / Ver) ─────────────── */
+  .scroll-area > #screen-tarjetas{max-width:none;margin-left:0;margin-right:0;}
+  #tc-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;align-items:start;}
+  #tc-lista > .empty-state{grid-column:1 / -1;}
+  #tc-lista > .tc-card{margin-bottom:0;}
+  #btn-nueva-tarjeta{max-width:320px;}
+
+  /* ── Prestado: las dos listas (Me deben / Yo debo) a la izquierda, siempre visibles, y el detalle de la persona abierta a la derecha ──
+     Sin pestañas. El detalle que se ve lo decide la clase panel-activo (prestado.js); las dos listas se muestran siempre. */
+  .scroll-area > #screen-prestamos{max-width:none;margin-left:0;margin-right:0;}
+  #screen-prestamos.active{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:16px;align-items:start;}
+  #prestamos-tabs{display:none;}
+  #screen-prestamos #deudoresView{display:block;grid-column:1;grid-row:1;}
+  #screen-prestamos #misDeudasView{display:block;grid-column:1;grid-row:2;}
+  #deudorDetalle,#miDeudaDetalle{grid-column:2;grid-row:1 / span 2;}
+  #btn-volver-deudores,#btn-volver-mis-deudas{display:none;} /* la lista está a la vista */
+
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-lista{width:280px;flex-shrink:0;}

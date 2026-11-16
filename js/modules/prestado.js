@@ -424,7 +424,7 @@ function _renderListaDeudas(dir) {
     const tienePerfil = !!d.personaId;
     const color = _colorDeuda(d);
     const [accionAvatar, argAvatar] = ui.avatarAccion(d);
-    return html`<div class="card card-sm pr-card-8">
+    return html`<div class="card card-sm pr-card-8${(dir === 'favor' ? deudorActualId : miDeudaActualId) === d.id ? ' persona-card-activa' : ''}">
       <div class="pr-fila-10">
         <button type="button" class="avatar pr-avatar" ${raw(Events.attr(accionAvatar, argAvatar))}
           style="color:${raw(color)};background:${raw(color)}18;${raw(tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '44;' : '')}"
@@ -499,6 +499,54 @@ function _pintarEncabezadoDeuda(ids, d, saldoTxt, saldoColor, total1, total2) {
   lbl.style.color = saldoColor;
   document.getElementById(ids.total1).textContent = fmt(total1);
   document.getElementById(ids.total2).textContent = fmt(total2);
+}
+
+/* ── Paneles de la pantalla: uno a la vez en celular; en PC las dos listas siempre se ven y el detalle va a la derecha ───────────
+   Antes se alternaban con style.display inline en cinco sitios; ahora un solo lugar marca el panel activo (clase panel-activo, regla en
+   styles.css) y deja su nombre en data-panel-activo de la pantalla (css/pc.css lo usa). Mismo patrón que Cuentas. */
+const _PANELES_PRESTAMOS = ['deudoresView', 'deudorDetalle', 'misDeudasView', 'miDeudaDetalle'];
+const _consultaPcPrestamos = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
+let _seleccionAutomaticaPrestamos = false;
+function _mostrarPanelPrestamos(panelId) {
+  _PANELES_PRESTAMOS.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('panel-activo', id === panelId); });
+  const pantalla = document.getElementById('screen-prestamos');
+  if (pantalla) pantalla.dataset.panelActivo = panelId;
+  // Las pestañas Me deben / Yo debo no tienen sentido estando adentro del detalle de alguien.
+  const tabs = document.getElementById('prestamos-tabs');
+  if (tabs) tabs.classList.toggle('prestamos-tabs-oculto', panelId === 'deudorDetalle' || panelId === 'miDeudaDetalle');
+  _seleccionAutomaticaPrestamos = false; // cualquier cambio de panel es de la persona; solo _abrirPersonaPorDefectoPrestamos() lo vuelve a marcar
+  _marcarPersonaActivaEnListas();
+}
+// Resalta en las listas a la persona abierta (las listas se vuelven a pintar a menudo: también lo hace _renderListaDeudas).
+function _marcarPersonaActivaEnListas() {
+  [['deudoresList', deudorActualId], ['misDeudasList', miDeudaActualId]].forEach(([lista, actual]) => {
+    document.querySelectorAll('#' + lista + ' .pr-click[data-args]').forEach(el => {
+      let id = null; try { id = JSON.parse(el.getAttribute('data-args'))[0]; } catch (e) { /* data-args siempre es JSON; por si acaso */ }
+      const card = el.closest('.card'); if (card) card.classList.toggle('persona-card-activa', !!actual && id === actual);
+    });
+  });
+}
+// PC (≥900 px): siempre hay alguien abierto. Al entrar a Préstamos (o al volver a una lista) se abre la primera persona de esa lista,
+// la que más pesa. Esa apertura es automática: si la ventana se achica a celular sin que la persona haya elegido otra cosa, se vuelve
+// a la lista en vez de dejar un detalle que no abrió (cualquier cambio de panel hecho por la persona borra la marca).
+function _abrirPersonaPorDefectoPrestamos() {
+  if (!_consultaPcPrestamos || !_consultaPcPrestamos.matches) return;
+  const pantalla = document.getElementById('screen-prestamos');
+  const panel = pantalla && pantalla.dataset.panelActivo;
+  if (panel !== 'deudoresView' && panel !== 'misDeudasView') return;
+  const dir = panel === 'misDeudasView' ? 'contra' : 'favor';
+  const primera = [...Deudas.lista(dir)].sort((a, b) => Deudas.saldo(b) - Deudas.saldo(a))[0];
+  if (!primera) return; // sin personas: el detalle queda vacío y la lista trae su estado vacío
+  if (dir === 'favor') abrirDeudor(primera.id); else abrirMiDeuda(primera.id);
+  if (pantalla.dataset.panelActivo !== panel) _seleccionAutomaticaPrestamos = true;
+}
+if (_consultaPcPrestamos) {
+  const alCambiarModo = e => {
+    if (e.matches) { const p = document.getElementById('screen-prestamos'); if (p && p.classList.contains('active')) _abrirPersonaPorDefectoPrestamos(); }
+    else if (_seleccionAutomaticaPrestamos) { if (miDeudaActualId) volverMisDeudas(); else volverDeudores(); }
+  };
+  if (_consultaPcPrestamos.addEventListener) _consultaPcPrestamos.addEventListener('change', alCambiarModo);
+  else if (_consultaPcPrestamos.addListener) _consultaPcPrestamos.addListener(alCambiarModo);
 }
 
 function abrirDeudor(id) {
@@ -608,10 +656,7 @@ function abrirDeudor(id) {
 
   // Mostrar detalle, ocultar lista y las pestañas Me deben/Yo debo (no
   // tiene sentido cambiar de pestaña estando adentro del detalle de alguien).
-  document.getElementById('deudoresView').style.display = 'none';
-  document.getElementById('deudorDetalle').style.display = 'block';
-  const _pt1 = document.getElementById('prestamos-tabs');
-  if (_pt1) _pt1.style.display = 'none';
+  _mostrarPanelPrestamos('deudorDetalle');
   document.getElementById('scrollArea').scrollTop = 0;
 
   // Mostrar chip "Ver perfil" si tiene personaId
@@ -643,16 +688,9 @@ function _abrirPerfilDesdeDeudor(deudorId) {
 
 function volverDeudores() {
   deudorActualId = null;
-  document.getElementById('deudoresView').style.display = '';
-  document.getElementById('deudorDetalle').style.display = 'none';
+  _mostrarPanelPrestamos('deudoresView');
   renderDeudoresList();
-  const _pt2 = document.getElementById('prestamos-tabs');
-  // Ojo: 'flex' explícito, no ''. #prestamos-tabs trae display:flex inline
-  // en el HTML (para poner los botones lado a lado); al ocultarlo con
-  // 'none' se sobreescribe ese inline style, y volver a '' no lo restaura
-  // — cae al display:block por defecto del div y los botones quedan
-  // apilados verticalmente en vez de en fila.
-  if (_pt2) _pt2.style.display = 'flex';
+  _abrirPersonaPorDefectoPrestamos();
 }
 
 async function eliminarDeudorActual() {
@@ -1895,11 +1933,7 @@ function cambiarTabPrestamos(tab) {
   _pintarTabPrestamos(document.getElementById('tab-me-deben'), !yoDebo);
   _pintarTabPrestamos(document.getElementById('tab-yo-debo'), yoDebo);
   // Cada dirección tiene su lista y su detalle; el detalle siempre arranca oculto.
-  const mostrar = (id, visible) => { const e = document.getElementById(id); if (e) e.style.display = visible ? '' : 'none'; };
-  mostrar('deudoresView', !yoDebo);
-  mostrar('deudorDetalle', false);
-  mostrar('misDeudasView', yoDebo);
-  mostrar('miDeudaDetalle', false);
+  _mostrarPanelPrestamos(yoDebo ? 'misDeudasView' : 'deudoresView');
   if (yoDebo) renderMisDeudasList();
 }
 
@@ -1957,20 +1991,15 @@ function abrirMiDeuda(id) {
     historialEl.innerHTML = _htmlHistorialPorGrupos(d, _porGrupo);
   }
 
-  document.getElementById('misDeudasView').style.display = 'none';
-  document.getElementById('miDeudaDetalle').style.display = 'block';
-  const _pt3 = document.getElementById('prestamos-tabs');
-  if (_pt3) _pt3.style.display = 'none';
+  _mostrarPanelPrestamos('miDeudaDetalle');
   document.getElementById('scrollArea').scrollTop = 0;
 }
 
 function volverMisDeudas() {
   miDeudaActualId = null;
-  document.getElementById('misDeudasView').style.display = '';
-  document.getElementById('miDeudaDetalle').style.display = 'none';
+  _mostrarPanelPrestamos('misDeudasView');
   renderMisDeudasList(); // al volver siempre se pinta: no depender de que un refresh() lo haya hecho
-  const _pt4 = document.getElementById('prestamos-tabs');
-  if (_pt4) _pt4.style.display = 'flex'; // ver nota en volverDeudores() — no usar ''
+  _abrirPersonaPorDefectoPrestamos();
 }
 
 /* ── YO DEBO: registrar un movimiento (validar → aplicar) ────────────────
@@ -2713,7 +2742,7 @@ Ui.en('persona-editada', function(personaId) {
   const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
   if (d && d.personaId === personaId) {
     const detalle = document.getElementById('deudorDetalle');
-    if (detalle && detalle.style.display !== 'none') abrirDeudor(deudorActualId);
+    if (detalle && detalle.classList.contains('panel-activo')) abrirDeudor(deudorActualId);
   }
 }, { key: 'prestado-detalle-deudor' });
 
@@ -2901,16 +2930,11 @@ Ui.pantalla('*', nombre => {
   if (nombre === 'prestamos') return;
   deudorActualId = null;
   miDeudaActualId = null;
-  const ver = (id, v) => { const el = document.getElementById(id); if (el) el.style.display = v; };
-  // #prestamos-tabs trae display:flex inline; '' caería al block por defecto del div.
-  ver('prestamos-tabs', 'flex');
-  ver('deudorDetalle', 'none');
-  ver('miDeudaDetalle', 'none');
-  const yoDebo = prestamosTabActiva === 'yo-debo';
-  ver('deudoresView', yoDebo ? 'none' : '');
-  ver('misDeudasView', yoDebo ? '' : 'none');
+  _mostrarPanelPrestamos(prestamosTabActiva === 'yo-debo' ? 'misDeudasView' : 'deudoresView');
 }, { key: 'prestado-reset' });
 Ui.pantalla('prestamos', () => {
   if (prestamosTabActiva === 'yo-debo') { if (typeof renderMisDeudasList === 'function') renderMisDeudasList(); }
   else if (typeof renderDeudoresList === 'function') renderDeudoresList();
+  if (typeof renderMisDeudasList === 'function' && prestamosTabActiva !== 'yo-debo') renderMisDeudasList(); // en PC las dos listas se ven a la vez
+  _abrirPersonaPorDefectoPrestamos();
 }, { key: 'prestado-render' });

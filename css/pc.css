@@ -114,6 +114,13 @@
   #deudoresList .card:hover,#misDeudasList .card:hover{background:color-mix(in srgb,var(--text) 5%,transparent);}
   #screen-prestamos .persona-card-activa{background:var(--bg3);border-color:var(--border2);}
 
+  /* ── Mesada: Papá y Mamá lado a lado (cada una ya es una tarjeta con su cuota y sus doce meses); el título, el año, el resumen
+     y el aviso de pagos parciales ocupan todo el ancho. El detalle de cada mes sigue abriéndose en su hoja (ventana modal en PC). ──── */
+  .scroll-area > #screen-mesada{max-width:none;margin-left:0;margin-right:0;}
+  #mesadaSection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:start;}
+  #mesadaSection > *{grid-column:1 / -1;}
+  #mesadaSection > .card.ms-mb9{grid-column:auto;}
+
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-lista{width:280px;flex-shrink:0;}
@@ -143,6 +150,9 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Mesada: Papá y Mamá una debajo de la otra. */
+  #mesadaSection{grid-template-columns:minmax(0,1fr);}
+  #mesadaSection > .card.ms-mb9{grid-column:1 / -1;}
   /* Prestado: las listas se apilan a la izquierda y el detalle queda a la derecha. */
   #screen-prestamos.active{grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto auto 1fr;}
   #screen-prestamos #misDeudasView{grid-column:1;grid-row:3;}

@@ -43,6 +43,11 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 8: Mesada (2026-11-16, SW v140)
+
+- **Mesada en PC (≥900 px).** Solo CSS: Papá y Mamá lado a lado (cada una ya es una tarjeta con su cuota y sus doce meses), y el título, el año, el resumen («Recibido este año», «Meses pagados») y el aviso de pagos parciales ocupan todo el ancho. Entre 900 y 1279 px, Papá y Mamá una debajo de la otra. El detalle de cada mes sigue abriéndose en su hoja (ventana modal en PC).
+- **No se copió del prototipo:** las tarjetas «Cuota esperada» y «Pendiente», la tabla por mes con estados («Pagado completo», «Sin pagar», «Por venir»), los selectores Papá/Mamá y de año, y el panel lateral del mes elegido: la app muestra cada mes en una cuadrícula y su detalle en una hoja, y nada de eso existe como pantalla. Si quieres ese formato, es una vista nueva y hay que decidir de dónde sale cada dato.
+
 ## Versión PC, parte 7: Prestado como el prototipo (2026-11-16, SW v139)
 
 - **Reparto:** el resumen arriba y, debajo, tres columnas: Me deben | Yo debo | detalle de la persona abierta (340 px). Antes eran las dos listas apiladas a la izquierda. Entre 900 y 1279 px las listas se apilan a la izquierda y el detalle queda a la derecha. Sin nadie abierto (todavía no hay personas) las dos listas ocupan todo el ancho, cada una en su caja con su estado vacío.

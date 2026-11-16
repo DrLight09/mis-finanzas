@@ -60,7 +60,7 @@ Fila compacta por cuenta (`.cuenta-card`) solo en PC: ícono, nombre y etiqueta,
 
 ## 10. Prestado
 
-Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC: arriba el resumen (`prestamos-resumen`: Me deben, Yo debo y Neto, pintados por `refresh()`; oculto en celular); debajo, cuadrícula de dos columnas con `deudoresView` y `misDeudasView` siempre visibles a la izquierda y el detalle activo a la derecha (ocupa las dos filas); las pestañas se ocultan. Sin nadie abierto (sin personas) las dos listas van lado a lado a todo el ancho y no hay panel de detalle. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js), igual que `_abrirCuentaPorDefecto` en Cuentas.
+Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC, como el prototipo: arriba el resumen (`prestamos-resumen`: tarjetas Me deben / Yo debo / neto, barra de proporción y porcentajes, pintados por `refresh()`; oculto en celular); debajo, tres columnas: `deudoresView` | `misDeudasView` | detalle activo (340 px). Las pestañas se ocultan. Sin nadie abierto (sin personas) las dos listas ocupan todo el ancho y no hay tercera columna. Entre 900 y 1279 px las listas se apilan a la izquierda y el detalle queda a la derecha. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js): la primera persona de Me deben y, si está vacía, la de Yo debo.
 
 ## 11. Cajas (solo PC)
 

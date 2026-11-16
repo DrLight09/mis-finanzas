@@ -1387,11 +1387,16 @@
 
         <!-- PRESTAMOS -->
         <div class="screen" id="screen-prestamos" data-panel-activo="deudoresView">
-          <!-- Resumen (solo PC, ≥900 px): los totales de Me deben y Yo debo (Deudas.totalPendiente, los mismos de Inicio) y su diferencia; los pinta refresh(). -->
+          <!-- Resumen (solo PC, ≥900 px): totales de Me deben y Yo debo (Deudas.totalPendiente, los mismos de Inicio), su diferencia y la proporción
+               entre los dos. Los pinta refresh(); en celular está oculto. -->
           <div class="prestamos-resumen">
-            <div class="stat"><div class="stat-label">Me deben</div><div class="stat-value c-amber" id="p-resumen-me-deben">$0</div></div>
-            <div class="stat"><div class="stat-label">Yo debo</div><div class="stat-value c-red" id="p-resumen-yo-debo">$0</div></div>
-            <div class="stat"><div class="stat-label">Neto</div><div class="stat-value" id="p-resumen-neto">$0</div></div>
+            <div class="prestamos-kpis">
+              <div class="prestamos-kpi prestamos-kpi-favor"><div class="stat-label">Me deben</div><div class="prestamos-kpi-monto" id="p-resumen-me-deben">$0</div><div class="prestamos-kpi-sub" id="p-resumen-me-deben-sub"></div></div>
+              <div class="prestamos-kpi prestamos-kpi-contra"><div class="stat-label">Yo debo</div><div class="prestamos-kpi-monto" id="p-resumen-yo-debo">$0</div><div class="prestamos-kpi-sub" id="p-resumen-yo-debo-sub"></div></div>
+              <div class="prestamos-kpi"><div class="stat-label" id="p-resumen-neto-etiqueta">Neto</div><div class="prestamos-kpi-monto" id="p-resumen-neto">$0</div><div class="prestamos-kpi-sub" id="p-resumen-neto-sub"></div></div>
+            </div>
+            <div class="prestamos-proporcion" id="p-resumen-barra"><i class="prestamos-barra-favor" id="p-barra-favor"></i><i class="prestamos-barra-contra" id="p-barra-contra"></i></div>
+            <div class="prestamos-proporcion-texto"><span id="p-texto-favor"></span><span id="p-texto-contra"></span></div>
           </div>
           <div class="ix-prestamos-tabs"
             id="prestamos-tabs">

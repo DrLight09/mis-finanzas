@@ -97,21 +97,22 @@
   #tc-lista > .tc-card{margin-bottom:0;}
   #btn-nueva-tarjeta{max-width:320px;}
 
-  /* ── Prestado: las dos listas (Me deben / Yo debo) a la izquierda, siempre visibles, y el detalle de la persona abierta a la derecha ──
+  /* ── Prestado (como el prototipo): el resumen arriba y debajo Me deben | Yo debo | detalle de la persona abierta ───────────────────
      Sin pestañas. El detalle que se ve lo decide la clase panel-activo (prestado.js); las dos listas se muestran siempre. */
   .scroll-area > #screen-prestamos{max-width:none;margin-left:0;margin-right:0;}
-  #screen-prestamos.active{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);grid-template-rows:auto auto 1fr;column-gap:16px;align-items:start;}
-  #screen-prestamos .prestamos-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
-  #screen-prestamos .prestamos-resumen .stat{padding:15px 16px;}
-  #screen-prestamos .prestamos-resumen .stat-value{font-size:22px;}
+  #screen-prestamos.active{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) 340px;grid-template-rows:auto 1fr;column-gap:12px;align-items:start;}
+  #screen-prestamos .prestamos-resumen{display:block;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
   #prestamos-tabs{display:none;}
   #screen-prestamos #deudoresView{display:block;grid-column:1;grid-row:2;}
-  #screen-prestamos #misDeudasView{display:block;grid-column:1;grid-row:3;}
-  #deudorDetalle,#miDeudaDetalle{grid-column:2;grid-row:2 / span 2;}
-  /* Sin nadie abierto (todavía no hay personas): las dos listas lado a lado, a todo el ancho, y sin panel de detalle. */
-  #screen-prestamos[data-panel-activo="deudoresView"],#screen-prestamos[data-panel-activo="misDeudasView"]{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto;}
-  #screen-prestamos[data-panel-activo="deudoresView"] #misDeudasView,#screen-prestamos[data-panel-activo="misDeudasView"] #misDeudasView{grid-column:2;grid-row:2;}
+  #screen-prestamos #misDeudasView{display:block;grid-column:2;grid-row:2;}
+  #deudorDetalle,#miDeudaDetalle{grid-column:3;grid-row:2;}
+  /* Sin nadie abierto (todavía no hay personas): las dos listas a todo el ancho y sin tercera columna. */
+  #screen-prestamos[data-panel-activo="deudoresView"],#screen-prestamos[data-panel-activo="misDeudasView"]{grid-template-columns:repeat(2,minmax(0,1fr));}
   #btn-volver-deudores,#btn-volver-mis-deudas{display:none;} /* la lista está a la vista */
+  /* Filas planas dentro de la caja de cada lista; la persona abierta con fondo propio. */
+  #deudoresList .card,#misDeudasList .card{background:transparent;border-color:transparent;margin-bottom:2px;}
+  #deudoresList .card:hover,#misDeudasList .card:hover{background:color-mix(in srgb,var(--text) 5%,transparent);}
+  #screen-prestamos .persona-card-activa{background:var(--bg3);border-color:var(--border2);}
 
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
@@ -142,6 +143,12 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Prestado: las listas se apilan a la izquierda y el detalle queda a la derecha. */
+  #screen-prestamos.active{grid-template-columns:minmax(0,1fr) 340px;grid-template-rows:auto auto 1fr;}
+  #screen-prestamos #misDeudasView{grid-column:1;grid-row:3;}
+  #deudorDetalle,#miDeudaDetalle{grid-row:2 / span 2;grid-column:2;}
+  #screen-prestamos[data-panel-activo="deudoresView"],#screen-prestamos[data-panel-activo="misDeudasView"]{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-rows:auto auto;}
+  #screen-prestamos[data-panel-activo="deudoresView"] #misDeudasView,#screen-prestamos[data-panel-activo="misDeudasView"] #misDeudasView{grid-column:2;grid-row:2;}
   /* Gastos: los fijos mensuales pasan debajo de los variables. */
   #screen-gastos.active{flex-wrap:wrap;}
   #panel-var{flex-basis:100%;}

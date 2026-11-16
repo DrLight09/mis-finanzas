@@ -75,8 +75,26 @@ function _refreshNucleo(){
   // (window.totalPrestadoPendiente?...:0) para el mismo caso.
   const prest=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
   // Resumen de la pantalla Préstamos (solo se ve en PC, css/pc.css): mismos totales que Inicio y el patrimonio.
-  {const debo=typeof Deudas!=='undefined'?Deudas.totalPendiente('contra'):0;
-   [['p-resumen-me-deben',prest],['p-resumen-yo-debo',debo],['p-resumen-neto',prest-debo]].forEach(([id,v])=>{const el=document.getElementById(id);if(el)el.textContent=fmtNoCents(v);});}
+  if(typeof Deudas!=='undefined'){
+    const debo=Deudas.totalPendiente('contra'),neto=prest-debo,total=prest+debo;
+    const personas=dir=>Deudas.lista(dir).filter(d=>Deudas.saldo(d)>0).length;
+    const nFavor=personas('favor'),nContra=personas('contra');
+    const poner=(id,texto)=>{const el=document.getElementById(id);if(el)el.textContent=texto;};
+    poner('p-resumen-me-deben',fmtNoCents(prest));
+    poner('p-resumen-yo-debo',fmtNoCents(debo));
+    poner('p-resumen-neto',fmtNoCents(neto));
+    poner('p-resumen-me-deben-sub',nFavor?nFavor+(nFavor===1?' persona':' personas'):'Nadie te debe');
+    poner('p-resumen-yo-debo-sub',nContra?nContra+(nContra===1?' persona':' personas'):'No debes nada');
+    poner('p-resumen-neto-etiqueta',neto>0?'Neto a favor':neto<0?'Neto en contra':'Neto');
+    poner('p-resumen-neto-sub',total>0?'Me deben − yo debo':'Sin préstamos registrados');
+    const pFavor=total>0?Math.round(prest/total*100):0;
+    poner('p-texto-favor',total>0?pFavor+' % a favor':'');
+    poner('p-texto-contra',total>0?(100-pFavor)+' % en contra':'');
+    const barra=document.getElementById('p-resumen-barra');
+    if(barra){barra.classList.toggle('prestamos-proporcion-vacia',total<=0);
+      const bf=document.getElementById('p-barra-favor'),bc=document.getElementById('p-barra-contra');
+      if(bf)bf.style.flexGrow=prest>0?prest:0; if(bc)bc.style.flexGrow=debo>0?debo:0;}
+  }
   // CDTs value comes from calcCDT nested in cajitas
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   const cajitasLibres=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);

@@ -43,6 +43,13 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 9: buscador como campo y Spotify (2026-11-16, SW v141)
+
+- **Buscador en PC (≥900 px).** El botón de la cabecera (`btn-buscar-global`) se ve como un campo de 290 px, como en el prototipo: ícono, «Buscar movimientos, personas, cuentas» y el atajo «Ctrl K» (que ya abría la búsqueda desde la parte 1). Mismo botón y misma búsqueda de siempre: solo se muestran dos elementos más (`buscar-texto` y `buscar-atajo`), ocultos en celular. El texto describe lo que la búsqueda global ya cubre (movimientos, personas, cuentas, entre otros).
+- **Spotify en PC.** Lo de siempre (costo y cuenta, resumen de cobros, botón de pagar, integrantes, estadísticas) a la izquierda, y el historial de pagos en el riel derecho dentro de una caja. Entre 900 y 1279 px el historial pasa debajo. En celular el orden no cambia.
+- **Estructura:** dos envoltorios de bloque en el HTML (`spotify-principal` y `spotify-historial`), sin relleno ni borde, así que el espaciado de celular no cambia. Sin reparto de columnas por JS.
+- **No se copió del prototipo:** las cuatro tarjetas de resumen (la app ya muestra los cobros en su resumen y el resto en «Estadísticas»), la tabla de integrantes con «Próximo cobro» y los botones «+ Integrante», «Configurar costo» y «Registrar pago a Spotify» con esos textos (la app conserva los suyos; «Pagar Spotify» se queda en la columna izquierda).
+
 ## Versión PC, parte 8: Mesada (2026-11-16, SW v140)
 
 - **Mesada en PC (≥900 px).** Solo CSS: Papá y Mamá lado a lado (cada una ya es una tarjeta con su cuota y sus doce meses), y el título, el año, el resumen («Recibido este año», «Meses pagados») y el aviso de pagos parciales ocupan todo el ancho. Entre 900 y 1279 px, Papá y Mamá una debajo de la otra. El detalle de cada mes sigue abriéndose en su hoja (ventana modal en PC).

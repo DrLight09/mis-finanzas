@@ -66,9 +66,13 @@ Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deud
 
 `#mesadaSection` en cuadrícula de dos columnas: las tarjetas de Papá y Mamá (`.card.ms-mb9`) lado a lado y el resto (título, año, resumen, aviso) a todo el ancho. Entre 900 y 1279 px, una columna. Sin reparto de columnas por JS.
 
+## 10 ter. Spotify y buscador
+
+Spotify: `spotify-principal` (costo y cuenta, resumen, integrantes, estadísticas) y `spotify-historial` (historial de pagos, en caja) como dos columnas; entre 900 y 1279 px el historial va debajo. Buscador: en PC el botón `btn-buscar-global` muestra `buscar-texto` y `buscar-atajo` (ocultos en celular) y se ve como el campo del prototipo; el atajo Ctrl/Cmd + K lo acciona (`eventos-base.js`).
+
 ## 11. Cajas (solo PC)
 
-La información va dentro de un cuadro (`--bg2`, borde, radio 14, relleno 14) sobre el fondo; lo de adentro (`.card`, `.stat`, `.gasto-item`) usa `--bg3`. Selectores en `pc.css`: `#panel-var`, `#panel-fijo`, `#deudoresView`, `#misDeudasView`, `#deudorDetalle`, `#miDeudaDetalle`, `.columna-lista`, `.columna-movimientos` y `#tc-lista > .empty-state`. Las pantallas que falten deben usar el mismo criterio (un cuadro por bloque de información, no la información suelta sobre el fondo).
+La información va dentro de un cuadro (`--bg2`, borde, radio 14, relleno 14) sobre el fondo; lo de adentro (`.card`, `.stat`, `.gasto-item`) usa `--bg3`. Selectores en `pc.css`: `#panel-var`, `#panel-fijo`, `#deudoresView`, `#misDeudasView`, `#deudorDetalle`, `#miDeudaDetalle`, `#spotify-historial`, `.columna-lista`, `.columna-movimientos` y `#tc-lista > .empty-state`. Las pantallas que falten deben usar el mismo criterio (un cuadro por bloque de información, no la información suelta sobre el fondo).
 
 ## 12. Prueba
 

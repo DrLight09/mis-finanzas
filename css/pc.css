@@ -17,6 +17,10 @@
   .app{max-width:none;display:grid;grid-template-columns:var(--menu-lateral-ancho) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);}
   .app > .header{grid-column:2;grid-row:1;padding-left:22px;padding-right:22px;}
   .app > .scroll-area{grid-column:2;grid-row:2;padding:16px 22px 24px;}
+  /* Buscador como el prototipo: el botón de la cabecera se ve como un campo («Buscar movimientos, personas, cuentas» y el atajo Ctrl K). */
+  #btn-buscar-global{width:290px;height:36px;padding:0 12px;justify-content:flex-start;gap:8px;font-size:12px;}
+  #btn-buscar-global .buscar-texto{display:inline;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  #btn-buscar-global .buscar-atajo{display:inline;margin-left:auto;font:400 10px 'DM Mono',monospace;border:1px solid var(--border2);border-radius:6px;padding:1px 6px;color:var(--text2);}
   .app > footer{display:none;} /* la barra inferior y su menú «Más» se reemplazan por el menú lateral */
 
   /* Las pantallas que todavía no tienen su distribución de PC conservan su columna de celular, centrada. */
@@ -45,8 +49,8 @@
 
   /* ── Cajas: en PC la información va dentro de un cuadro (--bg2 con borde) sobre el fondo, y lo de adentro un tono más claro (--bg3) ──
      Solo PC: en celular cada tarjeta sigue directamente sobre el fondo. */
-  #panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,.columna-lista,.columna-movimientos{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;}
-  :is(#panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,.columna-movimientos) :is(.card,.stat,.gasto-item){background:var(--bg3);}
+  #panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,#spotify-historial,.columna-lista,.columna-movimientos{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;}
+  :is(#panel-var,#panel-fijo,#deudoresView,#misDeudasView,#deudorDetalle,#miDeudaDetalle,#spotify-historial,.columna-movimientos) :is(.card,.stat,.gasto-item){background:var(--bg3);}
   #tc-lista > .empty-state{background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
 
   /* ── Lista de cuentas en PC: filas compactas (en celular se conservan las tarjetas de dos por fila) ───────────────────────────── */
@@ -121,6 +125,13 @@
   #mesadaSection > *{grid-column:1 / -1;}
   #mesadaSection > .card.ms-mb9{grid-column:auto;}
 
+  /* ── Spotify: lo de siempre (costo, resumen, integrantes, estadísticas) a la izquierda y el historial de pagos en el riel derecho ─────── */
+  .scroll-area > #screen-spotify{max-width:none;margin-left:0;margin-right:0;}
+  #screen-spotify.active{display:flex;align-items:flex-start;gap:14px;}
+  #spotify-principal{flex:1;min-width:0;}
+  #spotify-historial{width:var(--riel-ancho);flex-shrink:0;}
+  #spotify-historial > .sec-title{margin-top:0;}
+
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-lista{width:280px;flex-shrink:0;}
@@ -150,6 +161,10 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Spotify: el historial pasa debajo. */
+  #screen-spotify.active{flex-wrap:wrap;}
+  #spotify-principal{flex-basis:100%;}
+  #spotify-historial{width:auto;flex-basis:100%;}
   /* Mesada: Papá y Mamá una debajo de la otra. */
   #mesadaSection{grid-template-columns:minmax(0,1fr);}
   #mesadaSection > .card.ms-mb9{grid-column:1 / -1;}

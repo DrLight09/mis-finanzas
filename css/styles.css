@@ -1912,6 +1912,7 @@ button.inicio-pilar-accion{cursor:pointer;}
 /* ── index.html (Paso 5, tanda 18): ix-* — estilos que estaban en línea en el HTML estático ── */
 .ix-div-001{display:flex;gap:8px;align-items:center;}
 .ix-btn-buscar-global{width:38px;height:38px;border-radius:12px;background:var(--bg3);border:1px solid var(--border2);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text2);transition:all .2s;}
+.buscar-texto,.buscar-atajo{display:none;} /* el texto y el atajo del buscador solo se ven en PC (css/pc.css) */
 .ix-busqueda-overlay, #busqueda-overlay.ix-busqueda-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9000;backdrop-filter:blur(6px);flex-direction:column;padding:16px;}
 .ix-div-004{display:flex;gap:10px;align-items:center;margin-bottom:14px;}
 .ix-div-005{flex:1;position:relative;}

@@ -683,6 +683,8 @@
               stroke="currentColor" stroke-width="2.5"
               stroke-linecap="round"><circle cx="11" cy="11" r="8" /><line
                 x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
+            <!-- Solo PC (css/pc.css): el botón se ve como un campo de búsqueda con su atajo; en celular solo el ícono. -->
+            <span class="buscar-texto">Buscar movimientos, personas, cuentas</span><kbd class="buscar-atajo">Ctrl K</kbd>
           </button>
           <button class="ix-btn-buscar-global" type="button" id="btn-toggle-saldos"
             aria-label="Ocultar/mostrar saldos">
@@ -1685,6 +1687,7 @@
 
         <!-- SPOTIFY -->
         <div class="screen" id="screen-spotify">
+          <div id="spotify-principal">
           <div class="sec-title">Spotify Premium compartido</div>
           <!-- Costo + Cajita Spotify -->
           <div class="card card-sm ix-mb9">
@@ -1750,10 +1753,13 @@
           <!-- Estadísticas Spotify -->
           <div class="sec-title ix-mt16" id="spStatsTitulo">Estadísticas</div>
           <div id="spStats"></div>
+          </div><!-- /spotify-principal -->
           <!-- Historial pagos Spotify -->
+          <div id="spotify-historial">
           <div class="sec-title ix-mt16">Historial de
             pagos</div>
           <div id="spHistorial"></div>
+          </div><!-- /spotify-historial -->
         </div>
 
         <!-- ENCARGOS -->

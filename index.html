@@ -1390,7 +1390,7 @@
         </div>
 
         <!-- PRESTAMOS -->
-        <div class="screen" id="screen-prestamos" data-panel-activo="deudoresView">
+        <div class="screen" id="screen-prestamos" data-panel-activo="deudoresView" data-tab-prestamos="me-deben">
           <!-- Resumen (solo PC, ≥900 px): totales de Me deben y Yo debo (Deudas.totalPendiente, los mismos de Inicio), su diferencia y la proporción
                entre los dos. Los pinta refresh(); en celular está oculto. -->
           <div class="prestamos-resumen">
@@ -1406,11 +1406,11 @@
             id="prestamos-tabs">
             <button type="button" class="btn ix-tab-me-deben" id="tab-me-deben"
               data-action="prestado:cambiarTabPrestamos" data-args="[&quot;me-deben&quot;]">
-              Me deben
+              Me deben<span class="prestamos-tab-n" id="tab-me-deben-n"></span>
             </button>
             <button type="button" class="btn btn-ghost ix-fx1" id="tab-yo-debo"
               data-action="prestado:cambiarTabPrestamos" data-args="[&quot;yo-debo&quot;]">
-              Yo debo
+              Yo debo<span class="prestamos-tab-n" id="tab-yo-debo-n"></span>
             </button>
           </div>
           <div id="deudoresView" class="prestamos-panel panel-activo">
@@ -1993,13 +1993,13 @@
           </div>
           <div id="personas-lista">
           <div class="ix-div-034">
-            <div class="sec-title ix-m14-0-8">Personas</div>
+            <div class="sec-title ix-m14-0-8">Personas<span class="personas-lista-conteo" id="personas-lista-conteo"></span></div>
             <button class="ix-button-155" type="button" data-action="personas:abrirCrearGlobal" data-args="[true]">
               <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round"><line x1="12" y1="5" x2="12"
                   y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-              Nueva
+              Nueva<span class="personas-nueva-pc"> persona</span>
             </button>
           </div>
           <div class="ix-lista-personas-body" id="lista-personas-body"></div>

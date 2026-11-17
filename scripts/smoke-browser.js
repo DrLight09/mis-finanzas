@@ -355,18 +355,56 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     cambiarModo(false);
     c5(panelEncargos() === 'encargosListView' && ev('encargoActualId') === null, 'Encargos: al achicar tras una apertura automática debe volver a la lista (' + panelEncargos() + ')');
     ev(`S.encargos=[]; showScreen('inicio')`);
-    // Personas: en PC el perfil es una ficha dentro de la pantalla (sin hoja); en celular sigue siendo una hoja.
-    ev(`S.personas=[{id:'per-prueba',nombre:'Laura',color:'#60b0f0'}]; showScreen('personas')`);
+    // Personas (como el prototipo): en PC al abrir no hay nadie elegido; tocar una persona abre su ficha (sin hoja), volver a tocarla la cierra
+    // y salir de la pantalla también. En celular el perfil sigue siendo una hoja. El saldo neto es préstamos menos Yo debo (los encargos no entran).
+    ev(`S.personas=[{id:'per-prueba',nombre:'Laura',color:'#60b0f0'},{id:'per-neta',nombre:'Carlos',color:'#c8f060'}];
+        S.deudores=[{id:'d-neta',nombre:'Carlos',personaId:'per-neta',movimientos:[{id:'m1',tipo:'prestamo',monto:500000,fecha:'2026-10-01'}]}];
+        S.misDeudas=[{id:'md-neta',nombre:'Carlos',personaId:'per-neta',movimientos:[{id:'m2',tipo:'recibido',monto:200000,fecha:'2026-10-02'}]}];
+        S.encargos=[{id:'enc-neto',nombre:'Plata de Carlos',personaId:'per-neta',movimientos:[],saldoInicial:90000}];
+        showScreen('personas')`);
     const fichaAbierta = () => ev(`document.getElementById('screen-personas').dataset.fichaAbierta`);
     c5(fichaAbierta() === 'no', 'Personas: en celular no debe haber ficha abierta (' + fichaAbierta() + ')');
     cambiarModo(true);
-    c5(fichaAbierta() === 'si' && ev('_perfilPersonaId') === 'per-prueba', 'Personas: en PC debe abrirse la ficha de la primera persona (' + fichaAbierta() + ')');
+    c5(fichaAbierta() === 'no' && ev('_perfilPersonaId') === null, 'Personas: en PC no debe haber nadie elegido al abrir (' + fichaAbierta() + ')');
+    const netoDe = id => ev(`(document.querySelector('#lista-personas-body [data-args=\\'["${id}"]\\'] .personas-saldo-neto')||{}).textContent`);
+    c5(netoDe('per-prueba') === 'Al día', 'Personas: quien no tiene deudas debe mostrar «Al día» (' + netoDe('per-prueba') + ')');
+    const netoCarlos = netoDe('per-neta') || '';
+    c5(/^\+\$\s?300\.000/.test(netoCarlos), 'Personas: el saldo neto de Carlos debe ser +$300.000 (préstamo 500.000 − Yo debo 200.000, sin el encargo): ' + netoCarlos);
+    c5(ev(`document.querySelector('#lista-personas-body [data-args=\\'["per-neta"]\\'] .personas-etiquetas').textContent`) === 'PréstamoEncargoLe debo', 'Personas: las etiquetas de Carlos no son Préstamo, Encargo y Le debo');
+    ev(`_alternarPerfilPersona('per-prueba')`);
+    c5(fichaAbierta() === 'si' && ev('_perfilPersonaId') === 'per-prueba', 'Personas: en PC al tocar una persona debe abrirse su ficha (' + fichaAbierta() + ')');
     c5(ev(`document.getElementById('pficha-nombre').textContent`) === 'Laura', 'Personas: la ficha no muestra el nombre de la persona');
     c5(ev(`document.getElementById('sheet-perfil-persona').classList.contains('open')`) === false, 'Personas: en PC el perfil no debe abrir la hoja');
+    ev(`_alternarPerfilPersona('per-neta')`);
+    c5(ev(`document.getElementById('pficha-nombre').textContent`) === 'Carlos', 'Personas: tocar otra persona debe cambiar la ficha');
+    ev(`_alternarPerfilPersona('per-neta')`);
+    c5(fichaAbierta() === 'no' && ev('_perfilPersonaId') === null, 'Personas: volver a tocar la persona abierta debe cerrar su ficha (' + fichaAbierta() + ')');
+    ev(`_alternarPerfilPersona('per-prueba'); showScreen('inicio'); showScreen('personas')`);
+    c5(fichaAbierta() === 'no', 'Personas: al salir y volver no debe quedar nadie elegido (' + fichaAbierta() + ')');
     cambiarModo(false);
     ev(`abrirPerfilPersona('per-prueba')`);
     c5(ev(`document.getElementById('sheet-perfil-persona').classList.contains('open')`) === true, 'Personas: en celular el perfil debe abrir la hoja');
-    ev(`document.getElementById('sheet-perfil-persona').classList.remove('open'); S.personas=[]; showScreen('inicio')`);
+    ev(`document.getElementById('sheet-perfil-persona').classList.remove('open'); S.personas=[]; S.deudores=[]; S.misDeudas=[]; S.encargos=[]; showScreen('inicio')`);
+    // Prestado en PC (como el prototipo): se cambia entre Me deben y Yo debo con las pestañas; solo una lista a la vez y el detalle de la primera persona de la pestaña.
+    ev(`S.deudores=[{id:'dp1',nombre:'Laura',movimientos:[{id:'p1',tipo:'prestamo',monto:600000,fecha:'2026-10-01'}]}];
+        S.misDeudas=[{id:'mp1',nombre:'Tío',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; refresh(); showScreen('prestamos')`);
+    cambiarModo(true);
+    const tabPrestamos = () => ev(`document.getElementById('screen-prestamos').dataset.tabPrestamos`);
+    c5(tabPrestamos() === 'me-deben' && panelPrestamos() === 'deudorDetalle', 'Prestado PC: debe abrir Me deben con el detalle de la primera persona (' + tabPrestamos() + ', ' + panelPrestamos() + ')');
+    c5(ev(`document.getElementById('tab-me-deben-n').textContent`) === ' · 1' && ev(`document.getElementById('tab-yo-debo-n').textContent`) === ' · 1', 'Prestado PC: las pestañas deben llevar cuántas personas tiene cada una');
+    ev(`cambiarTabPrestamos('yo-debo')`);
+    c5(tabPrestamos() === 'yo-debo' && panelPrestamos() === 'miDeudaDetalle' && ev('miDeudaActualId') === 'mp1', 'Prestado PC: la pestaña Yo debo debe abrir a su primera persona (' + tabPrestamos() + ', ' + panelPrestamos() + ')');
+    c5(ev(`document.getElementById('tab-yo-debo').className.indexOf('btn-ghost') === -1`), 'Prestado PC: la pestaña Yo debo debe verse activa');
+    ev(`cambiarTabPrestamos('me-deben')`);
+    c5(tabPrestamos() === 'me-deben' && panelPrestamos() === 'deudorDetalle' && ev('deudorActualId') === 'dp1', 'Prestado PC: volver a Me deben debe abrir a su primera persona (' + tabPrestamos() + ', ' + panelPrestamos() + ')');
+    // Una pestaña vacía se queda en su lista vacía (no salta a la otra).
+    ev(`S.misDeudas=[]; refresh(); cambiarTabPrestamos('yo-debo')`);
+    c5(tabPrestamos() === 'yo-debo' && panelPrestamos() === 'misDeudasView', 'Prestado PC: una pestaña vacía debe quedarse en su lista vacía (' + tabPrestamos() + ', ' + panelPrestamos() + ')');
+    // Abrir a alguien de Yo debo desde fuera (p. ej. «Ver detalle» en Personas) deja la pestaña y la lista de ese lado.
+    ev(`S.misDeudas=[{id:'mp1',nombre:'Tío',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; cambiarTabPrestamos('me-deben'); abrirMiDeuda('mp1')`);
+    c5(tabPrestamos() === 'yo-debo' && ev(`document.getElementById('tab-yo-debo').className.indexOf('btn-ghost') === -1`), 'Prestado: abrir a alguien de Yo debo debe pasar a esa pestaña (' + tabPrestamos() + ')');
+    cambiarModo(false);
+    ev(`S.deudores=[]; S.misDeudas=[]; showScreen('inicio')`);
     cambiarModo(true); cambiarModo(false); cambiarModo(true); cambiarModo(false);
     c5(hijos('screen-inicio') === inicioCelular && hijos('screen-cuentas') === cuentasCelular, 'Varios cambios seguidos dejaron bloques fuera de su sitio');
   } catch (e) { fallos5.push('excepción en la FASE 5: ' + e.message); }

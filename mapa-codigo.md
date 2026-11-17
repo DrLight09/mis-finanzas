@@ -74,7 +74,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/inicio.js` | de entrada (defer) | 29 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 56 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
-| `js/modules/personas.js` | de entrada (defer) | 27 | 1 |
+| `js/modules/personas.js` | de entrada (defer) | 31 | 1 |
 | `js/modules/plata-comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 119 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 42 | 2 |
@@ -513,7 +513,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_crearPersonaGlobal`, `_editarPersonaDesdePerfilSheet`, `_esPcPersonas`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_mostrarFichaPersona`, `_pintarResumenPersonas`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_sincronizarFichaPersonas`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `getPersona`, `getPersonaColor`, `getPersonaDatos`, `getPersonaNombre`, `PersonaPicker`
+**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_alternarPerfilPersona`, `_cerrarFichaPersonas`, `_crearPersonaGlobal`, `_editarPersonaDesdePerfilSheet`, `_esPcPersonas`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_mostrarFichaPersona`, `_pieTarjetaPersona`, `_pintarResumenPersonas`, `_relacionPersonaPc`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_sincronizarFichaPersonas`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `getPersona`, `getPersonaColor`, `getPersonaDatos`, `getPersonaNombre`, `PersonaPicker`
 
 **Globales:** `PERSONA_COLORES`
 
@@ -625,6 +625,7 @@ Ninguno.
 | `_alcanciaToggleDesglose` | `js/modules/alcancia.js` |
 | `_alcanciaWrappedBarrasSvg` | `js/modules/alcancia.js` |
 | `_alcanciaWrappedProgresoHtml` | `js/modules/alcancia.js` |
+| `_alternarPerfilPersona` | `js/modules/personas.js` |
 | `_aperturaToggleUI` | `js/modules/cuentas.js` |
 | `_aplicarAbonoEncargo` | `js/modules/prestado.js` |
 | `_aplicarAbonoNormal` | `js/modules/prestado.js` |
@@ -646,6 +647,7 @@ Ninguno.
 | `_calcPrestadoMeta` | `js/modules/nu.js` |
 | `_cancelarCobrarCDT` | `js/modules/nu.js` |
 | `_cdtModoSheet` | `js/modules/nu.js` |
+| `_cerrarFichaPersonas` | `js/modules/personas.js` |
 | `_checkGastoAlto` | `js/modules/inicio.js` |
 | `_clasePorCuenta` | `js/core/cuentas-fuentes.js` |
 | `_claseValida` | `js/core/ingresos.js` |
@@ -843,6 +845,7 @@ Ninguno.
 | `_onSelPersonaYoDebo` | `js/modules/prestado.js` |
 | `_optGanancia` | `js/modules/prestado.js` |
 | `_patrimonioDependenciasListas` | `js/core/patrimonio.js` |
+| `_pieTarjetaPersona` | `js/modules/personas.js` |
 | `_pintarAdministrarCuenta` | `js/modules/cuentas.js` |
 | `_pintarAtencion` | `js/modules/inicio.js` |
 | `_pintarEncabezadoDeuda` | `js/modules/prestado.js` |
@@ -894,6 +897,7 @@ Ninguno.
 | `_refreshCajitaDet` | `js/modules/nu.js` |
 | `_refreshNucleo` | `js/core/refresh.js` |
 | `_reiniciarPantallasCuenta` | `js/modules/cuentas.js` |
+| `_relacionPersonaPc` | `js/modules/personas.js` |
 | `_renderColorPicker` | `js/modules/personas.js` |
 | `_renderDetalleCajita` | `js/modules/nu.js` |
 | `_renderDetalleSimple` | `js/modules/cuentas.js` |

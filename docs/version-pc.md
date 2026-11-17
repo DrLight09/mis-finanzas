@@ -60,7 +60,7 @@ Fila compacta por cuenta (`.cuenta-card`) solo en PC: ícono, nombre y etiqueta,
 
 ## 10. Prestado
 
-Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC, como el prototipo: arriba el resumen (`prestamos-resumen`: tarjetas Me deben / Yo debo / neto, barra de proporción y porcentajes, pintados por `refresh()`; oculto en celular); debajo, tres columnas: `deudoresView` | `misDeudasView` | detalle activo (340 px). Las pestañas se ocultan. Sin nadie abierto (sin personas) las dos listas ocupan todo el ancho y no hay tercera columna. Entre 900 y 1279 px las listas se apilan a la izquierda y el detalle queda a la derecha. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js): la primera persona de Me deben y, si está vacía, la de Yo debo.
+Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC, como el prototipo: arriba el resumen (`prestamos-resumen`: tarjetas Me deben / Yo debo / neto, barra de proporción y porcentajes, pintados por `refresh()`; oculto en celular); debajo, las pestañas «Me deben · N / Yo debo · N» (siempre visibles), la lista de la pestaña activa (400 px) y el detalle activo en el ancho restante. Solo se ve una lista a la vez: la pestaña la deja `_mostrarPanelPrestamos` en `data-tab-prestamos` de la pantalla (se deriva del panel, así abrir a alguien de Yo debo desde otro módulo cambia de pestaña). Sin nadie abierto (la pestaña no tiene personas) la lista ocupa todo el ancho. Entre 900 y 1279 px la lista mide 320 px. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js): al entrar, la primera persona de la pestaña (si está vacía, la de la otra); al tocar una pestaña, la primera de esa pestaña (si está vacía se queda en su lista vacía).
 
 ## 10 bis. Mesada
 
@@ -80,7 +80,7 @@ Ambas pantallas usan columnas CSS en PC (`column-count:2`, una sola columna entr
 
 ## 10 sexies. Personas
 
-En PC la pantalla Personas es resumen (`personas-resumen`) + lista (`personas-lista`) | ficha (`personas-ficha`, ids `pficha-*`). `abrirPerfilPersona` (personas.js) pinta el perfil en la ficha si la ventana es de PC (navegando a la pantalla si hace falta) o en la hoja `sheet-perfil-persona` (ids `pperf-*`) en celular; es el único constructor del perfil. `data-ficha-abierta` de la pantalla ("si" / "no") decide si se muestra la ficha. `_sincronizarFichaPersonas` mantiene la ficha al día tras cada repintado de la lista.
+Excepción: Personas se hace como el prototipo (no solo se acomoda). En PC: resumen (`personas-resumen`) y cuadrícula de tarjetas (`#lista-personas-body`, una caja por persona: relación, «Saldo neto» y etiquetas); la ficha (`personas-ficha`, ids `pficha-*`, 440 px) aparece al tocar una persona y entonces el resumen se oculta. Al abrir no hay nadie elegido; tocar la persona abierta, o salir de la pantalla, cierra la ficha. `data-ficha-abierta` ("si" / "no") y `data-lista-vacia` de la pantalla lo deciden por CSS. `abrirPerfilPersona` (personas.js) pinta el perfil en la ficha si la ventana es de PC (navegando a la pantalla si hace falta) o en la hoja `sheet-perfil-persona` (ids `pperf-*`) en celular; es el único constructor del perfil. El saldo neto de la tarjeta es préstamos − Yo debo (el encargo no entra: es plata ajena). Celular: la fila de siempre.
 
 ## 11. Cajas (solo PC)
 

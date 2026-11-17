@@ -501,7 +501,7 @@ function _pintarEncabezadoDeuda(ids, d, saldoTxt, saldoColor, total1, total2) {
   document.getElementById(ids.total2).textContent = fmt(total2);
 }
 
-/* ── Paneles de la pantalla: uno a la vez en celular; en PC las dos listas siempre se ven y el detalle va a la derecha ───────────
+/* ── Paneles de la pantalla: uno a la vez en celular; en PC se ve la lista de la pestaña activa (Me deben o Yo debo) y el detalle a la derecha ───
    Antes se alternaban con style.display inline en cinco sitios; ahora un solo lugar marca el panel activo (clase panel-activo, regla en
    styles.css) y deja su nombre en data-panel-activo de la pantalla (css/pc.css lo usa). Mismo patrón que Cuentas. */
 const _PANELES_PRESTAMOS = ['deudoresView', 'deudorDetalle', 'misDeudasView', 'miDeudaDetalle'];
@@ -511,7 +511,16 @@ function _mostrarPanelPrestamos(panelId) {
   _PANELES_PRESTAMOS.forEach(id => { const el = document.getElementById(id); if (el) el.classList.toggle('panel-activo', id === panelId); });
   const pantalla = document.getElementById('screen-prestamos');
   if (pantalla) pantalla.dataset.panelActivo = panelId;
-  // Las pestañas Me deben / Yo debo no tienen sentido estando adentro del detalle de alguien.
+  // La pestaña (Me deben / Yo debo) la decide el panel: la lista y el detalle de una dirección son de su pestaña, vengan de donde vengan
+  // (p. ej. «Ver detalle» desde Personas). En PC las pestañas se ven siempre y el CSS muestra solo la lista de la pestaña (data-tab-prestamos).
+  const tabDelPanel = (panelId === 'misDeudasView' || panelId === 'miDeudaDetalle') ? 'yo-debo' : 'me-deben';
+  if (pantalla) pantalla.dataset.tabPrestamos = tabDelPanel;
+  if (tabDelPanel !== prestamosTabActiva) {
+    prestamosTabActiva = tabDelPanel;
+    _pintarTabPrestamos(document.getElementById('tab-me-deben'), tabDelPanel === 'me-deben');
+    _pintarTabPrestamos(document.getElementById('tab-yo-debo'), tabDelPanel === 'yo-debo');
+  }
+  // Las pestañas Me deben / Yo debo no tienen sentido estando adentro del detalle de alguien (en celular; en PC se ven siempre).
   const tabs = document.getElementById('prestamos-tabs');
   if (tabs) tabs.classList.toggle('prestamos-tabs-oculto', panelId === 'deudorDetalle' || panelId === 'miDeudaDetalle');
   _seleccionAutomaticaPrestamos = false; // cualquier cambio de panel es de la persona; solo _abrirPersonaPorDefectoPrestamos() lo vuelve a marcar
@@ -529,14 +538,17 @@ function _marcarPersonaActivaEnListas() {
 // PC (≥900 px): siempre hay alguien abierto. Al entrar a Préstamos (o al volver a una lista) se abre la primera persona de esa lista,
 // la que más pesa. Esa apertura es automática: si la ventana se achica a celular sin que la persona haya elegido otra cosa, se vuelve
 // a la lista en vez de dejar un detalle que no abrió (cualquier cambio de panel hecho por la persona borra la marca).
-function _abrirPersonaPorDefectoPrestamos() {
+// soloEstaLista: la persona acaba de tocar una pestaña; se abre la primera de ESA pestaña y, si está vacía, se queda en su lista vacía
+// (no se salta a la otra pestaña, que sería deshacer lo que tocó).
+function _abrirPersonaPorDefectoPrestamos(soloEstaLista) {
   if (!_consultaPcPrestamos || !_consultaPcPrestamos.matches) return;
   const pantalla = document.getElementById('screen-prestamos');
   const panel = pantalla && pantalla.dataset.panelActivo;
   if (panel !== 'deudoresView' && panel !== 'misDeudasView') return;
   const masPesada = dir => [...Deudas.lista(dir)].sort((a, b) => Deudas.saldo(b) - Deudas.saldo(a))[0];
   // Se abre la primera persona de la lista de la pestaña que estaba (Me deben por defecto); si esa lista está vacía, la de la otra.
-  const orden = panel === 'misDeudasView' ? ['contra', 'favor'] : ['favor', 'contra'];
+  const orden = soloEstaLista ? [panel === 'misDeudasView' ? 'contra' : 'favor']
+    : panel === 'misDeudasView' ? ['contra', 'favor'] : ['favor', 'contra'];
   const dir = orden.find(d => masPesada(d));
   if (!dir) return; // sin personas: las dos listas quedan a todo el ancho con su estado vacío
   const primera = masPesada(dir);
@@ -1937,7 +1949,8 @@ function cambiarTabPrestamos(tab) {
   _pintarTabPrestamos(document.getElementById('tab-yo-debo'), yoDebo);
   // Cada dirección tiene su lista y su detalle; el detalle siempre arranca oculto.
   _mostrarPanelPrestamos(yoDebo ? 'misDeudasView' : 'deudoresView');
-  if (yoDebo) renderMisDeudasList();
+  if (yoDebo) renderMisDeudasList(); else renderDeudoresList();
+  _abrirPersonaPorDefectoPrestamos(true); // PC: el detalle de la primera persona de la pestaña (en celular no hace nada)
 }
 
 
@@ -2938,6 +2951,6 @@ Ui.pantalla('*', nombre => {
 Ui.pantalla('prestamos', () => {
   if (prestamosTabActiva === 'yo-debo') { if (typeof renderMisDeudasList === 'function') renderMisDeudasList(); }
   else if (typeof renderDeudoresList === 'function') renderDeudoresList();
-  if (typeof renderMisDeudasList === 'function' && prestamosTabActiva !== 'yo-debo') renderMisDeudasList(); // en PC las dos listas se ven a la vez
+  if (typeof renderMisDeudasList === 'function' && prestamosTabActiva !== 'yo-debo') renderMisDeudasList(); // se deja pintada la otra lista: al cambiar de pestaña (PC) ya está al día
   _abrirPersonaPorDefectoPrestamos();
 }, { key: 'prestado-render' });

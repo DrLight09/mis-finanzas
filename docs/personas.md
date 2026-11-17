@@ -183,3 +183,8 @@ La integración de cada módulo con Personas **no vive en `personas.js`**, sino 
 ## Campo «¿Quién es?»: `PersonaPicker`
 
 Todo campo que elige una persona (Spotify agregar/editar, Nuevo encargo) usa `PersonaPicker.crear({ prefijo, inputId, titulo, alCambiar })` de `personas.js`. El HTML es **estático** en `index.html` (`#PREFIJO-btn` con `data-action="personas:pickerAbrir" data-picker="PREFIJO"`, más `-avatar`, `-label`, `-chevron`, `-hint` opcional y un `<input type="hidden">` con el nombre); nadie reescribe el campo con `innerHTML` en runtime. API: `.valor`, `.abrir()`, `.elegir(id)`, `.precargar({personaId, nombre})` (con `personaId` queda bloqueado), `.abiertoSinConfirmar`, `.limpiar()`, `.marcarError()`. Estilos únicos: `.persona-btn` (`is-set`, `is-error`, `is-locked`), `.persona-btn-av`, `.persona-chevron`, `.persona-hint`. Para sumar otro campo de persona: copiar el bloque de markup con otro prefijo y crear el picker en el módulo; no escribir otro selector. Pruebas: `tests/persona-picker.test.js`.
+
+
+---
+
+**PC (2026-11-17):** en ≥900 px la pantalla es resumen + tarjetas por persona y una ficha lateral que se abre al tocar (nadie elegido al abrir). Saldo neto de la tarjeta = préstamos − Yo debo; el saldo de encargos no entra (es plata ajena). Detalle en [`version-pc.md`](./version-pc.md) §10 sexies.

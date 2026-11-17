@@ -234,3 +234,8 @@ El módulo cubre:
 
 El sheet `sheet-nueva-persona` (nombre libre + color picker, sin pasar por el sistema de Personas) ya no tiene ninguna función propia en `prestado.js` — el override de `openSheet` en este mismo archivo intercepta `id==='nueva-persona'` y redirige siempre a `abrirSelPersona(_onSelPersonaMeDeben)` antes de que ese sheet llegue a mostrarse. Si el HTML de ese sheet sigue en `index.html`, es marcado inerte, no código muerto: no hay ninguna función que lo lea.
 
+
+
+---
+
+**PC (2026-11-17):** en ≥900 px se ve una sola lista a la vez (pestañas Me deben · N / Yo debo · N) y el detalle al lado; la pestaña sale del panel activo (`data-tab-prestamos`). Detalle en [`version-pc.md`](./version-pc.md) §10.

@@ -2024,7 +2024,7 @@ button.inicio-pilar-accion{cursor:pointer;}
 .ix-taright{text-align:right;}
 .ix-totalgvfilttc{font-size:10px;color:var(--red);font-family:'DM Mono',monospace;}
 .ix-prestamos-tabs{display:flex;gap:6px;margin-bottom:14px;}
-/* Préstamos: un panel a la vez (_mostrarPanelPrestamos, prestado.js, marca el activo). En PC las dos listas siempre se ven (css/pc.css). */
+/* Préstamos: un panel a la vez (_mostrarPanelPrestamos, prestado.js, marca el activo). En PC se ve la lista de la pestaña activa y el detalle al lado (css/pc.css). */
 .prestamos-panel{display:none;}
 .prestamos-panel.panel-activo{display:block;}
 .prestamos-resumen{display:none;} /* el resumen de Préstamos solo se ve en PC (css/pc.css) */
@@ -2041,8 +2041,15 @@ button.inicio-pilar-accion{cursor:pointer;}
 .prestamos-proporcion-vacia{display:none;}
 .personas-resumen{display:none;} /* el resumen de Personas solo se ve en PC (css/pc.css) */
 .personas-ficha{display:none;} /* la ficha de la persona solo se ve en PC; en celular el perfil es una hoja */
+/* Tarjeta de persona de PC (relación, saldo neto y etiquetas): en celular la fila es la de siempre y estos bloques no se ven (css/pc.css) */
+.personas-sub-pc,.personas-pie,.personas-lista-conteo,.personas-nueva-pc{display:none;}
+.personas-pie-titulo{font:500 9px 'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text3);}
+.personas-saldo-neto{font:500 18px 'DM Mono',monospace;letter-spacing:-.6px;margin-top:3px;}
+.personas-etiquetas{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;}
+.personas-etiqueta{white-space:nowrap;font:500 10px 'DM Mono',monospace;background:var(--bg3);color:var(--text2);border-radius:20px;padding:2px 8px;}
 .persona-fila-activa{box-shadow:0 0 0 1.5px var(--accent);} /* la persona abierta en la lista (solo PC) */
 .prestamos-proporcion-texto{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin:0 2px 14px;min-height:13px;}
+.prestamos-tab-n{display:none;} /* cuántas personas tiene cada pestaña: solo se ve en PC (css/pc.css) */
 .prestamos-tabs-oculto{display:none;} /* las pestañas Me deben / Yo debo se ocultan dentro del detalle de una persona */
 .persona-card-activa{border-color:var(--accent);} /* la persona abierta en la lista (en PC la lista siempre se ve) */
 .ix-tab-me-deben, .btn.ix-tab-me-deben{flex:1;background:rgba(200,240,96,.12);border-color:rgba(200,240,96,.4);color:var(--accent);}

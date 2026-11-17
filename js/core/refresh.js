@@ -80,6 +80,9 @@ function _refreshNucleo(){
     const personas=dir=>Deudas.lista(dir).filter(d=>Deudas.saldo(d)>0).length;
     const nFavor=personas('favor'),nContra=personas('contra');
     const poner=(id,texto)=>{const el=document.getElementById(id);if(el)el.textContent=texto;};
+    // Cuántas personas tiene cada pestaña (solo se ve en PC, junto al nombre de la pestaña).
+    poner('tab-me-deben-n',' · '+Deudas.lista('favor').length);
+    poner('tab-yo-debo-n',' · '+Deudas.lista('contra').length);
     poner('p-resumen-me-deben',fmtNoCents(prest));
     poner('p-resumen-yo-debo',fmtNoCents(debo));
     poner('p-resumen-neto',fmtNoCents(neto));

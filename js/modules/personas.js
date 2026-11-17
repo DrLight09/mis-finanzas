@@ -179,6 +179,28 @@ function _inyectarPersonaSheets() {
 }
 
 /* ── LISTA DE PERSONAS (desde menú Más) ────────────────────────── */
+/* Tarjeta de PC (css/pc.css): relación bajo el nombre, saldo neto y etiquetas de dónde aparece la persona. En celular esos tres bloques
+   están ocultos (css/styles.css) y la fila es la de siempre. Saldo neto = lo que me debe (préstamos) menos lo que yo le debo (Yo debo): el
+   mismo criterio de Préstamos e Inicio. El saldo de un encargo NO entra: es plata suya que solo administras, no una deuda a tu favor. */
+function _relacionPersonaPc(datos, enSpotify) {
+  const r = [];
+  if (datos.deudor && datos.saldoPrestamo > 0) r.push('Me debe');
+  if (datos.misDeudas.length && datos.saldoMisDeudas > 0) r.push('Yo le debo');
+  if (datos.encargos.length) r.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
+  const conDeudas = !!datos.deudor || datos.misDeudas.length > 0;
+  if (enSpotify) r.push(r.length || conDeudas ? 'Spotify' : 'Solo en Spotify');
+  if (r.length) return r.join(' · ');
+  return conDeudas ? 'Al día' : 'Sin actividad';
+}
+function _pieTarjetaPersona(neto, tags) {
+  const cls = neto > 0 ? 'pe-c-accent' : neto < 0 ? 'pe-c-red' : 'pe-c-text3';
+  const monto = neto > 0 ? '+' + fmt(neto) : neto < 0 ? '\u2212' + fmt(-neto) : 'Al día';
+  return html`<div class="personas-pie">
+    <div><div class="personas-pie-titulo">Saldo neto</div><div class="personas-saldo-neto ${cls}">${monto}</div></div>
+    <div class="personas-etiquetas">${tags.map(t => html`<span class="personas-etiqueta">${t}</span>`)}</div>
+  </div>`;
+}
+
 function _abrirListaPersonas() {
   _inyectarPersonaSheets();
   _renderListaPersonas();
@@ -202,6 +224,10 @@ function _renderListaPersonas() {
 
   _pintarResumenPersonas();
   const total = personas.length + sinPerfil.length + sinPerfilMisDeudas.length;
+  const pantallaPersonas = document.getElementById('screen-personas');
+  if (pantallaPersonas) pantallaPersonas.dataset.listaVacia = total ? 'no' : 'si'; // PC: sin personas no hay resumen (solo el estado vacío)
+  const conteo = document.getElementById('personas-lista-conteo');
+  if (conteo) conteo.textContent = total ? ' · ' + total : '';
   if (!total) {
     body.innerHTML = '';
     if (empty) empty.style.display = '';
@@ -243,13 +269,22 @@ function _renderListaPersonas() {
       ? partesConSeparador
       : html`<span class="pe-c-text3">Sin actividad</span>`;
 
+    const enSpotify = (S.spotify.personas || []).some(integrante => integrante.personaId === p.id);
+    const tags = [];
+    if (datos.deudor) tags.push('Préstamo');
+    if (datos.encargos.length) tags.push('Encargo');
+    if (enSpotify) tags.push('Spotify');
+    if (datos.misDeudas.length) tags.push('Le debo');
+
     contenido.push(html`<div ${raw(Events.attr('personas:abrirPerfil', p.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
       <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
       <div class="pe-flex1-min0">
         <div class="pe-nombre">${p.nombre}</div>
-        <div class="pe-sub">${subTexto}</div>
+        <div class="pe-sub personas-sub-movil">${subTexto}</div>
+        <div class="pe-sub personas-sub-pc">${_relacionPersonaPc(datos, enSpotify)}</div>
       </div>
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
+      ${_pieTarjetaPersona(datos.saldoPrestamo - datos.saldoMisDeudas, tags)}
     </div>`);
   });
 
@@ -266,9 +301,11 @@ function _renderListaPersonas() {
       <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
       <div class="pe-flex1-min0">
         <div class="pe-nombre">${d.nombre}</div>
-        <div class="pe-sub">${sub}</div>
+        <div class="pe-sub personas-sub-movil">${sub}</div>
+        <div class="pe-sub personas-sub-pc">${saldo > 0 ? 'Me debe' : 'Al día'}</div>
       </div>
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
+      ${_pieTarjetaPersona(saldo, ['Préstamo'])}
     </div>`);
   });
 
@@ -283,9 +320,11 @@ function _renderListaPersonas() {
       <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
       <div class="pe-flex1-min0">
         <div class="pe-nombre">${d.nombre}</div>
-        <div class="pe-sub">${sub}</div>
+        <div class="pe-sub personas-sub-movil">${sub}</div>
+        <div class="pe-sub personas-sub-pc">${saldo > 0 ? 'Yo le debo' : 'Al día'}</div>
       </div>
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
+      ${_pieTarjetaPersona(-saldo, ['Le debo'])}
     </div>`);
   });
 
@@ -525,20 +564,31 @@ function _mostrarFichaPersona() {
     fila.classList.toggle('persona-fila-activa', fila.getAttribute('data-action') === 'personas:abrirPerfil' && id === _perfilPersonaId);
   });
 }
-// Con la pantalla Personas a la vista en PC siempre hay una ficha: la de la persona abierta (se repinta para que no quede vieja) o, si
-// no hay ninguna, la primera de la lista. Sin personas la ficha se oculta y la lista queda a todo el ancho.
+// Como el prototipo, al abrir Personas en PC no hay nadie elegido: se ve el resumen y las tarjetas a todo el ancho, y la ficha aparece al
+// tocar una persona (con una elegida el resumen se oculta para que quepan las tarjetas). Aquí solo se repinta la ficha de la persona
+// abierta para que no quede vieja; si ya no existe, la ficha se cierra.
 function _sincronizarFichaPersonas() {
   if (!_esPcPersonas()) return;
   const pantalla = document.getElementById('screen-personas');
   if (!pantalla || !pantalla.classList.contains('active')) return;
-  let id = _perfilPersonaId && getPersona(_perfilPersonaId) ? _perfilPersonaId : null;
-  if (!id) {
-    const fila = document.querySelector('#lista-personas-body [data-action="personas:abrirPerfil"]');
-    if (fila) { try { id = JSON.parse(fila.getAttribute('data-args'))[0]; } catch (e) { /* data-args siempre es JSON */ } }
-  }
-  if (id) abrirPerfilPersona(id);
-  else { _fichaAbierta = false; pantalla.dataset.fichaAbierta = 'no'; }
+  if (_perfilPersonaId && getPersona(_perfilPersonaId)) abrirPerfilPersona(_perfilPersonaId);
+  else _cerrarFichaPersonas();
 }
+function _cerrarFichaPersonas() {
+  _perfilPersonaId = null;
+  _fichaAbierta = false;
+  const pantalla = document.getElementById('screen-personas');
+  if (pantalla) pantalla.dataset.fichaAbierta = 'no';
+  document.querySelectorAll('#lista-personas-body .persona-fila-activa').forEach(fila => fila.classList.remove('persona-fila-activa'));
+}
+// En PC, tocar la persona que ya está abierta cierra su ficha (así vuelve el resumen); en celular y en cualquier otro caso se abre su perfil.
+function _alternarPerfilPersona(personaId) {
+  const pantalla = document.getElementById('screen-personas');
+  if (_esPcPersonas() && _fichaAbierta && personaId === _perfilPersonaId && pantalla && pantalla.classList.contains('active')) _cerrarFichaPersonas();
+  else abrirPerfilPersona(personaId);
+}
+// Al salir de Personas la ficha se cierra: al volver, otra vez el resumen y nadie elegido.
+Ui.pantalla('*', nombre => { if (nombre !== 'personas') _cerrarFichaPersonas(); }, { key: 'personas-cerrar-ficha' });
 if (_consultaPcPersonas) {
   const alCambiarModo = e => { if (e.matches) _sincronizarFichaPersonas(); };
   if (_consultaPcPersonas.addEventListener) _consultaPcPersonas.addEventListener('change', alCambiarModo);
@@ -984,7 +1034,7 @@ if (typeof window !== 'undefined') window.PersonaPicker = PersonaPicker;
 // ("encargos-personas:irAEncargo", "prestado-personas:irADeudor"...): el prefijo es solo el
 // namespace del evento y se registra desde encargos.js / prestado.js, donde viven los handlers.
 Events.registerAll('personas', {
-  abrirPerfil: abrirPerfilPersona,
+  abrirPerfil: _alternarPerfilPersona,
   abrirCrearGlobal: _abrirCrearPersonaGlobal,
   confirmarCrear: _crearPersonaGlobal,
   volverASel: _volverASelPersona,

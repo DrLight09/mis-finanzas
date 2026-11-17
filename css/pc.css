@@ -30,6 +30,11 @@
   /* ── Menú lateral ────────────────────────────────────────────────────────────────────────────────── */
   .menu-lateral{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;min-height:0;background:var(--bg2);border-right:1px solid var(--border);padding:14px 10px 10px;}
   .menu-lateral-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:1px;}
+  .menu-lateral-marca{display:flex;align-items:center;gap:10px;padding:2px 8px 12px;font-size:15px;font-weight:700;letter-spacing:-.3px;flex-shrink:0;}
+  .menu-lateral-logo{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);}
+  .menu-lateral-logo svg{width:17px;height:17px;}
+  .encabezado-app{display:none;}
+  .encabezado-seccion{display:inline;}
   .menu-lateral-grupo{font-family:'DM Mono',monospace;font-size:9.5px;font-weight:500;letter-spacing:1.1px;text-transform:uppercase;color:var(--text3);padding:12px 10px 4px;}
   .menu-lateral-grupo:first-child{padding-top:2px;}
   .menu-lateral-item{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;border:0;border-radius:10px;background:none;color:var(--text2);font:500 12.5px 'DM Sans',sans-serif;text-align:left;cursor:pointer;}
@@ -103,15 +108,16 @@
 
   /* ── Prestado (como el prototipo): el resumen arriba y debajo la lista de la pestaña activa (Me deben / Yo debo, se cambia con las pestañas) | detalle ──
      La pestaña la deja prestado.js en data-tab-prestamos de la pantalla; el detalle que se ve lo decide la clase panel-activo. Con una persona
-     abierta el detalle ocupa el ancho que queda; sin nadie abierto (la pestaña no tiene personas) la lista ocupa todo el ancho. */
+     abierta el detalle ocupa el ancho que queda; la lista conserva siempre su medida (sin nadie abierto, a la derecha queda vacío). */
   .scroll-area > #screen-prestamos{max-width:none;margin-left:0;margin-right:0;}
   #screen-prestamos.active{display:grid;grid-template-columns:400px minmax(0,1fr);grid-template-rows:auto auto 1fr;column-gap:14px;align-items:start;}
   #screen-prestamos .prestamos-resumen{display:block;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
-  #prestamos-tabs,#prestamos-tabs.prestamos-tabs-oculto{display:flex;grid-column:1;grid-row:2;}
+  /* Las pestañas son la parte de arriba de la caja de la lista (como el prototipo): mismo fondo y borde, medida fija (no se estiran). */
+  #prestamos-tabs,#prestamos-tabs.prestamos-tabs-oculto{display:flex;justify-content:flex-start;gap:6px;grid-column:1;grid-row:2;margin:0;padding:12px 12px 0;background:var(--bg2);border:1px solid var(--border);border-bottom:0;border-radius:14px 14px 0 0;}
+  #prestamos-tabs .btn{flex:0 0 auto;min-width:136px;}
   #screen-prestamos .prestamos-tab-n{display:inline;}
-  #screen-prestamos[data-tab-prestamos="me-deben"] #deudoresView,#screen-prestamos[data-tab-prestamos="yo-debo"] #misDeudasView{display:block;grid-column:1;grid-row:3;}
+  #screen-prestamos[data-tab-prestamos="me-deben"] #deudoresView,#screen-prestamos[data-tab-prestamos="yo-debo"] #misDeudasView{display:block;grid-column:1;grid-row:3;border-top:0;border-radius:0 0 14px 14px;padding-top:10px;}
   #deudorDetalle,#miDeudaDetalle{grid-column:2;grid-row:2 / span 2;}
-  #screen-prestamos[data-panel-activo="deudoresView"],#screen-prestamos[data-panel-activo="misDeudasView"]{grid-template-columns:minmax(0,1fr);}
   #btn-volver-deudores,#btn-volver-mis-deudas{display:none;} /* la lista está a la vista */
   /* Filas planas dentro de la caja de cada lista; la persona abierta con fondo propio. */
   #deudoresList .card,#misDeudasList .card{background:transparent;border-color:transparent;margin-bottom:2px;}
@@ -235,7 +241,6 @@
   #mesadaSection > .card.ms-mb9{grid-column:1 / -1;}
   /* Prestado: la lista de la pestaña más angosta y el detalle a la derecha. */
   #screen-prestamos.active{grid-template-columns:minmax(260px,320px) minmax(0,1fr);}
-  #screen-prestamos[data-panel-activo="deudoresView"],#screen-prestamos[data-panel-activo="misDeudasView"]{grid-template-columns:minmax(0,1fr);}
   /* Gastos: los fijos mensuales pasan debajo de los variables. */
   #screen-gastos.active{flex-wrap:wrap;}
   #panel-var{flex-basis:100%;}

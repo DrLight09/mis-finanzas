@@ -606,6 +606,8 @@
       <!-- MENÚ LATERAL (solo PC, ≥900 px; en celular está oculto y manda la barra inferior). Mismos destinos que la barra inferior y el menú
            «Más» (data-screen → showScreen). Spotify y Mesada siguen los módulos activos (js/core/mas-menu.js). Ver docs/version-pc.md. -->
       <aside class="menu-lateral" aria-label="Menú principal">
+        <!-- Solo PC (css/pc.css): logo y nombre de la app arriba del menú, como el prototipo; el título de la cabecera pasa a ser el de la sección. -->
+        <div class="menu-lateral-marca"><span class="menu-lateral-logo"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h16a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7zm0 0V6a2 2 0 012-2h11" /><circle cx="16.5" cy="13.5" r="1.2" /></svg></span><span class="menu-lateral-texto">Mis finanzas</span></div>
         <nav class="menu-lateral-nav">
           <div class="menu-lateral-grupo">Mi plata</div>
           <button type="button" class="menu-lateral-item active" id="lateral-inicio" data-screen="inicio" title="Inicio">
@@ -675,7 +677,7 @@
         </div>
       </aside>
       <header class="header">
-        <div><h1>Mis finanzas</h1><p id="hDate"></p></div>
+        <div><h1><span class="encabezado-app">Mis finanzas</span><span class="encabezado-seccion" id="hSeccion"></span></h1><p id="hDate"></p></div>
         <div class="ix-div-001">
           <button class="ix-btn-buscar-global" type="button" id="btn-buscar-global"
             aria-label="Buscar">

@@ -403,6 +403,11 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     // Abrir a alguien de Yo debo desde fuera (p. ej. «Ver detalle» en Personas) deja la pestaña y la lista de ese lado.
     ev(`S.misDeudas=[{id:'mp1',nombre:'Tío',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; cambiarTabPrestamos('me-deben'); abrirMiDeuda('mp1')`);
     c5(tabPrestamos() === 'yo-debo' && ev(`document.getElementById('tab-yo-debo').className.indexOf('btn-ghost') === -1`), 'Prestado: abrir a alguien de Yo debo debe pasar a esa pestaña (' + tabPrestamos() + ')');
+    // Cabecera: el título es el de la sección (en PC se ve; en celular sigue el nombre de la app).
+    c5(ev(`document.getElementById('hSeccion').textContent`) === 'Prestado', 'Cabecera: el título debe ser el de la sección (' + ev(`document.getElementById('hSeccion').textContent`) + ')');
+    ev(`showScreen('personas')`);
+    c5(ev(`document.getElementById('hSeccion').textContent`) === 'Personas', 'Cabecera: al cambiar de pantalla el título debe cambiar');
+    ev(`showScreen('prestamos')`);
     cambiarModo(false);
     ev(`S.deudores=[]; S.misDeudas=[]; showScreen('inicio')`);
     cambiarModo(true); cambiarModo(false); cambiarModo(true); cambiarModo(false);

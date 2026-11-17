@@ -43,6 +43,13 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 14: pestañas de Prestado dentro de la caja, marca del menú y título por sección (2026-11-17, SW v145)
+
+- **Prestado:** las pestañas Me deben / Yo debo pasan a ser la parte de arriba de la caja de la lista (mismo fondo y borde, como el prototipo) y tienen medida fija (136 px mínimo, alineadas a la izquierda): ya no se estiran. La columna de la lista conserva siempre su medida (400 px; 320 entre 900 y 1279), así que al pasar a una pestaña sin personas nada se mueve; antes colapsaba a una columna.
+- **Menú lateral:** arriba, logo (cartera) y «Mis finanzas» (`menu-lateral-marca`); entre 900 y 1279 px solo el logo.
+- **Cabecera:** en PC el título es el de la sección (`#hSeccion`, lo pone `titularSeccion` de `disposicion-pc.js` con `Ui.pantalla('*')`, tomando el `title` del ítem del menú; Wrapped = «Tu resumen»); en celular sigue «Mis finanzas» (`encabezado-app` / `encabezado-seccion`). La fecha de abajo no cambia.
+- Smoke FASE 5: comprueba el título de la cabecera al cambiar de pantalla.
+
 ## Versión PC, parte 13: Personas como el prototipo y Prestado con pestañas (2026-11-17, SW v145)
 
 - **Personas (excepción pedida por Sebas: aquí se hace como el prototipo, no solo se acomoda).** En PC (≥900 px) al abrir no hay nadie elegido: resumen arriba y una cuadrícula de tarjetas, una caja por persona (avatar, nombre, línea de relación, «Saldo neto» y etiquetas Préstamo / Encargo / Spotify / Le debo). Al tocar una tarjeta se abre su ficha a la derecha (440 px; 360 px entre 900 y 1279) y el resumen se oculta; volver a tocar la misma persona, o salir de la pantalla, cierra la ficha. Los bloques de la ficha (Préstamos, Encargos, Spotify, Le debo) pasan al tono neutro (`--bg3`) con título sin color. Sin personas solo se ve el estado vacío en caja. «Personas · N» y «Nueva persona» (el « persona» solo se ve en PC).

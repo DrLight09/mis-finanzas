@@ -60,7 +60,7 @@ Fila compacta por cuenta (`.cuenta-card`) solo en PC: ícono, nombre y etiqueta,
 
 ## 10. Prestado
 
-Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC, como el prototipo: arriba el resumen (`prestamos-resumen`: tarjetas Me deben / Yo debo / neto, barra de proporción y porcentajes, pintados por `refresh()`; oculto en celular); debajo, las pestañas «Me deben · N / Yo debo · N» (siempre visibles), la lista de la pestaña activa (400 px) y el detalle activo en el ancho restante. Solo se ve una lista a la vez: la pestaña la deja `_mostrarPanelPrestamos` en `data-tab-prestamos` de la pantalla (se deriva del panel, así abrir a alguien de Yo debo desde otro módulo cambia de pestaña). Sin nadie abierto (la pestaña no tiene personas) la lista ocupa todo el ancho. Entre 900 y 1279 px la lista mide 320 px. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js): al entrar, la primera persona de la pestaña (si está vacía, la de la otra); al tocar una pestaña, la primera de esa pestaña (si está vacía se queda en su lista vacía).
+Paneles de `#screen-prestamos` (por clase `panel-activo`): `deudoresView`, `deudorDetalle`, `misDeudasView`, `miDeudaDetalle`. En PC, como el prototipo: arriba el resumen (`prestamos-resumen`: tarjetas Me deben / Yo debo / neto, barra de proporción y porcentajes, pintados por `refresh()`; oculto en celular); debajo, las pestañas «Me deben · N / Yo debo · N» (siempre visibles), la lista de la pestaña activa (400 px) y el detalle activo en el ancho restante. Solo se ve una lista a la vez: la pestaña la deja `_mostrarPanelPrestamos` en `data-tab-prestamos` de la pantalla (se deriva del panel, así abrir a alguien de Yo debo desde otro módulo cambia de pestaña). Las pestañas son la parte de arriba de la caja de la lista y tienen medida fija; la lista conserva siempre su columna (sin nadie abierto, a la derecha queda vacío). Entre 900 y 1279 px la lista mide 320 px. Selección por defecto: `_abrirPersonaPorDefectoPrestamos` (prestado.js): al entrar, la primera persona de la pestaña (si está vacía, la de la otra); al tocar una pestaña, la primera de esa pestaña (si está vacía se queda en su lista vacía).
 
 ## 10 bis. Mesada
 
@@ -91,3 +91,8 @@ La información va dentro de un cuadro (`--bg2`, borde, radio 14, relleno 14) so
 Automática: la FASE 5 de `npm run smoke` (ida y vuelta celular ↔ PC con Inicio y Cuentas).
 
 A mano: redimensionar 1366 → 1100 → 800 → 430 → 360 → 1366 con una pantalla, una hoja y un formulario abiertos: no debe perderse ninguno ni quedar un bloque fuera de su sitio al volver a celular.
+
+
+## Marca y título de sección
+
+En PC el menú lateral lleva arriba el logo y «Mis finanzas» (`menu-lateral-marca`) y el `<h1>` de la cabecera muestra el nombre de la sección (`#hSeccion`, `titularSeccion` en `disposicion-pc.js`); en celular el `<h1>` sigue siendo «Mis finanzas».

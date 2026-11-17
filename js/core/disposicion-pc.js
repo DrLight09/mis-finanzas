@@ -83,4 +83,16 @@
   aplicar(consultaPc.matches);
   if (consultaPc.addEventListener) consultaPc.addEventListener('change', function (e) { aplicar(e.matches); });
   else if (consultaPc.addListener) consultaPc.addListener(function (e) { aplicar(e.matches); });
+
+  // ── Título de la cabecera = nombre de la sección (solo se ve en PC; en celular sigue «Mis finanzas») ──
+  // El nombre sale del título del ítem del menú lateral; las pantallas que no están en el menú llevan el suyo aquí.
+  var TITULOS_APARTE = { wrapped: 'Tu resumen' };
+  function titularSeccion(nombre) {
+    var destino = document.getElementById('hSeccion');
+    if (!destino) return;
+    var item = document.querySelector('.menu-lateral-item[data-screen="' + nombre + '"]');
+    destino.textContent = TITULOS_APARTE[nombre] || (item && item.getAttribute('title')) || 'Mis finanzas';
+  }
+  titularSeccion('inicio');
+  if (typeof Ui !== 'undefined') Ui.pantalla('*', titularSeccion, { key: 'titulo-seccion' });
 })();

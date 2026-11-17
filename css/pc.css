@@ -155,6 +155,15 @@
   #cp-lista > .card{margin-bottom:0;}
   #cp-lista > .empty-state{grid-column:1 / -1;background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
 
+  /* ── Análisis y Configuración: dos columnas que fluyen (columnas CSS) ───────────────────────────────────────────────────────────────
+     Los bloques conservan su orden de celular (arriba-abajo en la primera columna y luego en la segunda); ningún bloque se parte entre
+     columnas y cada título se queda con su tarjeta. El resumen del mes (Análisis) y los accesos de Wrapped (Configuración) ocupan todo el ancho. */
+  .scroll-area > #screen-analisis,.scroll-area > #screen-config{max-width:none;margin-left:0;margin-right:0;}
+  #screen-analisis.active,#screen-config.active{display:block;column-count:2;column-gap:14px;}
+  #screen-analisis > *,#screen-config > *{break-inside:avoid;}
+  #screen-analisis > .sec-title,#screen-config > .sec-title{break-after:avoid;}
+  #analisis-resumen,#wrapped-promo,#cfg-mis-wrapped{column-span:all;}
+
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-lista{width:280px;flex-shrink:0;}
@@ -184,6 +193,8 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Análisis y Configuración: una sola columna. */
+  #screen-analisis.active,#screen-config.active{column-count:1;}
   /* Encargos y Alcancía: se conserva el reparto; el riel de Alcancía pasa debajo. */
   #screen-alcancia.active{grid-template-columns:minmax(0,1fr);}
   #alcancia-progreso{grid-column:1;grid-row:3;}

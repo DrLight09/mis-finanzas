@@ -43,6 +43,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 11: Análisis y Configuración (2026-11-16, SW v143)
+
+- **Análisis y Configuración en PC (≥900 px).** Dos columnas que fluyen (columnas CSS): los bloques conservan el orden de celular (primero abajo por la columna izquierda y luego por la derecha), ningún bloque se parte entre columnas y cada título se queda con su tarjeta. En Análisis, el resumen del mes (balance, ingresos y gastos, porcentaje de ahorro) ocupa todo el ancho; en Configuración, los accesos de Wrapped y «Mis Wrapped». Entre 900 y 1279 px, una sola columna. En celular no cambia nada.
+- **Estructura:** un envoltorio de bloque nuevo en Análisis (`analisis-resumen`, sin relleno ni borde: el espaciado de celular no cambia). Configuración no necesitó cambios de HTML.
+- **No se copió del prototipo:** en Análisis, las cuatro tarjetas de resumen con «vs. octubre» y «Fijos pagados 6 de 8», la gráfica de patrimonio con «6 m / 12 m» y las barras compactas; en Configuración, la agrupación de «Módulos», «Notificaciones» y «Copia de seguridad» como paneles y los textos «Exportar JSON / CSV», «Tamaño de tus datos» y «Respaldos automáticos» (la app conserva sus secciones y textos).
+
 ## Versión PC, parte 10: Encargos, Alcancía y Plata comprometida (2026-11-16, SW v142)
 
 - **Encargos en PC (≥900 px).** La lista a la izquierda (siempre visible, en caja) y el detalle del encargo abierto a la derecha (en caja). Al entrar se abre el primer encargo; es una apertura automática que se deshace al achicar a celular si la persona no eligió otro. El «volver» se oculta en PC y el encargo abierto se resalta en la lista (`encargo-card-activa`). Sin encargos, la lista ocupa todo el ancho con su estado vacío.

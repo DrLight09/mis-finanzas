@@ -171,16 +171,19 @@
   #analisis-resumen,#wrapped-promo,#cfg-mis-wrapped{column-span:all;}
 
   /* ── Personas (excepción: se hace como el prototipo, no solo se acomoda): resumen arriba y tarjetas por persona; al tocar una, su ficha a la
-     derecha y el resumen se oculta. (en celular el perfil sigue siendo una hoja). La ficha la abre/cierra personas.js con data-ficha-abierta. ── */
+     derecha (el resumen y las tarjetas siguen a la vista, en 2 columnas). (en celular el perfil sigue siendo una hoja). La ficha la abre/cierra personas.js con data-ficha-abierta. ── */
   .scroll-area > #screen-personas{max-width:none;margin-left:0;margin-right:0;}
   #screen-personas.active{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:14px;align-items:start;}
   #screen-personas[data-ficha-abierta="si"]{grid-template-columns:minmax(0,1fr) var(--ficha-ancho);}
   #screen-personas .personas-resumen{display:block;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
-  #screen-personas[data-ficha-abierta="si"] .personas-resumen,#screen-personas[data-lista-vacia="si"] .personas-resumen{display:none;}
+  #screen-personas[data-ficha-abierta="si"] .personas-resumen{grid-column:1;} /* con una persona abierta el resumen sigue arriba, en la columna de las tarjetas */
+  #screen-personas[data-lista-vacia="si"] .personas-resumen{display:none;}
   #personas-lista{grid-column:1;grid-row:2;}
   #personas-lista > .ix-div-034{margin-bottom:12px;}
   #personas-lista > .ix-div-034 .sec-title{margin:0;}
   .personas-lista-conteo,.personas-nueva-pc{display:inline;}
+  .personas-volver{display:none;}
+  .personas-boton-nueva{background:transparent;border-width:1.5px;font-weight:600;}
   #lista-personas-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-content:start;}
   /* Cada persona es su propia caja (nombre y relación, y abajo el saldo neto con las etiquetas); la abierta se marca con el borde de acento. */
   #lista-personas-body .pe-fila{flex-wrap:wrap;align-items:flex-start;gap:10px;padding:14px;background:var(--bg2);border-radius:14px;}

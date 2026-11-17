@@ -43,6 +43,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 16: botones de Personas (2026-11-17, SW v145)
+
+- «Nueva persona» toma el estilo del prototipo (clase `personas-boton-nueva`, reemplaza `ix-button-155`): caja neutra de borde fino; en PC, transparente con borde de 1,5 px.
+- Celular: botón «Configuración» arriba de Personas (acción `personas:volverConfiguracion` → `showScreen('config')`; oculto en PC, que tiene el menú lateral).
+
+## Versión PC, parte 15: Personas con una persona abierta (2026-11-17, SW v145)
+
+- Según el prototipo actualizado (`Mis_Finanzas_PC___Prototipo_1.html`): al abrir una persona el resumen y las tarjetas ya no desaparecen; quedan en la columna izquierda (resumen arriba, tarjetas en 2 columnas) y la ficha a la derecha, a toda la altura. Solo el estado sin personas oculta el resumen. Reemplaza lo dicho en la parte 13 («el resumen se oculta»).
+
 ## Versión PC, parte 14: pestañas de Prestado dentro de la caja, marca del menú y título por sección (2026-11-17, SW v145)
 
 - **Prestado:** las pestañas Me deben / Yo debo pasan a ser la parte de arriba de la caja de la lista (mismo fondo y borde, como el prototipo) y tienen medida fija (136 px mínimo, alineadas a la izquierda): ya no se estiran. La columna de la lista conserva siempre su medida (400 px; 320 entre 900 y 1279), así que al pasar a una pestaña sin personas nada se mueve; antes colapsaba a una columna.

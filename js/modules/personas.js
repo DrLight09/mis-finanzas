@@ -1036,6 +1036,7 @@ if (typeof window !== 'undefined') window.PersonaPicker = PersonaPicker;
 Events.registerAll('personas', {
   abrirPerfil: _alternarPerfilPersona,
   abrirCrearGlobal: _abrirCrearPersonaGlobal,
+  volverConfiguracion: () => showScreen('config'),
   confirmarCrear: _crearPersonaGlobal,
   volverASel: _volverASelPersona,
   editarDesdePerfil: _editarPersonaDesdePerfilSheet,

@@ -187,4 +187,4 @@ Todo campo que elige una persona (Spotify agregar/editar, Nuevo encargo) usa `Pe
 
 ---
 
-**PC (2026-11-17):** en ≥900 px la pantalla es resumen + tarjetas por persona y una ficha lateral que se abre al tocar (nadie elegido al abrir). Saldo neto de la tarjeta = préstamos − Yo debo; el saldo de encargos no entra (es plata ajena). Detalle en [`version-pc.md`](./version-pc.md) §10 sexies.
+**PC (2026-11-17):** en ≥900 px la pantalla es resumen + tarjetas por persona y una ficha lateral que se abre al tocar (nadie elegido al abrir); con una abierta, el resumen y las tarjetas siguen a la vista. Saldo neto de la tarjeta = préstamos − Yo debo; el saldo de encargos no entra (es plata ajena). Detalle en [`version-pc.md`](./version-pc.md) §10 sexies.

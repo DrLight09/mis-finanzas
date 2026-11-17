@@ -1985,6 +1985,8 @@
 
         <!-- PERSONAS -->
         <div class="screen" id="screen-personas" data-ficha-abierta="no">
+          <!-- Solo celular: volver a Configuración, desde donde se llega a Personas (en PC está el menú lateral). -->
+          <div class="personas-volver"><button class="personas-volver-boton" type="button" data-action="personas:volverConfiguracion" data-args="[]"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>Configuración</button></div>
           <!-- Resumen (solo PC, ≥900 px): Me deben, Yo debo (Deudas.totalPendiente) y quiénes están en Spotify; lo pinta _renderListaPersonas(). -->
           <div class="personas-resumen">
             <div class="prestamos-kpis">
@@ -1996,7 +1998,7 @@
           <div id="personas-lista">
           <div class="ix-div-034">
             <div class="sec-title ix-m14-0-8">Personas<span class="personas-lista-conteo" id="personas-lista-conteo"></span></div>
-            <button class="ix-button-155" type="button" data-action="personas:abrirCrearGlobal" data-args="[true]">
+            <button class="personas-boton-nueva" type="button" data-action="personas:abrirCrearGlobal" data-args="[true]">
               <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.5"
                 stroke-linecap="round"><line x1="12" y1="5" x2="12"

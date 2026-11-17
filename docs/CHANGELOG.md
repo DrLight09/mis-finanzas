@@ -43,6 +43,18 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 17: menú sin scroll, Prestado en una caja, Mesada, Tarjetas, cajas a todo el alto y perfil de persona como pantalla (2026-11-17, SW v146)
+
+Según `Mis_Finanzas_PC___Prototipo_9e3bfe.html`.
+
+- **Menú lateral sin scroll:** `.menu-lateral-nav` ya no hace scroll; ítems y títulos de grupo más compactos para que quepa en 768 px de alto.
+- **Prestado (HTML reorganizado):** nuevo `#prestamos-columna` envuelve las pestañas y las dos listas (`deudoresView`, `misDeudasView`); los detalles (`deudorDetalle`, `miDeudaDetalle`) quedan después, fuera de la columna. En PC la columna es UNA caja (400 px; 320 entre 900 y 1279) con las pestañas Me deben / Yo debo adentro (mitades iguales, ya no se salen ni se estiran), el título de la lista a la izquierda y el botón de agregar a la derecha, y el detalle al lado. En celular el envoltorio no tiene estilos: todo igual.
+- **Cajas a todo el alto:** en PC las pantallas con columnas (Prestado, Personas, Gastos, Cuentas, Spotify, Encargos, Alcancía, Mesada, Tarjetas) ocupan el alto de la ventana y las cajas llegan hasta abajo aunque tengan poco contenido (`min-height:100%` + `align-items:stretch`). Gastos pasa de flex a cuadrícula (variables | fijos).
+- **Mesada:** año arriba a la izquierda, fila de resumen (recibido, meses pagados y pendiente si hay) y Papá | Mamá a todo el alto con los meses en cuadrícula de 3 columnas; cada casilla lleva una segunda línea (monto, «debe $X» o «sin pagar», clase `mesada-mes-detalle`, solo PC). Corrige el reparto anterior, que dejaba a Mamá a todo el ancho.
+- **Tarjetas de crédito:** resumen arriba (Deuda total en TC y Cupo total con «N tarjetas»; nueva tarjeta `tc-cupo-card`) y debajo la lista de tarjetas (420 px) | panel «Compras y pagos · {tarjeta}» (`#tc-detalle`). La primera tarjeta queda elegida; tocarla (o «Ver») cambia el panel; `abrirDetalleTCSheet` pinta en el panel en PC y abre la hoja en celular. El panel reutiliza el contenido de la hoja (filas de la app): no se copiaron los chips Todo / Compras / Pagos ni la tabla del prototipo.
+- **Perfil de persona en celular = pantalla** (antes hoja): se usa la misma ficha (`personas-ficha`) a pantalla completa con el botón «Personas» para volver (`personas:cerrarFicha`); la lista y el botón de Configuración se esconden mientras tanto. La hoja `sheet-perfil-persona` ya no se abre (queda inyectada sin uso: borrar en una limpieza).
+- **Smoke:** FASE 5 comprueba la ficha en celular y el panel de Tarjetas en PC.
+
 ## Versión PC, parte 16: botones de Personas (2026-11-17, SW v145)
 
 - «Nueva persona» toma el estilo del prototipo (clase `personas-boton-nueva`, reemplaza `ix-button-155`): caja neutra de borde fino; en PC, transparente con borde de 1,5 px.

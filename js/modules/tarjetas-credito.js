@@ -422,6 +422,18 @@ async function eliminarTC(id){
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
+/* ── PC (≥900 px): como el prototipo, la pantalla es resumen arriba y debajo la lista de tarjetas | compras y pagos de la tarjeta elegida.
+   En celular «Ver» abre la hoja de siempre. La tarjeta elegida (_tcSelId) es la primera mientras no se toque otra. ── */
+let _tcSelId=null;
+const _consultaPcTC=typeof window.matchMedia==='function'?window.matchMedia('(min-width: 900px)'):null;
+function _tcPanelPc(){
+  if(!_consultaPcTC||!_consultaPcTC.matches)return false;
+  const pantalla=document.getElementById('screen-tarjetas');
+  return !!(pantalla&&pantalla.classList.contains('active')&&document.getElementById('tc-detalle'));
+}
+function _tcMarcarActiva(){
+  document.querySelectorAll('#tc-lista .tc-card[data-tc-id]').forEach(c=>c.classList.toggle('tc-card-activa',_tcPanelPc()&&c.getAttribute('data-tc-id')===_tcSelId));
+}
 function renderTCScreen(){
   const tarjetas=S.tarjetasCredito||[];
   const hero=document.getElementById('tc-hero-deuda');
@@ -432,6 +444,11 @@ function renderTCScreen(){
   const cupoTotal=tarjetas.reduce((a,tc)=>a+(tc.cupo||0),0);
   hero.textContent=fmt(deudaTotal);
   if(heroCupo)heroCupo.textContent=cupoTotal?'Cupo total: '+fmt(cupoTotal):'';
+  const cupoMonto=document.getElementById('tc-cupo-total'),cupoSub=document.getElementById('tc-cupo-sub');
+  if(cupoMonto)cupoMonto.textContent=fmt(cupoTotal);
+  if(cupoSub)cupoSub.textContent=tarjetas.length+(tarjetas.length===1?' tarjeta':' tarjetas');
+  const panelTC=document.getElementById('tc-detalle');
+  if(panelTC)panelTC.hidden=!tarjetas.length;
 
   // El estado vacío ya trae «Agregar tarjeta»: el botón de pie solo aparece con tarjetas.
   mostrarSi(document.getElementById('btn-nueva-tarjeta'),tarjetas.length>0);
@@ -458,7 +475,7 @@ function renderTCScreen(){
     const subtitulo=[tc.banco,tc.franquicia].filter(Boolean).join(' · ');
     const colorIcono=tc.color||'currentColor';
 
-    return html`<div class="card tc-card ${deuda>0?'tc-card-deuda':''}">
+    return html`<div class="card tc-card ${deuda>0?'tc-card-deuda':''}" data-tc-id="${tc.id}">
       <div class="tc-cab">
         <div class="tc-flex1-min0">
           <div class="tc-nombre">
@@ -504,7 +521,20 @@ function renderTCScreen(){
       </div>
     </div>`;
   }).join('');
+  // PC: la tarjeta elegida (la primera por defecto) con su detalle a la derecha.
+  if(_tcPanelPc()){
+    if(!_tcSelId||!getTCById(_tcSelId))_tcSelId=tarjetas[0].id;
+    abrirDetalleTCSheet(_tcSelId);
+  }
+  _tcMarcarActiva();
 }
+// Tocar el cuerpo de una tarjeta (no sus botones) la elige. Solo en PC: en celular la tarjeta no es clicable.
+document.addEventListener('click',e=>{
+  if(!_consultaPcTC||!_consultaPcTC.matches)return;
+  const card=e.target.closest&&e.target.closest('#tc-lista .tc-card[data-tc-id]');
+  if(!card||e.target.closest('button,[data-action]'))return;
+  abrirDetalleTCSheet(card.getAttribute('data-tc-id'));
+});
 
 // ── Resumen de TC en la pantalla de Inicio ────────────────────────
 function renderTCDashboard(){
@@ -818,7 +848,9 @@ function confirmarPagarTC(){
 function abrirDetalleTCSheet(tcId){
   const tc=getTCById(tcId);
   if(!tc)return;
-  document.getElementById('detalle-tc-title').textContent=tc.nombre;
+  const enPanel=_tcPanelPc();
+  if(enPanel)_tcSelId=tc.id;
+  else document.getElementById('detalle-tc-title').textContent=tc.nombre;
   const compras=(tc.compras||[]).filter(c=>!c.eliminado);
   const pagos=(tc.pagos||[]).filter(p=>!p.eliminado);
   const tcMovimientos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&!m.eliminado);
@@ -990,6 +1022,12 @@ function abrirDetalleTCSheet(tcId){
     }).join('');
   }
 
+  if(enPanel){
+    document.getElementById('tc-detalle-titulo').textContent='Compras y pagos · '+tc.nombre;
+    document.getElementById('tc-detalle-content').innerHTML=contenido;
+    _tcMarcarActiva();
+    return;
+  }
   document.getElementById('detalle-tc-content').innerHTML=contenido;
   openSheet('detalle-tc');
 }

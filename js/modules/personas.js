@@ -542,7 +542,7 @@ function _guardarEditarPersonaGlobal() {
   document.getElementById('sheet-editar-persona-global').classList.remove('open');
   toast(nombre + ' actualizado', 'ok');
   // Si había perfil abierto, refrescar
-  if (document.getElementById('sheet-perfil-persona')?.classList.contains('open')) {
+  if (_fichaAbierta && _perfilPersonaId === p.id) {
     setTimeout(() => abrirPerfilPersona(p.id), 200);
   }
   // Avisar a los módulos que muestran a esta persona (Préstamos refresca el detalle abierto) — js/core/ui.js
@@ -568,7 +568,6 @@ function _mostrarFichaPersona() {
 // tocar una persona (con una elegida el resumen se oculta para que quepan las tarjetas). Aquí solo se repinta la ficha de la persona
 // abierta para que no quede vieja; si ya no existe, la ficha se cierra.
 function _sincronizarFichaPersonas() {
-  if (!_esPcPersonas()) return;
   const pantalla = document.getElementById('screen-personas');
   if (!pantalla || !pantalla.classList.contains('active')) return;
   if (_perfilPersonaId && getPersona(_perfilPersonaId)) abrirPerfilPersona(_perfilPersonaId);
@@ -614,8 +613,9 @@ function abrirPerfilPersona(personaId) {
   if (!p) return;
   _perfilPersonaId = personaId;
   _inyectarPersonaSheets();
-  // En PC el perfil va en la ficha de la pantalla Personas (se navega a ella si hace falta); en celular, en la hoja de siempre.
-  const enFicha = _esPcPersonas();
+  // El perfil va en la ficha de la pantalla Personas (se navega a ella si hace falta): en PC al lado de las tarjetas y en celular como
+  // pantalla propia, como el prototipo (con un botón para volver a la lista).
+  const enFicha = true;
   const pantallaPersonas = document.getElementById('screen-personas');
   if (enFicha && pantallaPersonas && !pantallaPersonas.classList.contains('active')) showScreen('personas');
   const pre = enFicha ? 'pficha' : 'pperf';
@@ -1035,6 +1035,7 @@ if (typeof window !== 'undefined') window.PersonaPicker = PersonaPicker;
 // namespace del evento y se registra desde encargos.js / prestado.js, donde viven los handlers.
 Events.registerAll('personas', {
   abrirPerfil: _alternarPerfilPersona,
+  cerrarFicha: _cerrarFichaPersonas,
   abrirCrearGlobal: _abrirCrearPersonaGlobal,
   volverConfiguracion: () => showScreen('config'),
   confirmarCrear: _crearPersonaGlobal,

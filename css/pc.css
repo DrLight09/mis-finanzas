@@ -29,15 +29,15 @@
 
   /* ── Menú lateral ────────────────────────────────────────────────────────────────────────────────── */
   .menu-lateral{grid-column:1;grid-row:1 / span 2;display:flex;flex-direction:column;min-height:0;background:var(--bg2);border-right:1px solid var(--border);padding:14px 10px 10px;}
-  .menu-lateral-nav{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:1px;}
+  .menu-lateral-nav{flex:1;min-height:0;overflow:visible;display:flex;flex-direction:column;gap:0;} /* sin scroll: cabe en 768 px de alto (ver el ajuste de pantallas bajas al final) */
   .menu-lateral-marca{display:flex;align-items:center;gap:10px;padding:2px 8px 12px;font-size:15px;font-weight:700;letter-spacing:-.3px;flex-shrink:0;}
   .menu-lateral-logo{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex-shrink:0;background:color-mix(in srgb,var(--accent) 16%,transparent);color:var(--accent);}
   .menu-lateral-logo svg{width:17px;height:17px;}
   .encabezado-app{display:none;}
   .encabezado-seccion{display:inline;}
-  .menu-lateral-grupo{font-family:'DM Mono',monospace;font-size:9.5px;font-weight:500;letter-spacing:1.1px;text-transform:uppercase;color:var(--text3);padding:12px 10px 4px;}
+  .menu-lateral-grupo{font-family:'DM Mono',monospace;font-size:9.5px;font-weight:500;letter-spacing:1.1px;text-transform:uppercase;color:var(--text3);padding:9px 10px 3px;}
   .menu-lateral-grupo:first-child{padding-top:2px;}
-  .menu-lateral-item{display:flex;align-items:center;gap:10px;width:100%;padding:7px 10px;border:0;border-radius:10px;background:none;color:var(--text2);font:500 12.5px 'DM Sans',sans-serif;text-align:left;cursor:pointer;}
+  .menu-lateral-item{display:flex;align-items:center;gap:10px;width:100%;padding:6px 10px;border:0;border-radius:10px;background:none;color:var(--text2);font:500 12.5px 'DM Sans',sans-serif;text-align:left;cursor:pointer;}
   .menu-lateral-item[hidden]{display:none;}
   .menu-lateral-item:hover{background:var(--bg3);color:var(--text);}
   .menu-lateral-item:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
@@ -88,59 +88,85 @@
 
   /* ── Gastos: variables a la izquierda y fijos mensuales en el riel derecho, los dos a la vez (sin pestañas) ───────────────────── */
   .scroll-area > #screen-gastos{max-width:none;margin-left:0;margin-right:0;}
-  #screen-gastos.active{display:flex;flex-wrap:wrap;align-items:flex-start;gap:14px;}
-  #screen-gastos .gastos-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;flex:0 0 100%;}
+  #screen-gastos.active{display:grid;grid-template-columns:minmax(0,1fr) var(--riel-ancho);grid-template-rows:auto minmax(0,1fr);gap:14px;align-items:stretch;min-height:100%;}
+  #screen-gastos .gastos-resumen{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;grid-column:1 / -1;}
   #screen-gastos .gastos-resumen .stat{padding:15px 16px;}
   #screen-gastos .gastos-resumen .stat-value{font-size:22px;}
   #screen-gastos .tab-bar{display:none;}
   #screen-gastos .gastos-panel{display:block;}
   #screen-gastos .gastos-panel-titulo{display:block;margin-top:0;}
-  #panel-var{flex:1;min-width:0;}
-  #panel-fijo{width:var(--riel-ancho);flex-shrink:0;}
+  #panel-var{grid-column:1;grid-row:2;min-width:0;}
+  #panel-fijo{grid-column:2;grid-row:2;min-width:0;}
   #screen-gastos .tab-bar + .gastos-panel{margin-top:0;}
 
-  /* ── Tarjetas de crédito: las tarjetas en una cuadrícula en vez de apiladas (cada una ya trae Compra / Pagar / Ver) ─────────────── */
+  /* ── Tarjetas de crédito (como el prototipo): resumen (deuda y cupo total) arriba; debajo la lista de tarjetas (420 px) | compras y pagos de la tarjeta elegida ── */
   .scroll-area > #screen-tarjetas{max-width:none;margin-left:0;margin-right:0;}
-  #tc-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:12px;align-items:start;}
+  #screen-tarjetas.active{display:flex;flex-direction:column;gap:12px;min-height:100%;}
+  .tarjetas-resumen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+  .tarjetas-resumen .hero{margin:0;padding:12px 16px;}
+  .tarjetas-cupo-card{display:block;padding:12px 16px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
+  .tarjetas-cupo-titulo{font:500 10px 'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);}
+  .tarjetas-cupo-monto{font:400 26px 'DM Mono',monospace;letter-spacing:-1px;margin-top:4px;}
+  .tarjetas-cupo-sub{font-size:11px;color:var(--text3);margin-top:2px;}
+  .tarjetas-cuerpo{flex:1;min-height:0;display:flex;gap:12px;align-items:stretch;}
+  .tarjetas-columna{width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+  #tc-lista{display:flex;flex-direction:column;gap:10px;margin:0;}
+  #btn-nueva-tarjeta{order:-1;align-self:flex-end;width:auto;margin:0;padding:6px 12px;font-size:12px;}
+  #tc-lista .tc-card{margin:0;cursor:pointer;}
+  #tc-lista .tc-card-activa{border-color:var(--accent);}
+  .tarjetas-detalle{display:block;flex:1;min-width:0;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
+  .tarjetas-detalle[hidden]{display:none;}
+  .tarjetas-detalle > .sec-title{margin-top:0;}
   #tc-lista > .empty-state{grid-column:1 / -1;}
   #tc-lista > .tc-card{margin-bottom:0;}
   #btn-nueva-tarjeta{max-width:320px;}
 
-  /* ── Prestado (como el prototipo): el resumen arriba y debajo la lista de la pestaña activa (Me deben / Yo debo, se cambia con las pestañas) | detalle ──
-     La pestaña la deja prestado.js en data-tab-prestamos de la pantalla; el detalle que se ve lo decide la clase panel-activo. Con una persona
-     abierta el detalle ocupa el ancho que queda; la lista conserva siempre su medida (sin nadie abierto, a la derecha queda vacío). */
+  /* ── Prestado (como el prototipo): el resumen arriba y debajo DOS cajas a todo el alto: la columna (400 px) con las pestañas Me deben / Yo debo
+     y la lista de la pestaña activa, y el detalle de la persona abierta al lado. La pestaña la deja prestado.js en data-tab-prestamos de la
+     pantalla; el detalle que se ve lo decide la clase panel-activo. La columna conserva siempre su medida. ──── */
   .scroll-area > #screen-prestamos{max-width:none;margin-left:0;margin-right:0;}
-  #screen-prestamos.active{display:grid;grid-template-columns:400px minmax(0,1fr);grid-template-rows:auto auto 1fr;column-gap:14px;align-items:start;}
+  #screen-prestamos.active{display:grid;grid-template-columns:400px minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:14px;align-items:stretch;min-height:100%;}
   #screen-prestamos .prestamos-resumen{display:block;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
-  /* Las pestañas son la parte de arriba de la caja de la lista (como el prototipo): mismo fondo y borde, medida fija (no se estiran). */
-  #prestamos-tabs,#prestamos-tabs.prestamos-tabs-oculto{display:flex;justify-content:flex-start;gap:6px;grid-column:1;grid-row:2;margin:0;padding:12px 12px 0;background:var(--bg2);border:1px solid var(--border);border-bottom:0;border-radius:14px 14px 0 0;}
-  #prestamos-tabs .btn{flex:0 0 auto;min-width:136px;}
+  #prestamos-columna{grid-column:1;grid-row:2;display:flex;flex-direction:column;gap:10px;min-width:0;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
+  #prestamos-tabs,#prestamos-tabs.prestamos-tabs-oculto{display:flex;gap:4px;margin:0;padding:3px;background:var(--bg3);border-radius:10px;}
+  #prestamos-tabs .btn{flex:1 1 0;min-width:0;}
   #screen-prestamos .prestamos-tab-n{display:inline;}
-  #screen-prestamos[data-tab-prestamos="me-deben"] #deudoresView,#screen-prestamos[data-tab-prestamos="yo-debo"] #misDeudasView{display:block;grid-column:1;grid-row:3;border-top:0;border-radius:0 0 14px 14px;padding-top:10px;}
-  #deudorDetalle,#miDeudaDetalle{grid-column:2;grid-row:2 / span 2;}
+  /* Solo se ve la lista de la pestaña activa; dentro de la caja de la columna va sin caja propia: título a la izquierda y «agregar» a la derecha. */
+  #screen-prestamos[data-tab-prestamos="me-deben"] #deudoresView,#screen-prestamos[data-tab-prestamos="yo-debo"] #misDeudasView{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;row-gap:8px;background:none;border:0;border-radius:0;padding:0;}
+  #deudoresView > .sec-title,#misDeudasView > .sec-title{grid-column:1;grid-row:1;margin:0;}
+  #btn-nueva-persona,#btn-nueva-deuda{grid-column:2;grid-row:1;width:auto;margin:0;padding:6px 11px;font-size:11.5px;}
+  #deudoresList,#misDeudasList{grid-column:1 / -1;grid-row:2;}
+  #deudorDetalle,#miDeudaDetalle{grid-column:2;grid-row:2;min-width:0;}
   #btn-volver-deudores,#btn-volver-mis-deudas{display:none;} /* la lista está a la vista */
   /* Filas planas dentro de la caja de cada lista; la persona abierta con fondo propio. */
   #deudoresList .card,#misDeudasList .card{background:transparent;border-color:transparent;margin-bottom:2px;}
   #deudoresList .card:hover,#misDeudasList .card:hover{background:color-mix(in srgb,var(--text) 5%,transparent);}
   #screen-prestamos .persona-card-activa{background:var(--bg3);border-color:var(--border2);}
 
-  /* ── Mesada: Papá y Mamá lado a lado (cada una ya es una tarjeta con su cuota y sus doce meses); el título, el año, el resumen
-     y el aviso de pagos parciales ocupan todo el ancho. El detalle de cada mes sigue abriéndose en su hoja (ventana modal en PC). ──── */
+  /* ── Mesada (como el prototipo): el año arriba a la izquierda, el resumen en una fila (recibido, meses pagados y, si hay, lo pendiente) y debajo
+     Papá | Mamá, cada uno una caja a todo el alto con su cuota y los meses en cuadrícula de 3 columnas. El detalle de cada mes sigue en su hoja. ── */
   .scroll-area > #screen-mesada{max-width:none;margin-left:0;margin-right:0;}
-  #mesadaSection{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;align-items:start;}
-  #mesadaSection > *{grid-column:1 / -1;}
-  #mesadaSection > .card.ms-mb9{grid-column:auto;}
+  #mesadaSection{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:auto auto minmax(0,1fr);gap:12px;align-items:stretch;min-height:100%;}
+  #mesadaSection > .sec-title{display:none;} /* el título ya está en la cabecera */
+  #mesadaSection > .anio-nav{grid-column:1 / -1;justify-self:start;margin:0;}
+  #mesadaSection > .grid2{display:contents;}
+  #mesadaSection > .grid2 > .stat{margin:0;}
+  #mesadaSection > .ms-banner{grid-column:span 2;margin:0;}
+  #mesadaSection > .card:not(.ms-banner){grid-column:span 2;margin:0;}
+  .mesada-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-content:start;}
+  .mes-dot{aspect-ratio:auto;height:62px;min-height:0;flex-direction:column;gap:2px;font-size:13px;border-radius:12px;}
+  .mesada-mes-detalle{display:block;font:400 10px 'DM Mono',monospace;opacity:.75;}
 
   /* ── Spotify: lo de siempre (costo, resumen, integrantes, estadísticas) a la izquierda y el historial de pagos en el riel derecho ─────── */
   .scroll-area > #screen-spotify{max-width:none;margin-left:0;margin-right:0;}
-  #screen-spotify.active{display:flex;align-items:flex-start;gap:14px;}
+  #screen-spotify.active{display:flex;align-items:stretch;gap:14px;min-height:100%;}
   #spotify-principal{flex:1;min-width:0;}
   #spotify-historial{width:var(--riel-ancho);flex-shrink:0;}
   #spotify-historial > .sec-title{margin-top:0;}
 
   /* ── Encargos: la lista a la izquierda (siempre visible) y el detalle del encargo abierto a la derecha ─────────────────────────────── */
   .scroll-area > #screen-encargos{max-width:none;margin-left:0;margin-right:0;}
-  #screen-encargos.active{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);column-gap:14px;align-items:start;}
+  #screen-encargos.active{display:grid;grid-template-columns:minmax(300px,340px) minmax(0,1fr);column-gap:14px;align-items:stretch;min-height:100%;}
   #screen-encargos #encargosListView{display:block;grid-column:1;}
   #encargoDetalle{grid-column:2;grid-row:1;}
   /* Sin encargos (no hay nada que abrir): la lista ocupa todo el ancho con su estado vacío. */
@@ -149,7 +175,7 @@
 
   /* ── Alcancía: lo de siempre a la izquierda y el progreso entre ciclos (si ya hay dos o más) en el riel derecho ──────────────────── */
   .scroll-area > #screen-alcancia{max-width:none;margin-left:0;margin-right:0;}
-  #screen-alcancia.active{display:grid;grid-template-columns:minmax(0,1fr) var(--riel-ancho);column-gap:14px;align-items:start;}
+  #screen-alcancia.active{display:grid;grid-template-columns:minmax(0,1fr) var(--riel-ancho);grid-template-rows:auto minmax(0,1fr);column-gap:14px;align-items:stretch;min-height:100%;}
   #screen-alcancia > .hero{grid-column:1 / -1;}
   #alcancia-no-iniciada,#alcancia-activa{grid-column:1;}
   #alcancia-progreso{grid-column:2;grid-row:2;}
@@ -173,7 +199,7 @@
   /* ── Personas (excepción: se hace como el prototipo, no solo se acomoda): resumen arriba y tarjetas por persona; al tocar una, su ficha a la
      derecha (el resumen y las tarjetas siguen a la vista, en 2 columnas). (en celular el perfil sigue siendo una hoja). La ficha la abre/cierra personas.js con data-ficha-abierta. ── */
   .scroll-area > #screen-personas{max-width:none;margin-left:0;margin-right:0;}
-  #screen-personas.active{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:14px;align-items:start;}
+  #screen-personas.active{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);column-gap:14px;align-items:stretch;min-height:100%;}
   #screen-personas[data-ficha-abierta="si"]{grid-template-columns:minmax(0,1fr) var(--ficha-ancho);}
   #screen-personas .personas-resumen{display:block;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
   #screen-personas[data-ficha-abierta="si"] .personas-resumen{grid-column:1;} /* con una persona abierta el resumen sigue arriba, en la columna de las tarjetas */
@@ -182,7 +208,7 @@
   #personas-lista > .ix-div-034{margin-bottom:12px;}
   #personas-lista > .ix-div-034 .sec-title{margin:0;}
   .personas-lista-conteo,.personas-nueva-pc{display:inline;}
-  .personas-volver{display:none;}
+  .personas-volver,.personas-ficha-volver{display:none;}
   .personas-boton-nueva{background:transparent;border-width:1.5px;font-weight:600;}
   #lista-personas-body{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;align-content:start;}
   /* Cada persona es su propia caja (nombre y relación, y abajo el saldo neto con las etiquetas); la abierta se marca con el borde de acento. */
@@ -200,7 +226,7 @@
   #personas-ficha .pe-celda,#personas-ficha .pe-celda-full{background:var(--bg2);}
 
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
-  #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
+  #screen-cuentas.en-columnas.active{display:flex;align-items:stretch;gap:14px;min-height:100%;}
   .columna-lista{width:280px;flex-shrink:0;}
   .columna-centro{flex:1;min-width:0;}
   .columna-movimientos{display:none;width:340px;flex-shrink:0;}
@@ -233,21 +259,22 @@
   /* Análisis y Configuración: una sola columna. */
   #screen-analisis.active,#screen-config.active{column-count:1;}
   /* Encargos y Alcancía: se conserva el reparto; el riel de Alcancía pasa debajo. */
-  #screen-alcancia.active{grid-template-columns:minmax(0,1fr);}
+  #screen-alcancia.active{grid-template-columns:minmax(0,1fr);grid-template-rows:none;min-height:0;}
   #alcancia-progreso{grid-column:1;grid-row:3;}
   /* Spotify: el historial pasa debajo. */
   #screen-spotify.active{flex-wrap:wrap;}
   #spotify-principal{flex-basis:100%;}
   #spotify-historial{width:auto;flex-basis:100%;}
   /* Mesada: Papá y Mamá una debajo de la otra. */
-  #mesadaSection{grid-template-columns:minmax(0,1fr);}
-  #mesadaSection > .card.ms-mb9{grid-column:1 / -1;}
+  #mesadaSection{grid-template-columns:repeat(2,minmax(0,1fr));}
+  #mesadaSection > .card:not(.ms-banner){grid-column:span 1;}
   /* Prestado: la lista de la pestaña más angosta y el detalle a la derecha. */
   #screen-prestamos.active{grid-template-columns:minmax(260px,320px) minmax(0,1fr);}
   /* Gastos: los fijos mensuales pasan debajo de los variables. */
-  #screen-gastos.active{flex-wrap:wrap;}
-  #panel-var{flex-basis:100%;}
-  #panel-fijo{width:auto;flex-basis:100%;}
+  #screen-gastos.active{grid-template-columns:minmax(0,1fr);grid-template-rows:auto;}
+  #panel-var,#panel-fijo{grid-column:1;grid-row:auto;}
+  /* Tarjetas: la lista más angosta. */
+  .tarjetas-columna{width:320px;}
   /* Cuentas: lista más angosta y los movimientos pasan debajo del detalle. */
   #screen-cuentas.en-columnas.active{flex-wrap:wrap;}
   .columna-lista{width:240px;}

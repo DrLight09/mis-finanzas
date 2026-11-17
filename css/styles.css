@@ -228,6 +228,7 @@ html.kb-open .sheet{transition:translate var(--kb-ms) var(--kb-ease),max-height 
 .progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s;}
 .mesada-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;}
 .mes-dot{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;border:1px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s;user-select:none;}
+.mesada-mes-detalle{display:none;} /* monto o estado bajo el mes: solo PC (css/pc.css) */
 .mes-dot.on{background:rgba(200,240,96,.15);border-color:var(--accent);color:var(--accent);}
 .mes-dot.perdido{background:rgba(240,104,104,.10);border-color:rgba(240,104,104,.35);color:var(--red);}
 .mes-dot.mes-dot-pend{background:rgba(240,184,64,.15);border-color:var(--amber);color:var(--amber);}
@@ -2041,7 +2042,14 @@ button.inicio-pilar-accion{cursor:pointer;}
 .prestamos-barra-contra{background:var(--red);}
 .prestamos-proporcion-vacia{display:none;}
 .personas-resumen{display:none;} /* el resumen de Personas solo se ve en PC (css/pc.css) */
-.personas-ficha{display:none;} /* la ficha de la persona solo se ve en PC; en celular el perfil es una hoja */
+.tarjetas-cupo-card,.tarjetas-detalle{display:none;} /* solo PC: cupo total y detalle de la tarjeta elegida (css/pc.css) */
+.personas-ficha{display:none;} /* se ve al abrir una persona: en PC al lado de las tarjetas y en celular como pantalla propia (abajo) */
+.personas-ficha-volver{display:inline-flex;align-items:center;gap:4px;height:34px;padding:0 12px 0 8px;margin-bottom:12px;border-radius:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font:500 12.5px 'DM Sans',sans-serif;cursor:pointer;}
+@media (max-width:899px){
+  /* Celular: con una persona abierta se ve solo su ficha (la lista y el botón de Configuración se esconden). */
+  #screen-personas[data-ficha-abierta="si"] #personas-ficha{display:block;}
+  #screen-personas[data-ficha-abierta="si"] :is(.personas-resumen,#personas-lista,.personas-volver){display:none;}
+}
 /* Botones de Personas (como el prototipo): «Nueva persona» y, solo en celular, volver a Configuración */
 .personas-boton-nueva{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font:500 11.5px 'DM Sans',sans-serif;cursor:pointer;}
 .personas-volver{margin-bottom:12px;}

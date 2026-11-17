@@ -96,3 +96,8 @@ A mano: redimensionar 1366 → 1100 → 800 → 430 → 360 → 1366 con una pan
 ## Marca y título de sección
 
 En PC el menú lateral lleva arriba el logo y «Mis finanzas» (`menu-lateral-marca`) y el `<h1>` de la cabecera muestra el nombre de la sección (`#hSeccion`, `titularSeccion` en `disposicion-pc.js`); en celular el `<h1>` sigue siendo «Mis finanzas».
+
+
+## Alto completo, Mesada y Tarjetas (parte 17)
+
+En PC las pantallas de columnas ocupan el alto de la ventana (`min-height:100%`, `align-items:stretch`) para que las cajas lleguen hasta abajo. Mesada: año, resumen y Papá | Mamá con meses en 3 columnas. Tarjetas: resumen, lista (420 px) y panel `#tc-detalle` con la tarjeta elegida (`_tcSelId`). Prestado: `#prestamos-columna` es la caja de pestañas + lista. En celular el perfil de una persona es la ficha a pantalla completa con botón «Personas».

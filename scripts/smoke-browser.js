@@ -383,8 +383,9 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c5(fichaAbierta() === 'no', 'Personas: al salir y volver no debe quedar nadie elegido (' + fichaAbierta() + ')');
     cambiarModo(false);
     ev(`abrirPerfilPersona('per-prueba')`);
-    c5(ev(`document.getElementById('sheet-perfil-persona').classList.contains('open')`) === true, 'Personas: en celular el perfil debe abrir la hoja');
-    ev(`document.getElementById('sheet-perfil-persona').classList.remove('open'); S.personas=[]; S.deudores=[]; S.misDeudas=[]; S.encargos=[]; showScreen('inicio')`);
+    c5(fichaAbierta() === 'si' && ev(`document.getElementById('sheet-perfil-persona')`) === null || ev(`document.getElementById('sheet-perfil-persona').classList.contains('open')`) === false, 'Personas: en celular el perfil debe ser una pantalla (ficha), no la hoja');
+    c5(fichaAbierta() === 'si' && ev(`document.getElementById('pficha-nombre').textContent`) === 'Laura', 'Personas: en celular la ficha debe mostrar a la persona');
+    ev(`_cerrarFichaPersonas(); S.personas=[]; S.deudores=[]; S.misDeudas=[]; S.encargos=[]; showScreen('inicio')`);
     // Prestado en PC (como el prototipo): se cambia entre Me deben y Yo debo con las pestañas; solo una lista a la vez y el detalle de la primera persona de la pestaña.
     ev(`S.deudores=[{id:'dp1',nombre:'Laura',movimientos:[{id:'p1',tipo:'prestamo',monto:600000,fecha:'2026-10-01'}]}];
         S.misDeudas=[{id:'mp1',nombre:'Tío',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; refresh(); showScreen('prestamos')`);
@@ -403,6 +404,13 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     // Abrir a alguien de Yo debo desde fuera (p. ej. «Ver detalle» en Personas) deja la pestaña y la lista de ese lado.
     ev(`S.misDeudas=[{id:'mp1',nombre:'Tío',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; cambiarTabPrestamos('me-deben'); abrirMiDeuda('mp1')`);
     c5(tabPrestamos() === 'yo-debo' && ev(`document.getElementById('tab-yo-debo').className.indexOf('btn-ghost') === -1`), 'Prestado: abrir a alguien de Yo debo debe pasar a esa pestaña (' + tabPrestamos() + ')');
+    // Tarjetas en PC: la primera tarjeta queda elegida y su detalle va en el panel; en celular no hay panel.
+    ev(`S.tarjetasCredito=[{id:'tc1',nombre:'Nu Mastercard',banco:'Nu',franquicia:'Mastercard',cupo:3000000,deuda:0,compras:[],pagos:[],estado:'activa'},{id:'tc2',nombre:'Rappi Visa',banco:'Rappi',franquicia:'Visa',cupo:2000000,deuda:0,compras:[],pagos:[],estado:'activa'}]; showScreen('tarjetas'); renderTCScreen()`);
+    c5(ev(`document.getElementById('tc-detalle-titulo').textContent`) === 'Compras y pagos · Nu Mastercard', 'Tarjetas PC: la primera tarjeta debe quedar elegida con su detalle (' + ev(`document.getElementById('tc-detalle-titulo').textContent`) + ')');
+    ev(`abrirDetalleTCSheet('tc2')`);
+    c5(ev(`document.getElementById('tc-detalle-titulo').textContent`) === 'Compras y pagos · Rappi Visa' && ev(`document.querySelector('#tc-lista .tc-card-activa').getAttribute('data-tc-id')`) === 'tc2', 'Tarjetas PC: elegir otra tarjeta debe cambiar el detalle y marcarla');
+    c5(ev(`document.getElementById('tc-cupo-total').textContent.replace(/\\s/g,'')`).indexOf('5.000.000') >= 0, 'Tarjetas PC: el cupo total debe sumar las tarjetas');
+    ev(`S.tarjetasCredito=[]; showScreen('prestamos')`);
     // Cabecera: el título es el de la sección (en PC se ve; en celular sigue el nombre de la app).
     c5(ev(`document.getElementById('hSeccion').textContent`) === 'Prestado', 'Cabecera: el título debe ser el de la sección (' + ev(`document.getElementById('hSeccion').textContent`) + ')');
     ev(`showScreen('personas')`);

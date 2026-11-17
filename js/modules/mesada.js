@@ -571,8 +571,11 @@ function _htmlMesDot(parent, m, anio) {
   const tooltip = m.estado === 'pendiente' ? fmt(info.monto) + ' recibidos · debe ' + fmt(info.pendiente)
     : m.estado === 'pagado' ? (info.fecha || 'pagado')
     : m.estado === 'perdido' ? 'Sin pagar' : '';
+  // Segunda línea de la casilla (solo se ve en PC): lo recibido, lo que se debe o «sin pagar».
+  const textoDetalle = m.estado === 'pendiente' ? 'debe ' + fmt(info.pendiente) : m.estado === 'pagado' ? fmt(info.monto) : m.estado === 'perdido' ? 'sin pagar' : '';
+  const detalle = textoDetalle ? `<small class="mesada-mes-detalle">${escHtml(textoDetalle)}</small>` : '';
   return `<div class="${_MES_DOT_CLASE[m.estado]}" title="${tooltip}"
-    ${Events.attr('mesada:clickMesDot', parent, m.key, m.nombre + ' ' + anio)}>${m.nombre}</div>`;
+    ${Events.attr('mesada:clickMesDot', parent, m.key, m.nombre + ' ' + anio)}>${m.nombre}${detalle}</div>`;
 }
 
 function clickMesDot(parent, key, nombre) {

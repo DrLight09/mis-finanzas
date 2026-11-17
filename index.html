@@ -862,7 +862,8 @@
 
         <!-- PANTALLA TARJETAS DE CRÉDITO -->
         <div class="screen" id="screen-tarjetas">
-          <div class="hero hero-red">
+          <div class="tarjetas-resumen">
+            <div class="hero hero-red">
             <div class="hero-label ix-cred">Deuda
               total en TC</div>
             <div class="hero-amount ix-cred"
@@ -873,8 +874,12 @@
               <div class="ix-hero-change-indicator" id="tc-hero-cupo"></div>
             </div>
           </div>
-          <div class="ix-mb10" id="tc-lista"></div>
-          <button type="button" class="btn btn-ghost ix-button-033" id="btn-nueva-tarjeta"
+          <div class="tarjetas-cupo-card" id="tc-cupo-card"><div class="tarjetas-cupo-titulo">Cupo total</div><div class="tarjetas-cupo-monto" id="tc-cupo-total">$0</div><div class="tarjetas-cupo-sub" id="tc-cupo-sub"></div></div>
+          </div>
+          <div class="tarjetas-cuerpo">
+            <div class="tarjetas-columna">
+              <div class="ix-mb10" id="tc-lista"></div>
+              <button type="button" class="btn btn-ghost ix-button-033" id="btn-nueva-tarjeta"
             data-action="tarjetas:nueva">
             <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2.5"
@@ -882,6 +887,10 @@
                 y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
             Agregar tarjeta de crédito
           </button>
+            </div>
+            <!-- Solo PC: el detalle de la tarjeta elegida (en celular «Ver» abre la hoja). -->
+            <section class="tarjetas-detalle" id="tc-detalle" aria-label="Compras y pagos de la tarjeta"><div class="sec-title" id="tc-detalle-titulo"></div><div id="tc-detalle-content"></div></section>
+          </div>
         </div>
 
         <!-- HISTORIAL DE CAMBIOS -->
@@ -1404,6 +1413,7 @@
             <div class="prestamos-proporcion" id="p-resumen-barra"><i class="prestamos-barra-favor" id="p-barra-favor"></i><i class="prestamos-barra-contra" id="p-barra-contra"></i></div>
             <div class="prestamos-proporcion-texto"><span id="p-texto-favor"></span><span id="p-texto-contra"></span></div>
           </div>
+          <div class="prestamos-columna" id="prestamos-columna">
           <div class="ix-prestamos-tabs"
             id="prestamos-tabs">
             <button type="button" class="btn ix-tab-me-deben" id="tab-me-deben"
@@ -1428,6 +1438,21 @@
               </span>
             </button>
           </div>
+                    <!-- YO DEBO -->
+          <div id="misDeudasView" class="prestamos-panel">
+            <div class="sec-title" id="titulo-mis-deudas">Personas a quienes les debo dinero</div>
+            <div id="misDeudasList"></div>
+            <button type="button" class="btn btn-ghost" id="btn-nueva-deuda" data-action="prestado:abrirSheetNuevaDeuda" data-args="[]">
+              <span class="ix-span-080">
+                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2.5"
+                  stroke-linecap="round"><line x1="12" y1="5" x2="12"
+                    y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                Agregar persona
+              </span>
+            </button>
+          </div>
+          </div><!-- /prestamos-columna -->
           <div id="deudorDetalle" class="prestamos-panel">
             <div class="detail-header ix-mb14">
               <button type="button" class="detail-header-back btn-icon"
@@ -1526,21 +1551,7 @@
             <div id="ddHistorial"></div>
           </div>
 
-          <!-- YO DEBO -->
-          <div id="misDeudasView" class="prestamos-panel">
-            <div class="sec-title" id="titulo-mis-deudas">Personas a quienes les debo dinero</div>
-            <div id="misDeudasList"></div>
-            <button type="button" class="btn btn-ghost" id="btn-nueva-deuda" data-action="prestado:abrirSheetNuevaDeuda" data-args="[]">
-              <span class="ix-span-080">
-                <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2.5"
-                  stroke-linecap="round"><line x1="12" y1="5" x2="12"
-                    y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-                Agregar persona
-              </span>
-            </button>
-          </div>
-          <div id="miDeudaDetalle" class="prestamos-panel">
+<div id="miDeudaDetalle" class="prestamos-panel">
             <div class="detail-header ix-mb14">
               <button type="button" class="detail-header-back btn-icon"
                 id="btn-volver-mis-deudas" data-action="prestado:volverMisDeudas" data-args="[]" aria-label="Volver">
@@ -2025,6 +2036,8 @@
           </div><!-- /personas-lista -->
           <!-- Ficha de la persona elegida (solo PC): en celular el perfil sigue abriéndose en una hoja. Mismo contenido que la hoja (abrirPerfilPersona). -->
           <aside id="personas-ficha" class="personas-ficha" aria-label="Ficha de la persona">
+            <!-- Solo celular: la ficha es una pantalla y este botón vuelve a la lista (en PC la lista está al lado). -->
+            <button type="button" class="personas-ficha-volver" data-action="personas:cerrarFicha" data-args="[]"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6" /></svg>Personas</button>
             <div class="pe-perf-cab">
               <div id="pficha-avatar" class="avatar pe-av-46"></div>
               <div class="pe-flex1-min0">

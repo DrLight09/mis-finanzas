@@ -1982,7 +1982,16 @@
         </div>
 
         <!-- PERSONAS -->
-        <div class="screen" id="screen-personas">
+        <div class="screen" id="screen-personas" data-ficha-abierta="no">
+          <!-- Resumen (solo PC, ≥900 px): Me deben, Yo debo (Deudas.totalPendiente) y quiénes están en Spotify; lo pinta _renderListaPersonas(). -->
+          <div class="personas-resumen">
+            <div class="prestamos-kpis">
+              <div class="prestamos-kpi prestamos-kpi-favor"><div class="stat-label">Me deben</div><div class="prestamos-kpi-monto" id="pe-resumen-me-deben">$0</div><div class="prestamos-kpi-sub" id="pe-resumen-me-deben-sub"></div></div>
+              <div class="prestamos-kpi prestamos-kpi-contra"><div class="stat-label">Yo debo</div><div class="prestamos-kpi-monto" id="pe-resumen-yo-debo">$0</div><div class="prestamos-kpi-sub" id="pe-resumen-yo-debo-sub"></div></div>
+              <div class="prestamos-kpi"><div class="stat-label">En Spotify</div><div class="prestamos-kpi-monto" id="pe-resumen-spotify">0</div><div class="prestamos-kpi-sub" id="pe-resumen-spotify-sub"></div></div>
+            </div>
+          </div>
+          <div id="personas-lista">
           <div class="ix-div-034">
             <div class="sec-title ix-m14-0-8">Personas</div>
             <button class="ix-button-155" type="button" data-action="personas:abrirCrearGlobal" data-args="[true]">
@@ -2009,6 +2018,21 @@
               personas se crean automáticamente cuando agregas un deudor o
               encargo.</div>
           </div>
+          </div><!-- /personas-lista -->
+          <!-- Ficha de la persona elegida (solo PC): en celular el perfil sigue abriéndose en una hoja. Mismo contenido que la hoja (abrirPerfilPersona). -->
+          <aside id="personas-ficha" class="personas-ficha" aria-label="Ficha de la persona">
+            <div class="pe-perf-cab">
+              <div id="pficha-avatar" class="avatar pe-av-46"></div>
+              <div class="pe-flex1-min0">
+                <div id="pficha-nombre" class="pe-perf-nombre"></div>
+                <div id="pficha-sub" class="pe-perf-sub"></div>
+              </div>
+              <button type="button" class="btn-icon pe-c-accent" data-action="personas:editarDesdePerfil" data-args="[]" title="Editar">
+                <svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+            </div>
+            <div id="pficha-body"></div>
+          </aside>
         </div>
 
         <div class="screen" id="screen-config">

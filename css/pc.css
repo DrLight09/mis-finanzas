@@ -164,6 +164,17 @@
   #screen-analisis > .sec-title,#screen-config > .sec-title{break-after:avoid;}
   #analisis-resumen,#wrapped-promo,#cfg-mis-wrapped{column-span:all;}
 
+  /* ── Personas: resumen arriba y, debajo, la lista de personas | la ficha de la persona elegida (en celular el perfil sigue siendo una hoja) ─── */
+  .scroll-area > #screen-personas{max-width:none;margin-left:0;margin-right:0;}
+  #screen-personas.active{display:grid;grid-template-columns:minmax(300px,380px) minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:14px;align-items:start;}
+  #screen-personas .personas-resumen{display:block;grid-column:1 / -1;grid-row:1;margin-bottom:14px;}
+  #personas-lista{grid-column:1;grid-row:2;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:14px;}
+  #personas-lista > .ix-div-034{margin-bottom:6px;}
+  #personas-lista .pe-fila{background:var(--bg3);border-radius:14px;}
+  #screen-personas[data-ficha-abierta="si"] #personas-ficha{display:block;grid-column:2;grid-row:2;background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:16px;}
+  /* Sin personas no hay ficha: la lista (con su estado vacío) ocupa todo el ancho. */
+  #screen-personas[data-ficha-abierta="no"]{grid-template-columns:minmax(0,1fr);}
+
   /* ── Cuentas (columnas armadas por js/core/disposicion-pc.js): lista | detalle | movimientos ─────── */
   #screen-cuentas.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-lista{width:280px;flex-shrink:0;}
@@ -193,6 +204,9 @@
   .menu-lateral-texto{display:none;}
   #screen-inicio.en-columnas.active{flex-direction:column;align-items:stretch;}
   .columna-riel{width:auto;}
+  /* Personas: la lista y la ficha se mantienen lado a lado (la ficha más angosta). */
+  #screen-personas.active{grid-template-columns:minmax(260px,320px) minmax(0,1fr);}
+  #screen-personas[data-ficha-abierta="no"]{grid-template-columns:minmax(0,1fr);}
   /* Análisis y Configuración: una sola columna. */
   #screen-analisis.active,#screen-config.active{column-count:1;}
   /* Encargos y Alcancía: se conserva el reparto; el riel de Alcancía pasa debajo. */

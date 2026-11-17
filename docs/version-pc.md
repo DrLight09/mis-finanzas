@@ -78,6 +78,10 @@ Encargos: paneles `encargosListView` y `encargoDetalle` (por clase `panel-activo
 
 Ambas pantallas usan columnas CSS en PC (`column-count:2`, una sola columna entre 900 y 1279 px): cada hijo directo tiene `break-inside:avoid` y los títulos `break-after:avoid`. `analisis-resumen` (resumen del mes), `wrapped-promo` y `cfg-mis-wrapped` abarcan todo el ancho (`column-span:all`). Para agregar un bloque nuevo a estas pantallas basta con ponerlo como hijo directo de la pantalla.
 
+## 10 sexies. Personas
+
+En PC la pantalla Personas es resumen (`personas-resumen`) + lista (`personas-lista`) | ficha (`personas-ficha`, ids `pficha-*`). `abrirPerfilPersona` (personas.js) pinta el perfil en la ficha si la ventana es de PC (navegando a la pantalla si hace falta) o en la hoja `sheet-perfil-persona` (ids `pperf-*`) en celular; es el único constructor del perfil. `data-ficha-abierta` de la pantalla ("si" / "no") decide si se muestra la ficha. `_sincronizarFichaPersonas` mantiene la ficha al día tras cada repintado de la lista.
+
 ## 11. Cajas (solo PC)
 
 La información va dentro de un cuadro (`--bg2`, borde, radio 14, relleno 14) sobre el fondo; lo de adentro (`.card`, `.stat`, `.gasto-item`) usa `--bg3`. Selectores en `pc.css`: `#panel-var`, `#panel-fijo`, `#deudoresView`, `#misDeudasView`, `#deudorDetalle`, `#miDeudaDetalle`, `#spotify-historial`, `#encargosListView`, `#encargoDetalle`, `#alcancia-activa`, `.columna-lista`, `.columna-movimientos` y `#tc-lista > .empty-state`. Las pantallas que falten deben usar el mismo criterio (un cuadro por bloque de información, no la información suelta sobre el fondo).

@@ -355,6 +355,18 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     cambiarModo(false);
     c5(panelEncargos() === 'encargosListView' && ev('encargoActualId') === null, 'Encargos: al achicar tras una apertura automática debe volver a la lista (' + panelEncargos() + ')');
     ev(`S.encargos=[]; showScreen('inicio')`);
+    // Personas: en PC el perfil es una ficha dentro de la pantalla (sin hoja); en celular sigue siendo una hoja.
+    ev(`S.personas=[{id:'per-prueba',nombre:'Laura',color:'#60b0f0'}]; showScreen('personas')`);
+    const fichaAbierta = () => ev(`document.getElementById('screen-personas').dataset.fichaAbierta`);
+    c5(fichaAbierta() === 'no', 'Personas: en celular no debe haber ficha abierta (' + fichaAbierta() + ')');
+    cambiarModo(true);
+    c5(fichaAbierta() === 'si' && ev('_perfilPersonaId') === 'per-prueba', 'Personas: en PC debe abrirse la ficha de la primera persona (' + fichaAbierta() + ')');
+    c5(ev(`document.getElementById('pficha-nombre').textContent`) === 'Laura', 'Personas: la ficha no muestra el nombre de la persona');
+    c5(ev(`document.getElementById('sheet-perfil-persona').classList.contains('open')`) === false, 'Personas: en PC el perfil no debe abrir la hoja');
+    cambiarModo(false);
+    ev(`abrirPerfilPersona('per-prueba')`);
+    c5(ev(`document.getElementById('sheet-perfil-persona').classList.contains('open')`) === true, 'Personas: en celular el perfil debe abrir la hoja');
+    ev(`document.getElementById('sheet-perfil-persona').classList.remove('open'); S.personas=[]; showScreen('inicio')`);
     cambiarModo(true); cambiarModo(false); cambiarModo(true); cambiarModo(false);
     c5(hijos('screen-inicio') === inicioCelular && hijos('screen-cuentas') === cuentasCelular, 'Varios cambios seguidos dejaron bloques fuera de su sitio');
   } catch (e) { fallos5.push('excepción en la FASE 5: ' + e.message); }

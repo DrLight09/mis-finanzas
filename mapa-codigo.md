@@ -74,7 +74,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/inicio.js` | de entrada (defer) | 29 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 56 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
-| `js/modules/personas.js` | de entrada (defer) | 23 | 1 |
+| `js/modules/personas.js` | de entrada (defer) | 27 | 1 |
 | `js/modules/plata-comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 119 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 42 | 2 |
@@ -513,7 +513,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_crearPersonaGlobal`, `_editarPersonaDesdePerfilSheet`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `getPersona`, `getPersonaColor`, `getPersonaDatos`, `getPersonaNombre`, `PersonaPicker`
+**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_crearPersonaGlobal`, `_editarPersonaDesdePerfilSheet`, `_esPcPersonas`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_mostrarFichaPersona`, `_pintarResumenPersonas`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_sincronizarFichaPersonas`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `getPersona`, `getPersonaColor`, `getPersonaDatos`, `getPersonaNombre`, `PersonaPicker`
 
 **Globales:** `PERSONA_COLORES`
 
@@ -713,6 +713,7 @@ Ninguno.
 | `_errSumaCuentas` | `js/modules/prestado.js` |
 | `_esEntradaEspejoNoIngreso` | `js/core/ingresos.js` |
 | `_esGastoVarNoReal` | `js/core/ingresos.js` |
+| `_esPcPersonas` | `js/modules/personas.js` |
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
 | `_estadoPush` | `js/core/notificaciones-push.js` |
 | `_eventosCaja` | `js/modules/inicio.js` |
@@ -795,6 +796,7 @@ Ninguno.
 | `_montoCursor` | `js/core/money-input.js` |
 | `_montoFormatear` | `js/core/money-input.js` |
 | `_mostrarErrorPlan` | `js/modules/prestado.js` |
+| `_mostrarFichaPersona` | `js/modules/personas.js` |
 | `_mostrarPanelEncargos` | `js/modules/encargos.js` |
 | `_mostrarPanelPrestamos` | `js/modules/prestado.js` |
 | `_mostrarTipoNuevaCuenta` | `js/modules/cuentas.js` |
@@ -846,6 +848,7 @@ Ninguno.
 | `_pintarEncabezadoDeuda` | `js/modules/prestado.js` |
 | `_pintarEncargoDetalle` | `js/modules/encargos.js` |
 | `_pintarEncargosList` | `js/modules/encargos.js` |
+| `_pintarResumenPersonas` | `js/modules/personas.js` |
 | `_pintarTabPrestamos` | `js/modules/prestado.js` |
 | `_planAbonoEncargo` | `js/modules/prestado.js` |
 | `_planAbonoNormal` | `js/modules/prestado.js` |
@@ -931,6 +934,7 @@ Ninguno.
 | `_setSaldoOfuscado` | `js/modules/alcancia.js` |
 | `_showCuentasPanel` | `js/modules/cuentas.js` |
 | `_showScreenLoading` | `js/core/navegacion.js` |
+| `_sincronizarFichaPersonas` | `js/modules/personas.js` |
 | `_situacion` | `js/modules/inicio.js` |
 | `_spotifyEditPicker` | `js/modules/spotify.js` |
 | `_spotifyEnsureTC` | `js/modules/spotify.js` |

@@ -200,10 +200,12 @@ function _renderListaPersonas() {
   // misDeudas sin vincular (sin personaId)
   const sinPerfilMisDeudas = Deudas.lista('contra').filter(d => !d.personaId);
 
+  _pintarResumenPersonas();
   const total = personas.length + sinPerfil.length + sinPerfilMisDeudas.length;
   if (!total) {
     body.innerHTML = '';
     if (empty) empty.style.display = '';
+    _sincronizarFichaPersonas();
     return;
   }
   if (empty) empty.style.display = 'none';
@@ -296,6 +298,7 @@ function _renderListaPersonas() {
     row.addEventListener('mouseenter', () => { row.style.borderColor = c + '44'; });
     row.addEventListener('mouseleave', () => { row.style.borderColor = 'var(--border)'; });
   });
+  _sincronizarFichaPersonas(); // PC: la ficha de la persona abierta (o la primera) a la derecha de la lista
 }
 
 // Actualizar el sub-texto del ítem Personas (ahora en Configuración)
@@ -509,17 +512,68 @@ function _guardarEditarPersonaGlobal() {
 
 /* ── PERFIL DE PERSONA ─────────────────────────────────────────── */
 let _perfilPersonaId = null;
+let _fichaAbierta = false;
+// PC (≥900 px): el perfil de una persona es una ficha dentro de la pantalla Personas (lista | ficha); en celular sigue siendo una hoja.
+const _consultaPcPersonas = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
+function _esPcPersonas() { return !!_consultaPcPersonas && _consultaPcPersonas.matches; }
+function _mostrarFichaPersona() {
+  _fichaAbierta = true;
+  const pantalla = document.getElementById('screen-personas');
+  if (pantalla) pantalla.dataset.fichaAbierta = 'si';
+  document.querySelectorAll('#lista-personas-body .pe-fila[data-args]').forEach(fila => {
+    let id = null; try { id = JSON.parse(fila.getAttribute('data-args'))[0]; } catch (e) { /* data-args siempre es JSON */ }
+    fila.classList.toggle('persona-fila-activa', fila.getAttribute('data-action') === 'personas:abrirPerfil' && id === _perfilPersonaId);
+  });
+}
+// Con la pantalla Personas a la vista en PC siempre hay una ficha: la de la persona abierta (se repinta para que no quede vieja) o, si
+// no hay ninguna, la primera de la lista. Sin personas la ficha se oculta y la lista queda a todo el ancho.
+function _sincronizarFichaPersonas() {
+  if (!_esPcPersonas()) return;
+  const pantalla = document.getElementById('screen-personas');
+  if (!pantalla || !pantalla.classList.contains('active')) return;
+  let id = _perfilPersonaId && getPersona(_perfilPersonaId) ? _perfilPersonaId : null;
+  if (!id) {
+    const fila = document.querySelector('#lista-personas-body [data-action="personas:abrirPerfil"]');
+    if (fila) { try { id = JSON.parse(fila.getAttribute('data-args'))[0]; } catch (e) { /* data-args siempre es JSON */ } }
+  }
+  if (id) abrirPerfilPersona(id);
+  else { _fichaAbierta = false; pantalla.dataset.fichaAbierta = 'no'; }
+}
+if (_consultaPcPersonas) {
+  const alCambiarModo = e => { if (e.matches) _sincronizarFichaPersonas(); };
+  if (_consultaPcPersonas.addEventListener) _consultaPcPersonas.addEventListener('change', alCambiarModo);
+  else if (_consultaPcPersonas.addListener) _consultaPcPersonas.addListener(alCambiarModo);
+}
+// Resumen de la pantalla (solo se ve en PC): mismos totales que Inicio y Préstamos, y quiénes comparten Spotify.
+function _pintarResumenPersonas() {
+  const poner = (id, texto) => { const el = document.getElementById(id); if (el) el.textContent = texto; };
+  const personas = dir => Deudas.lista(dir).filter(d => Deudas.saldo(d) > 0).length;
+  const nFavor = personas('favor'), nContra = personas('contra');
+  poner('pe-resumen-me-deben', fmtNoCents(Deudas.totalPendiente('favor')));
+  poner('pe-resumen-yo-debo', fmtNoCents(Deudas.totalPendiente('contra')));
+  poner('pe-resumen-me-deben-sub', nFavor ? nFavor + (nFavor === 1 ? ' persona' : ' personas') : 'Nadie te debe');
+  poner('pe-resumen-yo-debo-sub', nContra ? nContra + (nContra === 1 ? ' persona' : ' personas') : 'No debes nada');
+  const enSpotify = (S.spotify && S.spotify.personas) || [];
+  const nombres = enSpotify.map(e => { const persona = e.personaId ? getPersona(e.personaId) : null; return persona ? persona.nombre : e.nombre; }).filter(Boolean);
+  poner('pe-resumen-spotify', String(enSpotify.length));
+  poner('pe-resumen-spotify-sub', nombres.length ? nombres.slice(0, 2).join(' y ') + (nombres.length > 2 ? ' y ' + (nombres.length - 2) + ' más' : '') : 'Nadie');
+}
 
 function abrirPerfilPersona(personaId) {
   const p = getPersona(personaId);
   if (!p) return;
   _perfilPersonaId = personaId;
   _inyectarPersonaSheets();
+  // En PC el perfil va en la ficha de la pantalla Personas (se navega a ella si hace falta); en celular, en la hoja de siempre.
+  const enFicha = _esPcPersonas();
+  const pantallaPersonas = document.getElementById('screen-personas');
+  if (enFicha && pantallaPersonas && !pantallaPersonas.classList.contains('active')) showScreen('personas');
+  const pre = enFicha ? 'pficha' : 'pperf';
 
   const color = p.color || '#60b0f0';
-  const av = document.getElementById('pperf-avatar');
-  const nm = document.getElementById('pperf-nombre');
-  const sb = document.getElementById('pperf-sub');
+  const av = document.getElementById(pre + '-avatar');
+  const nm = document.getElementById(pre + '-nombre');
+  const sb = document.getElementById(pre + '-sub');
   if (av) {
     av.textContent = iniciales(p.nombre);
     av.style.background = color + '22';
@@ -537,7 +591,7 @@ function abrirPerfilPersona(personaId) {
   if (datos.misDeudas && datos.misDeudas.length) partes.push('Le debo');
   if (sb) sb.textContent = partes.length ? partes.join(' · ') : 'Sin actividad registrada';
 
-  const body = document.getElementById('pperf-body');
+  const body = document.getElementById(pre + '-body');
   if (!body) return;
 
   // contenido: array de fragmentos html`` — no `let html=''` para no tapar
@@ -803,7 +857,8 @@ function abrirPerfilPersona(personaId) {
   }
 
   body.innerHTML = html`${contenido}`;
-  document.getElementById('sheet-perfil-persona').classList.add('open');
+  if (enFicha) _mostrarFichaPersona();
+  else document.getElementById('sheet-perfil-persona').classList.add('open');
 }
 
 function _editarPersonaDesdePerfilSheet() {

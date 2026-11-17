@@ -2039,6 +2039,9 @@ button.inicio-pilar-accion{cursor:pointer;}
 .prestamos-barra-favor{background:var(--accent);}
 .prestamos-barra-contra{background:var(--red);}
 .prestamos-proporcion-vacia{display:none;}
+.personas-resumen{display:none;} /* el resumen de Personas solo se ve en PC (css/pc.css) */
+.personas-ficha{display:none;} /* la ficha de la persona solo se ve en PC; en celular el perfil es una hoja */
+.persona-fila-activa{box-shadow:0 0 0 1.5px var(--accent);} /* la persona abierta en la lista (solo PC) */
 .prestamos-proporcion-texto{display:flex;justify-content:space-between;font-size:11px;color:var(--text2);margin:0 2px 14px;min-height:13px;}
 .prestamos-tabs-oculto{display:none;} /* las pestañas Me deben / Yo debo se ocultan dentro del detalle de una persona */
 .persona-card-activa{border-color:var(--accent);} /* la persona abierta en la lista (en PC la lista siempre se ve) */

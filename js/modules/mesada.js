@@ -529,6 +529,13 @@ function renderMesada() {
   const a = S.mesadaAnio || new Date().getFullYear();
   const hoyAnio = new Date().getFullYear();
   _msEl('anioLabel').textContent = a;
+  // Tira de años (solo se ve en PC): los 5 años que permite cambiarAnio, el actual resaltado.
+  const tira = _msEl('anio-tira');
+  if (tira) {
+    let anios = '';
+    for (let y = hoyAnio - 2; y <= hoyAnio + 2; y++) anios += `<button type="button" class="anio-tira-boton${y === a ? ' on' : ''}" data-anio="${y}">${y}</button>`;
+    tira.innerHTML = anios;
+  }
   if (_msEl('btn-anio-prev')) _msEl('btn-anio-prev').disabled = (a <= hoyAnio - 2);
   if (_msEl('btn-anio-next')) _msEl('btn-anio-next').disabled = (a >= hoyAnio + 2);
   MESADA_PADRES.forEach(p => { if (_msEl('ms-' + p + '-anio-label')) _msEl('ms-' + p + '-anio-label').textContent = a; });
@@ -920,6 +927,7 @@ function _msCablear() {
   [
     ['btn-anio-prev',             'click',  () => cambiarAnio(-1)],
     ['btn-anio-next',             'click',  () => cambiarAnio(1)],
+    ['anio-tira',                 'click',  e => { const b = e.target.closest('[data-anio]'); if (b) cambiarAnio(parseInt(b.dataset.anio, 10) - (S.mesadaAnio || new Date().getFullYear())); }],
     ['btn-confirmar-mesada',      'click',  confirmarMesadaPago],
     ['btn-confirmar-mesada-pend', 'click',  confirmarPendienteMesada],
     ['mesadaPagoMonto',                   'input',  actualizarMesadaPagoPreview],

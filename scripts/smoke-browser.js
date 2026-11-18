@@ -411,6 +411,18 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c5(ev(`document.getElementById('tc-detalle-titulo').textContent`) === 'Compras y pagos · Rappi Visa' && ev(`document.querySelector('#tc-lista .tc-card-activa').getAttribute('data-tc-id')`) === 'tc2', 'Tarjetas PC: elegir otra tarjeta debe cambiar el detalle y marcarla');
     c5(ev(`document.getElementById('tc-cupo-total').textContent.replace(/\\s/g,'')`).indexOf('5.000.000') >= 0, 'Tarjetas PC: el cupo total debe sumar las tarjetas');
     ev(`S.tarjetasCredito=[]; showScreen('prestamos')`);
+    // Mesada en PC: tira de 5 años; tocar otro año lo cambia. Gastos: «Registrar gasto» arriba junto a los meses.
+    ev(`showScreen('mesada'); renderMesada()`);
+    c5(ev(`document.querySelectorAll('#anio-tira .anio-tira-boton').length`) === 5, 'Mesada PC: la tira debe tener 5 años');
+    const anioHoy = ev(`new Date().getFullYear()`);
+    ev(`document.querySelector('#anio-tira [data-anio="${anioHoy + 1}"]').click()`);
+    c5(ev('S.mesadaAnio') === anioHoy + 1 && ev(`document.querySelector('#anio-tira .on').textContent`) === String(anioHoy + 1), 'Mesada PC: tocar un año de la tira debe cambiarlo');
+    ev(`S.mesadaAnio=${anioHoy}; showScreen('gastos')`);
+    c5(ev(`!!document.querySelector('.gastos-filtros #btn-gasto-var-arriba')`), 'Gastos PC: «Registrar gasto» debe estar junto al filtro de meses');
+    // Sin cuentas con saldo el formulario no se abre y avisa con un toast; con saldo abre la hoja: en los dos casos el botón responde.
+    ev(`document.getElementById('btn-gasto-var-arriba').click()`);
+    c5(ev(`document.querySelectorAll('.sheet.open').length > 0 || document.querySelectorAll('#toast-container > *').length > 0`), 'Gastos PC: el botón de arriba debe responder (abrir el formulario o avisar)');
+    ev(`document.querySelectorAll('.sheet.open').forEach(x => x.classList.remove('open')); showScreen('prestamos')`);
     // Cabecera: el título es el de la sección (en PC se ve; en celular sigue el nombre de la app).
     c5(ev(`document.getElementById('hSeccion').textContent`) === 'Prestado', 'Cabecera: el título debe ser el de la sección (' + ev(`document.getElementById('hSeccion').textContent`) + ')');
     ev(`showScreen('personas')`);

@@ -96,6 +96,11 @@
   #screen-gastos .gastos-panel{display:block;}
   #screen-gastos .gastos-panel-titulo{display:block;margin-top:0;}
   #panel-var{grid-column:1;grid-row:2;min-width:0;}
+  /* Meses y «Registrar gasto» en una fila fija arriba de la lista: al bajar por muchos gastos el botón sigue a la vista. */
+  .gastos-filtros{position:sticky;top:0;z-index:2;display:flex;align-items:flex-start;gap:10px;background:var(--bg2);padding-bottom:6px;}
+  .gastos-filtros .mes-filter{flex:1;min-width:0;margin-bottom:0;}
+  .gastos-registrar-arriba{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;width:auto;margin:0;padding:7px 12px;font-size:12px;white-space:nowrap;}
+  #panel-var .btn-open-gasto-var{display:none;} /* el botón de abajo sobra: queda el de arriba */
   #panel-fijo{grid-column:2;grid-row:1 / span 2;min-width:0;}
   #screen-gastos .tab-bar + .gastos-panel{margin-top:0;}
 
@@ -148,7 +153,11 @@
   .scroll-area > #screen-mesada{max-width:none;margin-left:0;margin-right:0;}
   #mesadaSection{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:12px;align-items:start;}
   #mesadaSection > .sec-title{display:none;} /* el título ya está en la cabecera */
-  #mesadaSection > .anio-nav{grid-column:1 / -1;justify-self:start;margin:0;}
+  #mesadaSection > .anio-nav{display:none;}
+  #mesadaSection > .anio-tira{display:flex;gap:3px;grid-column:1 / -1;justify-self:start;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;}
+  .anio-tira-boton{padding:7px 16px;border-radius:9px;border:0;background:transparent;color:var(--text3);font:500 13px 'DM Mono',monospace;cursor:pointer;}
+  .anio-tira-boton:hover{color:var(--text);}
+  .anio-tira-boton.on{background:var(--accent);color:var(--bg);font-weight:600;}
   #mesadaSection > .grid2{display:contents;}
   #mesadaSection > .grid2 > .stat{grid-column:span 5;margin:0;}
   #mesadaSection[data-pendiente="si"] > .grid2 > .stat{grid-column:span 3;}

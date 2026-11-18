@@ -805,6 +805,9 @@ function confirmarPagarGastoFijo() {
    y ya se usan para el botón del estado vacío) — se dedupe de paso. ── */
 const _gBtnGastoVar = document.querySelector('.btn-open-gasto-var');
 if (_gBtnGastoVar) _gBtnGastoVar.addEventListener('click', abrirNuevoGastoVar);
+// Registrar gasto junto al filtro de meses (solo PC): queda a la vista aunque la lista tenga muchos gastos.
+const _gBtnGastoVarArriba = document.getElementById('btn-gasto-var-arriba');
+if (_gBtnGastoVarArriba) _gBtnGastoVarArriba.addEventListener('click', abrirNuevoGastoVar);
 const _gBtnGastoFijo = document.querySelector('.btn-open-gasto-fijo');
 if (_gBtnGastoFijo) _gBtnGastoFijo.addEventListener('click', abrirNuevoGastoFijo);
 

@@ -1363,7 +1363,7 @@
           <!-- GASTOS VARIABLES -->
           <div id="panel-var" class="gastos-panel panel-activo">
             <div class="sec-title gastos-panel-titulo">Gastos</div>
-            <div class="mes-filter" id="mesFilter"></div>
+            <div class="gastos-filtros"><div class="mes-filter" id="mesFilter"></div><button type="button" class="btn btn-ghost gastos-registrar-arriba" id="btn-gasto-var-arriba"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>Registrar gasto</button></div>
             <div id="gastosVarList"></div>
             <div class="card card-sm ix-mt4" id="gvTotalCard"><div
                 class="row"><span class="ix-fs12-ctext2">Total
@@ -1632,7 +1632,9 @@
             <div class="sec-title ms-sec-top" data-mesada>Mesada
               de papás</div>
             <!-- Navegación año -->
-            <div class="anio-nav ms-mb10">
+            <!-- Solo PC: los 5 años a la vista, como el prototipo (los pinta renderMesada). -->
+<div class="anio-tira" id="anio-tira"></div>
+<div class="anio-nav ms-mb10">
               <button type="button" class="anio-btn" id="btn-anio-prev" aria-label="Año anterior"><svg aria-hidden="true"
                   width="13" height="13" viewBox="0 0 24 24" fill="none"
                   stroke="currentColor" stroke-width="2.5"

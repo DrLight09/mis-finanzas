@@ -43,6 +43,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 19: años de Mesada y «Registrar gasto» fijo en Gastos (2026-11-17, SW v148)
+
+- **Mesada:** el selector de año ‹ 2026 › (botones de 48 px) se reemplaza en PC por la tira de los 5 años del prototipo (`#anio-tira`, la pinta `renderMesada`; el año elegido resaltado en acento; tocar uno llama a `cambiarAnio` con la diferencia). Son los mismos 5 años que permite `cambiarAnio` (actual ±2). En celular sigue el selector de siempre.
+- **Gastos:** el botón «Registrar gasto» (`#btn-gasto-var-arriba`, abre `abrirNuevoGastoVar`) va ahora en la misma fila que el filtro de meses (`.gastos-filtros`) y esa fila queda fija arriba de la lista (sticky): ya no hay que bajar hasta el final para registrar un gasto. En PC se esconde el botón de abajo. En celular todo igual.
+- **Smoke:** FASE 5 comprueba la tira de años y el botón de arriba.
+
 ## Versión PC, parte 18: Mesada, Gastos y scroll por dentro (2026-11-17, SW v147)
 
 Según `Mis_Finanzas_PC___Prototipo_45daba.html`. Corrige la parte 17.

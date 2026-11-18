@@ -557,6 +557,8 @@ function renderMesada() {
     if (r.padres.papa.totalPendiente > 0) partes.push('Papá te debe ' + fmt(r.padres.papa.totalPendiente));
     if (r.padres.mama.totalPendiente > 0) partes.push('Mamá te debe ' + fmt(r.padres.mama.totalPendiente));
     banner.style.display = partes.length ? '' : 'none';
+    const seccionMesada = document.getElementById('mesadaSection');
+    if (seccionMesada) seccionMesada.dataset.pendiente = partes.length ? 'si' : 'no'; // PC: con pendiente el resumen reparte tres cuadros
     if (partes.length) banner.textContent = partes.join(' · ');
   }
 

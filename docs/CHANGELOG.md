@@ -43,6 +43,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Versión PC, parte 18: Mesada, Gastos y scroll por dentro (2026-11-17, SW v147)
+
+Según `Mis_Finanzas_PC___Prototipo_45daba.html`. Corrige la parte 17.
+
+- **Scroll por dentro (como el prototipo):** las pantallas de columnas ya no crecen: ocupan exactamente el alto de la ventana (`height:100%`, antes `min-height:100%`) y cada caja hace scroll por su cuenta, con la barra oculta (Gastos, Prestado, Personas, Spotify, Encargos, Alcancía, Cuentas, Tarjetas; ver el bloque «scroll interno» de `pc.css`). Entre 900 y 1279 px, donde las columnas se apilan (Gastos, Spotify, Alcancía, Cuentas), la página vuelve a fluir y a hacer scroll.
+- **Gastos:** el resumen (3 tarjetas) queda solo sobre la columna de variables, el riel de fijos mensuales ocupa toda la altura a su lado (también arriba, junto al resumen), y la lista de variables y los fijos hacen scroll dentro de su caja.
+- **Mesada:** las cajas de Papá y Mamá vuelven a ser del alto de su contenido (en el prototipo no se estiran); resumen en una fila (con pendiente: tres cuadros; sin pendiente: dos mitades; `data-pendiente` de `#mesadaSection` lo pone `mesada.js`), Papá | Mamá lado a lado, meses en 3 columnas. Celular sin cambios.
+
 ## Versión PC, parte 17: menú sin scroll, Prestado en una caja, Mesada, Tarjetas, cajas a todo el alto y perfil de persona como pantalla (2026-11-17, SW v146)
 
 Según `Mis_Finanzas_PC___Prototipo_9e3bfe.html`.

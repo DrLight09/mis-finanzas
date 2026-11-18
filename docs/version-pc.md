@@ -100,4 +100,4 @@ En PC el menú lateral lleva arriba el logo y «Mis finanzas» (`menu-lateral-ma
 
 ## Alto completo, Mesada y Tarjetas (parte 17)
 
-En PC las pantallas de columnas ocupan el alto de la ventana (`min-height:100%`, `align-items:stretch`) para que las cajas lleguen hasta abajo. Mesada: año, resumen y Papá | Mamá con meses en 3 columnas. Tarjetas: resumen, lista (420 px) y panel `#tc-detalle` con la tarjeta elegida (`_tcSelId`). Prestado: `#prestamos-columna` es la caja de pestañas + lista. En celular el perfil de una persona es la ficha a pantalla completa con botón «Personas».
+En PC las pantallas de columnas ocupan exactamente el alto de la ventana (`height:100%`) y cada caja hace scroll por dentro (barra oculta); la página no crece (parte 18). Mesada: año, resumen y Papá | Mamá con meses en 3 columnas. Tarjetas: resumen, lista (420 px) y panel `#tc-detalle` con la tarjeta elegida (`_tcSelId`). Prestado: `#prestamos-columna` es la caja de pestañas + lista. En celular el perfil de una persona es la ficha a pantalla completa con botón «Personas».

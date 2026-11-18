@@ -147,6 +147,27 @@ function getMiDeudaSaldo(d) { return Deudas.saldo(d); }
 function totalPrestadoPendiente() { return Deudas.totalPendiente('favor'); }
 function totalMisDeudasPendiente() { return Deudas.totalPendiente('contra'); }
 
+/* ---- Encargos: saldo, comprometido y libre — 2026-11-18 ----
+   Antes en encargos.js (lazy). Personas calcula la posición neta de una persona (personas-core.js) y el perfil muestra el saldo de sus
+   encargos sin esperar a que cargue el módulo: mismo motivo que Deudas y las funciones de Spotify de abajo. Son puras (solo el encargo). */
+function encargoSaldo(encargo) {
+  return (encargo.movimientos||[]).reduce((a,m)=>{
+    return a + (m.tipo==='entrada'?m.monto:-m.monto);
+  }, encargo.saldoInicial||0);
+}
+
+// Cuánto del saldo ya tiene destino asignado vía partes comprometidas (sin usar todavía).
+function encargoComprometido(encargo) {
+  return (encargo.partes||[]).filter(p=>!p.usada).reduce((a,p)=>a+(p.monto||0), 0);
+}
+
+// Lo que realmente se puede sacar del encargo ahora mismo: saldo total menos lo ya
+// comprometido. Nunca negativo — si el comprometido superó el saldo (p.ej. porque
+// una salida por fuera de "usar parte" lo redujo), no hay nada libre para sacar.
+function encargoLibre(encargo) {
+  return Math.max(0, encargoSaldo(encargo) - encargoComprometido(encargo));
+}
+
 /* ---- Spotify (antes en spotify.js) — 2026-09-20 ----
    Mismo motivo: los avisos "Cobro Spotify de X vencido" de "Necesita
    atención". spotifyNombreDe usa getPersona() (personas.js, carga de entrada) con

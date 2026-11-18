@@ -14,9 +14,9 @@ Da una identidad única a cada persona con la que hay relación financiera (fami
 
 ## 2. Conceptos importantes
 
-**Una sola persona (`S.personas`) y los módulos como relaciones:** cada persona existe una vez. Todo registro de Préstamos, Encargos y Spotify tiene `personaId` y esa persona existe — no hay registros "sin perfil". Lo garantiza `Personas.reconciliar()` (js/core/personas-core.js): al cargar, al importar un backup y al abrir la lista de Personas vincula por nombre cualquier huérfano (creando la persona si no existe) y une las personas con el mismo nombre. `Personas.verificar()` comprueba los invariantes I1–I4 en cada `save()`.
+**Una sola persona (`S.personas`) y los módulos como relaciones:** cada persona existe una vez. Todo registro de Préstamos, Encargos y Spotify debe tener `personaId` y esa persona debe existir — no hay registros "sin perfil". Lo vigila `Personas.verificar()` (invariantes I1–I4, js/core/personas-core.js) en cada `save()`; lo que se muestra de una persona (dónde participa, su saldo, su resumen) sale de `Personas.relaciones(id)`, no de código escrito por módulo.
 
-**Vínculo (`personaId`):** cada módulo (Encargos, Deudores, Mis deudas, Spotify) guarda su propia copia del nombre además de una referencia opcional a `S.personas` vía `personaId`. El nombre mostrado siempre se resuelve preferentemente desde la persona vinculada (ver §7 de `spotify.md` para el caso ya documentado de `spotifyNombreDe`); acá el mismo criterio aplica a `getPersonaNombre`.
+**Vínculo (`personaId`):** cada módulo (Encargos, Deudores, Mis deudas, Spotify) guarda su referencia obligatoria a `S.personas` vía `personaId` y, por ahora, una copia del nombre (transitoria; ver §4). El nombre mostrado siempre se resuelve preferentemente desde la persona vinculada (ver §7 de `spotify.md` para el caso ya documentado de `spotifyNombreDe`); acá el mismo criterio aplica a `getPersonaNombre`.
 
 **Perfil consolidado:** al abrir una persona, el módulo no muestra solo su nombre — junta en una sola pantalla todo lo que hay de ella repartido en otros módulos (préstamos, encargos, Spotify, lo que se le debe), cada sección con sus propias estadísticas armadas a partir de los movimientos reales de ese módulo, no de un resumen guardado aparte.
 
@@ -56,9 +56,9 @@ S.encargos[i].personaId   // Encargos
 S.spotify.personas[i].personaId  // Spotify (ver spotify.md §4)
 ```
 
-**`personaId` es obligatorio en los cuatro casos** (desde la migración 13, 2026-11-18). Un registro sin `personaId` o con uno que apunta a una persona inexistente es un dato roto que `Personas.reconciliar()` repara.
+**`personaId` es obligatorio en los cuatro casos.** Un registro sin `personaId` o con uno que apunta a una persona inexistente rompe el invariante I1: `save()` lo avisa en consola (`window._personasViolaciones`).
 
-**`nombre` y `color` todavía se copian en cada módulo vinculado** (transitorio): `Personas.editar` y `Personas.reconciliar` las mantienen iguales a las de la persona. Quitarlas, para que cada módulo lea siempre de `S.personas`, es parte pendiente del plan en [`personas-modelo-unico.md`](./personas-modelo-unico.md) (fase 3); ver §7.
+**`nombre` y `color` todavía se copian en cada módulo vinculado** (transitorio): `Personas.editar` las mantiene iguales a las de la persona y `verificar` (I2) detecta si alguna se desfasa. Quitarlas, para que cada módulo lea siempre de `S.personas`, es parte pendiente del plan en [`personas-modelo-unico.md`](./personas-modelo-unico.md) (fase 3); ver §7.
 
 ---
 
@@ -102,11 +102,13 @@ Si el perfil estaba abierto, se vuelve a pintar con los datos ya actualizados
 ```
 Click en una fila (lista de Personas o selector)
   ↓
-getPersonaDatos(personaId): junta deudor(es), encargos, misDeudas y el integrante de Spotify (si existe)
+Personas.relaciones(personaId): las relaciones vivas de la persona (me deben, encargos, Spotify, yo debo y las que se registren),
+  cada una con su saldo y su resumen
   ↓
-Se arma una sección por cada módulo donde la persona tiene actividad
-  (Préstamos, Encargos, Spotify, "Le debo") — cada una con sus propias
-  estadísticas calculadas en el momento
+Se arma una sección por cada relación viva (_PERFIL_SECCIONES: Préstamos, Encargos,
+  Spotify, "Le debo"; una relación sin sección propia usa _perfilSeccionGenerica)
+  — cada una con sus propias estadísticas calculadas en el momento. Si la persona tiene
+  más de una relación con saldo, arriba va el saldo neto (me debe − le debo)
   ↓
 Si no tiene actividad en ningún módulo, se muestra un estado vacío
 ```
@@ -128,7 +130,7 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 ## 6. Casos especiales
 
-- **Registros sin `personaId` (datos de antes, backups viejos):** ya no se muestran aparte. Se vinculan por nombre al cargar, al importar y al abrir la lista (si el nombre coincide con una persona se usa esa; si no, se crea). Dos registros de una relación única (p. ej. dos "me deben") para la misma persona no se fusionan solos: quedan avisados en consola para revisión.
+- **Registro sin `personaId` (un bug de algún módulo):** ya no se esconde ni se muestra aparte: `save()` lo avisa en consola y rompe `Personas.verificar()`. Los módulos crean sus registros siempre a partir de una persona del selector.
 - **Nombres duplicados:** no se permiten entre personas (ver §3). Dos personas reales con el mismo nombre (dos "Carlos") se distinguen con apellido o apodo.
 - **Perfil de una persona sin actividad en ningún módulo:** puede pasar si se crea una persona directamente desde la lista de Personas ("Nueva") sin todavía vincularla a nada — el perfil lo indica explícitamente en vez de mostrar secciones vacías.
 - **Cerrar el sheet de crear/editar sin guardar:** no persiste ningún cambio a medio escribir; el nombre y color solo se guardan al confirmar.
@@ -150,11 +152,12 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 | Función | Qué hace |
 |---|---|
-| `Personas` (js/core/personas-core.js) | API del núcleo: `obtener/nombre/color/lista/buscarPorNombre`, `crear` (sin duplicar), `editar` (sincroniza copias), `registrarRelacion`, `verificar` (I1–I4), `reconciliar`, `huerfanos` |
+| `Personas` (js/core/personas-core.js) | API del núcleo: `obtener/nombre/color/lista/buscarPorNombre`, `crear` (sin duplicar), `editar` (sincroniza copias), `registrarRelacion`, `verificar` (I1–I4), `huerfanos` |
 | `getPersona(id)` / `getPersonaNombre(id)` / `getPersonaColor(id)` | Envoltorios de `Personas.obtener/nombre/color` (los llaman muchos módulos; se reemplazan en la fase 3) |
-| `getPersonaDatos(personaId)` | Junta deudor(es), encargos y misDeudas vinculados a una persona, con sus saldos ya calculados |
+| `getPersonaDatos(personaId)` | Adaptador sobre `Personas.registros`: deudor(es), encargos, misDeudas e integrante de Spotify de una persona, con sus saldos ya calculados |
 | `_renderListaPersonas()` | Pinta la pantalla "Personas": una fila por persona (repara antes cualquier huérfano) |
-| `abrirPerfilPersona(personaId)` | Arma y abre el sheet de perfil consolidado (Préstamos, Encargos, Spotify, Le debo) |
+| `abrirPerfilPersona(personaId)` | Arma y abre el perfil consolidado recorriendo `Personas.relaciones(id)`: una sección por relación viva |
+| `Personas.relaciones(id)` / `posicionNeta(id)` / `registros(id, relacion)` | Relaciones vivas con saldo y resumen; saldo neto (me debe − le debo, sin encargos); registros de una relación |
 | `abrirSelPersona(callback, titulo)` | Abre el selector compartido; el `callback` recibe el `personaId` elegido o recién creado |
 | `_crearPersonaGlobal()` / `_guardarEditarPersonaGlobal()` | Crean o editan una persona; el segundo resincroniza nombre/color en todos los módulos vinculados |
 | `_inyectarPersonaSheets()` | Inyecta en el DOM (una sola vez) los 4 sheets del módulo: selector, crear, editar, perfil |

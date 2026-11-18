@@ -260,24 +260,6 @@ function getEncargo(id) {
   return (S.encargos||[]).find(e=>e.id===id);
 }
 
-function encargoSaldo(encargo) {
-  return (encargo.movimientos||[]).reduce((a,m)=>{
-    return a + (m.tipo==='entrada'?m.monto:-m.monto);
-  }, encargo.saldoInicial||0);
-}
-
-// Cuánto del saldo ya tiene destino asignado vía partes comprometidas (sin usar todavía).
-function encargoComprometido(encargo) {
-  return (encargo.partes||[]).filter(p=>!p.usada).reduce((a,p)=>a+(p.monto||0), 0);
-}
-
-// Lo que realmente se puede sacar del encargo ahora mismo: saldo total menos lo ya
-// comprometido. Nunca negativo — si el comprometido superó el saldo (p.ej. porque
-// una salida por fuera de "usar parte" lo redujo), no hay nada libre para sacar.
-function encargoLibre(encargo) {
-  return Math.max(0, encargoSaldo(encargo) - encargoComprometido(encargo));
-}
-
 // Sonda de la huella (js/core/huella.js): saldo, comprometido, libre y reparto por cuenta de cada encargo. Un encargo es su
 // propia bolsa (enc.movimientos), fuera de S.movimientos y del libro: un cambio de almacenamiento no puede alterar nada de esto.
 registrarSonda('encargos', estadoActual => {

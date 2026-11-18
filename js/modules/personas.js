@@ -55,17 +55,20 @@ function getPersona(id) { return Personas.obtener(id); }
 function getPersonaNombre(id) { return Personas.nombre(id); }
 function getPersonaColor(id) { return Personas.color(id); }
 
-// Datos vinculados a una persona
+// Datos vinculados a una persona, con la forma que usan las secciones del perfil y los badges del selector. La fuente es
+// Personas.registros (js/core/personas-core.js): ninguna colección se recorre a mano aquí.
 function getPersonaDatos(personaId) {
-  const encargos = (S.encargos || []).filter(e => e.personaId === personaId);
-  const deudores = Deudas.lista('favor').filter(d => d.personaId === personaId);
-  const deudor = deudores[0] || null; // compatibilidad: primer deudor para referencias puntuales
-  const saldoEncargos = encargos.reduce((a, e) => a + encargoSaldo(e), 0);
-  const saldoPrestamo = deudores.reduce((a, d) => a + (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0), 0);
-  // misDeudas: lo que YO le debo a esta persona
-  const misDeudas = Deudas.lista('contra').filter(d => d.personaId === personaId);
-  const saldoMisDeudas = misDeudas.reduce((a, d) => a + getMiDeudaSaldo(d), 0);
-  return { encargos, deudor, deudores, saldoEncargos, saldoPrestamo, misDeudas, saldoMisDeudas };
+  const encargos = Personas.registros(personaId, 'encargos');
+  const deudores = Personas.registros(personaId, 'me-deben');
+  const misDeudas = Personas.registros(personaId, 'yo-debo');
+  return {
+    encargos, deudores, misDeudas,
+    deudor: deudores[0] || null, // primer deudor, para referencias puntuales
+    spotify: Personas.registros(personaId, 'spotify')[0] || null,
+    saldoEncargos: encargos.reduce((a, e) => a + encargoSaldo(e), 0),
+    saldoPrestamo: deudores.reduce((a, d) => a + getDeudorSaldo(d), 0),
+    saldoMisDeudas: misDeudas.reduce((a, d) => a + getMiDeudaSaldo(d), 0), // lo que YO le debo a esta persona
+  };
 }
 
 /* ── SHEET SELECTOR DE PERSONA ─────────────────────────────────── */
@@ -173,15 +176,15 @@ function _inyectarPersonaSheets() {
 /* ── LISTA DE PERSONAS (desde menú Más) ────────────────────────── */
 /* Tarjeta de PC (css/pc.css): relación bajo el nombre, saldo neto y etiquetas de dónde aparece la persona. En celular esos tres bloques
    están ocultos (css/styles.css) y la fila es la de siempre. Saldo neto = lo que me debe (préstamos) menos lo que yo le debo (Yo debo): el
-   mismo criterio de Préstamos e Inicio. El saldo de un encargo NO entra: es plata suya que solo administras, no una deuda a tu favor. */
-function _relacionPersonaPc(datos, enSpotify) {
-  const r = [];
-  if (datos.deudor && datos.saldoPrestamo > 0) r.push('Me debe');
-  if (datos.misDeudas.length && datos.saldoMisDeudas > 0) r.push('Yo le debo');
-  if (datos.encargos.length) r.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
-  const conDeudas = !!datos.deudor || datos.misDeudas.length > 0;
-  if (enSpotify) r.push(r.length || conDeudas ? 'Spotify' : 'Solo en Spotify');
-  if (r.length) return r.join(' · ');
+   mismo criterio de Préstamos e Inicio. El saldo de un encargo NO entra: es plata suya que solo administras, no una deuda a tu favor.
+   Todo sale de Personas.relaciones(id) (js/core/personas-core.js): la lista no sabe qué módulos existen. */
+const _TONO_CLASE = { ambar: 'pe-c-amber', rojo: 'pe-c-red', ok: 'pe-c-accent' };
+// Texto de PC bajo el nombre: lo que dice cada relación (resumen.pc), o «Al día» / «Solo en Spotify» / «Sin actividad».
+function _relacionPersonaPc(rels) {
+  const partes = rels.map(r => r.resumen && r.resumen.pc).filter(Boolean);
+  const conDeudas = rels.some(r => r.tieneSaldo);
+  if (partes.length === 1 && partes[0] === 'Spotify' && !conDeudas) return 'Solo en Spotify';
+  if (partes.length) return partes.join(' · ');
   return conDeudas ? 'Al día' : 'Sin actividad';
 }
 function _pieTarjetaPersona(neto, tags) {
@@ -207,9 +210,8 @@ function _renderListaPersonas() {
   const empty = document.getElementById('lista-personas-empty');
   if (!body) return;
 
-  // Una fila por persona. No hay «sin perfil»: todo registro de un módulo tiene persona (invariante I1 de personas-core.js). Si algún código
-  // dejó uno huérfano, se repara aquí mismo (vincula por nombre) en vez de esconderlo, y se guarda.
-  if (Personas.reconciliar().cambios.length) save();
+  // Una fila por persona. No hay «sin perfil»: todo registro de un módulo tiene persona (invariante I1 de personas-core.js;
+  // save() avisa si algún código lo rompe).
   const personas = [...Personas.lista()];
 
   _pintarResumenPersonas();
@@ -234,21 +236,11 @@ function _renderListaPersonas() {
   // Personas con perfil
   personas.forEach(p => {
     const color = p.color || '#60b0f0';
-    const datos = getPersonaDatos(p.id);
-    const partesFrag = [];
-    if (datos.deudor) {
-      const saldo = datos.saldoPrestamo;
-      partesFrag.push(saldo !== 0
-        ? html`<span class="pe-c-amber">${fmt(saldo)} pendiente</span>`
-        : html`<span class="pe-c-accent">Al día</span>`);
-    }
-    if (datos.encargos.length) partesFrag.push(html`${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}`);
-    if (datos.misDeudas && datos.misDeudas.length) {
-      const saldoMisDeudas = datos.saldoMisDeudas;
-      partesFrag.push(saldoMisDeudas > 0
-        ? html`<span class="pe-c-red">Le debes ${fmt(saldoMisDeudas)}</span>`
-        : html`<span class="pe-c-accent">Deuda saldada</span>`);
-    }
+    const rels = Personas.relaciones(p.id);
+    const partesFrag = rels.filter(r => r.resumen && r.resumen.corto).map(r => {
+      const c = r.resumen.corto, cls = _TONO_CLASE[c.tono];
+      return cls ? html`<span class="${cls}">${c.texto}</span>` : html`${c.texto}`;
+    });
     // partesConSeparador: array plano de fragmentos html`` intercalados con
     // el string ' · ' — interpolar el array directo (sin .join()) deja que
     // el html`` exterior concatene cada elemento sin volver a escapar los
@@ -258,23 +250,17 @@ function _renderListaPersonas() {
     const subTexto = partesFrag.length
       ? partesConSeparador
       : html`<span class="pe-c-text3">Sin actividad</span>`;
-
-    const enSpotify = (S.spotify.personas || []).some(integrante => integrante.personaId === p.id);
-    const tags = [];
-    if (datos.deudor) tags.push('Préstamo');
-    if (datos.encargos.length) tags.push('Encargo');
-    if (enSpotify) tags.push('Spotify');
-    if (datos.misDeudas.length) tags.push('Le debo');
+    const tags = rels.map(r => (r.resumen ? r.resumen.tag : r.etiqueta));
 
     contenido.push(html`<div ${raw(Events.attr('personas:abrirPerfil', p.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
       <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
       <div class="pe-flex1-min0">
         <div class="pe-nombre">${p.nombre}</div>
         <div class="pe-sub personas-sub-movil">${subTexto}</div>
-        <div class="pe-sub personas-sub-pc">${_relacionPersonaPc(datos, enSpotify)}</div>
+        <div class="pe-sub personas-sub-pc">${_relacionPersonaPc(rels)}</div>
       </div>
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
-      ${_pieTarjetaPersona(datos.saldoPrestamo - datos.saldoMisDeudas, tags)}
+      ${_pieTarjetaPersona(Personas.posicionNeta(p.id), tags)}
     </div>`);
   });
 
@@ -561,6 +547,300 @@ function _pintarResumenPersonas() {
   poner('pe-resumen-spotify-sub', nombres.length ? nombres.slice(0, 2).join(' y ') + (nombres.length > 2 ? ' y ' + (nombres.length - 2) + ' más' : '') : 'Nadie');
 }
 
+/* ── SECCIONES DEL PERFIL ──────────────────────────────────────────
+   El perfil recorre Personas.relaciones(id) (js/core/personas-core.js) y, por cada relación viva, llama a su sección de _PERFIL_SECCIONES.
+   Una relación sin sección propia (un módulo nuevo) sale con _perfilSeccionGenerica: etiqueta, saldo y «ver en el módulo». */
+function _perfilSeccionPrestamos(datos) {
+  const d = datos.deudor;
+  const saldo = datos.saldoPrestamo;
+  // Consolidar movimientos de TODOS los deudores vinculados a esta persona
+  const movimientos = (datos.deudores || [datos.deudor]).flatMap(dd => dd.movimientos || [])
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  const prestamos = movimientos.filter(m => m.tipo === 'prestamo');
+  // Lo perdonado (m._perdon, "¿Se lo regalas?" en Préstamos) NO es plata que
+  // te devolvió: no cuenta en "Abonado", ni en el progreso de pago, ni en "Mayor abono".
+  const abonos   = movimientos.filter(m => esAbonoDeDeuda(m.tipo) && !m._perdon);
+  const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
+  const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
+  const color2 = saldo > 0 ? 'pe-c-amber' : saldo < 0 ? 'pe-c-red' : 'pe-c-accent';
+  const pct = totalPrestado > 0 ? Math.min(100, Math.round(totalAbonado / totalPrestado * 100)) : 0;
+
+  // Stats interesantes
+  const mayorPrestamo = prestamos.length ? prestamos.reduce((mx, m) => m.monto > mx.monto ? m : mx, prestamos[0]) : null;
+  const mayorAbono    = abonos.length    ? abonos.reduce((mx, m) => m.monto > mx.monto ? m : mx, abonos[0])       : null;
+  const cuantasveces  = prestamos.length;
+  const diasDesde     = movimientos.length ? Fecha.diasEntre(movimientos[0].fecha, hoy()) : null;
+  const ultimoMovimiento     = movimientos.length ? movimientos[movimientos.length - 1] : null;
+
+  return html`<div class="pe-card-amber">
+    <div class="pe-cab">
+      <div class="pe-cab-cap-amber"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
+      <button type="button" ${raw(Events.attr('prestado-personas:irADeudor', d.id))} class="pe-ver-detalle">Ver detalle <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+    <div class="pe-grid3">
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Pendiente</div>
+        <div class="pe-val15 ${color2}">${fmt(saldo)}</div>
+      </div>
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Prestado</div>
+        <div class="pe-val-text">${fmt(totalPrestado)}</div>
+      </div>
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Abonado</div>
+        <div class="pe-val-accent">${fmt(totalAbonado)}</div>
+      </div>
+    </div>
+    ${totalPrestado > 0 ? html`<div class="pe-mb10">
+      <div class="pe-prog-cab">
+        <span>Progreso de pago</span><span>${pct}%</span>
+      </div>
+      <div class="pe-prog-barra">
+        <div class="pe-fill ${pct===100?'pe-bg-accent':'pe-bg-amber'}" style="width:${pct}%;"></div>
+      </div>
+    </div>` : ''}
+    <div class="pe-grid2-gap7">
+      ${mayorPrestamo ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Mayor préstamo</div>
+        <div class="pe-val14-amber">${fmt(mayorPrestamo.monto)}</div>
+        ${mayorPrestamo.fecha ? html`<div class="pe-fecha10">${mayorPrestamo.fecha}</div>` : ''}
+      </div>` : ''}
+      ${mayorAbono ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Mayor abono</div>
+        <div class="pe-val14-accent">${fmt(mayorAbono.monto)}</div>
+        ${mayorAbono.fecha ? html`<div class="pe-fecha10">${mayorAbono.fecha}</div>` : ''}
+      </div>` : ''}
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Veces prestado</div>
+        <div class="pe-val14-text">${cuantasveces}x</div>
+      </div>
+      ${diasDesde !== null ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Relación activa</div>
+        <div class="pe-val14-text">${diasDesde}d</div>
+      </div>` : ''}
+    </div>
+    ${ultimoMovimiento ? html`<div class="pe-ultimo">
+      Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'prestamo' ? 'Préstamo' : (ultimoMovimiento._perdon ? 'Deuda perdonada' : (ultimoMovimiento.tipo === TIPO_PAGO_COMPLETO ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+function _perfilSeccionEncargos(datos) {
+  const totalEncargo = datos.saldoEncargos;
+  // Stats encargos
+  const todosMovimientoEncargo = datos.encargos.flatMap(e => (e.movimientos || []).map(m => ({...m, _encargo: e})));
+  const entradasEncargo = todosMovimientoEncargo.filter(m => m.tipo === 'entrada' || m.tipo === 'deposito' || !m.tipo || m.monto > 0);
+  const mayorEntrada = entradasEncargo.length ? entradasEncargo.reduce((mx, m) => (m.monto||0) > (mx.monto||0) ? m : mx, entradasEncargo[0]) : null;
+  const encargoMayor = datos.encargos.length ? [...datos.encargos].sort((a,b) => encargoSaldo(b) - encargoSaldo(a))[0] : null;
+
+  return html`<div class="pe-card-azul">
+    <div class="pe-cab">
+      <div class="pe-cab-cap-azul"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
+      <span class="pe-enc-n">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
+    </div>
+    <div class="pe-grid2-mb10">
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Total activo</div>
+        <div class="pe-val15-azul">${fmt(totalEncargo)}</div>
+      </div>
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Cantidad</div>
+        <div class="pe-val-text">${datos.encargos.length}</div>
+      </div>
+      ${encargoMayor ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Encargo mayor</div>
+        <div class="pe-val13-azul">${fmt(encargoSaldo(encargoMayor))}</div>
+        <div class="pe-nota10">${encargoMayor.nota||encargoMayor.nombre}</div>
+      </div>` : ''}
+      ${mayorEntrada ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Mayor entrada</div>
+        <div class="pe-val13-accent">${fmt(mayorEntrada.monto)}</div>
+        ${mayorEntrada.fecha ? html`<div class="pe-fecha10-mt1">${mayorEntrada.fecha}</div>` : ''}
+      </div>` : ''}
+    </div>
+    ${datos.encargos.map(e => {
+      const saldoE = encargoSaldo(e);
+      return html`<div class="pe-enc-fila">
+        <div class="pe-enc-nom">${e.nota || e.nombre}</div>
+        <div class="pe-enc-der">
+          <div class="pe-enc-saldo">${fmt(saldoE)}</div>
+          <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} class="pe-ver-detalle">Ver <i class="fa-solid fa-arrow-right"></i></button>
+        </div>
+      </div>`;
+    })}
+  </div>`;
+}
+
+function _perfilSeccionSpotify(datos) {
+  const spotifyEntry = datos.spotify;
+  const diasRestantes = spotifyEntry.proximoPago
+    ? Fecha.diasEntre(hoy(), spotifyEntry.proximoPago)
+    : null;
+  const vencido = diasRestantes !== null && diasRestantes < 0;
+  const hoy0    = diasRestantes === 0;
+  const badgeClass = vencido ? 'bg-red' : hoy0 ? 'bg-amber' : 'bg-purple';
+  const badgeText  = diasRestantes === null ? '' :
+    vencido ? 'Vencido hace ' + Math.abs(diasRestantes) + 'd' :
+    hoy0    ? 'Vence hoy' :
+              'Paga en ' + diasRestantes + 'd · ' + spotifyEntry.proximoPago;
+  const estadoBadge = spotifyEntry.pagado
+    ? html`<span class="badge bg-green pe-fs9">Pagó este ciclo</span>`
+    : html`<span class="badge bg-red pe-fs9">Pendiente</span>`;
+
+  // Stats Spotify de esta persona
+  const historialSpotify = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && (h.spotifyId ? h.spotifyId === spotifyEntry.id : h.nombre === spotifyEntry.nombre));
+  const totalCobradoSpotify = historialSpotify.reduce((a, h) => a + (h.monto || 0), 0);
+  const mayorCobroSpotify   = historialSpotify.length ? historialSpotify.reduce((mx, h) => h.monto > mx.monto ? h : mx, historialSpotify[0]) : null;
+  const diasEnPlan     = spotifyEntry.fechaIngreso
+    ? Fecha.diasEntre(spotifyEntry.fechaIngreso, hoy())
+    : null;
+  const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
+
+  return html`<div class="pe-card-spotify">
+    <div class="pe-cab">
+      <div class="pe-cab-cap-spotify">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" class="pe-sp-ico"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
+        Spotify
+      </div>
+      <button type="button" ${raw(Events.attr('personas:irASpotify'))} class="pe-ver-detalle">Ver módulo <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+    <div class="pe-grid2-mb8">
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Cuota</div>
+        <div class="pe-val-text">${fmt(spotifyEntry.monto || 0)}/período</div>
+      </div>
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Estado</div>
+        <div class="pe-mt4">${estadoBadge}</div>
+      </div>
+      ${totalCobradoSpotify > 0 ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Total cobrado</div>
+        <div class="pe-val14-spotify">${fmt(totalCobradoSpotify)}</div>
+        <div class="pe-fecha10-mt1">${historialSpotify.length} cobro${historialSpotify.length !== 1 ? 's' : ''}</div>
+      </div>` : ''}
+      ${diasEnPlan !== null ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">En el plan</div>
+        <div class="pe-val14-text">${mesesEstimados !== null ? mesesEstimados + ' período' + (mesesEstimados !== 1 ? 's' : '') : diasEnPlan + 'd'}</div>
+        <div class="pe-fecha10-mt1">desde ${spotifyEntry.fechaIngreso}</div>
+      </div>` : ''}
+      ${mayorCobroSpotify ? html`<div class="pe-celda-full">
+        <div class="pe-celda-cap">Mayor cobro registrado</div>
+        <div class="pe-val14-spotify">${fmt(mayorCobroSpotify.monto)}${mayorCobroSpotify.nota ? html` <span class="pe-sp-nota">· ${mayorCobroSpotify.nota}</span>` : ''}</div>
+        ${mayorCobroSpotify.fecha ? html`<div class="pe-fecha10-mt1">${mayorCobroSpotify.fecha}</div>` : ''}
+      </div>` : ''}
+    </div>
+    ${badgeText ? html`<div>${spotifyEntry.pagado ? '' : html`<span class="badge ${badgeClass} pe-fs9">${badgeText}</span>`}</div>` : ''}
+  </div>`;
+}
+
+function _perfilSeccionLeDebo(datos) {
+  const totalMisDeudas = datos.saldoMisDeudas;
+  const movimientosTodos = datos.misDeudas.flatMap(d => (d.movimientos || []).map(m => ({...m, _deuda: d})))
+    .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
+  const recibidos = movimientosTodos.filter(m => m.tipo === 'recibido');
+  const pagos = movimientosTodos.filter(m => m.tipo === 'pago');
+  const totalRecibido = recibidos.reduce((a, m) => a + (m.monto || 0), 0);
+  const totalPagado = pagos.reduce((a, m) => a + (m.monto || 0), 0);
+  const pct = totalRecibido > 0 ? Math.min(100, Math.round(totalPagado / totalRecibido * 100)) : 0;
+  const mayorRecibido = recibidos.length ? recibidos.reduce((mx, m) => m.monto > mx.monto ? m : mx, recibidos[0]) : null;
+  const mayorPago = pagos.length ? pagos.reduce((mx, m) => m.monto > mx.monto ? m : mx, pagos[0]) : null;
+  const ultimoMovimiento = movimientosTodos.length ? movimientosTodos[movimientosTodos.length - 1] : null;
+  const colorDeuda = totalMisDeudas > 0 ? 'pe-c-red' : 'pe-c-accent';
+  const primerMiDeuda = datos.misDeudas[0];
+
+  return html`<div class="pe-card-rojo">
+    <div class="pe-cab">
+      <div class="pe-cab-cap-rojo">
+        <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Le debo
+      </div>
+      <button type="button" ${raw(Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id))} class="pe-ver-detalle">Ver detalle <i class="fa-solid fa-arrow-right"></i></button>
+    </div>
+    <div class="pe-grid3">
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Pendiente</div>
+        <div class="pe-val15 ${colorDeuda}">${fmt(totalMisDeudas)}</div>
+      </div>
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Recibido</div>
+        <div class="pe-val15-amber">${fmt(totalRecibido)}</div>
+      </div>
+      <div class="pe-celda">
+        <div class="pe-celda-cap">He pagado</div>
+        <div class="pe-val-accent">${fmt(totalPagado)}</div>
+      </div>
+    </div>
+    ${totalRecibido > 0 ? html`<div class="pe-mb10">
+      <div class="pe-prog-cab">
+        <span>Progreso de pago</span><span>${pct}%</span>
+      </div>
+      <div class="pe-prog-barra">
+        <div class="pe-fill ${pct===100?'pe-bg-accent':'pe-bg-red'}" style="width:${pct}%;"></div>
+      </div>
+    </div>` : ''}
+    <div class="pe-grid2-gap7">
+      ${mayorRecibido ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Mayor préstamo</div>
+        <div class="pe-val14-red">${fmt(mayorRecibido.monto)}</div>
+        ${mayorRecibido.fecha ? html`<div class="pe-fecha10">${mayorRecibido.fecha}</div>` : ''}
+      </div>` : ''}
+      ${mayorPago ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Mayor pago</div>
+        <div class="pe-val14-accent">${fmt(mayorPago.monto)}</div>
+        ${mayorPago.fecha ? html`<div class="pe-fecha10">${mayorPago.fecha}</div>` : ''}
+      </div>` : ''}
+    </div>
+    ${ultimoMovimiento ? html`<div class="pe-ultimo">
+      Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
+    </div>` : ''}
+  </div>`;
+}
+
+// Sección de respaldo para relaciones registradas que no tienen sección propia: se ven en el perfil sin tocar este archivo.
+function _perfilSeccionGenerica(datos, rel) {
+  const n = rel.registros.length;
+  return html`<div class="pe-card-azul">
+    <div class="pe-cab">
+      <div class="pe-cab-cap-azul">${rel.etiqueta}</div>
+      ${rel.pantalla ? html`<button type="button" ${raw(Events.attr('personas:irAPantalla', rel.pantalla))} class="pe-ver-detalle">Ver módulo <i class="fa-solid fa-arrow-right"></i></button>` : ''}
+    </div>
+    <div class="pe-grid2-mb8">
+      <div class="pe-celda">
+        <div class="pe-celda-cap">Registros</div>
+        <div class="pe-val-text">${n}</div>
+      </div>
+      ${rel.tieneSaldo ? html`<div class="pe-celda">
+        <div class="pe-celda-cap">Saldo</div>
+        <div class="pe-val-text">${fmt(Math.abs(rel.saldo))}</div>
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+const _PERFIL_SECCIONES = {
+  'me-deben': _perfilSeccionPrestamos,
+  'encargos': _perfilSeccionEncargos,
+  'spotify': _perfilSeccionSpotify,
+  'yo-debo': _perfilSeccionLeDebo,
+};
+
+// Saldo neto con la persona (lo que te debe menos lo que le debes), cuando tiene más de una relación con saldo: es el balance real que
+// ninguna sección sola muestra. Mismo criterio que la lista: el saldo de un encargo no entra (es plata suya que solo administras).
+function _perfilBalanceNeto(rels, neto) {
+  const cls = neto > 0 ? 'pe-c-accent' : neto < 0 ? 'pe-c-red' : 'pe-c-text3';
+  const monto = neto > 0 ? '+' + fmt(neto) : neto < 0 ? '\u2212' + fmt(-neto) : 'Al día';
+  const detalle = rels.filter(r => r.tieneSaldo).map(r => r.resumen ? r.resumen.tag : r.etiqueta).join(' · ');
+  return html`<div class="pe-grid2-mb8">
+    <div class="pe-celda">
+      <div class="pe-celda-cap">Saldo neto</div>
+      <div class="pe-val15 ${cls}">${monto}</div>
+    </div>
+    <div class="pe-celda">
+      <div class="pe-celda-cap">Incluye</div>
+      <div class="pe-val-text">${detalle}</div>
+    </div>
+  </div>`;
+}
+
 function abrirPerfilPersona(personaId) {
   const p = getPersona(personaId);
   if (!p) return;
@@ -586,12 +866,7 @@ function abrirPerfilPersona(personaId) {
   if (nm) nm.textContent = p.nombre;
 
   const datos = getPersonaDatos(personaId);
-  const spotifyEntry = (S.spotify.personas || []).find(spotify => spotify.personaId === personaId);
-  const partes = [];
-  if (datos.deudor) partes.push('Préstamos');
-  if (datos.encargos.length) partes.push(datos.encargos.length + ' encargo' + (datos.encargos.length !== 1 ? 's' : ''));
-  if (spotifyEntry) partes.push('Spotify');
-  if (datos.misDeudas && datos.misDeudas.length) partes.push('Le debo');
+  const partes = Personas.relaciones(personaId).map(r => (r.resumen ? r.resumen.cab : r.etiqueta));
   if (sb) sb.textContent = partes.length ? partes.join(' · ') : 'Sin actividad registrada';
 
   const body = document.getElementById(pre + '-body');
@@ -606,258 +881,10 @@ function abrirPerfilPersona(personaId) {
   // volver a escaparlo (verificado contra la implementación real de
   // js/core/html-tag.js, ver auditoria-tecnica.md nota 2026-08-26).
   const contenido = [];
-
-  // ── Sección Préstamos ──
-  if (datos.deudor) {
-    const d = datos.deudor;
-    const saldo = datos.saldoPrestamo;
-    // Consolidar movimientos de TODOS los deudores vinculados a esta persona
-    const movimientos = (datos.deudores || [datos.deudor]).flatMap(dd => dd.movimientos || [])
-      .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
-    const prestamos = movimientos.filter(m => m.tipo === 'prestamo');
-    // Lo perdonado (m._perdon, "¿Se lo regalas?" en Préstamos) NO es plata que
-    // te devolvió: no cuenta en "Abonado", ni en el progreso de pago, ni en "Mayor abono".
-    const abonos   = movimientos.filter(m => esAbonoDeDeuda(m.tipo) && !m._perdon);
-    const totalPrestado = prestamos.reduce((a, m) => a + (m.monto || 0), 0);
-    const totalAbonado  = abonos.reduce((a, m) => a + (m.monto || 0), 0);
-    const color2 = saldo > 0 ? 'pe-c-amber' : saldo < 0 ? 'pe-c-red' : 'pe-c-accent';
-    const pct = totalPrestado > 0 ? Math.min(100, Math.round(totalAbonado / totalPrestado * 100)) : 0;
-
-    // Stats interesantes
-    const mayorPrestamo = prestamos.length ? prestamos.reduce((mx, m) => m.monto > mx.monto ? m : mx, prestamos[0]) : null;
-    const mayorAbono    = abonos.length    ? abonos.reduce((mx, m) => m.monto > mx.monto ? m : mx, abonos[0])       : null;
-    const cuantasveces  = prestamos.length;
-    const diasDesde     = movimientos.length ? Fecha.diasEntre(movimientos[0].fecha, hoy()) : null;
-    const ultimoMovimiento     = movimientos.length ? movimientos[movimientos.length - 1] : null;
-
-    contenido.push(html`<div class="pe-card-amber">
-      <div class="pe-cab">
-        <div class="pe-cab-cap-amber"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Préstamos</div>
-        <button type="button" ${raw(Events.attr('prestado-personas:irADeudor', d.id))} class="pe-ver-detalle">Ver detalle <i class="fa-solid fa-arrow-right"></i></button>
-      </div>
-      <div class="pe-grid3">
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Pendiente</div>
-          <div class="pe-val15 ${color2}">${fmt(saldo)}</div>
-        </div>
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Prestado</div>
-          <div class="pe-val-text">${fmt(totalPrestado)}</div>
-        </div>
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Abonado</div>
-          <div class="pe-val-accent">${fmt(totalAbonado)}</div>
-        </div>
-      </div>
-      ${totalPrestado > 0 ? html`<div class="pe-mb10">
-        <div class="pe-prog-cab">
-          <span>Progreso de pago</span><span>${pct}%</span>
-        </div>
-        <div class="pe-prog-barra">
-          <div class="pe-fill ${pct===100?'pe-bg-accent':'pe-bg-amber'}" style="width:${pct}%;"></div>
-        </div>
-      </div>` : ''}
-      <div class="pe-grid2-gap7">
-        ${mayorPrestamo ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Mayor préstamo</div>
-          <div class="pe-val14-amber">${fmt(mayorPrestamo.monto)}</div>
-          ${mayorPrestamo.fecha ? html`<div class="pe-fecha10">${mayorPrestamo.fecha}</div>` : ''}
-        </div>` : ''}
-        ${mayorAbono ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Mayor abono</div>
-          <div class="pe-val14-accent">${fmt(mayorAbono.monto)}</div>
-          ${mayorAbono.fecha ? html`<div class="pe-fecha10">${mayorAbono.fecha}</div>` : ''}
-        </div>` : ''}
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Veces prestado</div>
-          <div class="pe-val14-text">${cuantasveces}x</div>
-        </div>
-        ${diasDesde !== null ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Relación activa</div>
-          <div class="pe-val14-text">${diasDesde}d</div>
-        </div>` : ''}
-      </div>
-      ${ultimoMovimiento ? html`<div class="pe-ultimo">
-        Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'prestamo' ? 'Préstamo' : (ultimoMovimiento._perdon ? 'Deuda perdonada' : (ultimoMovimiento.tipo === TIPO_PAGO_COMPLETO ? 'Pago completo' : 'Abono'))} de ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
-      </div>` : ''}
-    </div>`);
-  }
-
-  // ── Sección Encargos ──
-  if (datos.encargos.length) {
-    const totalEncargo = datos.saldoEncargos;
-    // Stats encargos
-    const todosMovimientoEncargo = datos.encargos.flatMap(e => (e.movimientos || []).map(m => ({...m, _encargo: e})));
-    const entradasEncargo = todosMovimientoEncargo.filter(m => m.tipo === 'entrada' || m.tipo === 'deposito' || !m.tipo || m.monto > 0);
-    const mayorEntrada = entradasEncargo.length ? entradasEncargo.reduce((mx, m) => (m.monto||0) > (mx.monto||0) ? m : mx, entradasEncargo[0]) : null;
-    const encargoMayor = datos.encargos.length ? [...datos.encargos].sort((a,b) => encargoSaldo(b) - encargoSaldo(a))[0] : null;
-
-    contenido.push(html`<div class="pe-card-azul">
-      <div class="pe-cab">
-        <div class="pe-cab-cap-azul"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg> Encargos</div>
-        <span class="pe-enc-n">${datos.encargos.length} encargo${datos.encargos.length !== 1 ? 's' : ''}</span>
-      </div>
-      <div class="pe-grid2-mb10">
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Total activo</div>
-          <div class="pe-val15-azul">${fmt(totalEncargo)}</div>
-        </div>
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Cantidad</div>
-          <div class="pe-val-text">${datos.encargos.length}</div>
-        </div>
-        ${encargoMayor ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Encargo mayor</div>
-          <div class="pe-val13-azul">${fmt(encargoSaldo(encargoMayor))}</div>
-          <div class="pe-nota10">${encargoMayor.nota||encargoMayor.nombre}</div>
-        </div>` : ''}
-        ${mayorEntrada ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Mayor entrada</div>
-          <div class="pe-val13-accent">${fmt(mayorEntrada.monto)}</div>
-          ${mayorEntrada.fecha ? html`<div class="pe-fecha10-mt1">${mayorEntrada.fecha}</div>` : ''}
-        </div>` : ''}
-      </div>
-      ${datos.encargos.map(e => {
-        const saldoE = encargoSaldo(e);
-        return html`<div class="pe-enc-fila">
-          <div class="pe-enc-nom">${e.nota || e.nombre}</div>
-          <div class="pe-enc-der">
-            <div class="pe-enc-saldo">${fmt(saldoE)}</div>
-            <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} class="pe-ver-detalle">Ver <i class="fa-solid fa-arrow-right"></i></button>
-          </div>
-        </div>`;
-      })}
-    </div>`);
-  }
-
-  // ── Sección Spotify ──
-  if (spotifyEntry) {
-    const diasRestantes = spotifyEntry.proximoPago
-      ? Fecha.diasEntre(hoy(), spotifyEntry.proximoPago)
-      : null;
-    const vencido = diasRestantes !== null && diasRestantes < 0;
-    const hoy0    = diasRestantes === 0;
-    const badgeClass = vencido ? 'bg-red' : hoy0 ? 'bg-amber' : 'bg-purple';
-    const badgeText  = diasRestantes === null ? '' :
-      vencido ? 'Vencido hace ' + Math.abs(diasRestantes) + 'd' :
-      hoy0    ? 'Vence hoy' :
-                'Paga en ' + diasRestantes + 'd · ' + spotifyEntry.proximoPago;
-    const estadoBadge = spotifyEntry.pagado
-      ? html`<span class="badge bg-green pe-fs9">Pagó este ciclo</span>`
-      : html`<span class="badge bg-red pe-fs9">Pendiente</span>`;
-
-    // Stats Spotify de esta persona
-    const historialSpotify = (S.spotify.historial || []).filter(h => h.tipo === 'cobro' && h.nombre === spotifyEntry.nombre);
-    const totalCobradoSpotify = historialSpotify.reduce((a, h) => a + (h.monto || 0), 0);
-    const mayorCobroSpotify   = historialSpotify.length ? historialSpotify.reduce((mx, h) => h.monto > mx.monto ? h : mx, historialSpotify[0]) : null;
-    const diasEnPlan     = spotifyEntry.fechaIngreso
-      ? Fecha.diasEntre(spotifyEntry.fechaIngreso, hoy())
-      : null;
-    const mesesEstimados = diasEnPlan !== null ? Math.floor(diasEnPlan / 30) : null;
-
-    contenido.push(html`<div class="pe-card-spotify">
-      <div class="pe-cab">
-        <div class="pe-cab-cap-spotify">
-          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 64 64" class="pe-sp-ico"><path d="M32 0C14.3 0 0 14.337 0 32c0 17.7 14.337 32 32 32 17.7 0 32-14.337 32-32S49.663 0 32 0zm14.68 46.184c-.573.956-1.797 1.223-2.753.65-7.532-4.588-16.975-5.62-28.14-3.097-1.07.23-2.14-.42-2.37-1.49s.42-2.14 1.49-2.37c12.196-2.79 22.67-1.606 31.082 3.556a2 2 0 0 1 .688 2.753zm3.9-8.717c-.726 1.185-2.256 1.53-3.44.84-8.602-5.276-21.716-6.805-31.885-3.747-1.338.382-2.714-.344-3.097-1.644-.382-1.338.344-2.714 1.682-3.097 11.622-3.517 26.074-1.835 35.976 4.244 1.147.688 1.49 2.217.765 3.403zm.344-9.1c-10.323-6.117-27.336-6.69-37.2-3.708-1.568.497-3.25-.42-3.747-1.988s.42-3.25 1.988-3.747c11.317-3.44 30.127-2.753 41.98 4.282 1.415.84 1.873 2.676 1.032 4.09-.765 1.453-2.638 1.912-4.053 1.07z" fill="#1ed760"/></svg>
-          Spotify
-        </div>
-        <button type="button" ${raw(Events.attr('personas:irASpotify'))} class="pe-ver-detalle">Ver módulo <i class="fa-solid fa-arrow-right"></i></button>
-      </div>
-      <div class="pe-grid2-mb8">
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Cuota</div>
-          <div class="pe-val-text">${fmt(spotifyEntry.monto || 0)}/período</div>
-        </div>
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Estado</div>
-          <div class="pe-mt4">${estadoBadge}</div>
-        </div>
-        ${totalCobradoSpotify > 0 ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Total cobrado</div>
-          <div class="pe-val14-spotify">${fmt(totalCobradoSpotify)}</div>
-          <div class="pe-fecha10-mt1">${historialSpotify.length} cobro${historialSpotify.length !== 1 ? 's' : ''}</div>
-        </div>` : ''}
-        ${diasEnPlan !== null ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">En el plan</div>
-          <div class="pe-val14-text">${mesesEstimados !== null ? mesesEstimados + ' período' + (mesesEstimados !== 1 ? 's' : '') : diasEnPlan + 'd'}</div>
-          <div class="pe-fecha10-mt1">desde ${spotifyEntry.fechaIngreso}</div>
-        </div>` : ''}
-        ${mayorCobroSpotify ? html`<div class="pe-celda-full">
-          <div class="pe-celda-cap">Mayor cobro registrado</div>
-          <div class="pe-val14-spotify">${fmt(mayorCobroSpotify.monto)}${mayorCobroSpotify.nota ? html` <span class="pe-sp-nota">· ${mayorCobroSpotify.nota}</span>` : ''}</div>
-          ${mayorCobroSpotify.fecha ? html`<div class="pe-fecha10-mt1">${mayorCobroSpotify.fecha}</div>` : ''}
-        </div>` : ''}
-      </div>
-      ${badgeText ? html`<div>${spotifyEntry.pagado ? '' : html`<span class="badge ${badgeClass} pe-fs9">${badgeText}</span>`}</div>` : ''}
-    </div>`);
-  }
-
-  // ── Sección Le debo (misDeudas) ──
-  if (datos.misDeudas && datos.misDeudas.length) {
-    const totalMisDeudas = datos.saldoMisDeudas;
-    const movimientosTodos = datos.misDeudas.flatMap(d => (d.movimientos || []).map(m => ({...m, _deuda: d})))
-      .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
-    const recibidos = movimientosTodos.filter(m => m.tipo === 'recibido');
-    const pagos = movimientosTodos.filter(m => m.tipo === 'pago');
-    const totalRecibido = recibidos.reduce((a, m) => a + (m.monto || 0), 0);
-    const totalPagado = pagos.reduce((a, m) => a + (m.monto || 0), 0);
-    const pct = totalRecibido > 0 ? Math.min(100, Math.round(totalPagado / totalRecibido * 100)) : 0;
-    const mayorRecibido = recibidos.length ? recibidos.reduce((mx, m) => m.monto > mx.monto ? m : mx, recibidos[0]) : null;
-    const mayorPago = pagos.length ? pagos.reduce((mx, m) => m.monto > mx.monto ? m : mx, pagos[0]) : null;
-    const ultimoMovimiento = movimientosTodos.length ? movimientosTodos[movimientosTodos.length - 1] : null;
-    const colorDeuda = totalMisDeudas > 0 ? 'pe-c-red' : 'pe-c-accent';
-    const primerMiDeuda = datos.misDeudas[0];
-
-    contenido.push(html`<div class="pe-card-rojo">
-      <div class="pe-cab">
-        <div class="pe-cab-cap-rojo">
-          <svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> Le debo
-        </div>
-        <button type="button" ${raw(Events.attr('prestado-personas:irAMiDeuda', primerMiDeuda.id))} class="pe-ver-detalle">Ver detalle <i class="fa-solid fa-arrow-right"></i></button>
-      </div>
-      <div class="pe-grid3">
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Pendiente</div>
-          <div class="pe-val15 ${colorDeuda}">${fmt(totalMisDeudas)}</div>
-        </div>
-        <div class="pe-celda">
-          <div class="pe-celda-cap">Recibido</div>
-          <div class="pe-val15-amber">${fmt(totalRecibido)}</div>
-        </div>
-        <div class="pe-celda">
-          <div class="pe-celda-cap">He pagado</div>
-          <div class="pe-val-accent">${fmt(totalPagado)}</div>
-        </div>
-      </div>
-      ${totalRecibido > 0 ? html`<div class="pe-mb10">
-        <div class="pe-prog-cab">
-          <span>Progreso de pago</span><span>${pct}%</span>
-        </div>
-        <div class="pe-prog-barra">
-          <div class="pe-fill ${pct===100?'pe-bg-accent':'pe-bg-red'}" style="width:${pct}%;"></div>
-        </div>
-      </div>` : ''}
-      <div class="pe-grid2-gap7">
-        ${mayorRecibido ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Mayor préstamo</div>
-          <div class="pe-val14-red">${fmt(mayorRecibido.monto)}</div>
-          ${mayorRecibido.fecha ? html`<div class="pe-fecha10">${mayorRecibido.fecha}</div>` : ''}
-        </div>` : ''}
-        ${mayorPago ? html`<div class="pe-celda">
-          <div class="pe-celda-cap">Mayor pago</div>
-          <div class="pe-val14-accent">${fmt(mayorPago.monto)}</div>
-          ${mayorPago.fecha ? html`<div class="pe-fecha10">${mayorPago.fecha}</div>` : ''}
-        </div>` : ''}
-      </div>
-      ${ultimoMovimiento ? html`<div class="pe-ultimo">
-        Último movimiento: <span class="pe-ultimo-val">${ultimoMovimiento.tipo === 'recibido' ? 'Recibí' : 'Pagué'} ${fmt(ultimoMovimiento.monto)}</span>${ultimoMovimiento.fecha ? ' · ' + ultimoMovimiento.fecha : ''}${ultimoMovimiento.nota ? html` · <i>${ultimoMovimiento.nota}</i>` : ''}
-      </div>` : ''}
-    </div>`);
-  }
-
-  if (!datos.deudor && !datos.encargos.length && !spotifyEntry && !(datos.misDeudas && datos.misDeudas.length)) {
-    contenido.push(raw(emptyInline('Esta persona no tiene préstamos, encargos ni está en Spotify todavía.')));
-  }
+  const rels = Personas.relaciones(personaId);
+  if (rels.filter(r => r.tieneSaldo).length > 1) contenido.push(_perfilBalanceNeto(rels, Personas.posicionNeta(personaId)));
+  rels.forEach(r => contenido.push((_PERFIL_SECCIONES[r.id] || _perfilSeccionGenerica)(datos, r)));
+  if (!rels.length) contenido.push(raw(emptyInline('Esta persona no tiene préstamos, encargos ni está en Spotify todavía.')));
 
   body.innerHTML = html`${contenido}`;
   if (enFicha) _mostrarFichaPersona();
@@ -998,6 +1025,7 @@ Events.registerAll('personas', {
   selElegir: _selPersonaElegir,
   selCrearDirecto: _selPersonaCrearDirecto,
   irASpotify: _irASpotify,
+  irAPantalla: pantalla => showScreen(pantalla),
   seleccionarColor: _seleccionarColorPersona,
   pickerAbrir: (el) => { const p = PersonaPicker.de(el && el.dataset && el.dataset.picker); if (p) p.abrir(); },
 });

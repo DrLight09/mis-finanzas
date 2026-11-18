@@ -127,84 +127,206 @@ describe('Personas.verificar (invariantes)', () => {
   });
 });
 
-describe('Personas.reconciliar', () => {
-  test('vincula huérfanos por nombre, crea la persona si no existe y toma el color del registro', () => {
-    const c = entorno({
-      personas: [P('p1', 'Ana')],
-      deudores: [{ id: 'd1', nombre: 'ANA', color: '#f06868', movimientos: [] }, { id: 'd2', nombre: 'Beto', color: '#c060f0', movimientos: [] }],
-      spotify: { personas: [{ id: 's1', personaId: 'borrada', nombre: 'Beto' }], historial: [] },
-    });
-    const r = c.Personas.reconciliar();
-    assert.ok(r.cambios.length > 0);
-    assert.equal(c.S.deudores[0].personaId, 'p1');
-    const beto = c.S.personas.find(p => p.nombre === 'Beto');
-    assert.equal(beto.color, '#c060f0');
-    assert.equal(c.S.deudores[1].personaId, beto.id);
-    assert.equal(c.S.spotify.personas[0].personaId, beto.id, 'el id colgante se rehace por nombre');
-    assert.equal(c.S.personas.length, 2);
-    assert.deepEqual(plano(c.Personas.verificar()), []);
-  });
-  test('une personas con el mismo nombre: conserva la más antigua, reasigna relaciones y rescata alias/notas', () => {
-    const c = entorno({
-      personas: [P('nueva', 'Luis', { creadoEn: '2026-05-01' }), P('vieja', 'luis', { creadoEn: '2026-01-01', alias: 'lucho' })],
-      encargos: [{ id: 'e1', personaId: 'nueva', nombre: 'Luis' }],
-    });
-    c.Personas.reconciliar();
-    assert.equal(c.S.personas.length, 1);
-    assert.equal(c.S.personas[0].id, 'vieja');
-    assert.equal(c.S.personas[0].alias, 'lucho');
-    assert.equal(c.S.encargos[0].personaId, 'vieja');
-  });
-  test('no adivina: nombres parecidos no se unen, y dos registros de una relación única quedan en revisión', () => {
-    const c = entorno({
-      personas: [P('p1', 'Carlos'), P('p2', 'Carlos P.')],
-      deudores: [{ id: 'd1', personaId: 'p1', nombre: 'Carlos', color: '#60b0f0' }, { id: 'd2', personaId: 'p1', nombre: 'Carlos', color: '#60b0f0' }],
-    });
-    const r = plano(c.Personas.reconciliar());
-    assert.equal(c.S.personas.length, 2);
-    assert.equal(c.S.deudores.length, 2, 'no se funden dos deudores');
-    assert.deepEqual(r.revision.map(x => x.regla), ['I4']);
-  });
-  test('registro sin nombre: se vincula a «Sin nombre» en vez de quedar huérfano', () => {
-    const c = entorno({ personas: [], encargos: [{ id: 'e1' }] });
-    c.Personas.reconciliar();
-    assert.equal(c.S.encargos[0].personaId, c.S.personas[0].id);
-    assert.deepEqual(plano(c.Personas.verificar()), []);
-  });
-  test('es idempotente: la segunda pasada no cambia nada', () => {
-    const c = entorno({
-      personas: [P('a', 'Ana'), P('b', 'ana')],
-      deudores: [{ id: 'd1', nombre: 'Zoe', color: '#60b0f0' }],
-      encargos: [{ id: 'e1', personaId: 'b', nombre: 'otro' }],
-    });
-    c.Personas.reconciliar();
-    const antes = plano(c.S);
-    const r = c.Personas.reconciliar();
-    assert.deepEqual(plano(r.cambios), []);
-    assert.deepEqual(plano(c.S), antes);
-  });
-  test('sirve sobre datos crudos (migración/importación), no solo sobre el S global', () => {
-    const c = entorno({ personas: [P('p1', 'Ana')] });
-    const crudo = { deudores: [{ id: 'd1', nombre: 'Marta' }] };
-    c.Personas.reconciliar(crudo);
-    assert.equal(crudo.personas[0].nombre, 'Marta');
-    assert.equal(c.S.personas.length, 1, 'el S real no se tocó');
-  });
-});
-
 describe('Personas.registrarRelacion', () => {
-  test('un módulo nuevo se conecta con una llamada y entra en verificación, edición y reconciliación', () => {
-    const c = entorno({ personas: [P('p1', 'Ana')], tandas: [{ id: 't1', nombre: 'Ana' }] });
+  test('un módulo nuevo se conecta con una llamada y entra en verificación y edición', () => {
+    const c = entorno({ personas: [P('p1', 'Ana')], tandas: [{ id: 't1', nombre: 'Ana' }, { id: 't2', personaId: 'p1', nombre: 'Ana' }] });
     c.Personas.registrarRelacion({ id: 'tandas', etiqueta: 'Tanda', unica: true, copia: { nombre: true }, coleccion: d => d.tandas || [] });
     assert.equal(c.Personas.verificar().some(v => v.relacion === 'tandas' && v.regla === 'I1'), true);
-    c.Personas.reconciliar();
-    assert.equal(c.S.tandas[0].personaId, 'p1');
+    c.S.tandas.shift();
     c.Personas.editar('p1', { nombre: 'Ana Paula' });
     assert.equal(c.S.tandas[0].nombre, 'Ana Paula');
+    assert.deepEqual(plano(c.Personas.verificar()), []);
   });
   test('exige id y coleccion', () => {
     const c = entorno({});
     assert.throws(() => c.Personas.registrarRelacion({ id: 'x' }));
+  });
+});
+
+describe('Personas.relaciones / posicionNeta / registros', () => {
+  const conCalculos = estado => {
+    const ctx = loadApp([path.join(RAIZ, 'js/core/core-state.js'), path.join(RAIZ, 'js/core/calc-helpers.js')]);
+    Object.assign(ctx.S, plano(estado));
+    return ctx;
+  };
+  const base = () => conCalculos({
+    personas: [P('ana', 'Ana'), P('beto', 'Beto'), P('sola', 'Sola')],
+    deudores: [{ id: 'd1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 100000 }, { tipo: 'abono', monto: 30000 }] }],
+    misDeudas: [{ id: 'm1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'recibido', monto: 20000 }] }],
+    encargos: [{ id: 'e1', personaId: 'ana', nombre: 'Ana', saldoInicial: 500000, movimientos: [] }, { id: 'e2', personaId: 'beto', nombre: 'Beto', saldoInicial: 10, movimientos: [] }],
+    spotify: { personas: [{ id: 's1', personaId: 'beto', nombre: 'Beto' }], historial: [] },
+  });
+
+  test('registros: los de una persona en una relación, y [] si no hay o la relación no existe', () => {
+    const c = base();
+    assert.deepEqual(plano(c.Personas.registros('ana', 'encargos')).map(r => r.id), ['e1']);
+    assert.deepEqual(plano(c.Personas.registros('sola', 'encargos')), []);
+    assert.deepEqual(plano(c.Personas.registros('ana', 'no-existe')), []);
+  });
+  test('relaciones: solo las vivas, en el orden de registro, con saldo y resumen', () => {
+    const c = base();
+    const r = plano(c.Personas.relaciones('ana'));
+    assert.deepEqual(r.map(x => x.id), ['me-deben', 'encargos', 'yo-debo']);
+    assert.equal(r[0].saldo, 70000);
+    assert.equal(r[0].resumen.tag, 'Préstamo');
+    assert.equal(r[0].resumen.corto.tono, 'ambar');
+    assert.equal(r[0].resumen.pc, 'Me debe');
+    assert.equal(r[1].resumen.cab, '1 encargo');
+    assert.equal(r[2].saldo, -20000, 'lo que yo le debo cuenta en negativo');
+    assert.equal(r[2].resumen.pc, 'Yo le debo');
+    assert.deepEqual(plano(c.Personas.relaciones('sola')), []);
+  });
+  test('posicionNeta = me debe − le debo, y el saldo de un encargo NO entra', () => {
+    const c = base();
+    assert.equal(c.Personas.posicionNeta('ana'), 50000);
+    assert.equal(c.Personas.posicionNeta('beto'), 0, 'Beto solo tiene un encargo y Spotify');
+    assert.equal(c.Personas.posicionNeta('sola'), 0);
+  });
+  test('saldado: «Al día» y «Deuda saldada»', () => {
+    const c = conCalculos({
+      personas: [P('a', 'A')],
+      deudores: [{ id: 'd', personaId: 'a', nombre: 'A', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 5 }, { tipo: 'abono', monto: 5 }] }],
+      misDeudas: [{ id: 'm', personaId: 'a', nombre: 'A', color: '#60b0f0', movimientos: [{ tipo: 'recibido', monto: 5 }, { tipo: 'pago', monto: 5 }] }],
+    });
+    const r = plano(c.Personas.relaciones('a'));
+    assert.equal(r[0].resumen.corto.texto, 'Al día');
+    assert.equal(r[1].resumen.corto.texto, 'Deuda saldada');
+    assert.equal(r[0].resumen.pc, '');
+  });
+  test('registrarRelacion con un id existente MEZCLA con lo declarado en el núcleo', () => {
+    const c = base();
+    c.Personas.registrarRelacion({ id: 'spotify', resumen: () => ({ tag: 'S', cab: 'S', corto: null, pc: 'Spotify!' }) });
+    const d = c.Personas.declaradas().find(x => x.id === 'spotify');
+    assert.equal(d.unica, true, 'conserva lo del núcleo');
+    assert.equal(typeof d.coleccion, 'function');
+    assert.equal(plano(c.Personas.relaciones('beto')).find(x => x.id === 'spotify').resumen.pc, 'Spotify!');
+  });
+  test('una relación nueva con saldo entra en la posición neta sin tocar nada más', () => {
+    const c = base();
+    c.S.tandas = [{ id: 't1', personaId: 'sola', monto: 40 }];
+    c.Personas.registrarRelacion({ id: 'tandas', etiqueta: 'Tanda', coleccion: d => d.tandas || [], saldo: r => r.monto });
+    assert.equal(c.Personas.posicionNeta('sola'), 40);
+    assert.equal(plano(c.Personas.relaciones('sola'))[0].resumen, null, 'sin resumen: la pantalla usa la etiqueta');
+  });
+});
+
+describe('Perfil y lista de Personas sobre relaciones', () => {
+  const { JSDOM } = require('jsdom');
+  const f = (...p) => path.join(RAIZ, ...p);
+  const montar = estado => {
+    const app = loadApp([f('js/core/html-tag.js'), f('js/core/events.js'), f('js/core/core-state.js'), f('js/core/calc-helpers.js'), f('js/modules/personas.js')], { permissive: true });
+    app.document = new JSDOM('<!doctype html><body><div id="screen-personas" class="active"></div><div id="lista-personas-body"></div><div id="lista-personas-empty"></div><span id="personas-lista-conteo"></span>' +
+      '<div id="pficha-avatar"></div><div id="pficha-nombre"></div><div id="pficha-sub"></div><div id="pficha-body"></div></body>').window.document;
+    Object.assign(app.S, plano(estado));
+    app._pintarResumenPersonas = () => {};
+    app._sincronizarFichaPersonas = () => {};
+    app._inyectarPersonaSheets = () => {};
+    app._mostrarFichaPersona = () => {};
+    return app;
+  };
+  const estado = () => ({
+    personas: [P('ana', 'Ana'), P('beto', 'Beto'), P('sola', 'Sola')],
+    deudores: [{ id: 'd1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 100000 }, { tipo: 'abono', monto: 30000 }] }],
+    misDeudas: [{ id: 'm1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'recibido', monto: 20000 }] }],
+    encargos: [{ id: 'e1', personaId: 'ana', nombre: 'Ana', saldoInicial: 5000, movimientos: [] }],
+    spotify: { personas: [{ id: 's1', personaId: 'beto', nombre: 'Beto' }], historial: [] },
+  });
+
+  test('lista: texto en celular y en PC, etiquetas y saldo neto salen de las relaciones', () => {
+    const app = montar(estado());
+    app._renderListaPersonas();
+    const fila = n => [...app.document.querySelectorAll('.pe-fila')].find(e => e.querySelector('.pe-nombre').textContent === n);
+    const ana = fila('Ana'), beto = fila('Beto'), sola = fila('Sola');
+    assert.match(ana.querySelector('.personas-sub-movil').textContent, /pendiente.*·.*1 encargo.*·.*Le debes/);
+    assert.equal(ana.querySelector('.personas-sub-pc').textContent, 'Me debe · 1 encargo · Yo le debo');
+    assert.deepEqual([...ana.querySelectorAll('.personas-etiqueta')].map(e => e.textContent), ['Préstamo', 'Encargo', 'Le debo']);
+    assert.match(ana.querySelector('.personas-saldo-neto').textContent, /^\+/);
+    assert.equal(beto.querySelector('.personas-sub-pc').textContent, 'Solo en Spotify');
+    assert.equal(sola.querySelector('.personas-sub-pc').textContent, 'Sin actividad');
+    assert.equal(sola.querySelector('.personas-saldo-neto').textContent, 'Al día');
+  });
+
+  test('perfil: una sección por relación viva y el saldo neto cuando hay más de una con saldo', () => {
+    const app = montar(estado());
+    app.abrirPerfilPersona('ana');
+    const doc = app.document;
+    assert.equal(doc.getElementById('pficha-nombre').textContent, 'Ana');
+    assert.equal(doc.getElementById('pficha-sub').textContent, 'Préstamos · 1 encargo · Le debo');
+    const cuerpo = doc.getElementById('pficha-body');
+    assert.ok(cuerpo.querySelector('.pe-card-amber'), 'sección Préstamos');
+    assert.ok(cuerpo.querySelector('.pe-card-azul'), 'sección Encargos');
+    assert.ok(cuerpo.querySelector('.pe-card-rojo'), 'sección Le debo');
+    assert.match(cuerpo.textContent, /Saldo neto/);
+  });
+  test('perfil: sin saldo neto si solo hay una relación con saldo, y estado vacío si no hay relaciones', () => {
+    const app = montar(estado());
+    app.abrirPerfilPersona('beto');
+    assert.ok(app.document.getElementById('pficha-body').querySelector('.pe-card-spotify'));
+    assert.doesNotMatch(app.document.getElementById('pficha-body').textContent, /Saldo neto/);
+    app.abrirPerfilPersona('sola');
+    assert.equal(app.document.getElementById('pficha-sub').textContent, 'Sin actividad registrada');
+  });
+  test('perfil: un módulo nuevo registrado como relación aparece con la sección genérica, sin tocar personas.js', () => {
+    const app = montar(estado());
+    app.S.tandas = [{ id: 't1', personaId: 'sola', monto: 40 }];
+    app.Personas.registrarRelacion({ id: 'tandas', etiqueta: 'Tanda', pantalla: 'tandas', coleccion: d => d.tandas || [], saldo: r => r.monto });
+    app.abrirPerfilPersona('sola');
+    const cuerpo = app.document.getElementById('pficha-body');
+    assert.match(cuerpo.textContent, /Tanda/);
+    assert.match(cuerpo.innerHTML, /personas:irAPantalla/);
+    assert.equal(app.document.getElementById('pficha-sub').textContent, 'Tanda');
+  });
+  test('Spotify en el perfil cuenta los cobros por spotifyId, no solo por nombre', () => {
+    const e = estado();
+    e.spotify.personas[0] = { id: 's1', personaId: 'beto', nombre: 'Beto', monto: 15000, proximoPago: '2026-12-01', pagado: false };
+    e.spotify.historial = [{ tipo: 'cobro', spotifyId: 's1', nombre: 'Nombre viejo', monto: 7000 }, { tipo: 'cobro', spotifyId: 'otro', nombre: 'Beto', monto: 999 }];
+    const app = montar(e);
+    app.abrirPerfilPersona('beto');
+    const t = app.document.getElementById('pficha-body').textContent;
+    assert.match(t, /Total cobrado/);
+    assert.doesNotMatch(t, /999/);
+  });
+});
+
+describe('Búsqueda global: una entrada por persona', () => {
+  const { JSDOM } = require('jsdom');
+  const buscar = (estado, texto) => {
+    // busqueda-global.js es un IIFE que se engancha al DOM al cargar: se evalúa en el mismo contexto, con un DOM real, después del núcleo.
+    const app = loadApp([path.join(RAIZ, 'js/core/core-state.js'), path.join(RAIZ, 'js/core/calc-helpers.js')]);
+    const ventana = new JSDOM('<!doctype html><body><div id="busqueda-overlay"></div><input id="busqueda-input"><div id="busqueda-resultados"></div><button id="btn-buscar-global"></button><button id="btn-cerrar-busqueda"></button></body>').window;
+    app.document = ventana.document;
+    require('node:vm').runInContext(require('node:fs').readFileSync(path.join(RAIZ, 'js/core/busqueda-global.js'), 'utf8'), app);
+    Object.assign(app.S, plano(estado));
+    const input = ventana.document.getElementById('busqueda-input');
+    input.value = texto;
+    input.dispatchEvent(new ventana.Event('input'));
+    return plano(app._busquedaResultados || []);
+  };
+  const estado = () => ({
+    personas: [P('ana', 'Ana María', { alias: 'ani' }), P('beto', 'Beto')],
+    deudores: [{ id: 'd1', personaId: 'ana', nombre: 'Ana María', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 100, nota: 'almuerzo' }] }],
+    misDeudas: [{ id: 'm1', personaId: 'ana', nombre: 'Ana María', color: '#60b0f0', movimientos: [] }],
+    encargos: [{ id: 'e1', personaId: 'ana', nombre: 'Ana María', nota: 'Regalo mamá', saldoInicial: 5000, movimientos: [] }],
+    spotify: { personas: [{ id: 's1', personaId: 'ana', nombre: 'Ana María' }], historial: [] },
+  });
+
+  test('buscar por nombre devuelve UNA entrada (la persona), con sus relaciones, y no una por módulo', () => {
+    const r = buscar(estado(), 'ana');
+    assert.deepEqual(r.map(x => x.tipo), ['Persona']);
+    assert.match(r[0].meta, /Préstamo · Encargo · Spotify · Le debo/);
+    assert.equal(r[0].navTipo, 'persona');
+  });
+  test('el alias también encuentra a la persona', () => {
+    assert.deepEqual(buscar(estado(), 'ani').map(x => x.tipo), ['Persona']);
+  });
+  test('lo propio de cada módulo se sigue encontrando, con el nombre de la persona y el saldo real del encargo', () => {
+    const e = buscar(estado(), 'regalo');
+    assert.equal(e.length, 1);
+    assert.equal(e[0].tipo, 'Encargo');
+    assert.match(e[0].meta, /^Ana María · /);
+    assert.match(e[0].meta, /5/, 'el saldo viene de encargoSaldo, no de un campo inexistente');
+    const m = buscar(estado(), 'almuerzo');
+    assert.equal(m[0].tipo, 'Mov. · Ana María');
   });
 });
 
@@ -232,29 +354,22 @@ describe('Personas: cableado en la app', () => {
   });
 });
 
-describe('Pantalla Personas: nadie queda fuera', () => {
+describe('Pantalla Personas', () => {
   const { JSDOM } = require('jsdom');
   const f = (...p) => path.join(RAIZ, ...p);
-  // El caso que el md documentó con un respaldo de cuatro casos: encargo sin personaId, integrante de Spotify sin personaId,
-  // deudor cuyo personaId apunta a una persona borrada, y un «yo debo» sin vínculo.
-  test('encargos, Spotify, vínculos rotos y «yo debo» sin vincular aparecen, una fila por persona, y se reparan', () => {
+  test('una fila por persona, con la gente de todos los módulos', () => {
     const app = loadApp([f('js/core/html-tag.js'), f('js/core/events.js'), f('js/core/core-state.js'), f('js/core/calc-helpers.js'), f('js/modules/personas.js')], { permissive: true });
     app.document = new JSDOM('<!doctype html><body><div id="screen-personas"></div><div id="lista-personas-body"></div><div id="lista-personas-empty"></div><span id="personas-lista-conteo"></span></body>').window.document;
     Object.assign(app.S, plano({
-      personas: [P('p1', 'Ana')],
-      encargos: [{ id: 'e1', nombre: 'Beto', movimientos: [] }],
-      spotify: { personas: [{ id: 's1', nombre: 'Carla' }], historial: [] },
-      deudores: [{ id: 'd1', personaId: 'borrada', nombre: 'Dani', color: '#60b0f0', movimientos: [] }],
-      misDeudas: [{ id: 'm1', nombre: 'Ana', color: '#60b0f0', movimientos: [] }],
+      personas: [P('p1', 'Ana'), P('p2', 'Beto'), P('p3', 'Carla')],
+      encargos: [{ id: 'e1', personaId: 'p2', nombre: 'Beto', movimientos: [] }],
+      spotify: { personas: [{ id: 's1', personaId: 'p3', nombre: 'Carla' }], historial: [] },
+      misDeudas: [{ id: 'm1', personaId: 'p1', nombre: 'Ana', color: '#60b0f0', movimientos: [] }],
     }));
-    app.save = () => { app._guardado = true; };
     app._pintarResumenPersonas = () => {};
     app._sincronizarFichaPersonas = () => {};
     app._renderListaPersonas();
     const nombres = [...app.document.querySelectorAll('.pe-nombre')].map(e => e.textContent).sort();
-    assert.deepEqual(nombres, ['Ana', 'Beto', 'Carla', 'Dani']);
-    assert.equal(app._guardado, true, 'lo reparado se guarda');
-    assert.deepEqual(plano(app.Personas.verificar()), []);
-    assert.equal(app.S.misDeudas[0].personaId, 'p1', '«yo debo» de Ana se une a la Ana existente, no crea otra');
+    assert.deepEqual(nombres, ['Ana', 'Beto', 'Carla']);
   });
 });

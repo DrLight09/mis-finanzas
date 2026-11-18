@@ -50,7 +50,7 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 | `periodo.js` | clásico | Definición única de "cuánto entró y salió en un mes" (`Periodo`): ingresos, gastos, rendimientos y balance, para Inicio, Análisis, Wrapped y el cierre de mes. |
 | `nu-calc.js` | clásico | Cálculo puro de Nu: intereses de cajitas por tramos de tasa EA y CDTs (`calcC`, `calcCDT`, `nuTotal`). Sin DOM. |
 | `movimientos.js` | clásico | `abrirDetalleMovimiento()`/`eliminarMovimiento()` — detalle y borrado de cualquier movimiento desde el feed general o el historial de una cuenta; transversal, no pertenece a un solo dominio. |
-| `busqueda-global.js` | clásico | Buscador global sobre gastos, deudores, cajitas, cuentas, encargos, personas y movimientos — transversal por naturaleza, no pertenece a un módulo. |
+| `busqueda-global.js` | clásico | Buscador global sobre gastos, cajitas, cuentas, notas de encargos, movimientos y personas (una sola entrada por persona; deudores, «yo debo» e integrantes de Spotify se encuentran por el nombre de la persona) — transversal por naturaleza, no pertenece a un módulo. |
 | `lazy-loader.js` | clásico | Motor de carga bajo demanda por pantalla (`Loader.ensure()`): descarga el JS de una pantalla recién cuando el usuario entra a ella, en vez de cargar todo de entrada. |
 
 **Sheets, navegación y UI genérica**

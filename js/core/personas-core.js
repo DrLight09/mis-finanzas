@@ -6,10 +6,9 @@
    Vive en el núcleo (carga de entrada, justo después de estado.js) por la misma razón que `Deudas` en calc-helpers.js: la integridad,
    el borrado y la fusión de personas tienen que ver TODAS las relaciones aunque el módulo dueño (Encargos, Spotify, Préstamos) sea lazy
    y todavía no haya cargado. Por eso este archivo declara aquí la mitad de DATOS de cada relación (dónde están sus registros, si es
-   única por persona, qué campos copia). La mitad de PANTALLA (resumen, «ver en el módulo») la registrará cada módulo al cargar.
+   única por persona, qué campos copia). Con eso la lista, el perfil y la posición neta de Personas salen de las relaciones, no de código escrito por módulo.
 
-   Todo recibe opcionalmente un objeto de datos `d` (por defecto el S global): así la migración y la importación de un backup lo usan
-   sobre datos crudos, antes de que sean el S de la app.
+   Todo recibe opcionalmente un objeto de datos `d` (por defecto el S global), para poder comprobar un estado aislado.
 
    Invariantes (lo que verificar() comprueba):
      I1. Todo registro de una relación tiene `personaId` y esa persona existe en S.personas.
@@ -17,40 +16,83 @@
      I3. Los ids de S.personas son únicos y los nombres también (ignorando mayúsculas, tildes y espacios sobrantes).
      I4. Como máximo un registro vivo por (persona, relación) en las relaciones `unica`.
 
-   Qué NO hace todavía (ver docs/personas-modelo-unico.md): archivar/eliminar/fusionar desde la interfaz, perfil y lista genéricos sobre
-   relaciones, quitar las copias de nombre y color, resumen/saldo por relación.
+   Qué NO hace todavía (ver docs/personas-modelo-unico.md): archivar/eliminar/fusionar, quitar las copias de nombre y color.
    ═══════════════════════════════════════════════════════════════ */
 
 const Personas = (() => {
   const COLOR_DEFECTO = '#60b0f0'; // el primero de PERSONA_COLORES (personas.js carga después y no se puede leer desde acá)
-  const SIN_NOMBRE = 'Sin nombre';
 
   // Nombre comparable: sin tildes, sin mayúsculas, sin espacios de más.
   const norm = s => String(s == null ? '' : s).normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim().toLowerCase();
   const _d = d => d || S;
   const _arr = x => (Array.isArray(x) ? x : []);
 
-  /* ── Relaciones (mitad de datos) ────────────────────────────
-     id        identificador estable de la relación.
-     etiqueta  cómo se llama en pantalla.
-     coleccion(d) → arreglo VIVO con los registros (todos con `personaId`). Debe tolerar que la colección no exista todavía.
-     unica     true = a lo más un registro por persona (I4).
-     copia     {nombre?, color?}: campos que el registro todavía guarda copiados de la persona. Mientras existan, editar() y
-               reconciliar() los mantienen iguales; al quitar la copia de un módulo se borra aquí su bandera y ya no hay nada que sincronizar. */
+  /* ── Relaciones ───────────────────────────────────────────
+     Cada módulo con gente se declara como relación. Campos:
+       id         identificador estable.
+       etiqueta   cómo se llama en pantalla.
+       coleccion(d) → arreglo VIVO con los registros (todos con `personaId`). Debe tolerar que la colección no exista todavía.
+       unica      true = a lo más un registro por persona (I4).
+       copia      {nombre?, color?}: campos que el registro todavía guarda copiados de la persona. Mientras existan, editar() los mantiene
+                  iguales y verificar() los vigila; al quitar la copia de un módulo se borra su bandera.
+       pantalla   pantalla del módulo (para «ver en el módulo»).
+       saldo(r)   aporte del registro a la posición neta con la persona: positivo = te deben, negativo = le debes. Sin `saldo` no aporta.
+       resumen(registros, saldo) → { tag, cab, corto: {texto, tono}, pc }: lo que muestran la lista y la cabecera del perfil.
+                  tag = etiqueta corta; cab = texto de la cabecera del perfil; corto = línea de la lista en celular (tono: 'ambar' |
+                  'rojo' | 'ok' | ''); pc = texto de la lista en PC ('' si no dice nada).
+     Todo esto vive en el núcleo (no en el módulo lazy) para que lista, perfil, integridad y posición neta funcionen aunque el módulo no
+     haya cargado. Un módulo puede volver a registrar su `id` para añadir o cambiar campos: se MEZCLA con lo declarado aquí. */
   const _relaciones = [];
 
   function registrarRelacion(rel) {
-    if (!rel || typeof rel.id !== 'string' || typeof rel.coleccion !== 'function') throw new Error('Personas.registrarRelacion: se necesita { id, coleccion(d) }');
-    const nueva = { etiqueta: rel.id, unica: false, copia: {}, ...rel };
+    if (!rel || typeof rel.id !== 'string') throw new Error('Personas.registrarRelacion: se necesita { id, coleccion(d) }');
     const i = _relaciones.findIndex(r => r.id === rel.id);
+    const nueva = i >= 0 ? { ..._relaciones[i], ...rel } : { etiqueta: rel.id, unica: false, copia: {}, ...rel };
+    if (typeof nueva.coleccion !== 'function') throw new Error('Personas.registrarRelacion: se necesita { id, coleccion(d) }');
     if (i >= 0) _relaciones[i] = nueva; else _relaciones.push(nueva);
     return nueva;
   }
 
-  registrarRelacion({ id: 'me-deben', etiqueta: 'Me debe', unica: true, copia: { nombre: true, color: true }, coleccion: d => _arr(d.deudores) });
-  registrarRelacion({ id: 'yo-debo', etiqueta: 'Yo debo', unica: true, copia: { nombre: true, color: true }, coleccion: d => _arr(d.misDeudas) });
-  registrarRelacion({ id: 'encargos', etiqueta: 'Encargo', unica: false, copia: { nombre: true }, coleccion: d => _arr(d.encargos) });
-  registrarRelacion({ id: 'spotify', etiqueta: 'Spotify', unica: true, copia: { nombre: true }, coleccion: d => _arr(d.spotify && d.spotify.personas) });
+  const _plural = (n, uno, varios) => n + ' ' + (n === 1 ? uno : varios);
+  const _fmt = n => (typeof fmt === 'function' ? fmt(n) : String(n));
+  const _suma = (regs, f) => regs.reduce((a, r) => a + (Number(f(r)) || 0), 0);
+  // Los cálculos viven en calc-helpers.js (de entrada); el guard solo evita un ReferenceError si alguien carga este archivo suelto.
+  const _saldoDeudor = r => (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(r) : 0);
+  const _saldoMiDeuda = r => (typeof getMiDeudaSaldo === 'function' ? getMiDeudaSaldo(r) : 0);
+
+  // El orden de registro es el orden en que el perfil muestra las secciones.
+  registrarRelacion({
+    id: 'me-deben', etiqueta: 'Me debe', unica: true, copia: { nombre: true, color: true }, pantalla: 'prestamos',
+    coleccion: d => _arr(d.deudores),
+    saldo: _saldoDeudor,
+    resumen: (regs, saldo) => ({
+      tag: 'Préstamo', cab: 'Préstamos',
+      corto: saldo !== 0 ? { texto: _fmt(saldo) + ' pendiente', tono: 'ambar' } : { texto: 'Al día', tono: 'ok' },
+      pc: saldo > 0 ? 'Me debe' : '',
+    }),
+  });
+  registrarRelacion({
+    id: 'encargos', etiqueta: 'Encargo', unica: false, copia: { nombre: true }, pantalla: 'encargos',
+    coleccion: d => _arr(d.encargos),
+    // Sin `saldo`: el saldo de un encargo NO entra en la posición neta. Es plata suya que solo administras, no una deuda a tu favor ni en
+    // tu contra (mismo criterio que Préstamos e Inicio).
+    resumen: regs => { const t = _plural(regs.length, 'encargo', 'encargos'); return { tag: 'Encargo', cab: t, corto: { texto: t, tono: '' }, pc: t }; },
+  });
+  registrarRelacion({
+    id: 'spotify', etiqueta: 'Spotify', unica: true, copia: { nombre: true }, pantalla: 'spotify',
+    coleccion: d => _arr(d.spotify && d.spotify.personas),
+    resumen: () => ({ tag: 'Spotify', cab: 'Spotify', corto: { texto: 'Spotify', tono: '' }, pc: 'Spotify' }),
+  });
+  registrarRelacion({
+    id: 'yo-debo', etiqueta: 'Yo debo', unica: true, copia: { nombre: true, color: true }, pantalla: 'prestamos',
+    coleccion: d => _arr(d.misDeudas),
+    saldo: r => -_saldoMiDeuda(r),
+    resumen: (regs, saldo) => ({
+      tag: 'Le debo', cab: 'Le debo',
+      corto: saldo < 0 ? { texto: 'Le debes ' + _fmt(-saldo), tono: 'rojo' } : { texto: 'Deuda saldada', tono: 'ok' },
+      pc: saldo < 0 ? 'Yo le debo' : '',
+    }),
+  });
 
   /* ── Lectura ──────────────────────────────────────────────── */
   const lista = d => _arr(_d(d).personas);
@@ -58,7 +100,29 @@ const Personas = (() => {
   const nombre = (id, d) => { const p = obtener(id, d); return p ? p.nombre : '—'; };
   const color = (id, d) => { const p = obtener(id, d); return p ? (p.color || COLOR_DEFECTO) : COLOR_DEFECTO; };
   const buscarPorNombre = (n, d) => { const k = norm(n); return k ? lista(d).find(p => p && norm(p.nombre) === k) : undefined; };
-  const relaciones = () => _relaciones.slice();
+  const declaradas = () => _relaciones.slice();
+
+  // Registros de una relación que pertenecen a una persona.
+  const registros = (personaId, relacionId, d) => {
+    const rel = _relaciones.find(r => r.id === relacionId);
+    return rel && personaId ? rel.coleccion(_d(d)).filter(r => r && r.personaId === personaId) : [];
+  };
+
+  // Relaciones vivas de una persona (las que tienen al menos un registro), en el orden de registro, ya con su saldo y su resumen.
+  //   [{ id, etiqueta, pantalla, registros, saldo, resumen }]   (saldo: positivo = te deben; 0 si la relación no tiene saldo)
+  function relaciones(personaId, d) {
+    const est = _d(d), out = [];
+    _relaciones.forEach(rel => {
+      const regs = rel.coleccion(est).filter(r => r && r.personaId === personaId);
+      if (!regs.length) return;
+      const saldo = typeof rel.saldo === 'function' ? _suma(regs, rel.saldo) : 0;
+      out.push({ id: rel.id, etiqueta: rel.etiqueta, pantalla: rel.pantalla, tieneSaldo: typeof rel.saldo === 'function', registros: regs, saldo, resumen: typeof rel.resumen === 'function' ? rel.resumen(regs, saldo) : null });
+    });
+    return out;
+  }
+
+  // Lo que te debe (Préstamos) menos lo que le debes (Yo debo). Positivo = te debe; negativo = le debes. Los encargos no entran.
+  const posicionNeta = (personaId, d) => relaciones(personaId, d).reduce((a, r) => a + r.saldo, 0);
 
   /* ── Escritura ────────────────────────────────────────────── */
   // Crea una persona. Si ya hay una con el mismo nombre (sin mirar mayúsculas ni tildes) NO crea otra: devuelve la existente con
@@ -148,69 +212,6 @@ const Personas = (() => {
     return out;
   }
 
-  // Repara por nombre lo que se pueda reparar sin adivinar (migración 13, importación, carga). Idempotente.
-  //   1. Quita personas con id repetido o inválido.
-  //   2. Une las personas con el MISMO nombre normalizado (se conserva la más antigua) y reasigna sus relaciones.
-  //   3. Vincula cada registro sin `personaId` válido: busca una persona con su nombre; si no hay, la crea (con el color del registro).
-  //   4. Iguala las copias de nombre/color a las de su persona.
-  // Lo que no se puede decidir solo (dos registros de una relación `unica` para la misma persona) NO se toca: queda en `revision`.
-  function reconciliar(d) {
-    const est = _d(d), cambios = [];
-    if (!Array.isArray(est.personas)) est.personas = [];
-
-    // 1. ids únicos y entradas válidas
-    const vistosId = new Set();
-    est.personas = est.personas.filter(p => {
-      if (!p || typeof p !== 'object' || !p.id || vistosId.has(p.id)) { cambios.push({ tipo: 'persona-descartada', id: p && p.id }); return false; }
-      vistosId.add(p.id);
-      return true;
-    });
-
-    // 2. fusionar nombres iguales (la más antigua gana; a igual fecha, la que estaba primero)
-    const porNombre = new Map();
-    est.personas.forEach((p, i) => {
-      const k = norm(p.nombre);
-      if (!porNombre.has(k)) { porNombre.set(k, []); }
-      porNombre.get(k).push({ p, i });
-    });
-    const reemplazo = new Map();
-    porNombre.forEach(grupo => {
-      if (grupo.length < 2) return;
-      grupo.sort((a, b) => String(a.p.creadoEn || '9999').localeCompare(String(b.p.creadoEn || '9999')) || a.i - b.i);
-      const ganadora = grupo[0].p;
-      grupo.slice(1).forEach(({ p }) => {
-        reemplazo.set(p.id, ganadora.id);
-        ['alias', 'notas'].forEach(campo => { if (!ganadora[campo] && p[campo]) ganadora[campo] = p[campo]; });
-        cambios.push({ tipo: 'fusion', conservada: ganadora.id, eliminada: p.id, nombre: ganadora.nombre });
-      });
-    });
-    if (reemplazo.size) {
-      est.personas = est.personas.filter(p => !reemplazo.has(p.id));
-      _relaciones.forEach(rel => rel.coleccion(est).forEach(r => { if (r && reemplazo.has(r.personaId)) r.personaId = reemplazo.get(r.personaId); }));
-    }
-
-    // 3. vincular huérfanos
-    _relaciones.forEach(rel => rel.coleccion(est).forEach(r => {
-      if (!r || typeof r !== 'object') return;
-      if (r.personaId && obtener(r.personaId, est)) return;
-      const n = String(r.nombre || '').replace(/\s+/g, ' ').trim() || SIN_NOMBRE;
-      let p = buscarPorNombre(n, est);
-      if (!p) {
-        p = { id: uid(), nombre: n, color: r.color || COLOR_DEFECTO, creadoEn: hoy() };
-        est.personas.push(p);
-        cambios.push({ tipo: 'persona-creada', id: p.id, nombre: n, relacion: rel.id });
-      }
-      cambios.push({ tipo: 'vinculo', relacion: rel.id, id: r.id, personaId: p.id });
-      r.personaId = p.id;
-    }));
-
-    // 4. copias iguales a su persona
-    est.personas.forEach(p => { if (_sincronizarCopias(est, p)) cambios.push({ tipo: 'copia-igualada', personaId: p.id }); });
-
-    const revision = verificar(est).filter(v => v.regla === 'I4');
-    return { cambios, revision };
-  }
-
-  return { COLOR_DEFECTO, norm, registrarRelacion, relaciones, lista, obtener, nombre, color, buscarPorNombre, crear, editar, huerfanos, verificar, reconciliar };
+  return { COLOR_DEFECTO, norm, registrarRelacion, declaradas, relaciones, registros, posicionNeta, lista, obtener, nombre, color, buscarPorNombre, crear, editar, huerfanos, verificar };
 })();
 if (typeof window !== 'undefined') window.Personas = Personas; // los tests lo leen como ctx.Personas

@@ -76,13 +76,6 @@ function ahorroAplicarTasaEscrita(cuentaId,texto){
   return'cambio';
 }
 
-// La mejor tasa EA entre las cuentas de ahorro activas con tasa configurada (null si no hay ninguna): sirve para comparar contra lo que
-// cuesta una deuda.
-function mejorTasaAhorro(){
-  const tasas=cuentasAhorro({soloActivas:true}).map(c=>getTasaCuenta(c.id)).filter(t=>t>0);
-  return tasas.length?Math.max(...tasas):null;
-}
-
 // Historial de tasas de una cuenta, ordenado por fecha ([] si no tiene).
 function _historialTasas(cuentaId){
   const c=getCuenta(cuentaId);

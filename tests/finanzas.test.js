@@ -1,5 +1,5 @@
 'use strict';
-// tests/finanzas.test.js — Finanzas: puntaje de salud, reglas de alerta, plan de deudas, cobros de ingresos y escenarios de punta a punta.
+// tests/finanzas.test.js — Finanzas: puntaje de salud, reglas de alerta, costo de la deuda, cobros de ingresos y escenarios de punta a punta.
 // Un archivo por sección de la app. Cada bloque `describe` es lo que antes era un archivo suelto (escenarios-financieros.test.js, salud.test.js, reglas.test.js, plan-deudas.test.js, cobros.test.js).
 // Corre con:  node --test tests/finanzas.test.js   (o todo: npm test)
 const { describe: _describe } = require('node:test');
@@ -977,31 +977,6 @@ test('P6. la tarjeta de Análisis avisa lo sin explicar y, si todo cuadra, lo di
   assert.equal(pintar([hp(m + '-28', 5)]), '', 'sin historial previo no pinta nada');
 });
 
-/* ================= P2/P3: plan de salida de deudas en Inicio ================= */
-test('P3. el plan de deudas lista tus deudas propias (no las ajenas), con tasa opcional y el ritmo de pago', () => {
-  const m1 = mesHace(1), m2 = mesHace(2), m3 = mesHace(3);
-  const ctx = app({
-    cuentas: cuentas(0),
-    ingresosFijos: ingresosEn(2000000, [m1, m2, m3]), ...gastosEn(1500000, [m1, m2, m3]),
-    misDeudas: yoDebo(600000),
-    tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 1000000, cupo: 5000000, tasaEA: 28 }],
-  });
-  const d = ctx.planDeudasDatos();
-  assert.deepEqual(Array.from(d.plan.orden, x => x.nombre), ['Visa', 'Fulano'], 'avalancha por defecto con una tasa: la tarjeta primero');
-  assert.equal(d.plan.saldoTotal, 1600000);
-  assert.equal(Math.round(d.balance), 500000, 'te sobran 500.000 al mes');
-  assert.equal(d.plan.baja, true);
-  assert.ok(d.plan.mesesLibre >= 4 && d.plan.mesesLibre <= 5);
-  assert.ok(Math.abs(d.plan.costoMensualTotal - 20785) < 2, '28 % E.A. sobre 1.000.000');
-});
-
-test('P3. con balance negativo la deuda «no baja» y se dice cuánto liberar; sin deudas propias no hay plan', () => {
-  const m1 = mesHace(1);
-  const c = app({ ingresosFijos: ingresosEn(1000000, [m1]), ...gastosEn(1500000, [m1]), misDeudas: yoDebo(600000) }).planDeudasDatos();
-  assert.equal(c.plan.baja, false); assert.ok(c.plan.necesitasLiberar > 0);
-  assert.equal(app({ cuentas: cuentas(1000) }).planDeudasDatos(), null);
-});
-
 test('B1. calcLiquidez expone neta (lo ajeno de la tarjeta lo pagan) y netaPeorCaso (toda la deuda de tarjeta es tuya) + saldo a favor aparte', () => {
   const ctx = app({ cuentas: cuentas(1000000), tarjetasCredito: [{ id: 't', deuda: 400000, cupo: 1000000 }, { id: 'u', deuda: -50000, cupo: 1000000 }] });
   const l = ctx.calcLiquidez();
@@ -1045,11 +1020,10 @@ test('Saldo inicial gastado sin ingresos registrados: estado neutro, no «Establ
   assert.ok(r.tips.some(t => t.includes('Registra tus ingresos y gastos')));
 });
 
-test('Un mes con gastos y sin ingresos anotados no es «déficit»: ni racha, ni flujo, ni plan de deudas', () => {
+test('Un mes con gastos y sin ingresos anotados no es «déficit»: ni racha, ni flujo', () => {
   const ctx = app({ cuentas: cuentas(1000000), ...gastosEn(1500000, ultimosN(3)) });
   assert.equal(ctx.Periodo.rachaDeficit(mesAct, 6).meses, 0);
   assert.deepEqual(Array.from(ctx._situacion().balances), []);
-  assert.equal(ctx._balancePromedioReciente(), null);
   const f = ctx.Periodo.resumenFlujo(6, mesAct);
   assert.equal(f.deficit, 0); assert.equal(f.conDatos, 0);
 });
@@ -1215,14 +1189,6 @@ test('P-presup. ritmoPresupuesto avisa solo si vas ≥15 puntos adelantado, desd
   assert.equal(Periodo.ritmoPresupuesto(1200000, 1000000, '2026-11-10').adelantado, false, 'ya se pasó: lo dice el presupuesto');
 });
 
-test('P3. el plan de deudas compara la tasa de la tarjeta con lo que rinde la cajita', () => {
-  const ctx = app({ cuentas: cuentas(100000).map(c => c.id === 'nu' ? { ...c, tasaEA: 9 } : c), tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 500000, cupo: 1000000, tasaEA: 28 }] });
-  const el = { innerHTML: '' };
-  ctx.document.getElementById = id => id === 'plan-deudas-card' ? el : null;
-  ctx.renderPlanDeudas();
-  assert.match(el.innerHTML, /Tu cajita rinde 9 % y «Visa» cuesta 28 %/);
-});
-
 test('B5. un ingreso marcado extraordinario cuenta en el balance real pero no en el balanceRecurrente', () => {
   const mes = mesAct;
   const ctx = app({ cuentas: cuentas(0), movimientos: [
@@ -1305,12 +1271,11 @@ test('presupuestos: gastoPromedioPorCategoria promedia meses previos con gasto y
   assert.equal(r.cats.Moto, undefined, 'una compra grande no es lo que sueles gastar');
 });
 
-test('P2. la tasa E.A. de una deuda «Yo debo» entra al costo de la deuda y al plan', () => {
+test('P2. la tasa E.A. de una deuda «Yo debo» entra al costo de la deuda', () => {
   const ctx = app({ cuentas: cuentas(0), misDeudas: [{ id: 'd1', nombre: 'Fulano', tasaEA: 24, movimientos: [{ tipo: 'recibido', monto: 1000000 }] }] });
   const d = ctx._deudasPropias();
   assert.equal(d.length, 1);
   assert.equal(d[0].tasaEA, 24);
-  assert.ok(ctx.planDeudasDatos().plan.costoMensualTotal > 0);
 });
 
 test('A2. opcionesCuenta: una sola función para «¿de qué cuenta?» con la configuración declarativa de cada pantalla', () => {
@@ -1355,21 +1320,6 @@ test('A3-2. Reversibles: un tipo nuevo se protege por antigüedad sin tocar los 
   assert.equal(dlg, 1, 'solo el aviso de bloqueo');
 });
 
-test('Apartar $X: el plan sugiere pagar ya lo que sobra sobre la reserva, solo con tasa y gasto típico; sin ellos no aparece', () => {
-  const mk = (extra = {}) => {
-    const ctx = app({ cuentas: cuentas(5000000), tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 2000000, cupo: 9000000, tasaEA: 28 }],
-      ...gastosEn(500000, ultimosN(3)), ...extra });
-    const el = { innerHTML: '' };
-    ctx.document.getElementById = id => id === 'plan-deudas-card' ? el : null;
-    ctx.renderPlanDeudas();
-    return el.innerHTML;
-  };
-  assert.match(mk(), /podrías (saldar|pagar ya) .*«Visa»/);
-  assert.match(mk(), /3 meses de gastos de reserva/);
-  assert.doesNotMatch(mk({ cuentas: cuentas(1000000) }), /podrías/, 'todo es reserva: no se sugiere');
-  assert.doesNotMatch(mk({ tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 2000000, cupo: 9000000 }] }), /podrías/, 'sin tasa');
-  assert.doesNotMatch(mk({ gastosFijos: [], pagosGastosFijos: {} }), /podrías/, 'sin gasto típico no hay reserva medible');
-});
 });
 
 _describe('salud', () => {
@@ -1707,84 +1657,16 @@ test('PUSH de gastos fijos: calcula desde S (sin api), ignora los pagados y los 
 });
 
 _describe('plan-deudas', () => {
-// tests/plan-deudas.test.js — js/core/plan-deudas.js (P2 costo de la deuda, P3 plan de salida). Node puro.
+// tests/plan-deudas.test.js — js/core/plan-deudas.js (P2 costo de la deuda: tasa mensual y costo). Node puro.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const P = require('../js/core/plan-deudas.js');
-
-const tc = (nombre, saldo, tasaEA) => ({ id: nombre, nombre, tipo: 'tarjeta', saldo, tasaEA });
-const per = (nombre, saldo) => ({ id: nombre, nombre, tipo: 'persona', saldo });
 
 test('tasaMensual: E.A. → mensual con (1+ea)^(1/12) − 1; sin tasa no hay costo', () => {
   assert.ok(Math.abs(P.tasaMensual(28) - 0.02078) < 0.00005, '28 % E.A. ≈ 2,08 % mensual');
   assert.equal(P.tasaMensual(0), 0); assert.equal(P.tasaMensual(null), 0); assert.equal(P.tasaMensual(undefined), 0);
   assert.equal(Math.round(P.costoMensual(1000000, 28)), 20785);
   assert.equal(P.costoMensual(1000000, null), 0); assert.equal(P.costoMensual(-5, 28), 0);
-});
-
-test('ordenar: avalancha = la más cara primero (sin tasa al final); bola de nieve = la más pequeña primero; ignora saldos 0', () => {
-  const d = [tc('A', 500000, 20), tc('B', 2000000, 30), per('Luis', 100000), tc('C', 0, 40), tc('D', 300000, 20)];
-  assert.deepEqual(P.ordenar(d, 'avalancha').map(x => x.nombre), ['B', 'D', 'A', 'Luis']);
-  assert.deepEqual(P.ordenar(d, 'bola').map(x => x.nombre), ['Luis', 'D', 'A', 'B']);
-  assert.deepEqual(P.ordenar(d).map(x => x.nombre), ['B', 'D', 'A', 'Luis'], 'por defecto avalancha');
-  assert.deepEqual(P.ordenar([], 'bola'), []);
-});
-
-test('construir: sin deudas → libre ya; con balance positivo → meses hasta quedar libre; el orden afecta el costo, no el sentido', () => {
-  const vacio = P.construir({ deudas: [], balancePromedio: 100 });
-  assert.equal(vacio.mesesLibre, 0); assert.equal(vacio.baja, true);
-  const r = P.construir({ deudas: [per('Luis', 1000000)], balancePromedio: 250000 });
-  assert.equal(r.mesesLibre, 4); assert.equal(r.baja, true); assert.equal(r.costoMensualTotal, 0);
-  const c = P.construir({ deudas: [tc('T', 1000000, 28)], balancePromedio: 250000 });
-  assert.equal(c.mesesLibre, 5, 'con intereses del 2,08 % mensual cuesta un mes más');
-  assert.equal(Math.round(c.costoMensualTotal), 20785);
-});
-
-test('construir: el sobrante que libera una deuda pasa a la siguiente (cascada)', () => {
-  const r = P.construir({ deudas: [per('A', 300000), per('B', 700000)], balancePromedio: 400000, estrategia: 'bola' });
-  assert.deepEqual(r.orden.map(d => d.nombre), ['A', 'B']);
-  assert.equal(r.mesesLibre, 3, '1.000.000 con 400.000 al mes = 2,5 → 3 meses (el sobrante del mes 1 ya ataca la deuda B)');
-});
-
-test('construir: balance ≤ 0 o menor que los intereses → «no baja» y cuánto habría que liberar al mes', () => {
-  const a = P.construir({ deudas: [tc('T', 2000000, 30)], balancePromedio: -50000 });
-  assert.equal(a.baja, false); assert.equal(a.mesesLibre, null); assert.equal(a.pagoMensual, 0);
-  assert.ok(a.necesitasLiberar > a.costoMensualTotal, 'la cuota cubre al menos los intereses');
-  assert.equal(a.necesitasLiberar % 1000, 0, 'redondeado a $1.000');
-  const b = P.construir({ deudas: [tc('T', 10000000, 30)], balancePromedio: 10000 }); // paga menos de lo que le cobran de interés
-  assert.equal(b.baja, false);
-  const c = P.construir({ deudas: [per('P', 1200000)], balancePromedio: 0, metaMeses: 12 });
-  assert.equal(c.necesitasLiberar, 100000, 'sin tasa: saldo ÷ meta');
-});
-
-test('avalancha cuesta menos que bola de nieve cuando hay tasas distintas (el motivo de ofrecer los dos criterios)', () => {
-  const deudas = [tc('Barata', 500000, 10), tc('Cara', 3000000, 35)];
-  const av = P.construir({ deudas, balancePromedio: 400000, estrategia: 'avalancha' });
-  const bo = P.construir({ deudas, balancePromedio: 400000, estrategia: 'bola' });
-  assert.equal(av.orden[0].nombre, 'Cara'); assert.equal(bo.orden[0].nombre, 'Barata');
-  assert.ok(av.mesesLibre <= bo.mesesLibre);
-});
-
-test('pagarConviene: «tu cajita rinde 9 % y tu tarjeta cuesta 28 %»', () => {
-  assert.deepEqual(P.pagarConviene(28, 9), { conviene: true, diferenciaPts: 19 });
-  assert.equal(P.pagarConviene(8, 10).conviene, false);
-  assert.equal(P.pagarConviene(null, 10), null); assert.equal(P.pagarConviene(28, undefined), null);
-});
-
-test('pagoPosible («Apartar $X»): respeta la reserva, exige tasa y que la deuda cueste más de lo que rinde la plata', () => {
-  const P = require('../js/core/plan-deudas.js');
-  const base = { deuda: { saldo: 2000000, tasaEA: 28 }, disponible: 3000000, gastoTipico: 500000, mesesReserva: 3 };
-  const r = P.pagoPosible(base);
-  assert.equal(r.monto, 1500000, 'disponible 3 M − reserva 1,5 M');
-  assert.equal(r.total, false);
-  assert.ok(r.ahorroMensual > 0);
-  assert.equal(P.pagoPosible({ ...base, disponible: 9000000 }).monto, 2000000, 'no pasa del saldo');
-  assert.equal(P.pagoPosible({ ...base, disponible: 9000000 }).total, true);
-  assert.equal(P.pagoPosible({ ...base, disponible: 1500000 }), null, 'todo es reserva');
-  assert.equal(P.pagoPosible({ ...base, gastoTipico: 0 }), null, 'sin gasto típico no hay reserva medible');
-  assert.equal(P.pagoPosible({ ...base, deuda: { saldo: 2000000 } }), null, 'sin tasa no se sugiere');
-  assert.equal(P.pagoPosible({ ...base, rendimientoEA: 30 }), null, 'la plata rinde más de lo que cuesta la deuda');
-  assert.ok(P.pagoPosible({ ...base, rendimientoEA: 10 }).ahorroMensual < r.ahorroMensual, 'descuenta lo que dejaría de rendir');
 });
 });
 

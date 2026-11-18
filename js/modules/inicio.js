@@ -449,7 +449,7 @@ function renderHealthScore(){
 }
 
 /* ====================================================
-   PLAN DE DEUDAS (P2 + P3) — cálculo en js/core/plan-deudas.js
+   DEUDAS PROPIAS — las usa Análisis para el costo mensual de la deuda (m.costoDeuda → Salud)
 ==================================================== */
 // Deudas PROPIAS: la parte de cada tarjeta que es tuya (no encargos ni plata de otros) y lo que debes a personas. La tasa E.A. es opcional (tarjeta).
 function _deudasPropias(){
@@ -463,65 +463,6 @@ function _deudasPropias(){
   }
   return out;
 }
-// Lo que sobra al mes, en promedio, de los últimos meses completos con ingresos registrados (balance recurrente: sin compras grandes aisladas).
-function _balancePromedioReciente(){
-  const mes = mesActual(), v = [];
-  for(let i = 1; i <= UMBRALES.salud.pilares.flujo.meses; i++){
-    const b = Periodo.balanceDelMes(Periodo.mesDesplazado(mes, -i));
-    if(Periodo.balanceEvaluable(b)) v.push(b.balanceRecurrente); // sin ingresos anotados el mes no se puede juzgar
-  }
-  return v.length ? v.reduce((a, x) => a + x, 0) / v.length : null;
-}
-function planDeudasDatos(){
-  const deudas = _deudasPropias();
-  if(!deudas.length) return null;
-  const conTasa = deudas.some(d => d.tasaEA);
-  const est = S.planDeudasEstrategia === 'bola' || S.planDeudasEstrategia === 'avalancha' ? S.planDeudasEstrategia : (conTasa ? 'avalancha' : 'bola');
-  const balance = _balancePromedioReciente();
-  return { plan: PlanDeudas.construir({ deudas, balancePromedio: balance, estrategia: est, metaMeses: UMBRALES.deudas.metaMeses }), balance, conTasa };
-}
-function renderPlanDeudas(){
-  const el = document.getElementById('plan-deudas-card');
-  if(!el) return;
-  const d = planDeudasDatos();
-  if(!d){ el.innerHTML = ''; return; }
-  const { plan, balance, conTasa } = d;
-  let resumen;
-  if(balance === null) resumen = 'Aún no hay meses completos para calcular cuánto te sobra al mes.';
-  else if(plan.baja) resumen = `A tu ritmo (te sobran ${fmt(balance)} al mes), quedarías libre de deuda en ~${plan.mesesLibre} ${plan.mesesLibre === 1 ? 'mes' : 'meses'}.`;
-  else resumen = `Con tu ritmo actual la deuda no baja. Necesitarías liberar ~${fmt(plan.necesitasLiberar)} al mes para quedar libre en ${plan.meta} meses.`;
-  const costo = plan.costoMensualTotal > 0 ? `<div class="inicio-plan-costo">Tu deuda con tasa te cuesta ≈ ${fmt(plan.costoMensualTotal)} al mes en intereses.</div>` : '';
-  // ¿Conviene pagar con lo ahorrado? Se compara la deuda más cara con lo que rinde tu cuenta de ahorro (si ambas tasas existen).
-  let conviene = '';
-  const masCara = plan.orden.filter(x => x.tasaEA > 0).sort((a, b) => b.tasaEA - a.tasaEA)[0];
-  const rendNu = typeof mejorTasaAhorro === 'function' ? mejorTasaAhorro() : null; // la mejor tasa EA entre tus cuentas de ahorro
-  const pc = masCara && rendNu != null ? PlanDeudas.pagarConviene(masCara.tasaEA, rendNu) : null;
-  if(pc) conviene = `<div class="inicio-plan-costo">${pc.conviene
-    ? `Tu cajita rinde ${escHtml(String(rendNu).replace('.', ','))} % y «${escHtml(masCara.nombre)}» cuesta ${escHtml(String(masCara.tasaEA).replace('.', ','))} %: pagarla con lo ahorrado te sale a favor.`
-    : `Tu cajita rinde ${escHtml(String(rendNu).replace('.', ','))} %, más de lo que cuesta «${escHtml(masCara.nombre)}» (${escHtml(String(masCara.tasaEA).replace('.', ','))} %): no tiene afán de pagarla con lo ahorrado.`}</div>`;
-  // «Apartar $X»: pagar YA una parte de la deuda más cara con plata que tienes, respetando el fondo de emergencia. Usa lo que la app
-  // conoce (cuentas, cajitas y CDT vencidos; la Alcancía nunca cuenta: está oculta). Si el ahorro está en otro lado que la app no ve,
-  // la línea no lo sabe: por eso habla de «con lo que tienes en tus cuentas y cajitas».
-  let apartar = '';
-  if(masCara){
-    const liquidez = calcLiquidez(), gt = Periodo.gastoPromedioPrevio(mesActual(), UMBRALES.salud.mesesReferencia).promedio;
-    const pp = PlanDeudas.pagoPosible({ deuda: masCara, disponible: liquidez.libre + liquidez.cdtsVencidos - liquidez.ajeno, gastoTipico: gt, mesesReserva: UMBRALES.salud.fondoMeses.minimo, rendimientoEA: rendNu });
-    if(pp){
-      const ir = masCara.tipo === 'tarjeta' ? 'tarjetas' : 'prestamos';
-      apartar = `<div class="inicio-plan-apartar"><span>${pp.total ? 'Con lo que tienes en tus cuentas y cajitas podrías saldar' : 'Con lo que tienes en tus cuentas y cajitas podrías pagar ya'} ${fmt(pp.monto)} de «${escHtml(masCara.nombre)}» y seguir con ${UMBRALES.salud.fondoMeses.minimo} meses de gastos de reserva${pp.ahorroMensual > 0 ? ` (ahorrarías ≈ ${fmt(pp.ahorroMensual)} al mes en intereses)` : ''}.</span><button type="button" class="inicio-plan-est" ${Events.attr('inicio:irConsejo', ir)}>Ir a pagar</button></div>`;
-    }
-  }
-  const sinTasa = !conTasa && (S.tarjetasCredito || []).some(t => calcDeudaTcPropiaDeTarjeta(t) > 0) ? '<div class="inicio-plan-nota">Agrega la tasa E.A. en cada tarjeta para ver cuánto te cuesta.</div>' : '';
-  const filas = plan.orden.map((x, i) => `<div class="inicio-plan-fila"><span class="inicio-plan-n">${i + 1}</span><span class="inicio-plan-nom">${escHtml(x.nombre)}</span><span class="inicio-plan-tasa">${x.tasaEA ? escHtml(String(x.tasaEA).replace('.', ',')) + ' % E.A.' : 'sin tasa'}</span><span class="inicio-plan-monto">${fmt(x.saldo)}</span></div>`).join('');
-  const btn = (id, txt) => `<button type="button" class="inicio-plan-est ${plan.estrategia === id ? 'inicio-plan-est-on' : ''}" ${Events.attr('inicio:planEstrategia', id)}>${txt}</button>`;
-  el.innerHTML = `<div class="card inicio-plan">
-    <div class="inicio-plan-tit">Plan de salida de deudas</div>
-    <div class="inicio-plan-resumen">${resumen}</div>${costo}${conviene}${apartar}
-    <div class="inicio-plan-ests">${btn('avalancha', 'Más cara primero')}${btn('bola', 'Más pequeña primero')}</div>
-    ${filas}${sinTasa}
-  </div>`;
-}
-Refresh.registrar('inicio-plan-deudas', renderPlanDeudas, { pantalla: 'inicio' });
 
 /* ====================================================
    HERO: estado del patrimonio (color y una línea de contexto)
@@ -967,6 +908,5 @@ function _irADestino(destino){
 
 // Consejo de «Salud financiera» accionable: abre la pantalla donde se resuelve (y, si el destino lo pide, el lugar exacto).
 Events.registerAll('inicio', {
-  planEstrategia: (id) => { if(id !== 'avalancha' && id !== 'bola') return; S.planDeudasEstrategia = id; save(); renderPlanDeudas(); },
   irConsejo: (destino) => _irADestino(destino)
 });

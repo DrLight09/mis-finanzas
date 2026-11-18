@@ -1,6 +1,6 @@
 # Tests unitarios — funciones de cálculo puras
 
-**Organización (2026-11-06):** un archivo por sección, con un bloque `describe` por tema. `nucleo`, `cuentas`, `libro`, `prestamos`, `mesada`, y los agrupados: `finanzas` (escenarios, salud, reglas, plan de deudas, cobros), `cierre-wrapped` (huella, cierre, Wrapped guardado), `sesion-y-despliegue` (PIN, sync, sello del SW) e `interfaz` (estilos, innerHTML, Refresh, filtros de Gastos). Los nombres de los `describe` son los de los archivos de antes, así que `node --test --test-name-pattern="huella"` sigue encontrando cada suite.
+**Organización (2026-11-06):** un archivo por sección, con un bloque `describe` por tema. `nucleo`, `cuentas`, `libro`, `prestamos`, `mesada`, y los agrupados: `finanzas` (escenarios, salud, reglas, costo de la deuda, cobros), `cierre-wrapped` (huella, cierre, Wrapped guardado), `sesion-y-despliegue` (PIN, sync, sello del SW) e `interfaz` (estilos, innerHTML, Refresh, filtros de Gastos). Los nombres de los `describe` son los de los archivos de antes, así que `node --test --test-name-pattern="huella"` sigue encontrando cada suite.
 
 Cubre, corridas contra el código real de la app (sin copiarlo ni
 modificarlo, usando `vm` para simular cómo el navegador carga

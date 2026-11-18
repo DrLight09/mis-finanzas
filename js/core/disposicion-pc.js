@@ -21,7 +21,7 @@
     {
       pantalla: 'inicio',
       columnas: [
-        { clase: 'columna-principal', ids: ['inicio-patrimonio', 'inicio-gastos', 'inicio-proyeccion', 'plan-deudas-card'] },
+        { clase: 'columna-principal', ids: ['inicio-patrimonio', 'inicio-gastos', 'inicio-proyeccion'] },
         { clase: 'columna-riel', ids: ['s-attn-section', 'tc-deuda-card', 'inicio-salud'] },
       ],
     },

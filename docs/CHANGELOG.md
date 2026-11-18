@@ -43,6 +43,18 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - **Pendiente, anotado en `MEJORAS-APP.md` (no es bug de datos):** «subió $0» debería decir «se mantuvo» (`renderConciliacion`); «Comparación con el mes anterior» compara un mes en curso vacío contra un mes completo («100% menos por ahora»); Salud no lee los cierres mensuales (puede decir «Excelente» junto a «3 meses bajando»); el umbral de «sin explicar» ($30.000) no escala con el patrimonio.
 - **Al desplegar:** subir `VERSION` a `mis-finanzas-v136`, correr `node scripts/sellar-sw.js` (cambian `analisis.js`, `configuracion.js` y `utilidades-ui.js`, así que el `BUILD` cambia) y `npm test`. Probar a mano: importar un respaldo y comprobar que tras recargar no sale el aviso de conflicto; Análisis → «¿Y si…?» moviendo «Gastara menos».
 
+## Quitado el «Plan de salida de deudas» de Inicio (2026-11-17, SW v149)
+
+Pedido de Sebas. Se eliminó la tarjeta y todo lo que solo existía para ella:
+
+- **Inicio:** `<div id="plan-deudas-card">` (index.html), `renderPlanDeudas`, `planDeudasDatos`, `_balancePromedioReciente`, su `Refresh.registrar('inicio-plan-deudas')` y la acción `inicio:planEstrategia` (inicio.js); el id en la columna principal de `disposicion-pc.js` y sus reglas en `pc.css`; todas las clases `.inicio-plan*` de `styles.css`.
+- **Estado y umbrales:** `S.planDeudasEstrategia` (también su clasificación en `cierre.js`) y `UMBRALES.deudas.metaMeses`.
+- **Cálculo:** de `plan-deudas.js` salen `ordenar`, `construir`, `pagarConviene` y `pagoPosible`; también `mejorTasaAhorro()` de `nu-calc.js`, que solo usaba la tarjeta (comparar lo que rinde la cajita con lo que cuesta la deuda).
+- **Pruebas:** se borran las pruebas de esas funciones y de la tarjeta (finanzas.test.js) y las dos aserciones de `mejorTasaAhorro` (cuentas.test.js).
+- **Se conserva lo que se usa en otras partes:** `_deudasPropias` (inicio.js) y `PlanDeudas.tasaMensual` / `costoMensual` (`plan-deudas.js`), que Análisis usa para `m.costoDeuda` y de ahí Salud (ahorro de intereses); la tasa E.A. de tarjetas, personas y cuentas de ahorro; `calcLiquidez` y `Periodo.gastoPromedioPrevio`. El archivo y el global siguen llamándose `plan-deudas.js` / `PlanDeudas`.
+- Documentación actualizada (version-pc.md, CONTINUAR.md, salud-financiera.md, analisis-financiero.md, tests/README.md). Las entradas históricas del CHANGELOG no se tocan.
+- Al desplegar: `bash subir.sh`. Los datos guardados que traigan `planDeudasEstrategia` simplemente la ignoran.
+
 ## Versión PC, parte 19: años de Mesada y «Registrar gasto» fijo en Gastos (2026-11-17, SW v148)
 
 - **Mesada:** el selector de año ‹ 2026 › (botones de 48 px) se reemplaza en PC por la tira de los 5 años del prototipo (`#anio-tira`, la pinta `renderMesada`; el año elegido resaltado en acento; tocar uno llama a `cambiarAnio` con la diferencia). Son los mismos 5 años que permite `cambiarAnio` (actual ±2). En celular sigue el selector de siempre.

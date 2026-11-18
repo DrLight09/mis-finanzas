@@ -78,8 +78,6 @@
   #screen-inicio.en-columnas.active{display:flex;align-items:flex-start;gap:14px;}
   .columna-principal{flex:1;min-width:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));column-gap:12px;row-gap:10px;align-content:start;}
   .columna-principal > #inicio-patrimonio,
-  .columna-principal > #plan-deudas-card{grid-column:1 / -1;}
-  .columna-principal > #plan-deudas-card:empty{display:none;}
   .columna-riel{width:var(--riel-ancho);flex-shrink:0;display:flex;flex-direction:column;gap:6px;}
   /* El primer título de cada bloque ya no necesita el aire de arriba que tiene al ir apilado en celular. */
   .columna-principal #inicio-gastos > .sec-title:first-child,

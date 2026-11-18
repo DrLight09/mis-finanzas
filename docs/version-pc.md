@@ -34,9 +34,9 @@ El modo lo decide **solo el CSS** (`@media`). No hay JS que elija entre celular 
 
 ## 5. Inicio
 
-Bloques (en orden de celular): patrimonio (`inicio-patrimonio`: hero, cuentas, neto de TC), tarjetas (`tc-deuda-card`), gastos del mes (`inicio-gastos`), salud financiera (`inicio-salud`), plan de deudas (`plan-deudas-card`), proyección (`inicio-proyeccion`), necesita atención (`s-attn-section`).
+Bloques (en orden de celular): patrimonio (`inicio-patrimonio`: hero, cuentas, neto de TC), tarjetas (`tc-deuda-card`), gastos del mes (`inicio-gastos`), salud financiera (`inicio-salud`), proyección (`inicio-proyeccion`), necesita atención (`s-attn-section`).
 
-En PC: columna principal = patrimonio, gastos y proyección lado a lado, plan de deudas (solo si hay deudas). Riel = necesita atención, tarjetas de crédito, salud financiera.
+En PC: columna principal = patrimonio, gastos y proyección lado a lado. Riel = necesita atención, tarjetas de crédito, salud financiera.
 
 ## 6. Cuentas
 

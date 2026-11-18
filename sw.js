@@ -1,8 +1,8 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v148'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
+const VERSION = 'mis-finanzas-v149'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
 // Huella del contenido desplegable: la sella `node scripts/sellar-sw.js` (y `npm test` falla si quedó vieja). Así, aunque se olvide
 // subir VERSION, la caché cambia de nombre en cuanto cambia cualquier archivo y no se sirven los .js anteriores.
-const BUILD = '015e9e5006a6'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
+const BUILD = 'be259ca7c98f'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
 const CACHE = VERSION + '-' + BUILD;
 // Caché que SÍ sobrevive entre versiones: fuentes y SDK de Firebase (de otro origen, no forman parte de la versión de la app).
 const CACHE_EXT = 'mis-finanzas-ext';

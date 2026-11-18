@@ -57,8 +57,6 @@ const UMBRALES = (() => {
     gastoAlto: { fraccionDelIngreso: 0.8 },
     // Hero de Inicio (calcEstadoHero, el núcleo): a partir de qué peso de «Me deben» dentro de tu patrimonio se avisa
     hero: { meDebenFraccion: 0.25 },
-    // Plan de salida de deudas (plan-deudas.js)
-    deudas: { metaMeses: 24 }, // si la deuda no baja a tu ritmo, cuánto liberar al mes para quedar libre en este plazo
     // Conciliación del patrimonio (Periodo.conciliar, tarjeta de Análisis, scripts/conciliacion.js)
     conciliacion: { minimo: 30000 }, // menos que esto sin explicar es ruido (redondeos, intereses de Nu y de tarjeta): no se muestra
     // Wrapped (wrapped-gate.js y wrapped.js): cuándo se puede abrir, cuánto dato hace falta y dónde cambia el tono de las frases

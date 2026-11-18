@@ -482,7 +482,7 @@ const Periodo = (() => {
   // ¿Se puede juzgar el balance de un mes (`b` = balanceDelMes)? Solo si tiene ingresos registrados. Un mes con gastos y SIN ningún ingreso
   // anotado no es un déficit: lo más probable es que el usuario no registró lo que recibió (o que gastó de lo que ya tenía ahorrado, p. ej.
   // un saldo inicial, que NO es un ingreso del mes). Ausencia de registros ≠ situación negativa: ese mes queda «sin evaluar», ni déficit ni
-  // superávit. Lo usan la racha de déficit, el resumen de flujo, los pilares de Salud y el plan de deudas (una sola definición).
+  // superávit. Lo usan la racha de déficit, el resumen de flujo, y los pilares de Salud (una sola definición).
   const balanceEvaluable = b => !!b && b.ingresos.total > 0;
 
   // Racha de déficit: cuántos meses COMPLETOS seguidos, terminando en el mes anterior a `mes`, cerraron con balance negativo (gastaste

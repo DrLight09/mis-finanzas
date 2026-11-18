@@ -2311,7 +2311,6 @@ describe('cuentas-modelo-unico', () => {
       assert.deepEqual(plano(app.cuentasActivas()), []);
       assert.equal(app.saldoCuentas({ soloActivas: true }), 0);
       assert.equal(app.ahorroTotalGeneral(), 0);
-      assert.equal(app.mejorTasaAhorro(), null);
       assert.equal(app.getCuenta('nequi'), undefined);
       assert.deepEqual(plano(app.getMovimientosCuenta('cuenta:nequi')), []);
     });
@@ -2447,13 +2446,12 @@ describe('cuentas-modelo-unico', () => {
       assert.equal(app.getCuenta('lulo').historialTasas.at(-1).tasa, 13.5);
       assert.equal(app.calcC(app.S.cajitas[0]).tasa, 9);
     });
-    test('el total de cada cuenta suma solo sus cajitas, y la mejor tasa es la mayor', () => {
+    test('el total de cada cuenta suma solo sus cajitas', () => {
       const { app } = dosAhorros();
       assert.deepEqual(plano(app.cajitasDeCuenta('nu')).map(c => c.id), ['k1']);
       assert.deepEqual(plano(app.cajitasDeCuenta('lulo')).map(c => c.id), ['k2']);
       assert.ok(app.ahorroTotal('lulo') > app.ahorroTotal('nu'));
       assert.ok(Math.abs(app.ahorroTotalGeneral() - (app.ahorroTotal('nu') + app.ahorroTotal('lulo'))) < 0.01);
-      assert.equal(app.mejorTasaAhorro(), 12);
     });
     test('una cuenta de ahorro con cajitas no se elimina ni se archiva con plata dentro', async () => {
       const e = dosAhorros();

@@ -41,7 +41,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/movimientos.js` | de entrada (defer) | 7 | 0 |
 | `js/core/navegacion.js` | de entrada (defer) | 5 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 6 | 0 |
-| `js/core/nu-calc.js` | de entrada (defer) | 29 | 0 |
+| `js/core/nu-calc.js` | de entrada (defer) | 28 | 0 |
 | `js/core/patrimonio.js` | de entrada (defer) | 26 | 1 |
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
@@ -71,7 +71,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 87 | 2 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 88 | 0 |
 | `js/modules/gastos.js` | de entrada (defer) | 25 | 0 |
-| `js/modules/inicio.js` | de entrada (defer) | 29 | 1 |
+| `js/modules/inicio.js` | de entrada (defer) | 26 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 56 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
 | `js/modules/personas.js` | de entrada (defer) | 31 | 1 |
@@ -295,7 +295,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_historialTasas`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasa`, `_tasaCDT`, `_tasaVigenteEnFecha`, `ahorroAplicarTasaEscrita`, `ahorroTasaConfigurada`, `ahorroTotal`, `ahorroTotalGeneral`, `ahorroValorEsperadoCajita`, `cajitaChequeable`, `cajitaGeneraIntereses`, `cajitasChequeables`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `cdtVencido`, `getCajitaNombre`, `getTasaCuenta`, `mejorTasaAhorro`, `rendimientoCajitaPorMes`, `tasaATexto`, `tasaDesdeTexto`, `tasaSanear`
+**Funciones:** `_diasEntreFechas`, `_fechasCambioEncargoEnCajita`, `_historialTasas`, `_rendimientoCDTaDias`, `_saldoEncargosEnCajita`, `_saldoEncargosEnCajitaEnFecha`, `_segmentosTasa`, `_tasaCDT`, `_tasaVigenteEnFecha`, `ahorroAplicarTasaEscrita`, `ahorroTasaConfigurada`, `ahorroTotal`, `ahorroTotalGeneral`, `ahorroValorEsperadoCajita`, `cajitaChequeable`, `cajitaGeneraIntereses`, `cajitasChequeables`, `calcC`, `calcCDT`, `calcRendimientoCDTMes`, `calcRendimientoCDTsMes`, `cdtVencido`, `getCajitaNombre`, `getTasaCuenta`, `rendimientoCajitaPorMes`, `tasaATexto`, `tasaDesdeTexto`, `tasaSanear`
 
 ### `js/core/patrimonio.js`
 
@@ -491,7 +491,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_balancePromedioReciente`, `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_diasDeUso`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_irADestino`, `_mesesCubiertos`, `_nivelRunway`, `_pintarAtencion`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `_textoRunway`, `calcCalendarioCaja`, `calcEstadoHero`, `calcEstadoSituacion`, `calcHealthScore`, `calcImpactoCompra`, `calcSinBase`, `planDeudasDatos`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderPlanDeudas`, `renderProyeccion`
+**Funciones:** `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_diasDeUso`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_irADestino`, `_mesesCubiertos`, `_nivelRunway`, `_pintarAtencion`, `_rachaDeficitRelevante`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `_textoRunway`, `calcCalendarioCaja`, `calcEstadoHero`, `calcEstadoSituacion`, `calcHealthScore`, `calcImpactoCompra`, `calcSinBase`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
 
 **Globales:** `SALUD_MAX_CONSEJOS`
 
@@ -637,7 +637,6 @@ Ninguno.
 | `_aplicarPrestamo` | `js/modules/prestado.js` |
 | `_autoCerrarGruposEnCero` | `js/modules/prestado.js` |
 | `_autoGrupoIdMovimiento` | `js/modules/prestado.js` |
-| `_balancePromedioReciente` | `js/modules/inicio.js` |
 | `_bienPoblar` | `js/modules/gastos.js` |
 | `_bindInputsAS` | `js/core/eventos-base.js` |
 | `_borrarSpotifyHistorial` | `js/modules/spotify.js` |
@@ -1466,7 +1465,6 @@ Ninguno.
 | `ME_DEBEN_ABRE` | `js/core/patrimonio.js` |
 | `medirAnchoTexto` | `js/core/estado.js` |
 | `medirPatrimonioParaHistorial` | `js/core/patrimonio.js` |
-| `mejorTasaAhorro` | `js/core/nu-calc.js` |
 | `mesActual` | `js/core/ingresos.js` |
 | `MESADA_PADRES` | `js/modules/mesada.js` |
 | `mesadaAbonarPendiente` | `js/modules/mesada.js` |
@@ -1519,7 +1517,6 @@ Ninguno.
 | `pgfActualizarSaldo` | `js/modules/gastos.js` |
 | `pintarAvatarPersona` | `js/core/estado.js` |
 | `PlanDeudas` | `js/core/plan-deudas.js` |
-| `planDeudasDatos` | `js/modules/inicio.js` |
 | `Plata` | `js/core/cuentas-fuentes.js` |
 | `poblarCatSelect` | `js/core/estado.js` |
 | `poblarChequeoNu` | `js/modules/nu.js` |
@@ -1571,7 +1568,6 @@ Ninguno.
 | `renderMisWrapped` | `js/modules/configuracion.js` |
 | `renderMovimientosCuenta` | `js/modules/cuentas.js` |
 | `renderMovimientosFiltros` | `js/modules/cuentas.js` |
-| `renderPlanDeudas` | `js/modules/inicio.js` |
 | `renderPresupuestos` | `js/modules/analisis.js` |
 | `renderProyeccion` | `js/modules/inicio.js` |
 | `renderRespaldos` | `js/modules/configuracion.js` |

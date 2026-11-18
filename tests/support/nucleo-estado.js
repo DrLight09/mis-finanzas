@@ -4,7 +4,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const RAIZ = path.join(__dirname, '..', '..');
-const PARTES = ['estado.js', 'cuentas-fuentes.js', 'persistencia.js', 'patrimonio.js', 'ingresos.js', 'dialogos.js', 'utilidades-ui.js', 'refresh.js'];
+const PARTES = ['estado.js', 'personas-core.js', 'cuentas-fuentes.js', 'persistencia.js', 'patrimonio.js', 'ingresos.js', 'dialogos.js', 'utilidades-ui.js', 'refresh.js'];
 const RUTAS = PARTES.map(p => path.join(RAIZ, 'js', 'core', p));
 const REL = PARTES.map(p => 'js/core/' + p);
 const leerEstado = () => RUTAS.map(r => fs.readFileSync(r, 'utf8')).join('\n');

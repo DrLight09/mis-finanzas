@@ -49,19 +49,11 @@ const PERSONA_COLORES = [
 
 
 /* ── HELPERS ───────────────────────────────────────────────────── */
-function getPersona(id) {
-  return (S.personas || []).find(p => p.id === id);
-}
-
-function getPersonaNombre(id) {
-  const p = getPersona(id);
-  return p ? p.nombre : '—';
-}
-
-function getPersonaColor(id) {
-  const p = getPersona(id);
-  return p ? (p.color || '#60b0f0') : '#60b0f0';
-}
+// Lectura: la fuente única es Personas (js/core/personas-core.js). Estas tres siguen existiendo porque las llaman muchos módulos;
+// la fase 3 de docs/personas-modelo-unico.md las reemplaza por Personas.obtener/nombre/color.
+function getPersona(id) { return Personas.obtener(id); }
+function getPersonaNombre(id) { return Personas.nombre(id); }
+function getPersonaColor(id) { return Personas.color(id); }
 
 // Datos vinculados a una persona
 function getPersonaDatos(personaId) {
@@ -215,15 +207,13 @@ function _renderListaPersonas() {
   const empty = document.getElementById('lista-personas-empty');
   if (!body) return;
 
-  // Reunir personas: las de S.personas + deudores sin personaId que aún no están
-  const personas = [...(S.personas || [])];
-  // También incluir deudores no vinculados como "sin perfil"
-  const sinPerfil = Deudas.lista('favor').filter(d => !d.personaId);
-  // misDeudas sin vincular (sin personaId)
-  const sinPerfilMisDeudas = Deudas.lista('contra').filter(d => !d.personaId);
+  // Una fila por persona. No hay «sin perfil»: todo registro de un módulo tiene persona (invariante I1 de personas-core.js). Si algún código
+  // dejó uno huérfano, se repara aquí mismo (vincula por nombre) en vez de esconderlo, y se guarda.
+  if (Personas.reconciliar().cambios.length) save();
+  const personas = [...Personas.lista()];
 
   _pintarResumenPersonas();
-  const total = personas.length + sinPerfil.length + sinPerfilMisDeudas.length;
+  const total = personas.length;
   const pantallaPersonas = document.getElementById('screen-personas');
   if (pantallaPersonas) pantallaPersonas.dataset.listaVacia = total ? 'no' : 'si'; // PC: sin personas no hay resumen (solo el estado vacío)
   const conteo = document.getElementById('personas-lista-conteo');
@@ -288,46 +278,6 @@ function _renderListaPersonas() {
     </div>`);
   });
 
-  // Deudores sin perfil vinculado
-  sinPerfil.forEach(d => {
-    const color = d.color || '#60b0f0';
-    const saldo = getDeudorSaldo(d);
-    const sub = saldo > 0
-      ? html`<span class="pe-c-amber">${fmt(saldo)} pendiente</span>`
-      : saldo < 0
-        ? html`<span class="pe-c-red">Saldo a su favor</span>`
-        : html`<span class="pe-c-accent">Al día</span>`;
-    contenido.push(html`<div ${raw(Events.attr('prestado:abrirPerfilDeudor', d.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
-      <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
-      <div class="pe-flex1-min0">
-        <div class="pe-nombre">${d.nombre}</div>
-        <div class="pe-sub personas-sub-movil">${sub}</div>
-        <div class="pe-sub personas-sub-pc">${saldo > 0 ? 'Me debe' : 'Al día'}</div>
-      </div>
-      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
-      ${_pieTarjetaPersona(saldo, ['Préstamo'])}
-    </div>`);
-  });
-
-  // misDeudas sin perfil vinculado (le debo a alguien sin persona)
-  sinPerfilMisDeudas.forEach(d => {
-    const color = d.color || '#f06868';
-    const saldo = getMiDeudaSaldo(d);
-    const sub = saldo > 0
-      ? html`<span class="pe-c-red">Le debes ${fmt(saldo)}</span>`
-      : html`<span class="pe-c-accent">Saldado</span>`;
-    contenido.push(html`<div ${raw(Events.attr('prestado-personas:abrirPerfilMiDeuda', d.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
-      <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${d.nombre.substring(0,2).toUpperCase()}</div>
-      <div class="pe-flex1-min0">
-        <div class="pe-nombre">${d.nombre}</div>
-        <div class="pe-sub personas-sub-movil">${sub}</div>
-        <div class="pe-sub personas-sub-pc">${saldo > 0 ? 'Yo le debo' : 'Al día'}</div>
-      </div>
-      <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
-      ${_pieTarjetaPersona(-saldo, ['Le debo'])}
-    </div>`);
-  });
-
   body.innerHTML = html`${contenido}`;
 
   // Hover effect (antes onmouseenter/onmouseleave inline — docs/auditoria-tecnica.md #1).
@@ -342,7 +292,7 @@ function _renderListaPersonas() {
 
 // Actualizar el sub-texto del ítem Personas (ahora en Configuración)
 function _actualizarMasPersonasSub() {
-  const total = (S.personas || []).length + Deudas.lista('favor').filter(d => !d.personaId).length + Deudas.lista('contra').filter(d => !d.personaId).length;
+  const total = Personas.lista().length;
   const txt = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
   // Actualizar en Config
   const cfgSub = document.getElementById('cfg-personas-sub');
@@ -485,9 +435,17 @@ function _volverASelPersona() {
 function _crearPersonaGlobal() {
   const nombre = document.getElementById('cpg_nombre').value.trim();
   if (!nombre) { toast('Escribe el nombre', 'err'); return; }
-  if (!S.personas) S.personas = [];
-  const p = { id: uid(), nombre, color: _cpgColorSel, creadoEn: hoy() };
-  S.personas.push(p);
+  // Personas.crear no duplica: si ya hay una con ese nombre (sin mirar mayúsculas ni tildes) devuelve la existente.
+  const r = Personas.crear({ nombre, color: _cpgColorSel });
+  const p = r.persona;
+  if (!r.creada) {
+    if (_cpgDesdeListaPersonas) { toast('Ya existe «' + p.nombre + '». Si es otra persona, añade un apellido o apodo.', 'err', 4200); return; }
+    // Desde un selector: se usa la existente en vez de obligar a cerrar y buscarla.
+    toast('Ya existía «' + p.nombre + '»: se eligió esa persona', 'info', 3500);
+    document.getElementById('sheet-crear-persona-global').classList.remove('open');
+    setTimeout(() => { if (typeof _selPersonaCallback === 'function') _selPersonaCallback(p.id); }, 180);
+    return;
+  }
   save();
   toast(nombre + ' creado/a', 'ok');
   if (_cpgDesdeListaPersonas) {
@@ -523,18 +481,13 @@ function _guardarEditarPersonaGlobal() {
   if (!p) return;
   const nombre = document.getElementById('epg_nombre').value.trim();
   if (!nombre) { toast('Escribe el nombre', 'err'); return; }
-  const nombreAnterior = p.nombre;
-  p.nombre = nombre;
-  p.color = _epgColorSel;
-  // Sincronizar nombre en deudores vinculados
-  Deudas.lista('favor').forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
-  // Sincronizar nombre en encargos vinculados
-  (S.encargos || []).forEach(e => { if (e.personaId === p.id) e.nombre = nombre; });
-  // Sincronizar nombre y color en misDeudas vinculadas
-  Deudas.lista('contra').forEach(d => { if (d.personaId === p.id) { d.nombre = nombre; d.color = _epgColorSel; } });
-  // Sincronizar nombre en integrantes de Spotify vinculados (el campo crudo .nombre
-  // se usa directo en la validación de nombres duplicados de addSpotify)
-  (S.spotify.personas || []).forEach(spotify => { if (spotify.personaId === p.id) spotify.nombre = nombre; });
+  // Personas.editar cambia la persona y deja iguales las copias de nombre/color de TODAS las relaciones (las declara cada una en
+  // personas-core.js): un módulo nuevo no puede quedar fuera de la sincronización por olvido.
+  const r = Personas.editar(p.id, { nombre, color: _epgColorSel });
+  if (!r.ok) {
+    toast(r.error === 'duplicado' ? 'Ya existe «' + r.persona.nombre + '». Usa otro nombre (apellido o apodo).' : 'No se pudo guardar', 'err', 4200);
+    return;
+  }
   save(); refresh();
   _renderListaPersonas();
   if (typeof renderEncargosList === 'function') renderEncargosList();

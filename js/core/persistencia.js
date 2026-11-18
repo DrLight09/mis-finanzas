@@ -63,7 +63,12 @@ function movimientosSinClase(estado){
    lo hacía (_renombrarClavesEnArbol) está en la historia de git (commit que plegó la v12): se recupera de ahí. */
 const SCHEMA_BASE = 12;    // primera versión compatible; la actual es la de la última migración de MIGRACIONES (si la hay) o esta misma
 
-const MIGRACIONES = [];
+const MIGRACIONES = [
+  // v13 (2026-11-18): modelo único de Personas. Todo registro de Préstamos, Encargos y Spotify queda vinculado a una persona de
+  // S.personas (los huérfanos se vinculan por nombre o crean la persona) y las personas con el mismo nombre se unen en una.
+  // Pieza del plan docs/personas-modelo-unico.md; se pliega en SCHEMA_BASE cuando termine ese plan.
+  { v: 13, nombre: 'personas: vínculo obligatorio y sin duplicados exactos', fn(d) { Personas.reconciliar(d); } },
+];
 const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
 
 function aplicarMigraciones(d) {
@@ -150,14 +155,13 @@ function load(){
   // cuenta con datos ya guardados — ver CHANGELOG.md.
   const _paDefaults={spotify:{operacionesAviso:2,operacionesBloqueo:5},mesada:{operacionesAviso:2,operacionesBloqueo:5},prestamos:{operacionesAviso:2,operacionesBloqueo:5},encargos:{operacionesAviso:2,operacionesBloqueo:5},tarjetas:{operacionesAviso:2,operacionesBloqueo:5},cuentas:{operacionesAviso:2,operacionesBloqueo:5},gastos:{operacionesAviso:2,operacionesBloqueo:5},alcancia:{operacionesAviso:2,operacionesBloqueo:5},plataComprometida:{operacionesAviso:2,operacionesBloqueo:5}};
   Object.keys(_paDefaults).forEach(k=>{ if(!S.config.proteccionAntiguedad[k])S.config.proteccionAntiguedad[k]=_paDefaults[k]; });
-  // Sincronizar color de misDeudas desde la persona vinculada (fuente de verdad)
-  // load() puede correr antes de que calc-helpers.js (donde vive Deudas) haya cargado: guard.
-  (typeof Deudas !== 'undefined' ? Deudas.lista('contra') : (S.misDeudas || [])).forEach(d => {
-    if (d.personaId && S.personas) {
-      const p = S.personas.find(x => x.id === d.personaId);
-      if (p && p.color) d.color = p.color;
-    }
-  });
+  // Personas: todo registro de Préstamos/Encargos/Spotify queda vinculado a una persona existente y las copias de nombre y color
+  // coinciden con la persona (js/core/personas-core.js). Idempotente: sin cambios no hace nada; lo reparado se guarda en el próximo save().
+  {
+    const _rp = Personas.reconciliar(S);
+    if (_rp.cambios.length) console.info('[personas] reconciliado al cargar:', _rp.cambios);
+    if (_rp.revision.length) console.warn('[personas] revisar a mano (una relación única repetida para la misma persona):', _rp.revision);
+  }
   recalcularMontoBaseHistorial();
   if(S.cajitas){
     S.cajitas=S.cajitas.map(c=>{
@@ -234,6 +238,16 @@ function save(){
       window._libroAvisado=true;
       console.warn('[libro] el saldo guardado no coincide con la suma del libro:',_lv.descuadres);
       if(typeof toast==='function')toast('El libro no cuadra con el saldo de '+_lv.descuadres.map(f=>f.nombre).join(', ')+' (ver consola).','err',6000);
+    }
+  }
+  // Invariantes de Personas (I1–I4, personas-core.js): un registro huérfano o repetido significa que algún código creó una relación sin
+  // pasar por Personas. Se avisa UNA vez por sesión en la consola (detalle en window._personasViolaciones).
+  {
+    const _pv = Personas.verificar();
+    window._personasViolaciones = _pv;
+    if (_pv.length && !window._personasAvisado) {
+      window._personasAvisado = true;
+      console.warn('[personas] ' + _pv.length + ' violación(es) de invariantes:', _pv);
     }
   }
   snapshotPatrimonio();

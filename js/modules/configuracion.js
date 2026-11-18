@@ -257,6 +257,7 @@ async function _reemplazarDatos(data,motivoPin,msgOk){
   if(!await pedirPinAntesDe(motivoPin))return false;
   // Llevar el backup al modelo de datos actual (si falla, el catch del llamador avisa y NO se reemplaza nada).
   aplicarMigraciones(data);
+  Personas.reconciliar(data); // un backup ya en el esquema actual también llega con todo vinculado y sin personas repetidas
   // Reemplazar CONTENIDO de S sin romper la referencia de window.S
   Object.keys(S).forEach(k => delete S[k]);
   Object.assign(S, data);

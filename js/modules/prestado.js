@@ -2870,7 +2870,6 @@ function guardarEditarMiDeuda() {
 Events.registerAll('prestado-personas', {
   irADeudor: _irADeudor,
   irAMiDeuda: _irAMiDeuda,
-  abrirPerfilMiDeuda: _abrirPerfilDesdeMiDeuda,
   abrirPerfilMiDeudaActual: _abrirPerfilDesdeMiDeudaActual,
   editarMiDeudaActual: editarMiDeudaActual,
   guardarEditarMiDeuda: guardarEditarMiDeuda,

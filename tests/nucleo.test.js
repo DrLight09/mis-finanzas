@@ -642,8 +642,8 @@ describe('periodo', () => {
 });
 
 describe('migraciones', () => {
-  // VERSIÓN DEL ESQUEMA / aplicarMigraciones (persistencia.js). La app nació limpia en el esquema 9 y no migra datos anteriores a la base (hoy 12); MIGRACIONES está vacía
-  // hasta que haya un cambio nuevo en la forma de los datos guardados.
+  // VERSIÓN DEL ESQUEMA / aplicarMigraciones (persistencia.js). La app nació limpia en el esquema 9 y no migra datos anteriores a la base (12); la v13 (Personas: vínculo
+  // obligatorio, docs/personas-modelo-unico.md) es la única migración y se pliega en la base cuando termine ese plan.
   const test = require('node:test');
   const assert = require('node:assert/strict');
   const path = require('node:path');
@@ -653,15 +653,31 @@ describe('migraciones', () => {
   const app = () => loadApp([path.join(CORE_DIR, 'core-state.js')]);
   const plano = x => JSON.parse(JSON.stringify(x));
 
-  test('datos nuevos (sin schemaVersion) nacen en la versión actual (12)', () => {
+  test('datos nuevos (sin schemaVersion) nacen en la base (12) y suben a la versión actual (13)', () => {
     const d = plano(app().aplicarMigraciones({ cuentas: [] }));
-    assert.equal(d.schemaVersion, 12);
+    assert.equal(d.schemaVersion, 13);
   });
 
-  test('sin migraciones pendientes: la base es la 12 y los datos de ese esquema pasan intactos', () => {
+  test('un backup del esquema 12 sube a 13 y solo cambia lo de Personas: el resto pasa intacto', () => {
     const ctx = app();
     const d = { schemaVersion: 12, cuentas: [], movimientos: [{ id: 'a', _movimientoId: 'x' }] };
-    assert.deepEqual(plano(ctx.aplicarMigraciones(plano(d))), d);
+    const r = plano(ctx.aplicarMigraciones(plano(d)));
+    assert.equal(r.schemaVersion, 13);
+    assert.deepEqual(r.movimientos, d.movimientos);
+    assert.deepEqual(r.personas, []);
+  });
+
+  test('v13: vincula huérfanos y une personas repetidas al migrar un backup del esquema 12', () => {
+    const r = plano(app().aplicarMigraciones({
+      schemaVersion: 12, personas: [],
+      deudores: [{ id: 'd1', nombre: 'Ana', color: '#f06868', movimientos: [] }],
+      encargos: [{ id: 'e1', nombre: ' ana ', movimientos: [] }],
+      spotify: { personas: [{ id: 's1', nombre: 'Luis' }], historial: [] },
+    }));
+    assert.equal(r.schemaVersion, 13);
+    assert.deepEqual(r.personas.map(p => p.nombre).sort(), ['Ana', 'Luis']);
+    assert.equal(r.deudores[0].personaId, r.encargos[0].personaId, 'Ana de Préstamos y de Encargos es la misma persona');
+    assert.ok(r.personas.some(p => p.id === r.spotify.personas[0].personaId));
   });
 
   test('datos del esquema 11 (el anterior a la base) se marcan como «versión anterior» y no se tocan', () => {
@@ -757,7 +773,7 @@ describe('backup-import', () => {
   });
   test('un backup exportado por esta versión se valida y no cambia al pasar por aplicarMigraciones', () => {
     const ctx = app();
-    const actual = { schemaVersion: 12, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
+    const actual = { schemaVersion: 13, personas: [], cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
     assert.deepEqual(plano(ctx._validarEstructuraJSON(actual)), []);
     assert.deepEqual(plano(ctx.aplicarMigraciones(plano(actual))), actual);
   });

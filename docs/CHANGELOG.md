@@ -33,6 +33,21 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Personas: núcleo único, fase 1 (2026-11-18, SW v150)
+
+Primera fase del plan [`personas-modelo-unico.md`](personas-modelo-unico.md) (queda ahí lo pendiente). Esquema de datos 12 → 13.
+
+- **`Personas` en el núcleo** (`js/core/personas-core.js`, carga justo después de `estado.js`): lectura (`obtener`, `nombre`, `color`, `lista`, `buscarPorNombre`), `crear` sin duplicados, `editar` que deja iguales las copias de nombre y color, `verificar` (invariantes I1–I4), `reconciliar` y `huerfanos`. Las cuatro relaciones (me deben, yo debo, encargos, Spotify) se declaran ahí con `registrarRelacion` — la mitad de datos en el núcleo para que no dependa de qué módulo lazy ya cargó.
+- **Migración 13** (`persistencia.js`): vincula por nombre todo deudor, «yo debo», encargo e integrante de Spotify sin `personaId` válido (crea la persona si no existe) y une las personas con el mismo nombre (ignorando mayúsculas, tildes y espacios; conserva la más antigua). `reconciliar` corre además al cargar y al importar/restaurar un backup, y reemplaza la sincronización de color de «yo debo» que hacía `load()`.
+- **La pantalla Personas ya no omite gente.** Antes no listaba encargos ni integrantes de Spotify sin `personaId`, ni deudores cuyo `personaId` apuntaba a una persona borrada, y mostraba aparte los deudores «sin perfil». Ahora hay una fila por persona; si algún código dejó un huérfano, se repara al abrir la lista y se guarda. Se borraron los dos bloques «sin perfil» y la acción `prestado-personas:abrirPerfilMiDeuda`, que solo usaban ellos.
+- **Nombres repetidos.** «Nueva persona» ya no crea otra con el mismo nombre: desde un selector usa la existente (con aviso) y desde la lista avisa; «Editar persona» rechaza el nombre de otra persona.
+- **Editar una persona** ya no recorre cuatro colecciones a mano: `Personas.editar` lo hace sobre las relaciones declaradas, así que un módulo nuevo no puede quedar desincronizado por olvido.
+- **`save()`** avisa una vez por sesión en consola si `Personas.verificar()` encuentra violaciones (`window._personasViolaciones`).
+- **Pruebas:** 27 nuevas en `tests/personas-core.test.js` (lectura, crear, editar, cada invariante, reconciliar —incluida la idempotencia y los casos que no debe adivinar—, relaciones nuevas, cableado y el caso de la pantalla con datos mezclados). `tests/nucleo.test.js` pasa a esperar el esquema 13. `tests/support/nucleo-estado.js` incluye el archivo nuevo en el orden de carga.
+- **Pendiente de despliegue:** `BUILD` de `sw.js` no se pudo resellar (el adjunto no traía `css/` ni `icons/`); `PRECACHE` ya incluye el archivo nuevo y `VERSION` subió a v150. Correr `npm run sellar` antes de publicar. Tampoco se probó en el navegador con CSS reales.
+
+---
+
 ## Correcciones de la revisión con escenarios de prueba (2026-11-15, SW v136)
 
 - **Origen.** Se importaron 68 respaldos de prueba que dejan Inicio y Análisis en cada estado posible, se comprobó cada uno contra la app real (Chromium sin Firebase) y salieron tres problemas reales y uno de despliegue. Los escenarios y su generador viven fuera del repo (`escenarios-inicio.zip`); la lista completa de posibles mejoras que dejó la revisión está en `MEJORAS-APP.md`.
@@ -63,7 +78,7 @@ Pedido de Sebas. Se eliminó la tarjeta y todo lo que solo existía para ella:
 
 ## Versión PC, parte 18: Mesada, Gastos y scroll por dentro (2026-11-17, SW v147)
 
-Según `Mis_Finanzas_PC___Prototipo_45daba.html`. Corrige la parte 17.
+Según el prototipo (copia subida como `…Prototipo_45daba.html`). Corrige la parte 17.
 
 - **Scroll por dentro (como el prototipo):** las pantallas de columnas ya no crecen: ocupan exactamente el alto de la ventana (`height:100%`, antes `min-height:100%`) y cada caja hace scroll por su cuenta, con la barra oculta (Gastos, Prestado, Personas, Spotify, Encargos, Alcancía, Cuentas, Tarjetas; ver el bloque «scroll interno» de `pc.css`). Entre 900 y 1279 px, donde las columnas se apilan (Gastos, Spotify, Alcancía, Cuentas), la página vuelve a fluir y a hacer scroll.
 - **Gastos:** el resumen (3 tarjetas) queda solo sobre la columna de variables, el riel de fijos mensuales ocupa toda la altura a su lado (también arriba, junto al resumen), y la lista de variables y los fijos hacen scroll dentro de su caja.
@@ -71,7 +86,7 @@ Según `Mis_Finanzas_PC___Prototipo_45daba.html`. Corrige la parte 17.
 
 ## Versión PC, parte 17: menú sin scroll, Prestado en una caja, Mesada, Tarjetas, cajas a todo el alto y perfil de persona como pantalla (2026-11-17, SW v146)
 
-Según `Mis_Finanzas_PC___Prototipo_9e3bfe.html`.
+Según el prototipo (copia subida como `…Prototipo_9e3bfe.html`).
 
 - **Menú lateral sin scroll:** `.menu-lateral-nav` ya no hace scroll; ítems y títulos de grupo más compactos para que quepa en 768 px de alto.
 - **Prestado (HTML reorganizado):** nuevo `#prestamos-columna` envuelve las pestañas y las dos listas (`deudoresView`, `misDeudasView`); los detalles (`deudorDetalle`, `miDeudaDetalle`) quedan después, fuera de la columna. En PC la columna es UNA caja (400 px; 320 entre 900 y 1279) con las pestañas Me deben / Yo debo adentro (mitades iguales, ya no se salen ni se estiran), el título de la lista a la izquierda y el botón de agregar a la derecha, y el detalle al lado. En celular el envoltorio no tiene estilos: todo igual.
@@ -88,7 +103,7 @@ Según `Mis_Finanzas_PC___Prototipo_9e3bfe.html`.
 
 ## Versión PC, parte 15: Personas con una persona abierta (2026-11-17, SW v145)
 
-- Según el prototipo actualizado (`Mis_Finanzas_PC___Prototipo_1.html`): al abrir una persona el resumen y las tarjetas ya no desaparecen; quedan en la columna izquierda (resumen arriba, tarjetas en 2 columnas) y la ficha a la derecha, a toda la altura. Solo el estado sin personas oculta el resumen. Reemplaza lo dicho en la parte 13 («el resumen se oculta»).
+- Según el prototipo actualizado (copia subida como `…Prototipo_1.html`): al abrir una persona el resumen y las tarjetas ya no desaparecen; quedan en la columna izquierda (resumen arriba, tarjetas en 2 columnas) y la ficha a la derecha, a toda la altura. Solo el estado sin personas oculta el resumen. Reemplaza lo dicho en la parte 13 («el resumen se oculta»).
 
 ## Versión PC, parte 14: pestañas de Prestado dentro de la caja, marca del menú y título por sección (2026-11-17, SW v145)
 

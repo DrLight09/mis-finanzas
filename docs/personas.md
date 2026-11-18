@@ -14,7 +14,7 @@ Da una identidad única a cada persona con la que hay relación financiera (fami
 
 ## 2. Conceptos importantes
 
-**Persona con perfil vs. registro sin vincular:** una persona puede existir formalmente en `S.personas` (con nombre y color propios), o puede no existir todavía como tal — un deudor o una deuda creados antes de que existiera este sistema, o creados sin pasar por el selector de personas, quedan "sin perfil". La pantalla de Personas los sigue mostrando igual (para no esconder plata real), pero no tienen perfil consolidado hasta que se vinculan.
+**Una sola persona (`S.personas`) y los módulos como relaciones:** cada persona existe una vez. Todo registro de Préstamos, Encargos y Spotify tiene `personaId` y esa persona existe — no hay registros "sin perfil". Lo garantiza `Personas.reconciliar()` (js/core/personas-core.js): al cargar, al importar un backup y al abrir la lista de Personas vincula por nombre cualquier huérfano (creando la persona si no existe) y une las personas con el mismo nombre. `Personas.verificar()` comprueba los invariantes I1–I4 en cada `save()`.
 
 **Vínculo (`personaId`):** cada módulo (Encargos, Deudores, Mis deudas, Spotify) guarda su propia copia del nombre además de una referencia opcional a `S.personas` vía `personaId`. El nombre mostrado siempre se resuelve preferentemente desde la persona vinculada (ver §7 de `spotify.md` para el caso ya documentado de `spotifyNombreDe`); acá el mismo criterio aplica a `getPersonaNombre`.
 
@@ -25,8 +25,9 @@ Da una identidad única a cada persona con la que hay relación financiera (fami
 ## 3. Reglas que nunca deben romperse
 
 - **Personas es una libreta de identidad, no una fuente de saldos propia.** Todo lo que se muestra en un perfil (deuda pendiente, encargos activos, estado de Spotify) se calcula en el momento a partir de los datos reales de cada módulo (`S.deudores`, `S.encargos`, `S.misDeudas`, `S.spotify.personas`) — Personas nunca guarda un total o un estado por su cuenta que pueda desincronizarse.
-- **No se puede crear dos personas con exactamente el mismo flujo sin querer:** cada módulo que crea una persona nueva (Encargos, Deudores, Spotify) lo hace a través del selector compartido, que ofrece elegir una existente antes de crear una — evita que "Juan" termine como tres personas distintas sin vínculo entre sí.
-- **Renombrar o cambiar el color de una persona se sincroniza en todos los módulos vinculados en el mismo momento** (deudores, encargos, misDeudas, integrantes de Spotify) — nunca queda un módulo mostrando el nombre viejo mientras otro ya tiene el nuevo.
+- **No hay dos personas con el mismo nombre** (ignorando mayúsculas, tildes y espacios): `Personas.crear` devuelve la existente en vez de crear otra, y `Personas.editar` rechaza el nombre de otra persona. El selector compartido además ofrece elegir una existente antes de crear una.
+- **Renombrar o cambiar el color de una persona se sincroniza en todos los módulos vinculados en el mismo momento** — lo hace `Personas.editar` recorriendo las relaciones declaradas en personas-core.js (no una lista escrita a mano en la pantalla), así que un módulo nuevo que se declare como relación queda incluido sin tocar `personas.js`.
+- **Todo registro con relación a una persona tiene `personaId` válido.** Crear un deudor, encargo o integrante sin pasar por una persona existente rompe el invariante I1: `save()` lo avisa en consola (`window._personasViolaciones`) y la próxima carga lo repara.
 - **Eliminar una persona no es una operación de este módulo.** No existe "borrar persona" acá a propósito (ver §7): su historial financiero vive en otros módulos y son esos módulos los que deciden si algo se puede borrar, no Personas.
 - **El destino de un cobro/pago nunca se decide acá.** Personas no mueve plata ni genera movimientos — es un directorio de identidad; las reglas de dinero (fuente de verdad son los movimientos, TC nunca como destino de entrada, etc.) viven en cada módulo dueño de esos movimientos.
 - **Cerrar cualquier sheet de Personas sin confirmar no debe dejar cambios a medias:** crear o editar una persona son operaciones atómicas (o se guardó, o no se guardó nada) — no hay estados intermedios persistidos.
@@ -55,9 +56,9 @@ S.encargos[i].personaId   // Encargos
 S.spotify.personas[i].personaId  // Spotify (ver spotify.md §4)
 ```
 
-**`personaId` es opcional en los cuatro casos.** Un registro sin `personaId` sigue siendo válido — es un deudor, encargo, deuda o integrante "sin perfil" (ver §2), no un dato roto.
+**`personaId` es obligatorio en los cuatro casos** (desde la migración 13, 2026-11-18). Un registro sin `personaId` o con uno que apunta a una persona inexistente es un dato roto que `Personas.reconciliar()` repara.
 
-**`nombre` y `color` se duplican en cada módulo vinculado** en vez de leerse siempre desde `S.personas` en tiempo real — cada uno guarda su propia copia, que se resincroniza explícitamente al editar la persona (ver §5). Esto es intencional, no una inconsistencia: ver §7.
+**`nombre` y `color` todavía se copian en cada módulo vinculado** (transitorio): `Personas.editar` y `Personas.reconciliar` las mantienen iguales a las de la persona. Quitarlas, para que cada módulo lea siempre de `S.personas`, es parte pendiente del plan en [`personas-modelo-unico.md`](./personas-modelo-unico.md) (fase 3); ver §7.
 
 ---
 
@@ -72,7 +73,7 @@ Usuario busca por nombre → si no existe, botón "Crear a '...'"
   ↓
 Sheet "Nueva persona": nombre + color
   ↓
-Se agrega a S.personas
+Personas.crear: si ya hay una con ese nombre, devuelve la existente (el selector la elige; la lista avisa); si no, se agrega a S.personas
   ↓
 El callback del módulo que abrió el selector recibe el personaId nuevo
   ↓
@@ -88,8 +89,8 @@ Guardar cambios
   ↓
 Se actualiza S.personas
   ↓
-Se resincroniza nombre/color en TODOS los registros vinculados:
-  deudores, misDeudas, encargos, integrantes de Spotify
+Personas.editar iguala nombre/color en TODAS las relaciones declaradas:
+  deudores, misDeudas, encargos, integrantes de Spotify (y las que se registren)
   ↓
 Se refresca la lista de Personas y las pantallas de Encargos / Mis deudas
   ↓
@@ -127,8 +128,8 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 ## 6. Casos especiales
 
-- **Deudores, misDeudas o integrantes de Spotify sin `personaId`:** la lista de Personas los sigue mostrando como "sin perfil" (agrupados aparte de las personas con `S.personas` propio), para que nunca desaparezca plata real de la vista solo por no estar vinculada todavía.
-- **Nombres duplicados:** el selector no impide dos personas con el mismo nombre en `S.personas` — la prevención de duplicados vive en cada módulo que llama al selector (ej. Spotify valida que no se repita un integrante), no en Personas en sí, porque "duplicado" significa algo distinto según el contexto que está creando la persona.
+- **Registros sin `personaId` (datos de antes, backups viejos):** ya no se muestran aparte. Se vinculan por nombre al cargar, al importar y al abrir la lista (si el nombre coincide con una persona se usa esa; si no, se crea). Dos registros de una relación única (p. ej. dos "me deben") para la misma persona no se fusionan solos: quedan avisados en consola para revisión.
+- **Nombres duplicados:** no se permiten entre personas (ver §3). Dos personas reales con el mismo nombre (dos "Carlos") se distinguen con apellido o apodo.
 - **Perfil de una persona sin actividad en ningún módulo:** puede pasar si se crea una persona directamente desde la lista de Personas ("Nueva") sin todavía vincularla a nada — el perfil lo indica explícitamente en vez de mostrar secciones vacías.
 - **Cerrar el sheet de crear/editar sin guardar:** no persiste ningún cambio a medio escribir; el nombre y color solo se guardan al confirmar.
 
@@ -136,7 +137,7 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 ## 7. Decisiones de diseño
 
-- **El nombre y el color se duplican en cada módulo vinculado, en vez de leerse siempre en vivo desde `S.personas`.** La alternativa obvia — que cada módulo lea el nombre directo desde `S.personas` cada vez que lo necesita — hubiera evitado la resincronización manual al editar. Se descartó a propósito: varios módulos (Spotify, en particular) usan el campo `nombre` crudo para lógica propia (comparaciones, validación de duplicados, emparejamiento de historial viejo por nombre) que necesita seguir funcionando aunque `S.personas` cambie o la persona se desvincule más adelante. Guardar una copia y resincronizarla explícitamente al editar es más código, pero mantiene a cada módulo funcionando de forma autónoma con sus propios datos.
+- **El nombre y el color se duplican en cada módulo vinculado, en vez de leerse siempre en vivo desde `S.personas`.** *(Decisión vigente solo de forma transitoria: el plan en [`personas-modelo-unico.md`](./personas-modelo-unico.md) la revierte porque su motivo — emparejar historial viejo de Spotify por nombre — ya no aplica sin datos antiguos.)* La alternativa obvia — que cada módulo lea el nombre directo desde `S.personas` cada vez que lo necesita — hubiera evitado la resincronización manual al editar. Se descartó a propósito: varios módulos (Spotify, en particular) usan el campo `nombre` crudo para lógica propia (comparaciones, validación de duplicados, emparejamiento de historial viejo por nombre) que necesita seguir funcionando aunque `S.personas` cambie o la persona se desvincule más adelante. Guardar una copia y resincronizarla explícitamente al editar es más código, pero mantiene a cada módulo funcionando de forma autónoma con sus propios datos.
 - **No existe "eliminar persona" en este módulo, a propósito.** Encargos y Spotify sí tienen su propio flujo de "eliminar integrante/encargo", con sus propias reglas sobre qué pasa con el historial (ver `spotify.md §3`, `encargos.md`). Meter un "eliminar persona" acá obligaría a decidir en un solo lugar central qué hacer con la plata y el historial de cada módulo vinculado — una decisión que le corresponde a cada módulo dueño de esos datos, no a la libreta de identidad.
 - **El perfil no cachea ni guarda las estadísticas que muestra.** Se recalculan siempre desde los datos reales de cada módulo al momento de abrir el perfil (mismo principio que atraviesa toda la app: los movimientos son la fuente de verdad, nunca un valor guardado aparte). El costo es recalcular en cada apertura; la ganancia es que nunca puede haber un perfil desincronizado de la plata real.
 - **El selector de persona es un componente compartido, no una copia por módulo.** Encargos, Deudores y Spotify abren el mismo sheet (`abrirSelPersona`) en vez de tener cada uno su propio buscador de personas — mismo criterio que llevó a compartir `crearSplitWidget` entre Encargos y Préstamos (ver `mesada.md §8` para el caso ya documentado de motores compartidos).
@@ -149,9 +150,10 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 | Función | Qué hace |
 |---|---|
-| `getPersona(id)` / `getPersonaNombre(id)` / `getPersonaColor(id)` | Lectura básica de una persona por id, con fallback si no existe |
+| `Personas` (js/core/personas-core.js) | API del núcleo: `obtener/nombre/color/lista/buscarPorNombre`, `crear` (sin duplicar), `editar` (sincroniza copias), `registrarRelacion`, `verificar` (I1–I4), `reconciliar`, `huerfanos` |
+| `getPersona(id)` / `getPersonaNombre(id)` / `getPersonaColor(id)` | Envoltorios de `Personas.obtener/nombre/color` (los llaman muchos módulos; se reemplazan en la fase 3) |
 | `getPersonaDatos(personaId)` | Junta deudor(es), encargos y misDeudas vinculados a una persona, con sus saldos ya calculados |
-| `_renderListaPersonas()` | Pinta la pantalla "Personas": personas con perfil + deudores/misDeudas sin vincular |
+| `_renderListaPersonas()` | Pinta la pantalla "Personas": una fila por persona (repara antes cualquier huérfano) |
 | `abrirPerfilPersona(personaId)` | Arma y abre el sheet de perfil consolidado (Préstamos, Encargos, Spotify, Le debo) |
 | `abrirSelPersona(callback, titulo)` | Abre el selector compartido; el `callback` recibe el `personaId` elegido o recién creado |
 | `_crearPersonaGlobal()` / `_guardarEditarPersonaGlobal()` | Crean o editan una persona; el segundo resincroniza nombre/color en todos los módulos vinculados |

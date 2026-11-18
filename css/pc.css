@@ -18,7 +18,7 @@
   .app > .header{grid-column:2;grid-row:1;padding-left:22px;padding-right:22px;}
   .app > .scroll-area{grid-column:2;grid-row:2;padding:16px 22px 24px;}
   /* Buscador como el prototipo: el botón de la cabecera se ve como un campo («Buscar movimientos, personas, cuentas» y el atajo Ctrl K). */
-  #btn-buscar-global{width:290px;height:36px;padding:0 12px;justify-content:flex-start;gap:8px;font-size:12px;}
+  #btn-buscar-global{width:325px;height:36px;padding:0 12px;justify-content:flex-start;gap:8px;font-size:12px;}
   #btn-buscar-global .buscar-texto{display:inline;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   #btn-buscar-global .buscar-atajo{display:inline;margin-left:auto;font:400 10px 'DM Mono',monospace;border:1px solid var(--border2);border-radius:6px;padding:1px 6px;color:var(--text2);}
   .app > footer{display:none;} /* la barra inferior y su menú «Más» se reemplazan por el menú lateral */

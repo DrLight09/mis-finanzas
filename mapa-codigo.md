@@ -46,6 +46,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 2 | 0 |
 | `js/core/periodo.js` | de entrada (defer) | 1 | 0 |
 | `js/core/persistencia.js` | de entrada (defer) | 12 | 3 |
+| `js/core/personas-core.js` | de entrada (defer) | 1 | 0 |
 | `js/core/personas-init.js` | de entrada (defer) | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/plan-deudas.js` | de entrada (defer) | 1 | 0 |
@@ -324,6 +325,12 @@ Carga: de entrada (defer)
 **Funciones:** `_ensureSpotify`, `aplicarMigraciones`, `claseEfectivaMovimiento`, `conEstadoAislado`, `fmtInput`, `load`, `movimientosSinClase`, `parseMoney`, `parsePct`, `registrarSonda`, `save`, `setMoneyInput`
 
 **Globales:** `MIGRACIONES`, `SCHEMA_BASE`, `SCHEMA_VERSION_ACTUAL`
+
+### `js/core/personas-core.js`
+
+Carga: de entrada (defer)
+
+**Funciones:** `Personas`
 
 ### `js/core/personas-init.js`
 
@@ -1514,6 +1521,7 @@ Ninguno.
 | `PERSONA_COLORES` | `js/modules/personas.js` |
 | `PERSONA_COLORES_MIS_DEUDAS` | `js/modules/prestado.js` |
 | `PersonaPicker` | `js/modules/personas.js` |
+| `Personas` | `js/core/personas-core.js` |
 | `pgfActualizarSaldo` | `js/modules/gastos.js` |
 | `pintarAvatarPersona` | `js/core/estado.js` |
 | `PlanDeudas` | `js/core/plan-deudas.js` |

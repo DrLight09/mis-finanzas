@@ -77,7 +77,7 @@ S.spotify.personas = [
   {
     id: "uid",
     nombre: "Juan",            // nombre crudo; si hay personaId, se resuelve via spotifyNombreDe() en su lugar
-    personaId: "uid|null",     // vínculo al sistema unificado de personas (S.personas)
+    personaId: "uid",          // vínculo a S.personas (obligatorio desde la migración 13; ver personas.md)
     monto: 8000,               // cuota del integrante por período
     pagado: false,             // solo referencial — la fuente real de verdad son los movimientos (ver §3)
     proximoPago: "2026-08-05",

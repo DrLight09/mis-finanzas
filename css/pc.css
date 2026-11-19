@@ -166,9 +166,7 @@
   .mesada-pendiente .stat-label{font-size:10px;}
   .mesada-pendiente-texto{font-size:17px;margin-top:2px;}
   #mesadaSection > .mesada-persona{grid-column:span 5;margin:0;padding:18px 20px;}
-  .ms-card-head{flex-wrap:nowrap;margin-bottom:14px;}
-  .ms-head-left{flex:1 1 0;}
-  .ms-right{flex:0 0 auto;margin:0;gap:8px;}
+  .ms-card-head{margin-bottom:14px;}
   input.money-input.ms-cuota-input{width:92px;padding:6px 10px;}
   .mesada-grid{gap:10px;}
   .mes-dot{height:62px;}

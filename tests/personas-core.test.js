@@ -145,104 +145,6 @@ describe('Personas: archivar, restaurar y eliminar', () => {
   });
 });
 
-describe('Personas.fusionar', () => {
-  const conCalc = estado => {
-    const ctx = loadApp([path.join(RAIZ, 'js/core/core-state.js'), path.join(RAIZ, 'js/core/calc-helpers.js')]);
-    Object.assign(ctx.S, plano(estado));
-    return ctx;
-  };
-  const mov = (id, tipo, monto) => ({ id, tipo, monto, fecha: '2026-10-01' });
-  const D = (c, expr) => require('node:vm').runInContext('Deudas.' + expr, c);
-  test('lo que solo tiene el origen se reasigna al destino y el origen desaparece', () => {
-    const c = conCalc({
-      personas: [P('a', 'Ana'), P('b', 'Ana María', { color: '#f06868' })],
-      deudores: [{ id: 'd1', personaId: 'a', movimientos: [mov('m1', 'prestamo', 100)] }],
-      encargos: [{ id: 'e1', personaId: 'a', movimientos: [] }, { id: 'e2', personaId: 'b', movimientos: [] }],
-      spotify: { integrantes: [{ id: 's1', personaId: 'a' }], historial: [] },
-    });
-    const r = c.Personas.fusionar('a', 'b');
-    assert.equal(r.ok, true);
-    assert.equal(r.movidas, 3);
-    assert.deepEqual(plano(c.S.personas.map(p => p.id)), ['b']);
-    assert.deepEqual(plano([c.S.deudores[0].personaId, c.S.encargos[0].personaId, c.S.encargos[1].personaId, c.S.spotify.integrantes[0].personaId]), ['b', 'b', 'b', 'b']);
-    assert.equal(c.Personas.nombre('b'), 'Ana María', 'queda el nombre del destino');
-    assert.deepEqual(plano(c.Personas.verificar()), []);
-  });
-  test('dos deudas «me deben» se unen: suman movimientos y las referencias pasan a la que queda', () => {
-    const c = conCalc({
-      personas: [P('a', 'Ana'), P('b', 'Ana M')],
-      deudores: [
-        { id: 'dA', personaId: 'a', movimientos: [mov('m1', 'prestamo', 100000), mov('m2', 'abono', 30000)] },
-        { id: 'dB', personaId: 'b', movimientos: [mov('m3', 'prestamo', 50000)] },
-      ],
-      movimientos: [{ id: 'x1', _deudorId: 'dA', monto: 1 }, { id: 'x2', _deudorId: 'dB', monto: 2 }],
-      tarjetasCredito: [{ id: 't1', compras: [{ id: 'c1', deudorId: 'dA' }] }],
-      plataComprometida: [{ id: 'pc1', destinos: [{ id: 'dest1', tipo: 'abono_deuda', deudorId: 'dA' }] }],
-    });
-    const antes = D(c, "totalPendiente('favor')");
-    assert.equal(antes, 120000);
-    const r = c.Personas.fusionar('a', 'b');
-    assert.equal(r.ok, true);
-    assert.deepEqual(plano(r.unidas), ['me-deben']);
-    assert.equal(c.S.deudores.length, 1);
-    assert.equal(c.S.deudores[0].id, 'dB');
-    assert.equal(c.S.deudores[0].movimientos.length, 3);
-    assert.equal(D(c, "totalPendiente('favor')"), antes, 'el total que te deben no cambia');
-    assert.equal(c.getDeudorSaldo(c.S.deudores[0]), 120000);
-    assert.deepEqual(plano(c.S.movimientos.map(m => m._deudorId)), ['dB', 'dB']);
-    assert.equal(c.S.tarjetasCredito[0].compras[0].deudorId, 'dB');
-    assert.equal(c.S.plataComprometida[0].destinos[0].deudorId, 'dB');
-    assert.deepEqual(plano(c.Personas.verificar()), []);
-  });
-  test('dos «yo debo» también se unen', () => {
-    const c = conCalc({
-      personas: [P('a', 'Ana'), P('b', 'Ana M')],
-      misDeudas: [{ id: 'mA', personaId: 'a', tasaEA: 12, movimientos: [mov('m1', 'recibido', 70)] }, { id: 'mB', personaId: 'b', movimientos: [mov('m2', 'recibido', 30)] }],
-    });
-    assert.equal(c.Personas.fusionar('a', 'b').ok, true);
-    assert.equal(c.S.misDeudas.length, 1);
-    assert.equal(c.S.misDeudas[0].tasaEA, 12, 'un dato que el destino no tenía se conserva');
-    assert.equal(D(c, "totalPendiente('contra')"), 100);
-  });
-  test('dos integrantes de Spotify bloquean la fusión y no se toca NADA', () => {
-    const c = conCalc({
-      personas: [P('a', 'Ana'), P('b', 'Ana M')],
-      deudores: [{ id: 'd1', personaId: 'a', movimientos: [] }],
-      spotify: { integrantes: [{ id: 's1', personaId: 'a' }, { id: 's2', personaId: 'b' }], historial: [] },
-    });
-    const antes = JSON.stringify(c.S);
-    assert.deepEqual(plano(c.Personas.puedeFusionar('a', 'b')), { ok: false, error: 'conflicto', relacion: 'spotify', etiqueta: 'Spotify' });
-    const r = c.Personas.fusionar('a', 'b');
-    assert.equal(r.error, 'conflicto');
-    assert.equal(JSON.stringify(c.S), antes);
-  });
-  test('rechaza fusionar consigo misma, con una que no existe o hacia una archivada', () => {
-    const c = conCalc({ personas: [P('a', 'Ana'), P('b', 'Luis')] });
-    assert.equal(c.Personas.fusionar('a', 'a').error, 'mismo');
-    assert.equal(c.Personas.fusionar('a', 'zz').error, 'no-existe');
-    c.Personas.archivar('b');
-    assert.equal(c.Personas.fusionar('a', 'b').error, 'destino-archivada');
-    assert.equal(c.S.personas.length, 2);
-  });
-  test('se puede fusionar una archivada hacia una activa; alias y notas del origen se conservan si el destino no tiene', () => {
-    const c = conCalc({ personas: [P('a', 'Ana', { alias: 'anita', notas: 'prima', archivada: true }), P('b', 'Ana M')], encargos: [{ id: 'e1', personaId: 'a', movimientos: [] }] });
-    assert.equal(c.Personas.fusionar('a', 'b').ok, true);
-    assert.equal(c.S.personas[0].alias, 'anita');
-    assert.equal(c.S.personas[0].notas, 'prima');
-    assert.equal(c.S.encargos[0].personaId, 'b');
-  });
-  test('un módulo nuevo con relación `unica` sin alFusionar bloquea; con alFusionar se une', () => {
-    const c = conCalc({ personas: [P('a', 'Ana'), P('b', 'Ana M')], tandas: [{ id: 't1', personaId: 'a', n: 1 }, { id: 't2', personaId: 'b', n: 2 }] });
-    c.Personas.registrarRelacion({ id: 'tandas', etiqueta: 'Tanda', unica: true, coleccion: d => d.tandas || [] });
-    assert.equal(c.Personas.fusionar('a', 'b').error, 'conflicto');
-    c.Personas.registrarRelacion({ id: 'tandas', alFusionar: { unir: (o, dst, est, rel) => { dst.n += o.n; rel.coleccion(est).splice(rel.coleccion(est).indexOf(o), 1); } } });
-    assert.equal(c.Personas.fusionar('a', 'b').ok, true);
-    assert.equal(c.S.tandas.length, 1);
-    assert.equal(c.S.tandas[0].n, 3);
-  });
-});
-
-
 describe('Personas.verificar (invariantes)', () => {
   test('estado limpio → sin violaciones', () => {
     const c = entorno({ personas: [P('p1', 'Ana')], deudores: [{ id: 'd1', personaId: 'p1' }] });
@@ -441,13 +343,13 @@ describe('Perfil y lista de Personas sobre relaciones', () => {
   });
   describe('ciclo de vida en la pantalla', () => {
     const quieta = app => { app.save = () => {}; app.refresh = () => {}; app.toast = () => {}; app.dialogo = async () => true; app.confirmarEliminar = async () => true; app.avisarNoSePuede = async () => { app._avisos = (app._avisos || 0) + 1; }; return app; };
-    const acciones = (app, id) => [...app.document.getElementById('pficha-body').querySelectorAll('[data-action]')].map(b => b.getAttribute('data-action')).filter(a => /^personas:(fusionar|archivar|restaurar|eliminar)$/.test(a));
-    test('el perfil ofrece fusionar y archivar; eliminar solo si no tiene relaciones', () => {
+    const acciones = (app, id) => [...app.document.getElementById('pficha-body').querySelectorAll('[data-action]')].map(b => b.getAttribute('data-action')).filter(a => /^personas:(archivar|restaurar|eliminar)$/.test(a));
+    test('el perfil ofrece archivar; eliminar solo si no tiene relaciones', () => {
       const app = montar(estado());
       app.abrirPerfilPersona('ana');
-      assert.deepEqual(acciones(app), ['personas:fusionar', 'personas:archivar']);
+      assert.deepEqual(acciones(app), ['personas:archivar']);
       app.abrirPerfilPersona('sola');
-      assert.deepEqual(acciones(app), ['personas:fusionar', 'personas:archivar', 'personas:eliminar']);
+      assert.deepEqual(acciones(app), ['personas:archivar', 'personas:eliminar']);
     });
     test('archivar saca a la persona de la lista, «Ver archivadas» la muestra y el perfil ofrece restaurar', async () => {
       const app = quieta(montar(estado()));
@@ -460,7 +362,7 @@ describe('Perfil y lista de Personas sobre relaciones', () => {
       assert.deepEqual(nombres(), ['Ana', 'Sola', 'Beto']);
       assert.match([...app.document.querySelectorAll('.pe-fila')].pop().querySelector('.personas-sub-movil').textContent, /^Archivada/);
       app.abrirPerfilPersona('beto');
-      assert.deepEqual(acciones(app), ['personas:fusionar', 'personas:restaurar']);
+      assert.deepEqual(acciones(app), ['personas:restaurar']);
       app._restaurarPersona('beto');
       assert.equal(app.Personas.activas().length, 3);
       assert.equal([...app.document.querySelectorAll('#lista-personas-body button')].some(b => /archivadas/.test(b.textContent)), false);
@@ -473,27 +375,9 @@ describe('Perfil y lista de Personas sobre relaciones', () => {
       await app._eliminarPersona('sola');
       assert.equal(app.Personas.obtener('sola'), undefined);
     });
-    test('fusionar: pide destino, confirma y deja a una sola persona con todo', async () => {
-      const app = quieta(montar(estado()));
-      app.abrirSelPersona = (cb, titulo, opts) => { assert.equal(opts.excluir({ id: 'sola' }), true); assert.equal(opts.excluir({ id: 'ana' }), false); app._p = cb('ana'); };
-      app._fusionarPersona('sola');
-      await app._p;
-      assert.equal(app.Personas.obtener('sola'), undefined);
-      assert.equal(app.Personas.lista().length, 2);
-    });
-    test('fusionar con conflicto avisa y no cambia nada', async () => {
-      const e = estado();
-      e.spotify.integrantes.push({ id: 's2', personaId: 'ana' });
-      const app = quieta(montar(e));
-      app.abrirSelPersona = cb => { app._p = cb('ana'); };
-      app._fusionarPersona('beto');
-      await app._p;
-      assert.equal(app._avisos, 1);
-      assert.ok(app.Personas.obtener('beto'));
-    });
     test('las acciones nuevas están registradas', () => {
       const app = montar(estado());
-      ['archivar', 'restaurar', 'eliminar', 'fusionar', 'alternarArchivadas'].forEach(a => assert.equal(app.Events.tiene ? app.Events.tiene('personas:' + a) : true, true));
+      ['archivar', 'restaurar', 'eliminar', 'alternarArchivadas'].forEach(a => assert.equal(app.Events.tiene ? app.Events.tiene('personas:' + a) : true, true));
     });
   });
 

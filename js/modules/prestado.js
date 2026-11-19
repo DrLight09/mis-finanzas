@@ -683,10 +683,6 @@ function _abrirPerfilDesdeDeudor(deudorId) {
   abrirPerfilPersona(d.personaId);
 }
 
-// Tras fusionar personas (Personas.fusionar, desde la pantalla Personas) la deuda que estaba abierta pudo haber dejado de existir: se suelta
-// la selección para no quedar apuntando a un id que ya no está.
-function _prestadoSoltarSeleccion() { deudorActualId = null; miDeudaActualId = null; }
-
 function volverDeudores() {
   deudorActualId = null;
   _mostrarPanelPrestamos('deudoresView');

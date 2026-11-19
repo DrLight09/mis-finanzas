@@ -10,7 +10,7 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 
 ## 2. Estado actual
 
-**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar`, `verificar` I1–I4, `huerfanos`), fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda salen de `Personas.relaciones(id)`) fase 5 (`alias` y `notas` editables), fase 4 (archivar, restaurar, eliminar solo sin relaciones y fusionar con `alFusionar` por relación) y fase 3 (nombre y color solo en `S.personas`: ningún módulo guarda copia, un único camino de lectura `Personas.nombre/color`, `S.spotify.integrantes`, `destino.deudorId`, sin ramas «sin personaId»). Todo está en el [`CHANGELOG.md`](./CHANGELOG.md). No hay migración de datos: la app no tiene datos que conservar.
+**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar`, `verificar` I1–I4, `huerfanos`), fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda salen de `Personas.relaciones(id)`) fase 5 (`alias` y `notas` editables), fase 4 (archivar, restaurar, eliminar solo sin relaciones; la fusión se hizo y luego se quitó, ver el CHANGELOG) y fase 3 (nombre y color solo en `S.personas`: ningún módulo guarda copia, un único camino de lectura `Personas.nombre/color`, `S.spotify.integrantes`, `destino.deudorId`, sin ramas «sin personaId»). Todo está en el [`CHANGELOG.md`](./CHANGELOG.md). No hay migración de datos: la app no tiene datos que conservar.
 
 **Queda, de los problemas originales:**
 
@@ -56,7 +56,7 @@ I1–I4 ya se comprueban (`Personas.verificar`). Quedan:
 
 ### 4.4 Relaciones: lo que falta
 
-Nada: `alFusionar` ya existe (Préstamos y Yo debo se unen; Spotify bloquea). Un módulo nuevo con relación `unica` decide si declara `alFusionar.unir`; sin él, la fusión con alguien que ya tiene esa relación se rechaza.
+Nada.
 
 ### 4.5 Qué ve la persona: lo que falta
 
@@ -76,7 +76,7 @@ Nada pendiente en lista, perfil ni búsqueda.
 | Archivo | Cambio pendiente |
 |---|---|
 | `modules/configuracion.js` | `_validarEstructuraJSON` comprueba referencias (hoy el import solo reconcilia) |
-| `docs/glosario-dominio.md` | revisar términos tras archivar/fusionar |
+| `docs/glosario-dominio.md` | revisar términos tras archivar |
 
 ## 6. Casos sin cubrir
 
@@ -88,7 +88,7 @@ Las cinco fases previstas están hechas. Solo queda lo opcional de §4.7 (vincul
 
 ## 8. Pruebas que faltan
 
-- **Invariantes tras cada operación.** `Personas.verificar()` debe devolver vacío después de cada operación de los módulos (crear, editar, fusionar, importar). Hoy se prueba el núcleo y la pantalla; falta recorrer las operaciones de Encargos, Spotify y Préstamos.
+- **Invariantes tras cada operación.** `Personas.verificar()` debe devolver vacío después de cada operación de los módulos (crear, editar, importar). Hoy se prueba el núcleo y la pantalla; falta recorrer las operaciones de Encargos, Spotify y Préstamos.
 - **Escenarios de Inicio.** Los 68 escenarios ya vinculan sus personas; ese chequeo pasaría a ser `Personas.verificar()`.
 - **Notificaciones.** Prueba de paridad de `scripts/notificaciones` con un respaldo del esquema final.
 
@@ -102,5 +102,5 @@ Decididas con lo recomendado; se reabren solo si tú lo pides.
 ## 10. Riesgos y límites
 
 - Cada fase es verificable con `Personas.verificar()`; las cinco fases ya están dentro.
-- Fusionar no se puede deshacer (junta registros y borra a la persona de origen). Por eso pide confirmación explicando qué pasa a quién, y se rechaza antes de tocar nada cuando una relación `unica` no sabe unirse (Spotify). `crear` y `editar` no permiten repetir un nombre entre las no archivadas; los homónimos reales exigen apellido o apodo.
+- `crear` y `editar` no permiten repetir un nombre entre las no archivadas; los homónimos reales exigen apellido o apodo.
 - Lo hecho hasta ahora (fases 1 a 5) pasa todos los tests y el smoke con el CSS real, pero **no se ha visto en un navegador de verdad**: hay que mirar la lista y el perfil de Personas (bloque «Saldo neto» y los botones nuevos de Fusionar, Archivar/Restaurar y Eliminar, que reutilizan `btn btn-ghost pe-mt10`), y probar a fusionar dos personas con préstamos y a archivar una con saldo.

@@ -848,12 +848,11 @@ function _perfilBalanceNeto(rels, neto) {
   </div>`;
 }
 
-// Fusionar, archivar y eliminar: el ciclo de vida de la persona (Personas.fusionar/archivar/eliminar). Eliminar solo aparece si no tiene
+// Archivar y eliminar: el ciclo de vida de la persona (Personas.archivar/restaurar/eliminar). Eliminar solo aparece si no tiene
 // ninguna relación (con historial se archiva).
 function _perfilAcciones(p, rels) {
   return html`<div class="pe-mt10">
     ${p.archivada ? html`<div class="pe-sub pe-c-text3">Archivada: no sale en la lista ni en los selectores. Sus préstamos y encargos siguen en su módulo.</div>` : ''}
-    <button type="button" class="btn btn-ghost pe-mt10" ${raw(Events.attr('personas:fusionar', p.id))}>Fusionar con otra persona…</button>
     ${p.archivada
       ? html`<button type="button" class="btn btn-ghost pe-mt10" ${raw(Events.attr('personas:restaurar', p.id))}>Restaurar</button>`
       : html`<button type="button" class="btn btn-ghost pe-mt10" ${raw(Events.attr('personas:archivar', p.id))}>Archivar</button>`}
@@ -919,7 +918,7 @@ function _editarPersonaDesdePerfilSheet() {
   document.getElementById('sheet-perfil-persona').classList.remove('open');
 }
 
-/* ── CICLO DE VIDA: archivar, restaurar, eliminar, fusionar ────── */
+/* ── CICLO DE VIDA: archivar, restaurar, eliminar ────── */
 function _trasCambioDePersonas(abrirId) {
   save(); refresh();
   if (abrirId && Personas.obtener(abrirId)) _perfilPersonaId = abrirId; else _cerrarFichaPersonas();
@@ -961,35 +960,6 @@ async function _eliminarPersona(personaId) {
   if (!r.ok) { toast('No se pudo eliminar', 'err'); return; }
   _trasCambioDePersonas(null);
   toast(p.nombre + ' eliminado/a', 'ok');
-}
-
-function _motivoFusion(pf, o, dst) {
-  if (pf.error === 'conflicto') return o.nombre + ' y ' + dst.nombre + ' están las dos en ' + pf.etiqueta + ', y ese módulo no puede mezclar dos registros. Quita a una de las dos de ' + pf.etiqueta + ' y vuelve a intentarlo.';
-  if (pf.error === 'destino-archivada') return dst.nombre + ' está archivada. Restáurala o elige otra persona.';
-  return 'No se pueden fusionar.';
-}
-
-// Elige a la persona con la que se junta (selector compartido), explica qué pasa y, si se confirma, fusiona.
-function _fusionarPersona(origenId) {
-  const o = Personas.obtener(origenId);
-  if (!o) return;
-  abrirSelPersona(async destinoId => {
-    const dst = Personas.obtener(destinoId);
-    if (!dst || destinoId === origenId) return;
-    const pf = Personas.puedeFusionar(origenId, destinoId);
-    if (!pf.ok) { await avisarNoSePuede('No se pueden fusionar', _motivoFusion(pf, o, dst)); return; }
-    const rels = Personas.relaciones(origenId);
-    const detalle = rels.length ? rels.map(r => (r.resumen ? r.resumen.cab : r.etiqueta)).join(', ') : 'su nombre';
-    const ok = await dialogo('Fusionar a ' + o.nombre + ' con ' + dst.nombre,
-      'Todo lo de ' + o.nombre + ' (' + detalle + ') pasa a ' + dst.nombre + ' y ' + o.nombre + ' desaparece. Queda el nombre y el color de ' + dst.nombre + '. Esto no se puede deshacer.', 'Fusionar', true);
-    if (!ok) return;
-    const r = Personas.fusionar(origenId, destinoId);
-    if (!r.ok) { toast('No se pudo fusionar: ' + (r.error === 'conflicto' ? 'conflicto en ' + r.etiqueta : r.error), 'err', 4500); return; }
-    if (typeof _prestadoSoltarSeleccion === 'function') _prestadoSoltarSeleccion();
-    _trasCambioDePersonas(destinoId);
-    toast(o.nombre + ' se fusionó con ' + dst.nombre, 'ok', 3500);
-    abrirPerfilPersona(destinoId);
-  }, 'Fusionar a ' + o.nombre + ' con…', { excluir: p => p.id === origenId });
 }
 
 function _alternarArchivadas() { _verArchivadas = !_verArchivadas; _renderListaPersonas(); }
@@ -1125,7 +1095,6 @@ Events.registerAll('personas', {
   archivar: _archivarPersona,
   restaurar: _restaurarPersona,
   eliminar: _eliminarPersona,
-  fusionar: _fusionarPersona,
   alternarArchivadas: _alternarArchivadas,
   irAPantalla: pantalla => showScreen(pantalla),
   seleccionarColor: _seleccionarColorPersona,

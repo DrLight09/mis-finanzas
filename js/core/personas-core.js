@@ -17,7 +17,7 @@
      I4. Como máximo un registro vivo por (persona, relación) en las relaciones `unica`.
 
    Ciclo de vida: archivar/restaurar (la persona deja de ofrecerse y de listarse, pero sus registros siguen intactos), eliminar (solo si no
-   tiene ninguna relación: con historial se archiva, nunca se borra) y fusionar (junta dos personas en una; ver `fusionar`).
+   tiene ninguna relación: con historial se archiva, nunca se borra).
 
    Qué NO hace todavía (ver docs/personas-modelo-unico.md): vincular el diferencial y la mesada.
    ═══════════════════════════════════════════════════════════════ */
@@ -36,8 +36,6 @@ const Personas = (() => {
        etiqueta   cómo se llama en pantalla.
        coleccion(d) → arreglo VIVO con los registros (todos con `personaId`). Debe tolerar que la colección no exista todavía.
        unica      true = a lo más un registro por persona (I4).
-       alFusionar { unir(origen, destino, d, rel) } — qué hacer al fusionar dos personas que YA tienen esta relación `unica`. Sin él, la
-                  fusión se bloquea (por ejemplo Spotify: dos integrantes no se mezclan). Una relación no `unica` simplemente se reasigna.
        pantalla   pantalla del módulo (para «ver en el módulo»).
        saldo(r)   aporte del registro a la posición neta con la persona: positivo = te deben, negativo = le debes. Sin `saldo` no aporta.
        resumen(registros, saldo) → { tag, cab, corto: {texto, tono}, pc }: lo que muestran la lista y la cabecera del perfil.
@@ -63,33 +61,9 @@ const Personas = (() => {
   const _saldoDeudor = r => (typeof getDeudorSaldo === 'function' ? getDeudorSaldo(r) : 0);
   const _saldoMiDeuda = r => (typeof getMiDeudaSaldo === 'function' ? getMiDeudaSaldo(r) : 0);
 
-  // ── Fusión: cómo se unen dos registros de una relación `unica` cuando AMBAS personas ya la tienen ──
-  // Una deuda unida conserva los datos de la que queda (destino) y suma los movimientos y grupos de la otra; luego toda referencia a la
-  // deuda que desaparece (cualquier campo con «deud» en su nombre: deudorId, _deudorId, miDeudaId, _deudaId…) pasa a la que queda. Los ids
-  // son uid() únicos, así que un valor igual al id viejo solo puede ser una referencia a esa deuda.
-  function _repuntarIds(nodo, deId, aId) {
-    if (!nodo || typeof nodo !== 'object') return;
-    if (Array.isArray(nodo)) { nodo.forEach(x => _repuntarIds(x, deId, aId)); return; }
-    Object.keys(nodo).forEach(k => {
-      const v = nodo[k];
-      if (v === deId && /deud/i.test(k)) nodo[k] = aId;
-      else if (v && typeof v === 'object') _repuntarIds(v, deId, aId);
-    });
-  }
-  function _unirDeudas(origen, destino, est, rel) {
-    Object.keys(origen).forEach(k => {
-      if (k === 'id' || k === 'personaId') return;
-      if (Array.isArray(origen[k]) && Array.isArray(destino[k])) destino[k] = destino[k].concat(origen[k]);
-      else if (destino[k] === undefined) destino[k] = origen[k];
-    });
-    _repuntarIds(est, origen.id, destino.id);
-    const arr = rel.coleccion(est), i = arr.indexOf(origen);
-    if (i >= 0) arr.splice(i, 1);
-  }
-
   // El orden de registro es el orden en que el perfil muestra las secciones.
   registrarRelacion({
-    id: 'me-deben', etiqueta: 'Me debe', unica: true, pantalla: 'prestamos', alFusionar: { unir: _unirDeudas },
+    id: 'me-deben', etiqueta: 'Me debe', unica: true, pantalla: 'prestamos',
     coleccion: d => _arr(d.deudores),
     saldo: _saldoDeudor,
     resumen: (regs, saldo) => ({
@@ -111,7 +85,7 @@ const Personas = (() => {
     resumen: () => ({ tag: 'Spotify', cab: 'Spotify', corto: { texto: 'Spotify', tono: '' }, pc: 'Spotify' }),
   });
   registrarRelacion({
-    id: 'yo-debo', etiqueta: 'Yo debo', unica: true, pantalla: 'prestamos', alFusionar: { unir: _unirDeudas },
+    id: 'yo-debo', etiqueta: 'Yo debo', unica: true, pantalla: 'prestamos',
     coleccion: d => _arr(d.misDeudas),
     saldo: r => -_saldoMiDeuda(r),
     resumen: (regs, saldo) => ({
@@ -220,49 +194,6 @@ const Personas = (() => {
     return { ok: true };
   }
 
-  // Qué haría fusionar `origenId` dentro de `destinoId`, sin tocar nada. { ok:true, pasos } o { ok:false, error, relacion?, etiqueta? }:
-  //   'mismo' | 'no-existe' | 'destino-archivada' | 'conflicto' (ambas tienen una relación `unica` que no sabe unirse).
-  function _planFusion(origenId, destinoId, est) {
-    if (!origenId || !destinoId || origenId === destinoId) return { ok: false, error: 'mismo' };
-    const o = obtener(origenId, est), dst = obtener(destinoId, est);
-    if (!o || !dst) return { ok: false, error: 'no-existe' };
-    if (dst.archivada) return { ok: false, error: 'destino-archivada' };
-    const pasos = [];
-    for (const rel of _relaciones) {
-      const col = rel.coleccion(est);
-      const ro = col.filter(r => r && r.personaId === origenId);
-      if (!ro.length) continue;
-      const rd = col.filter(r => r && r.personaId === destinoId);
-      if (rel.unica && rd.length) {
-        if (!(rel.alFusionar && typeof rel.alFusionar.unir === 'function')) return { ok: false, error: 'conflicto', relacion: rel.id, etiqueta: rel.etiqueta };
-        pasos.push({ rel, tipo: 'unir', origen: ro, destino: rd[0] });
-      } else pasos.push({ rel, tipo: 'mover', origen: ro });
-    }
-    return { ok: true, o, dst, pasos };
-  }
-  const puedeFusionar = (origenId, destinoId, d) => { const r = _planFusion(origenId, destinoId, _d(d)); return r.ok ? { ok: true } : { ok: false, error: r.error, relacion: r.relacion, etiqueta: r.etiqueta }; };
-
-  // Junta dos personas en una: todo lo de `origen` pasa a `destino` y `origen` desaparece. El nombre y el color que quedan son los del destino.
-  //   · Relación que solo tiene el origen, o que admite varios registros (Encargos): se reasigna a `destino`.
-  //   · Relación `unica` que tienen las dos: se une con su `alFusionar.unir` (Préstamos/Yo debo suman movimientos) o, si no sabe unirse
-  //     (Spotify), se rechaza ANTES de tocar nada con error 'conflicto'.
-  // Devuelve { ok:true, persona, unidas:[ids de relación], movidas:n } o { ok:false, error }.
-  function fusionar(origenId, destinoId, d) {
-    const est = _d(d), plan = _planFusion(origenId, destinoId, est);
-    if (!plan.ok) return plan;
-    const unidas = [];
-    let movidas = 0;
-    plan.pasos.forEach(paso => {
-      if (paso.tipo === 'mover') { paso.origen.forEach(r => { r.personaId = destinoId; movidas++; }); return; }
-      paso.origen.forEach(r => paso.rel.alFusionar.unir(r, paso.destino, est, paso.rel));
-      unidas.push(paso.rel.id);
-    });
-    // Lo que el destino no tenía (alias y notas) se conserva del origen.
-    ['alias', 'notas'].forEach(k => { if (plan.o[k] && !plan.dst[k]) plan.dst[k] = plan.o[k]; });
-    est.personas.splice(est.personas.indexOf(plan.o), 1);
-    return { ok: true, persona: plan.dst, unidas, movidas };
-  }
-
   /* ── Integridad ───────────────────────────────────────────── */
   // Registros que apuntan a una persona que no existe o que no tienen vínculo (I1).
   function huerfanos(d) {
@@ -304,6 +235,6 @@ const Personas = (() => {
     return out;
   }
 
-  return { COLOR_DEFECTO, norm, registrarRelacion, declaradas, relaciones, registros, posicionNeta, lista, activas, obtener, nombre, color, buscarPorNombre, crear, editar, archivar, restaurar, eliminar, puedeFusionar, fusionar, huerfanos, verificar };
+  return { COLOR_DEFECTO, norm, registrarRelacion, declaradas, relaciones, registros, posicionNeta, lista, activas, obtener, nombre, color, buscarPorNombre, crear, editar, archivar, restaurar, eliminar, huerfanos, verificar };
 })();
 if (typeof window !== 'undefined') window.Personas = Personas; // los tests lo leen como ctx.Personas

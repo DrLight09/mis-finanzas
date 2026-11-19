@@ -33,6 +33,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Personas: se quita «Fusionar» (2026-11-19, SW v155)
+
+- Se eliminó la opción «Fusionar con otra persona…» (`Personas.fusionar`, `puedeFusionar`, `alFusionar` de cada relación, `_unirDeudas`, `_repuntarIds`, `_prestadoSoltarSeleccion` y sus pruebas). Nació de pensar que los módulos creaban personas duplicadas, algo que ya no ocurre: toda persona se crea con «Nueva persona» y los módulos solo la eligen. Un duplicado hoy sería un error del usuario, que lo resuelve con Eliminar (si no tiene relaciones) o Archivar.
+- Se mantienen Archivar, Restaurar y Eliminar solo sin relaciones.
+
+## Personas: texto del estado vacío (2026-11-19, SW v154)
+
+- El estado vacío de Personas decía que las personas «se crean automáticamente cuando agregas un deudor o encargo». Era del modelo viejo: hoy toda persona se crea con «Nueva persona» (en Personas o desde el selector) y los módulos solo la eligen. Ahora el texto lo explica así.
+
 ## Personas: alias y notas, fase 5 (2026-11-18, SW v153)
 
 - **`alias` y `notas` ya se escriben:** la hoja «Editar persona» tiene los campos «Apodo o alias» y «Notas» (opcionales; vacío los quita) y `Personas.editar` los acepta. El perfil los muestra arriba, el selector de personas también busca por alias y la búsqueda global ya los leía. Sirven para distinguir homónimos.

@@ -148,7 +148,7 @@ function diffEstaAbierto(instanciaId) {
 function diffAddParte(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
-  instancia.partes.push({ nombre: '', monto: 0, pagadoPorMi: false, miCuentaSalida: '', miCuentaEntrada: '' });
+  instancia.partes.push({ personaId: '', monto: 0, pagadoPorMi: false, miCuentaSalida: '', miCuentaEntrada: '' });
   diffRenderPartes(instanciaId);
   diffResumen(instanciaId);
 }
@@ -161,7 +161,20 @@ function diffRemoveParte(instanciaId, i) {
   diffResumen(instanciaId);
 }
 
-function diffSetNombre(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (instancia) instancia.partes[i].nombre = v; }
+// Quien se lleva la parte es una persona de la app (S.personas): se guarda solo su id y el nombre sale de Personas.nombre.
+function _diffNombreParte(b) { return b && b.personaId ? Personas.nombre(b.personaId) : ''; }
+
+function diffElegirPersona(instanciaId, i) {
+  const instancia = diffInstancia(instanciaId);
+  if (!instancia || !instancia.partes[i]) return;
+  abrirSelPersona(personaId => {
+    const parte = instancia.partes[i];
+    if (!parte || !Personas.obtener(personaId)) return;
+    parte.personaId = personaId;
+    diffRenderPartes(instanciaId);
+    diffResumen(instanciaId);
+  }, '¿Quién se lleva esta parte?');
+}
 function diffSetMonto(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (!instancia) return; instancia.partes[i].monto = parseMoney(v) || 0; diffResumen(instanciaId); }
 
 function diffTogglePagoYo(instanciaId, i) {
@@ -199,8 +212,8 @@ function diffRenderPartes(instanciaId) {
     return `
     <div class="diferencial-parte">
       <div class="diferencial-parte-fila">
-        <input type="text" placeholder="Nombre (ej: Mi mamá)" value="${escHtml(b.nombre)}"
-          class="diff-nombre-input diferencial-input diferencial-input-nombre" data-i="${i}">
+        <button type="button" ${Events.attr('diferencial:elegirPersona', instanciaId, i)}
+          class="diferencial-persona-btn${b.personaId ? ' elegida' : ''}">${escHtml(_diffNombreParte(b) || 'Elegir persona')}</button>
         <input type="text" inputmode="decimal" placeholder="Monto" value="${montoFmt}"
           class="diff-monto-input diferencial-input diferencial-input-monto" data-i="${i}">
         <button type="button" ${Events.attr('diferencial:removeParte', instanciaId, i)} class="diferencial-quitar">&#x2715;</button>
@@ -231,9 +244,6 @@ function diffRenderPartes(instanciaId) {
   // oninput/onchange no pasan por el despachador central (Events solo
   // maneja clicks) — como este bloque se reconstruye entero en cada
   // agregar/quitar/toggle, hay que re-adjuntar estos listeners cada vez.
-  contenedor.querySelectorAll('.diff-nombre-input').forEach(el => {
-    el.addEventListener('input', function () { diffSetNombre(instanciaId, parseInt(this.dataset.i, 10), this.value); });
-  });
   contenedor.querySelectorAll('.diff-monto-input').forEach(el => {
     el.addEventListener('input', function () { diffSetMonto(instanciaId, parseInt(this.dataset.i, 10), this.value); });
   });
@@ -256,7 +266,7 @@ function diffCalcular(instanciaId) {
   const margen = dijo - real;
 
   const partes = cfg.permiteBeneficiarios ? instancia.partes : [];
-  const normales = partes.filter(b => !b.pagadoPorMi && (b.nombre || b.monto > 0));
+  const normales = partes.filter(b => !b.pagadoPorMi && (b.personaId || b.monto > 0));
   const intercambios = partes.filter(b => b.pagadoPorMi && b.monto > 0);
   const asignadoNormal = normales.reduce((a, b) => a + (b.monto || 0), 0);
   const asignadoIntercambio = intercambios.reduce((a, b) => a + (b.monto || 0), 0);
@@ -307,7 +317,7 @@ function diffResumen(instanciaId) {
     if (b.monto > 0) {
       const salida = b.miCuentaSalida ? fuenteLabel(b.miCuentaSalida) : '?';
       const entrada = b.miCuentaEntrada ? fuenteLabel(b.miCuentaEntrada) : '?';
-      html += `<br><span class="diferencial-azul">${escHtml(b.nombre || 'Tú')}: sale ${fmt(b.monto)} de ${salida} · entra ${fmt(b.monto)} a ${entrada}</span>`;
+      html += `<br><span class="diferencial-azul">${escHtml(_diffNombreParte(b) || 'Tú')}: sale ${fmt(b.monto)} de ${salida} · entra ${fmt(b.monto)} a ${entrada}</span>`;
     }
   });
 
@@ -337,12 +347,14 @@ function _diffActualizarMiCuenta(instanciaId, mostrar) {
 function diffValidarIntercambios(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return null;
+  // Cada parte con plata necesita una persona: es el vínculo que mantiene el perfil y la integridad al día.
+  if (instancia.partes.some(b => b.monto > 0 && !b.personaId)) return 'Elige a quién se lleva cada parte.';
   const intercambios = instancia.partes.filter(b => b.pagadoPorMi && b.monto > 0);
   for (const b of intercambios) {
     if (!b.miCuentaSalida) continue;
     const val = Plata.validarSalida(b.miCuentaSalida, b.monto);
     if (!val.ok) {
-      const nombre = b.nombre ? `"${b.nombre}"` : 'una persona';   // texto plano: lo pinta toast()/textContent
+      const nombre = b.personaId ? `"${_diffNombreParte(b)}"` : 'una persona';   // texto plano: lo pinta toast()/textContent
       return `${val.motivo} para pagarle a ${nombre}.`;
     }
   }
@@ -416,8 +428,8 @@ function diffAplicar(instanciaId, movimiento, linkId) {
   const yoMeQuedoFantasma = (!instancia.cfg.permiteMiCuenta && sinAsignar > 0.5) ? sinAsignar : 0;
 
   const beneficiariosGuardados = [
-    ...normales.map(b => ({ nombre: b.nombre, monto: b.monto })),
-    ...intercambios.map(b => ({ nombre: b.nombre, monto: b.monto, pagadoPorMi: true, miCuentaSalida: b.miCuentaSalida || '', miCuentaEntrada: b.miCuentaEntrada || '' }))
+    ...normales.map(b => ({ personaId: b.personaId, monto: b.monto })),
+    ...intercambios.map(b => ({ personaId: b.personaId, monto: b.monto, pagadoPorMi: true, miCuentaSalida: b.miCuentaSalida || '', miCuentaEntrada: b.miCuentaEntrada || '' }))
   ];
 
   // Marca de "movimiento secundario" (ver cfg.origenSeccion arriba). Vacío si el módulo no la definió.
@@ -468,7 +480,7 @@ function diffAplicar(instanciaId, movimiento, linkId) {
     if (!b.monto || b.monto <= 0) return;
     const cuentaSalida = b.miCuentaSalida;
     const cuentaEntrada = b.miCuentaEntrada;
-    const nombreBenef = b.nombre || 'Persona';
+    const nombreBenef = _diffNombreParte(b) || 'Persona';
 
     if (cuentaSalida) {
       descontarFuente(cuentaSalida, b.monto, _origenLibroDiferencial);
@@ -549,7 +561,7 @@ function diffHtmlBloque(ids, opts) {
 function diffRenderHistorial(diferencial) {
   if (!diferencial) return '';
   const d = diferencial;
-  const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b => `${escHtml(b.nombre)} ${fmt(b.monto)}`).join(' · ');
+  const benefs = (d.beneficiarios || []).filter(b => b.personaId).map(b => `${escHtml(Personas.nombre(b.personaId))} ${fmt(b.monto)}`).join(' · ');
   const miParte = (d.miCuentas && d.miCuentas.length > 1 && d.yoMeQuedo > 0)
     ? `Yo: ${d.miCuentas.map(r => `${escHtml(fuenteLabel(r.cuenta))} ${fmt(r.monto)}`).join(' + ')}`
     : (d.miCuenta && d.yoMeQuedo > 0 ? `Yo: ${escHtml(fuenteLabel(d.miCuenta))} ${fmt(d.yoMeQuedo)}` : (d.yoMeQuedo > 0 ? `Yo ${fmt(d.yoMeQuedo)}` : ''));
@@ -569,6 +581,7 @@ Events.registerAll('diferencial', {
   toggle: diffToggle,
   addParte: diffAddParte,
   removeParte: diffRemoveParte,
+  elegirPersona: diffElegirPersona,
   togglePagoYo: diffTogglePagoYo,
 });
 

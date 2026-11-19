@@ -165,6 +165,7 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 | `_datosPersona(personaId)` | Ayudante local de personas.js (no global), adaptador sobre `Personas.registros`: deudor(es), encargos, misDeudas e integrante de Spotify de una persona, con sus saldos ya calculados |
 | `_renderListaPersonas()` | Pinta la pantalla "Personas": una fila por persona (repara antes cualquier huérfano) |
 | `abrirPerfilPersona(personaId)` | Arma y abre el perfil consolidado recorriendo `Personas.relaciones(id)`: una sección por relación viva |
+| Relación `margenes` | partes del diferencial que se lleva la persona (`beneficiarios[].personaId` dentro de los movimientos de deudores y encargos); aparece en su perfil como «Margen $X» y impide eliminarla; no entra en la posición neta |
 | `Personas.relaciones(id)` / `posicionNeta(id)` / `registros(id, relacion)` | Relaciones vivas con saldo y resumen; saldo neto (me debe − le debo, sin encargos); registros de una relación |
 | `abrirSelPersona(callback, titulo)` | Abre el selector compartido; el `callback` recibe el `personaId` elegido o recién creado |
 | `_crearPersonaGlobal()` / `_guardarEditarPersonaGlobal()` | Crean o editan una persona; el segundo resincroniza nombre/color en todos los módulos vinculados |

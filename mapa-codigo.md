@@ -19,7 +19,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
 | `js/core/cuentas-fuentes.js` | de entrada (defer) | 40 | 3 |
 | `js/core/dialogos.js` | de entrada (defer) | 10 | 0 |
-| `js/core/diferencial.js` | de entrada (defer) | 22 | 0 |
+| `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/disposicion-pc.js` | de entrada (defer) | 0 | 0 |
 | `js/core/estado.js` | de entrada (defer) | 15 | 7 |
 | `js/core/eventos-base.js` | de entrada (defer) | 2 | 0 |
@@ -160,7 +160,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInstancia`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffSetNombre`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
+**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `_diffNombreParte`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffElegirPersona`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInstancia`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
 
 ### `js/core/disposicion-pc.js`
 
@@ -707,6 +707,7 @@ Ninguno.
 | `_diferencialRenderHistorialParte` | `js/modules/encargos.js` |
 | `_diffActualizarMiCuenta` | `js/core/diferencial.js` |
 | `_diffFuentesOptsHtml` | `js/core/diferencial.js` |
+| `_diffNombreParte` | `js/core/diferencial.js` |
 | `_editarPersonaDesdePerfilSheet` | `js/modules/personas.js` |
 | `_eliminarMovimientoImpl` | `js/core/movimientos.js` |
 | `_eliminarPersona` | `js/modules/personas.js` |
@@ -1336,6 +1337,7 @@ Ninguno.
 | `diffAddParte` | `js/core/diferencial.js` |
 | `diffAplicar` | `js/core/diferencial.js` |
 | `diffCalcular` | `js/core/diferencial.js` |
+| `diffElegirPersona` | `js/core/diferencial.js` |
 | `diffEstaAbierto` | `js/core/diferencial.js` |
 | `diffHtmlBloque` | `js/core/diferencial.js` |
 | `diffInstancia` | `js/core/diferencial.js` |
@@ -1348,7 +1350,6 @@ Ninguno.
 | `diffSetCuentaEntrada` | `js/core/diferencial.js` |
 | `diffSetCuentaSalida` | `js/core/diferencial.js` |
 | `diffSetMonto` | `js/core/diferencial.js` |
-| `diffSetNombre` | `js/core/diferencial.js` |
 | `diffToggle` | `js/core/diferencial.js` |
 | `diffTogglePagoYo` | `js/core/diferencial.js` |
 | `diffValidarIntercambios` | `js/core/diferencial.js` |

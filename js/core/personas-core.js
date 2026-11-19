@@ -95,6 +95,20 @@ const Personas = (() => {
     }),
   });
 
+  // Márgenes del diferencial: cada parte del reparto que se lleva una persona vive dentro del movimiento (de un deudor o de un encargo).
+  // Solo cuenta para el perfil y la integridad (I1, I5); no entra en la posición neta.
+  registrarRelacion({
+    id: 'margenes', etiqueta: 'Margen', unica: false,
+    coleccion: d => {
+      const out = [];
+      [..._arr(d.deudores), ..._arr(d.encargos)].forEach(x => _arr(x && x.movimientos).forEach(m => {
+        if (m && m.diferencial) _arr(m.diferencial.beneficiarios).forEach(b => { if (b && typeof b === 'object') out.push(b); });
+      }));
+      return out;
+    },
+    resumen: regs => { const t = 'Margen ' + _fmt(_suma(regs, r => r.monto)); return { tag: 'Margen', cab: t, corto: { texto: t, tono: '' }, pc: '' }; },
+  });
+
   /* ── Lectura ──────────────────────────────────────────────── */
   const lista = d => _arr(_d(d).personas);                 // todas, archivadas incluidas
   const activas = d => lista(d).filter(p => p && !p.archivada); // las que se ofrecen y se listan

@@ -275,7 +275,7 @@ function abrirDetalleMovimiento(el){
     // ── Diferencial / margen ────────────────────────────────────────────────
     if (rm.diferencial) {
       const d = rm.diferencial;
-      const benefs = (d.beneficiarios || []).filter(b => b.nombre || b.monto > 0);
+      const benefs = (d.beneficiarios || []).filter(b => b.personaId || b.monto > 0);
       const benefsNorm   = benefs.filter(b => !b.pagadoPorMi);
       const benefsYoPague = benefs.filter(b => b.pagadoPorMi);
 
@@ -295,12 +295,12 @@ function abrirDetalleMovimiento(el){
           ${benefsNorm.length ? `
           <div class="mdet-txt">
             Del margen le diste:
-            ${benefsNorm.map(b => `<span class="mdet-chip-amber"><strong>${escHtml(b.nombre)}</strong> <i class="fa-solid fa-arrow-right"></i> ${fmt(b.monto)}</span>`).join(' ')}
+            ${benefsNorm.map(b => `<span class="mdet-chip-amber"><strong>${escHtml(Personas.nombre(b.personaId))}</strong> <i class="fa-solid fa-arrow-right"></i> ${fmt(b.monto)}</span>`).join(' ')}
           </div>` : ''}
           ${benefsYoPague.length ? `
           <div class="mdet-txt">
             Pagaste de tu bolsillo por:
-            ${benefsYoPague.map(b => `<span class="mdet-chip-blue"><strong>${escHtml(b.nombre)}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + fuenteHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' <i class="fa-solid fa-arrow-right"></i> recuperas en ' + fuenteHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
+            ${benefsYoPague.map(b => `<span class="mdet-chip-blue"><strong>${escHtml(Personas.nombre(b.personaId))}</strong> ${fmt(b.monto)}${b.miCuentaSalida ? ' desde ' + fuenteHtml(b.miCuentaSalida) : ''}${b.miCuentaEntrada ? ' <i class="fa-solid fa-arrow-right"></i> recuperas en ' + fuenteHtml(b.miCuentaEntrada) : ''}</span>`).join(' ')}
             <div class="mdet-nota-pie">Pusiste esa plata de tu cuenta pero se te descuenta del encargo, así que es plata neutra.</div>
           </div>` : ''}
         </div>`);

@@ -832,6 +832,8 @@ input.money-input.ms-cuota-input{width:90px;padding:4px 8px;font-size:12px;text-
 .diferencial-parte-fila{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
 input.diferencial-input{padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;}
 input.diferencial-input-nombre{flex:2;color:var(--text);font-family:'DM Sans',sans-serif;}
+button.diferencial-persona-btn{flex:2;padding:8px 10px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text3);text-align:left;cursor:pointer;}
+button.diferencial-persona-btn.elegida{color:var(--text);}
 input.diferencial-input-monto{flex:1;color:var(--amber);font-family:'DM Mono',monospace;}
 .diferencial-quitar{padding:6px 9px;border-radius:var(--radius-sm);border:1px solid rgba(240,104,104,.3);background:rgba(240,104,104,.07);color:var(--red);cursor:pointer;font-size:12px;flex-shrink:0;}
 .diferencial-pago-yo{width:100%;padding:6px 10px;border-radius:var(--radius-sm);border:1.5px solid rgba(96,176,240,.2);background:transparent;color:var(--text3);font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;text-align:left;display:flex;align-items:center;gap:7px;margin-bottom:0;}

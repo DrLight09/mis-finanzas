@@ -500,3 +500,47 @@ describe('Wrapped: suscripciones de Spotify', () => {
     assert.ok(lee.has('costoMensual'));
   });
 });
+
+describe('Diferencial: el margen se lo lleva una persona de la app', () => {
+  const estado = () => ({
+    personas: [P('ana', 'Ana'), P('beto', 'Beto'), P('sola', 'Sola')],
+    encargos: [{ id: 'e1', personaId: 'ana', movimientos: [{ id: 'm1', tipo: 'salida', monto: 10, diferencial: { dijo: 100, real: 90, margen: 10, beneficiarios: [{ personaId: 'beto', monto: 6 }, { personaId: 'beto', monto: 2 }], yoMeQuedo: 2 } }] }],
+    deudores: [{ id: 'd1', personaId: 'ana', movimientos: [{ id: 'm2', diferencial: { beneficiarios: [{ personaId: 'ana', monto: 5 }] } }, { id: 'm3' }] }],
+  });
+  test('la relación «Margen» aparece en el perfil de quien se lo llevó, con el total, y no mueve la posición neta', () => {
+    const c = entorno(estado());
+    const rel = c.Personas.relaciones('beto').find(r => r.id === 'margenes');
+    assert.equal(rel.registros.length, 2);
+    assert.match(rel.resumen.cab, /^Margen /);
+    assert.equal(c.Personas.posicionNeta('beto'), 0);
+    assert.ok(c.Personas.relaciones('ana').some(r => r.id === 'margenes'));
+  });
+  test('una persona que se llevó un margen no se puede eliminar; se archiva', () => {
+    const c = entorno(estado());
+    assert.equal(c.Personas.eliminar('beto').error, 'tiene-relaciones');
+    assert.equal(c.Personas.eliminar('sola').ok, true);
+  });
+  test('un beneficiario sin personaId o con una persona inexistente es una violación de I1', () => {
+    const e = estado();
+    e.encargos[0].movimientos[0].diferencial.beneficiarios.push({ monto: 1 }, { personaId: 'fantasma', monto: 1 });
+    const v = plano(entorno(e).Personas.verificar());
+    assert.ok(v.some(x => x.relacion === 'margenes'));
+  });
+  test('un beneficiario que guarde su nombre copiado se detecta (I2)', () => {
+    const e = estado();
+    e.encargos[0].movimientos[0].diferencial.beneficiarios[0].nombre = 'Beto';
+    assert.ok(plano(entorno(e).Personas.verificar()).some(x => x.relacion === 'margenes'));
+  });
+  test('el motor guarda personaId (no nombre), exige persona en cada parte con plata y el historial muestra el nombre vigente', () => {
+    const fuente = fs.readFileSync(path.join(RAIZ, 'js/core/diferencial.js'), 'utf8');
+    assert.match(fuente, /\{ personaId: b\.personaId, monto: b\.monto \}/);
+    assert.doesNotMatch(fuente, /nombre: b\.nombre/);
+    assert.match(fuente, /Elige a quién se lleva cada parte/);
+    const c = loadApp([path.join(RAIZ, 'js/core/core-state.js'), path.join(RAIZ, 'js/core/diferencial.js')]);
+    Object.assign(c.S, plano(estado()));
+    const html = require('node:vm').runInContext("diffRenderHistorial({ beneficiarios: [{ personaId: 'beto', monto: 6 }], yoMeQuedo: 4, margen: 10, dijo: 100, real: 90 })", c);
+    assert.match(html, /Beto/);
+    c.Personas.editar('beto', { nombre: 'Alberto' });
+    assert.match(require('node:vm').runInContext("diffRenderHistorial({ beneficiarios: [{ personaId: 'beto', monto: 6 }], yoMeQuedo: 4, margen: 10, dijo: 100, real: 90 })", c), /Alberto/);
+  });
+});

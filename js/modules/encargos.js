@@ -1179,7 +1179,7 @@ async function _confirmarUsarParte() {
     const calc = diffCalcular('usarParte');
     if (calc.real > 0) {
       const { dijo, real, margen, normales, asignadoNormal } = calc;
-      const benefs = normales.map(b => ({ nombre: b.nombre, monto: b.monto }));
+      const benefs = normales.map(b => ({ personaId: b.personaId, monto: b.monto }));
       const yoMeQuedo = Math.max(0, margen - asignadoNormal);
 
       // Reparto del sobrante: filas de "Dividir" si está activo, si no el select único
@@ -1330,8 +1330,8 @@ function _diferencialRenderHistorialParte(parte) {
   // Mostrar diferencial si existe
   if (parte.diferencial) {
     const d = parte.diferencial;
-    const benefs = (d.beneficiarios || []).filter(b => b.nombre).map(b =>
-      `${b.nombre} ${fmt(b.monto)}`
+    const benefs = (d.beneficiarios || []).filter(b => b.personaId).map(b =>
+      `${Personas.nombre(b.personaId)} ${fmt(b.monto)}`
     ).join(' · ');
     const miParte = (d.miCuentas && d.miCuentas.length > 1 && d.yoMeQuedo > 0)
       ? `Yo (${d.miCuentas.map(r => `${fuenteLabel(r.cuenta)} ${fmt(r.monto)}`).join(' + ')})`

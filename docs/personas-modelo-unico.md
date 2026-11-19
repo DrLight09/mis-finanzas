@@ -20,7 +20,7 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 | Dónde | Estructura | Falta |
 |---|---|---|
 | Libreta central (única fuente de nombre y color) | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn, archivada?}]` | nada |
-| Diferencial / reparto | `partes[].nombre` de texto libre | vincular opcional (ver §4.7) |
+| Diferencial / reparto | `beneficiarios[].personaId` (relación `margenes`) | nada |
 | Mesada | `MESADA_PADRES = ['papa','mama']` fijos | opcional (ver §4.7) |
 
 ## 3. Hallazgos de la revisión del 2026-11-18 (no estaban en el análisis original)
@@ -68,7 +68,7 @@ Nada pendiente en lista, perfil ni búsqueda.
 
 ### 4.7 Texto libre a propósito
 
-- `diferencial` / reparto: `partes[].nombre` son invitados de un gasto compartido. Se permite vincular una parte a una persona (opcional), sin obligar a crear una persona por cada nombre suelto.
+- `diferencial` / reparto: **ya vinculado** (2026-11-19). Cada parte guarda `personaId`, se elige con el selector de personas y es obligatoria si la parte tiene plata. Relación `margenes` en el núcleo.
 - `mesada`: papá y mamá. Opcional: `mesada.padres = { papa: personaId, mama: personaId }` para que aparezcan en Personas. Fase tardía.
 
 ## 5. Impacto por archivo (lo que falta)
@@ -84,7 +84,7 @@ Nada pendiente en lista, perfil ni búsqueda.
 
 ## 7. Fases que quedan
 
-Las cinco fases previstas están hechas. Solo queda lo opcional de §4.7 (vincular partes del diferencial y los padres de la mesada), que se decidió dejar como texto libre.
+Las cinco fases previstas están hechas. Solo queda lo opcional de §4.7 (los padres de la mesada, que son categorías fijas y se dejan así).
 
 ## 8. Pruebas que faltan
 
@@ -97,7 +97,7 @@ Las cinco fases previstas están hechas. Solo queda lo opcional de §4.7 (vincul
 Decididas con lo recomendado; se reabren solo si tú lo pides.
 
 1. **Nombre en `spotify.historial` al renombrar a la persona:** se dejó como foto del momento (es un registro histórico).
-2. **Mesada y diferencial:** entran ya o se dejan como texto libre. *Recomendado: texto libre por ahora.*
+2. **Mesada:** sus padres (`papa`, `mama`) se dejan como categorías fijas. El diferencial sí se vinculó (el usuario indicó que quien se lleva el margen siempre es una persona de la app).
 
 ## 10. Riesgos y límites
 

@@ -33,6 +33,13 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Diferencial: el margen se lo lleva una persona (2026-11-19, SW v157)
+
+- Cada parte del reparto del diferencial guarda `personaId` en vez de un nombre escrito a mano. En el formulario, la casilla de texto pasó a un botón «Elegir persona» que abre el selector compartido; cada parte con plata debe tener persona («Elige a quién se lleva cada parte»).
+- El historial, el detalle del movimiento y los textos de intercambio leen `Personas.nombre(personaId)`: si renombrás a la persona, cambia en todas partes.
+- Nueva relación `margenes` en el núcleo: el perfil de la persona muestra «Margen $X», no se puede eliminar (se archiva) y `Personas.verificar` revisa I1/I2 también ahí. No entra en la posición neta.
+- La mesada no cambia: sus padres son categorías fijas.
+
 ## Wrapped: Spotify mostraba «undefined personas» (2026-11-19, SW v156)
 
 - Al renombrar `personas` → `integrantes` en la fase 3, `_wrappedSuscripciones` siguió devolviendo `{ personas }` mientras el texto leía `.integrantes`: la tarjeta de suscripciones decía «entre undefined personas». Ahora devuelve `integrantes`. Prueba de guarda en `personas-core.test.js`.

@@ -33,6 +33,10 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Wrapped: Spotify mostraba «undefined personas» (2026-11-19, SW v156)
+
+- Al renombrar `personas` → `integrantes` en la fase 3, `_wrappedSuscripciones` siguió devolviendo `{ personas }` mientras el texto leía `.integrantes`: la tarjeta de suscripciones decía «entre undefined personas». Ahora devuelve `integrantes`. Prueba de guarda en `personas-core.test.js`.
+
 ## Personas: se quita «Fusionar» (2026-11-19, SW v155)
 
 - Se eliminó la opción «Fusionar con otra persona…» (`Personas.fusionar`, `puedeFusionar`, `alFusionar` de cada relación, `_unirDeudas`, `_repuntarIds`, `_prestadoSoltarSeleccion` y sus pruebas). Nació de pensar que los módulos creaban personas duplicadas, algo que ya no ocurre: toda persona se crea con «Nueva persona» y los módulos solo la eligen. Un duplicado hoy sería un error del usuario, que lo resuelve con Eliminar (si no tiene relaciones) o Archivar.

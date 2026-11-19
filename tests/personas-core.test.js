@@ -4,6 +4,7 @@
 const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
+const fs = require('node:fs');
 const { loadApp } = require('./support/load-app');
 
 const RAIZ = path.join(__dirname, '..');
@@ -487,5 +488,15 @@ describe('Pantalla Personas', () => {
     app._renderListaPersonas();
     const nombres = [...app.document.querySelectorAll('.pe-nombre')].map(e => e.textContent).sort();
     assert.deepEqual(nombres, ['Ana', 'Beto', 'Carla']);
+  });
+});
+
+describe('Wrapped: suscripciones de Spotify', () => {
+  test('el productor y el texto usan el mismo campo (integrantes): nunca «undefined personas»', () => {
+    const fuente = fs.readFileSync(path.join(RAIZ, 'js/modules/wrapped.js'), 'utf8');
+    const produce = /spotify: spotifyActivo \? \{ (\w+):/.exec(fuente)[1];
+    const lee = new Set([...fuente.matchAll(/suscripciones\.spotify\.(\w+)/g)].map(m => m[1]));
+    assert.ok(lee.has(produce), 'wrapped.js lee suscripciones.spotify.' + [...lee].join('/') + ' pero _wrappedSuscripciones devuelve «' + produce + '»');
+    assert.ok(lee.has('costoMensual'));
   });
 });

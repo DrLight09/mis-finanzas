@@ -2852,7 +2852,7 @@ function _wrappedSuscripciones(S){
 
   return {
     personales,
-    spotify: spotifyActivo ? { personas: (S.spotify||{}).integrantes.length, costoMensual: (S.spotify||{}).costo || 0 } : null
+    spotify: spotifyActivo ? { integrantes: ((S.spotify||{}).integrantes||[]).length, costoMensual: (S.spotify||{}).costo || 0 } : null
   };
 }
 

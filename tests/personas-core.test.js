@@ -544,3 +544,29 @@ describe('Diferencial: el margen se lo lleva una persona de la app', () => {
     assert.match(require('node:vm').runInContext("diffRenderHistorial({ beneficiarios: [{ personaId: 'beto', monto: 6 }], yoMeQuedo: 4, margen: 10, dijo: 100, real: 90 })", c), /Alberto/);
   });
 });
+
+describe('Mesada: Papá y Mamá se pueden vincular (opcional) a una persona', () => {
+  const base = () => ({ personas: [P('ana', 'Ana'), P('beto', 'Beto')], mesadas: { papa: { cuotas: {}, pagos: {}, personaId: 'beto' }, mama: { cuotas: {}, pagos: {} } } });
+  test('sin vínculo no hay relación; con vínculo la persona muestra «Mesada · Papá» y no se puede eliminar', () => {
+    const c = entorno(base());
+    assert.deepEqual(plano(c.Personas.relaciones('ana')), []);
+    const rel = c.Personas.relaciones('beto').find(r => r.id === 'mesada');
+    assert.equal(rel.resumen.cab, 'Mesada · Papá');
+    assert.equal(c.Personas.posicionNeta('beto'), 0);
+    assert.equal(c.Personas.eliminar('beto').error, 'tiene-relaciones');
+    assert.deepEqual(plano(c.Personas.verificar()), []);
+  });
+  test('la misma persona como papá y mamá viola I4; un id inexistente viola I1', () => {
+    const e = base(); e.mesadas.mama.personaId = 'beto';
+    assert.ok(plano(entorno(e).Personas.verificar()).some(v => v.relacion === 'mesada'));
+    const f = base(); f.mesadas.mama.personaId = 'fantasma';
+    assert.ok(plano(entorno(f).Personas.verificar()).some(v => v.relacion === 'mesada'));
+  });
+  test('la pantalla ofrece vincular y quitar por cada padre, con acciones registradas', () => {
+    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    ['vincularPersona', 'desvincularPersona'].forEach(a => assert.equal((html.match(new RegExp('data-action="mesada:' + a + '"', 'g')) || []).length, 2));
+    const js = fs.readFileSync(path.join(RAIZ, 'js/modules/mesada.js'), 'utf8');
+    assert.match(js, /vincularPersona: vincularMesadaPersona/);
+    assert.match(js, /desvincularPersona: desvincularMesadaPersona/);
+  });
+});

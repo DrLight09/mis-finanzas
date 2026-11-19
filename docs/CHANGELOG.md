@@ -33,6 +33,10 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Mesada: vínculo opcional con una persona (2026-11-19, SW v158)
+
+- Papá y Mamá siguen siendo dos casillas fijas, pero cada una tiene un botón «Vincular persona» (y «Quitar»). Si se usa, guarda `S.mesadas.papa|mama.personaId` y la persona muestra «Mesada · Papá/Mamá» en su perfil (relación `mesada`, `unica`), no se puede eliminar y la misma persona no puede ser papá y mamá a la vez. Quien no usa la mesada no tiene que crear nada.
+
 ## Diferencial: el margen se lo lleva una persona (2026-11-19, SW v157)
 
 - Cada parte del reparto del diferencial guarda `personaId` en vez de un nombre escrito a mano. En el formulario, la casilla de texto pasó a un botón «Elegir persona» que abre el selector compartido; cada parte con plata debe tener persona («Elige a quién se lleva cada parte»).

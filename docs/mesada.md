@@ -56,6 +56,7 @@ Todo vive en `S.mesadas`:
 ```js
 S.mesadas = {
   papa: {
+    personaId: "...",                           // opcional: persona de la app que es tu papá (botón «Vincular persona»); lo mismo en `mama`
     cuotas: { "2025": 90000, "2026": 90000 },   // cuota mensual por año
     pagos: {
       "2026-6": {                                // key = "<año>-<mesIndex 0-11>"

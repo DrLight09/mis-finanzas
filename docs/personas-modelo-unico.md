@@ -21,7 +21,7 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 |---|---|---|
 | Libreta central (única fuente de nombre y color) | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn, archivada?}]` | nada |
 | Diferencial / reparto | `beneficiarios[].personaId` (relación `margenes`) | nada |
-| Mesada | `MESADA_PADRES = ['papa','mama']` fijos | opcional (ver §4.7) |
+| Mesada | `S.mesadas.papa/mama.personaId` opcional (relación `mesada`) | nada |
 
 ## 3. Hallazgos de la revisión del 2026-11-18 (no estaban en el análisis original)
 
@@ -69,7 +69,7 @@ Nada pendiente en lista, perfil ni búsqueda.
 ### 4.7 Texto libre a propósito
 
 - `diferencial` / reparto: **ya vinculado** (2026-11-19). Cada parte guarda `personaId`, se elige con el selector de personas y es obligatoria si la parte tiene plata. Relación `margenes` en el núcleo.
-- `mesada`: papá y mamá. Opcional: `mesada.padres = { papa: personaId, mama: personaId }` para que aparezcan en Personas. Fase tardía.
+- `mesada`: **ya vinculado, de forma opcional** (2026-11-19). Papá y Mamá siguen siendo dos casillas fijas; cada una tiene un botón «Vincular persona» y, si se usa, guarda `personaId` y la persona muestra «Mesada» en su perfil.
 
 ## 5. Impacto por archivo (lo que falta)
 
@@ -84,7 +84,7 @@ Nada pendiente en lista, perfil ni búsqueda.
 
 ## 7. Fases que quedan
 
-Las cinco fases previstas están hechas. Solo queda lo opcional de §4.7 (los padres de la mesada, que son categorías fijas y se dejan así).
+Las cinco fases previstas están hechas. No queda nada de §4.7: diferencial y mesada ya están vinculados.
 
 ## 8. Pruebas que faltan
 
@@ -97,7 +97,7 @@ Las cinco fases previstas están hechas. Solo queda lo opcional de §4.7 (los pa
 Decididas con lo recomendado; se reabren solo si tú lo pides.
 
 1. **Nombre en `spotify.historial` al renombrar a la persona:** se dejó como foto del momento (es un registro histórico).
-2. **Mesada:** sus padres (`papa`, `mama`) se dejan como categorías fijas. El diferencial sí se vinculó (el usuario indicó que quien se lleva el margen siempre es una persona de la app).
+2. **Mesada y diferencial:** ambos se vincularon. El diferencial exige persona en cada parte; la mesada la ofrece como opcional (quien no la usa no tiene que crear a sus padres).
 
 ## 10. Riesgos y límites
 

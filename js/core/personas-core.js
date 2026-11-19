@@ -109,6 +109,13 @@ const Personas = (() => {
     resumen: regs => { const t = 'Margen ' + _fmt(_suma(regs, r => r.monto)); return { tag: 'Margen', cab: t, corto: { texto: t, tono: '' }, pc: '' }; },
   });
 
+  // Mesada: Papá y Mamá son dos casillas fijas; quien quiera vincula cada una a una persona (opcional). El registro es la casilla misma.
+  registrarRelacion({
+    id: 'mesada', etiqueta: 'Mesada', unica: true, pantalla: 'mesada',
+    coleccion: d => ['papa', 'mama'].map(k => d.mesadas && d.mesadas[k]).filter(x => x && x.personaId),
+    resumen: regs => { const t = 'Mesada · ' + regs.map(r => (S.mesadas && r === S.mesadas.papa ? 'Papá' : 'Mamá')).join(' y '); return { tag: 'Mesada', cab: t, corto: { texto: t, tono: '' }, pc: '' }; },
+  });
+
   /* ── Lectura ──────────────────────────────────────────────── */
   const lista = d => _arr(_d(d).personas);                 // todas, archivadas incluidas
   const activas = d => lista(d).filter(p => p && !p.archivada); // las que se ofrecen y se listan

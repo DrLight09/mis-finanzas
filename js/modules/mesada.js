@@ -555,6 +555,10 @@ function renderMesada() {
     if (x.mesesPerdidos > 0) sub += ' · ' + x.mesesPerdidos + ' sin pagar';
     if (x.mesesPendientes > 0) sub += ' · ' + fmt(x.totalPendiente) + ' pendiente';
     _msEl('ms-' + parent + '-sub').textContent = sub;
+    // Vínculo opcional con una persona de la app (para que aparezca en su perfil).
+    const personaId = getMesadaPersonaId(parent), btnP = _msEl('ms-' + parent + '-persona'), btnQ = _msEl('ms-' + parent + '-persona-quitar');
+    if (btnP) { btnP.textContent = personaId ? Personas.nombre(personaId) : 'Vincular persona'; btnP.classList.toggle('vinculada', !!personaId); }
+    if (btnQ) btnQ.hidden = !personaId;
   });
 
   // Banner combinado (papá + mamá): deuda pendiente a la vista.
@@ -948,12 +952,33 @@ function _msCablear() {
 _msCablear();
 
 /* ── Acciones del despachador central de eventos (reemplaza onclick inline). Ver js/core/events.js. ── */
+// Papá y Mamá son dos casillas fijas; vincularlas a una persona de la app es opcional. Solo guarda `personaId` (el nombre sale de S.personas).
+function getMesadaPersonaId(parent) { _ensureMesadas(); const id = S.mesadas[parent].personaId; return id && Personas.obtener(id) ? id : ''; }
+function vincularMesadaPersona(parent) {
+  if (!MESADA_PADRES.includes(parent)) return;
+  const otro = parent === 'papa' ? 'mama' : 'papa';
+  abrirSelPersona(personaId => {
+    if (!Personas.obtener(personaId)) return;
+    _ensureMesadas();
+    S.mesadas[parent].personaId = personaId;
+    save(); refresh(); renderMesada();
+  }, '¿Quién es tu ' + (parent === 'papa' ? 'papá' : 'mamá') + '?', { excluir: p => p.id === getMesadaPersonaId(otro) });
+}
+function desvincularMesadaPersona(parent) {
+  if (!MESADA_PADRES.includes(parent)) return;
+  _ensureMesadas();
+  delete S.mesadas[parent].personaId;
+  save(); refresh(); renderMesada();
+}
+
 Events.registerAll('mesada', {
   clickMesDot: clickMesDot,
   eliminarPago: eliminarMesadaPago,
   resolverPendiente: abrirResolverPendiente,
   marcarPendiente: marcarMesadaComoPendiente,
   deshacerPendiente: deshacerPendienteMesada,
+  vincularPersona: vincularMesadaPersona,
+  desvincularPersona: desvincularMesadaPersona,
 });
 
 Ui.pantalla('mesada', () => { if (typeof renderMesada === 'function') renderMesada(); }, { key: 'mesada-render' });

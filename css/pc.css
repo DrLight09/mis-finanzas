@@ -146,24 +146,32 @@
   #deudoresList .card:hover,#misDeudasList .card:hover{background:color-mix(in srgb,var(--text) 5%,transparent);}
   #screen-prestamos .persona-card-activa{background:var(--bg3);border-color:var(--border2);}
 
-  /* ── Mesada (como el prototipo): el año arriba a la izquierda, una fila de resumen (recibido, meses pagados y, si hay, lo pendiente) y debajo
-     Papá | Mamá lado a lado, cada uno una caja del alto de su contenido con la cuota a la derecha y los meses en cuadrícula de 3 columnas. ── */
+  /* ── Mesada (como el prototipo): el título y la tira de años van en la cabecera (la tira solo con Mesada abierta); la pantalla es una fila de resumen
+     (recibido, meses pagados y, si hay, lo pendiente) y debajo Papá | Mamá lado a lado, cada uno una caja del alto de su contenido con la cuota a
+     la derecha y los meses en cuadrícula de 3 columnas. ── */
   .scroll-area > #screen-mesada{max-width:none;margin-left:0;margin-right:0;}
-  #mesadaSection{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:12px;align-items:start;}
-  #mesadaSection > .sec-title{display:none;} /* el título ya está en la cabecera */
-  #mesadaSection > .anio-nav{display:none;}
-  #mesadaSection > .anio-tira{display:flex;gap:3px;grid-column:1 / -1;justify-self:start;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;}
+  .app > .header > :first-child{flex:1;min-width:0;}
+  .app:has(#screen-mesada.active) > .header > .anio-tira{display:flex;gap:3px;margin-right:10px;padding:3px;background:var(--bg2);border:1px solid var(--border);border-radius:12px;}
   .anio-tira-boton{padding:7px 16px;border-radius:9px;border:0;background:transparent;color:var(--text3);font:500 13px 'DM Mono',monospace;cursor:pointer;}
   .anio-tira-boton:hover{color:var(--text);}
   .anio-tira-boton.on{background:var(--accent);color:var(--bg);font-weight:600;}
+  #mesadaSection{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:12px;align-items:start;}
+  #mesadaSection > .mesada-titulo-fila{display:none;} /* el título y el año ya están en la cabecera */
   #mesadaSection > .grid2{display:contents;}
-  #mesadaSection > .grid2 > .stat{grid-column:span 5;margin:0;}
-  #mesadaSection[data-pendiente="si"] > .grid2 > .stat{grid-column:span 3;}
-  #mesadaSection > .ms-banner{grid-column:span 4;margin:0;align-self:stretch;display:flex;align-items:center;}
-  #mesadaSection > .card:not(.ms-banner){grid-column:span 5;margin:0;}
-  .mesada-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
-  .mes-dot{aspect-ratio:auto;height:62px;min-height:0;flex-direction:column;gap:2px;font-size:13px;border-radius:12px;}
-  .mesada-mes-detalle{display:block;font:400 10px 'DM Mono',monospace;opacity:.75;}
+  #mesadaSection > .grid2 > .mesada-stat{grid-column:span 5;margin:0;padding:14px 18px;}
+  #mesadaSection[data-pendiente="si"] > .grid2 > .mesada-stat{grid-column:span 3;}
+  .mesada-stat .stat-label{font-size:10px;}
+  .mesada-stat .stat-value{font-size:28px;letter-spacing:-1px;line-height:1.1;}
+  #mesadaSection > .mesada-pendiente{grid-column:span 4;margin:0;align-self:stretch;display:flex;flex-direction:column;justify-content:center;padding:14px 18px;}
+  .mesada-pendiente .stat-label{font-size:10px;}
+  .mesada-pendiente-texto{font-size:17px;margin-top:2px;}
+  #mesadaSection > .mesada-persona{grid-column:span 5;margin:0;padding:18px 20px;}
+  .ms-card-head{flex-wrap:nowrap;margin-bottom:14px;}
+  .ms-head-left{flex:1 1 0;}
+  .ms-right{flex:0 0 auto;margin:0;gap:8px;}
+  input.money-input.ms-cuota-input{width:92px;padding:6px 10px;}
+  .mesada-grid{gap:10px;}
+  .mes-dot{height:62px;}
 
   /* ── Spotify: lo de siempre (costo, resumen, integrantes, estadísticas) a la izquierda y el historial de pagos en el riel derecho ─────── */
   .scroll-area > #screen-spotify{max-width:none;margin-left:0;margin-right:0;}
@@ -281,8 +289,6 @@
   #screen-spotify.active{flex-wrap:wrap;}
   #spotify-principal{flex-basis:100%;}
   #spotify-historial{width:auto;flex-basis:100%;}
-  /* Mesada: Papá y Mamá una debajo de la otra. */
-  #mesadaSection > .card:not(.ms-banner){grid-column:span 5;}
   /* Prestado: la lista de la pestaña más angosta y el detalle a la derecha. */
   #screen-prestamos.active{grid-template-columns:minmax(260px,320px) minmax(0,1fr);}
   /* Gastos: los fijos mensuales pasan debajo de los variables. */
@@ -290,6 +296,9 @@
   #screen-gastos .gastos-resumen,#panel-var,#panel-fijo{grid-column:1;grid-row:auto;}
   #screen-spotify.active{height:auto;}
   #screen-spotify.active #spotify-principal,#screen-spotify.active #spotify-historial,#panel-var,#panel-fijo{overflow:visible;}
+  /* Mesada: la tira de años ocupa sitio en la cabecera; sin esto el buscador la desborda a 900 px. */
+  .anio-tira-boton{padding:7px 10px;}
+  .app:has(#screen-mesada.active) #btn-buscar-global{width:220px;}
   /* Tarjetas: la lista más angosta. */
   .tarjetas-columna{width:320px;}
   /* Cuentas: lista más angosta y los movimientos pasan debajo del detalle. */

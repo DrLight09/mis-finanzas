@@ -530,7 +530,7 @@ describe('mesada-ui', () => {
     ctx.S.mesadaAnio = 2026;
     ctx.renderMesada();
     assert.match(d.el('mesadaGridPapa').innerHTML, /mes-dot on mes-dot-pend/);
-    assert.match(d.el('ms-pendiente-banner').textContent, /Papá te debe/);
+    assert.match(d.el('ms-pendiente-texto').textContent, /Papá te debe/); // el texto va en su propio elemento; la etiqueta «Pendiente» es fija en el HTML
     assert.match(d.el('ms-papa-sub').textContent, /pendiente/);
   });
 

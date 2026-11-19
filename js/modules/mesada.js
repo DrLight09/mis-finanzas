@@ -570,7 +570,8 @@ function renderMesada() {
     banner.style.display = partes.length ? '' : 'none';
     const seccionMesada = document.getElementById('mesadaSection');
     if (seccionMesada) seccionMesada.dataset.pendiente = partes.length ? 'si' : 'no'; // PC: con pendiente el resumen reparte tres cuadros
-    if (partes.length) banner.textContent = partes.join(' · ');
+    const textoPendiente = _msEl('ms-pendiente-texto');
+    if (partes.length && textoPendiente) textoPendiente.textContent = partes.join(' · ');
   }
 
   _msEl('ms-total').textContent = fmt(r.totalAnio);

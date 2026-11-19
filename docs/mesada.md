@@ -192,7 +192,7 @@ El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_mov
 
 ## 9. Referencia de implementación
 
-**Ubicación:** el HTML de la pantalla y los sheets sigue en `index.html`; los estilos en `styles.css` (clases `.mesada-grid`, `.mes-dot*` y el bloque `.ms-*`). La lógica vive en `js/modules/mesada.js`, un solo archivo (grupo lazy `Loader.GROUPS.mesada` en `js/core/lazy-loader.js`, sin `<script>` propio) con dos partes: **Parte 1, reglas de negocio** (sin DOM) y **Parte 2, pantalla**. La Parte 2 solo habla con la Parte 1 por su API. Depende de:
+**Ubicación:** el HTML de la pantalla y los sheets sigue en `index.html`; los estilos en `styles.css` (clases `.mesada-*`, `.mes-dot*` y el bloque `.ms-*`) y `pc.css`. La lógica vive en `js/modules/mesada.js`, un solo archivo (grupo lazy `Loader.GROUPS.mesada` en `js/core/lazy-loader.js`, sin `<script>` propio) con dos partes: **Parte 1, reglas de negocio** (sin DOM) y **Parte 2, pantalla**. La Parte 2 solo habla con la Parte 1 por su API. Depende de:
 
 - los globals del núcleo (`S`, `save`, `refresh`, `fmt`, `parseMoney`, `hoy`, `uid`, `toast`, `openSheet`/`closeSheet`, `dialogo`, `sumarFuente`/`descontarFuente`, etc.);
 - `js/core/calc-helpers.js` (`_ensureMesadas`, `_getCuotaAnio`, `getMesadaData`, `_mesNombreDeKey`, `mesadaOrigenDeMovimientoEncargo`) y `js/core/cuenta-efectos.js` (`registrarMovimientoEspejo`/`borrarMovimientoEspejo`);
@@ -205,7 +205,7 @@ El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_mov
 
 ### Pantalla principal (`#screen-mesada`)
 
-Navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años), resumen (`#ms-total`, `#ms-count`), banner de pendientes (`#ms-pendiente-banner`) y una tarjeta por padre con input de cuota (`mesadaMontoPapa`/`mesadaMontoMama`, `data-save-refresh`) y grilla de 12 puntos. `renderMesada()` solo pinta lo que calcula `mesadaResumenAnio()`.
+Título «Mesada de papás» con navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años; en PC la tira `#anio-tira` vive en la cabecera), resumen (`#ms-total`, `#ms-count`), cuadro «Pendiente» (`#ms-pendiente-banner`, texto en `#ms-pendiente-texto`) y una tarjeta por padre (`.mesada-persona`) con input de cuota (`mesadaMontoPapa`/`mesadaMontoMama`, `data-save-refresh`) y cuadrícula de 12 meses en 3 columnas (cada casilla trae el mes y, debajo, el monto, «debe …» o «sin pagar»). `renderMesada()` solo pinta lo que calcula `mesadaResumenAnio()`. Diseño de referencia y detalle de PC/celular: `docs/version-pc.md` §10 bis.
 
 ### Sheets
 

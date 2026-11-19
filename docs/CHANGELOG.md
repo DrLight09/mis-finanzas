@@ -33,6 +33,20 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Versión PC y celular, parte 20: Mesada como el prototipo (2026-11-19, SW v159)
+
+Prototipos de referencia: `Mesada.dc.html` (PC), `MesadaMesPendiente.dc.html` (detalle de un mes) y `MovilMesada.dc.html` (celular). Los años, montos y nombres del prototipo son de ejemplo; la app usa los suyos.
+
+- **Celular:** arriba, el título «Mesada de papás» (22 px) con el selector de año (‹ 2026 ›) en la misma fila, como `MovilMesada` (antes: un título pequeño en mayúsculas y una fila de flechas de 48 px aparte). Resumen con tinte: «Recibido este año» (verde) y «Meses pagados» (azul) lado a lado, y debajo «Pendiente» (ámbar, con etiqueta y el texto «Papá te debe …»). Tarjetas de Papá y Mamá apiladas: avatar redondo de 38 px, nombre, resumen, fila «CUOTA 2026» con la etiqueta a la izquierda y el campo a la derecha, y los meses en **3 columnas con el monto debajo** (antes eran puntos de 6 columnas sin monto; el monto, «debe …» y «sin pagar» solo se veían en PC).
+- **PC:** el título (ya estaba) y ahora **la tira de años van en la cabecera**, junto al buscador, y la tira solo se ve con Mesada abierta (`.app:has(#screen-mesada.active)`, sin JS). La cuota va en línea con el nombre (etiqueta + campo), las cajas de Papá y Mamá tienen el relleno del prototipo (18 × 20) y los tres cuadros de resumen llevan los mismos tintes. Entre 900 y 1279 px la tira es más compacta y el buscador se angosta mientras Mesada está abierta, para que la cabecera no se desborde.
+- **Detalle de un mes** (hoja `sheet-mesada-det`, PC y celular): los datos (monto, fecha, destino) van en un bloque con divisores entre filas; «Cuota esperada / Pendiente / Registrar pago de lo pendiente» en una caja ámbar con borde completo (antes, borde izquierdo grueso); botones de 44 px.
+- **HTML/JS:** `#ms-pendiente-banner` deja de ser una `attn-card` (esa clase fuerza fondo y borde con `!important` y no se podía teñir como el prototipo): ahora es `.mesada-pendiente` con la etiqueta «Pendiente» y el texto en `#ms-pendiente-texto` (lo pinta `renderMesada`). `#anio-tira` pasó del `<div id="mesadaSection">` a la cabecera. El test «pantalla principal» lee el texto de `#ms-pendiente-texto`.
+- **CSS:** la regla base de `.mes-dot` estaba duplicada en tres sitios (la última pisaba a las otras con `aspect-ratio:1`, 10 px y `min-height:36px`); queda una sola. Las cuadrículas, avatares y tintes usan `color-mix` con las variables de `:root` (se fueron 2 colores hex). Se quitaron `.ms-sec-top`, `.ms-mb9`, `.ms-mb10` y `.ms-banner`; las clases nuevas llevan prefijo `mesada-` (no `ms-`, que el trinquete cuenta como abreviatura). Trinquete actualizado (`node scripts/convenciones-css.js --actualizar`).
+- **Se quitó una regla que no hacía nada:** en 900–1279 px había `#mesadaSection > .card:not(.ms-banner){grid-column:span 5}` con el comentario «Papá y Mamá una debajo de la otra»; span 5 de 10 columnas es lo mismo que en PC completo, así que siempre se vieron lado a lado. Se dejó el comportamiento real (lado a lado) y se corrigió `docs/version-pc.md`.
+- **Se conserva** «Vincular persona» / «Quitar» (el prototipo no los muestra): quedan como enlace discreto bajo el resumen de cada padre.
+- **Sin ver en navegador real** (jsdom no dibuja). Revisar a mano a 1366×768, 1100, 800, 430 y 360 px: tarjetas con cuota en línea (PC), casillas de 3 columnas en celular, tinte del resumen, cabecera a 900 px, hoja de detalle de un mes pendiente.
+- **Pruebas:** `tests/mesada.test.js` (el banner se lee en `#ms-pendiente-texto`); trinquete de CSS actualizado. `sw.js` sin tocar: al desplegar, `bash subir.sh` sube `VERSION` y lo sella.
+
 ## Mesada: vínculo opcional con una persona (2026-11-19, SW v158)
 
 - Papá y Mamá siguen siendo dos casillas fijas, pero cada una tiene un botón «Vincular persona» (y «Quitar»). Si se usa, guarda `S.mesadas.papa|mama.personaId` y la persona muestra «Mesada · Papá/Mamá» en su perfil (relación `mesada`, `unica`), no se puede eliminar y la misma persona no puede ser papá y mamá a la vez. Quien no usa la mesada no tiene que crear nada.

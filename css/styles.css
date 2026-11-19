@@ -226,19 +226,20 @@ html.kb-open .sheet{transition:translate var(--kb-ms) var(--kb-ease),max-height 
 .sheet-title{font-size:18px;font-weight:700;margin-bottom:20px;letter-spacing:-.2px;}
 .progress{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px;}
 .progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s;}
-.mesada-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;}
-.mes-dot{aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;cursor:pointer;font-family:'DM Mono',monospace;border:1px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s;user-select:none;}
-.mesada-mes-detalle{display:none;} /* monto o estado bajo el mes: solo PC (css/pc.css) */
-.mes-dot.on{background:rgba(200,240,96,.15);border-color:var(--accent);color:var(--accent);}
-.mes-dot.perdido{background:rgba(240,104,104,.10);border-color:rgba(240,104,104,.35);color:var(--red);}
-.mes-dot.mes-dot-pend{background:rgba(240,184,64,.15);border-color:var(--amber);color:var(--amber);}
+.mesada-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
+.mes-dot{height:58px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 13px 'DM Mono',monospace;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s;user-select:none;}
+.mesada-mes-detalle{display:block;font:400 10px 'DM Mono',monospace;opacity:.75;} /* monto, «debe …» o «sin pagar» bajo el nombre del mes */
+.mes-dot.on{background:color-mix(in srgb,var(--accent) 13%,transparent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent);}
+.mes-dot.perdido{background:color-mix(in srgb,var(--red) 9%,transparent);border-color:color-mix(in srgb,var(--red) 40%,transparent);color:var(--red);}
+.mes-dot.mes-dot-pend{background:color-mix(in srgb,var(--amber) 13%,transparent);border-color:color-mix(in srgb,var(--amber) 60%,transparent);color:var(--amber);}
 .sp-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);}
 .sp-row:last-child{border-bottom:none;}
 .avatar{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--blue);font-family:'DM Mono',monospace;flex-shrink:0;margin-right:10px;}
-.anio-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-.anio-btn{width:48px;height:48px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--border2);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.anio-nav{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border2);border-radius:11px;flex-shrink:0;}
+.anio-btn{width:34px;height:38px;border:0;background:none;color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.anio-btn:disabled{opacity:.35;cursor:default;}
 .anio-tira,.gastos-registrar-arriba{display:none;} /* solo PC (css/pc.css): tira de años de Mesada y «Registrar gasto» junto a los meses */
-.anio-label{font-size:15px;font-weight:600;font-family:'DM Mono',monospace;}
+.anio-label{min-width:42px;text-align:center;font-size:13.5px;font-weight:500;font-family:'DM Mono',monospace;}
 .action-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .action-card{background:var(--bg3);border:1.5px solid var(--border2);border-radius:var(--radius);padding:16px 14px;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;gap:10px;min-height:90px;}
 .action-card:active{border-color:var(--accent);background:rgba(200,240,96,.05);transform:scale(.97);}
@@ -494,8 +495,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* 7. Atención section — always prominent */
 .attn-section-top { order: -1; }
 
-/* 8. Mes dot size ok at 11px */
-.mes-dot { font-size:11px; }
 
 /* 9. Spotify row bigger touch target */
 .sp-row { min-height:52px;padding:11px 0; }
@@ -531,8 +530,6 @@ input.movs-search-input:focus{border-color:var(--accent);}
 /* Detail header back button más grande */
 .detail-header-back { width:46px; height:46px; border-radius:12px; }
 
-/* Mes dot más grande en móvil */
-.mes-dot { aspect-ratio:1; border-radius:8px; font-size:10px; min-height:36px; }
 
 /* ── FEED DE ACTIVIDAD (nuevo) ── */
 .feed-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);}
@@ -781,22 +778,24 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-debe-label{font-size:13px;font-weight:600;color:var(--amber);}
 
 /* Detalle de un mes */
-.ms-card-mb{margin-bottom:10px;}
-.ms-fila{margin-bottom:6px;}
-.ms-fila-pend{margin-bottom:2px;}
-.ms-lbl{font-size:12px;color:var(--text2);}
+.ms-card-mb{margin-bottom:10px;padding:4px 14px;background:var(--bg3);border-radius:12px;}
+.ms-fila{padding:9px 0;}
+.ms-card-mb > .ms-fila + .ms-fila{border-top:1px solid var(--border);}
+.ms-fila .row-amount{font-size:13.5px;font-weight:500;}
+.ms-fila-pend{padding:9px 0;}
+.ms-lbl{font-size:12.5px;color:var(--text2);}
 .ms-lbl-amber{color:var(--amber);font-weight:600;}
-.ms-mono{font-size:13px;font-family:'DM Mono',monospace;}
-.ms-nota{font-size:12px;color:var(--text2);margin-top:4px;}
+.ms-mono{font-size:13.5px;font-weight:500;font-family:'DM Mono',monospace;}
+.ms-nota{font-size:12px;color:var(--text2);margin:4px 0 8px;}
 .ms-badge-enc{background:rgba(96,176,240,.15);color:var(--blue);border-color:rgba(96,176,240,.3);}
 .ms-splits{margin-top:5px;display:flex;flex-direction:column;gap:4px;}
 .ms-split-row{display:flex;justify-content:space-between;align-items:center;}
 .ms-split-monto{font-size:12px;font-family:'DM Mono',monospace;color:var(--accent);}
-.ms-pend-card{margin-bottom:10px;border-left:4px solid var(--border2);}
-.ms-pend-card.debe{border-left-color:var(--amber);background:rgba(240,184,64,.06);}
-.ms-pend-card.saldado{border-left-color:var(--accent);background:rgba(200,240,96,.06);}
-.ms-sugerir-txt{font-size:12px;color:var(--text2);margin-bottom:8px;}
-.ms-saldado{font-size:12px;color:var(--accent);font-weight:600;}
+.ms-pend-card{margin-bottom:10px;padding:4px 14px 14px;border-radius:12px;background:var(--bg3);}
+.ms-pend-card.debe{border-color:color-mix(in srgb,var(--amber) 30%,transparent);background:color-mix(in srgb,var(--amber) 7%,transparent);}
+.ms-pend-card.saldado{border-color:color-mix(in srgb,var(--accent) 30%,transparent);background:color-mix(in srgb,var(--accent) 7%,transparent);}
+.ms-sugerir-txt{font-size:12px;color:var(--text2);margin:10px 0 8px;}
+.ms-saldado{font-size:12px;color:var(--accent);font-weight:600;padding-top:6px;}
 .ms-saldado i{margin-right:4px;}
 .ms-historial{margin-top:9px;display:flex;flex-direction:column;gap:5px;}
 .ms-hist-row{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text2);gap:8px;}
@@ -804,29 +803,40 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-hist-acc{display:flex;align-items:center;gap:7px;flex-shrink:0;}
 .ms-hist-monto{font-family:'DM Mono',monospace;color:var(--accent);}
 .ms-hist-undo{cursor:pointer;color:var(--red);display:inline-flex;align-items:center;}
-.ms-btn-top{margin-top:10px;}
+.ms-btn-top{margin-top:4px;}
+#mdContent .btn{height:44px;padding:0;border-radius:12px;font-size:13.5px;font-weight:600;}
 .btn.btn-soft-amber{background:rgba(240,184,64,.12);border-color:rgba(240,184,64,.3);color:var(--amber);}
 .btn.btn-soft-red{background:rgba(240,104,104,.1);border-color:rgba(240,104,104,.3);color:var(--red);}
 
-/* Pantalla principal de Mesada (tarjetas de papá y mamá) — antes estilos inline repetidos en index.html */
-.ms-sec-top{margin-top:20px;}
-.ms-mb9{margin-bottom:9px;}
-.ms-mb10{margin-bottom:10px;}
-.ms-banner.attn-card{margin-bottom:9px;font-size:12px;color:var(--amber);font-weight:600;}
-.ms-card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
-.ms-head-left{display:flex;align-items:center;gap:8px;}
-.avatar.ms-avatar{width:30px;height:30px;font-size:11px;margin-right:0;}
-.avatar.ms-avatar-papa{color:var(--blue);border-color:#60b0f044;background:#60b0f018;}
-.avatar.ms-avatar-mama{color:var(--purple);border-color:#b090f044;background:#b090f018;}
-.ms-name{font-size:13px;font-weight:600;}
+/* Pantalla principal de Mesada (MovilMesada.dc.html): título con el selector de año, resumen con tinte, y una tarjeta por padre. */
+.mesada-titulo-fila{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 12px;}
+.mesada-titulo{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+.mesada-resumen{gap:10px;}
+.mesada-stat,.mesada-pendiente{padding:12px 14px;border-radius:var(--radius);border:1px solid var(--border);}
+.mesada-stat .stat-label{font-size:9.5px;margin-bottom:6px;}
+.mesada-stat .stat-value{font-size:18px;font-weight:400;letter-spacing:-.8px;}
+.mesada-stat-verde{background:color-mix(in srgb,var(--accent) 9%,transparent);border-color:color-mix(in srgb,var(--accent) 25%,transparent);}
+.mesada-stat-verde .stat-label{color:var(--accent);}
+.mesada-stat-azul{background:color-mix(in srgb,var(--blue) 9%,transparent);border-color:color-mix(in srgb,var(--blue) 25%,transparent);}
+.mesada-stat-azul .stat-label{color:var(--blue);}
+.mesada-pendiente{margin-bottom:9px;background:color-mix(in srgb,var(--amber) 9%,transparent);border-color:color-mix(in srgb,var(--amber) 25%,transparent);color:var(--amber);}
+.mesada-pendiente .stat-label{font-size:9.5px;margin-bottom:6px;color:var(--amber);}
+.mesada-pendiente-texto{font-size:16px;}
+.mesada-persona{padding:14px;}
+.ms-card-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;}
+.ms-head-left{display:flex;align-items:center;gap:12px;min-width:0;}
+.avatar.ms-avatar{width:38px;height:38px;font:600 12px 'DM Sans',sans-serif;margin-right:0;border-color:transparent;}
+.avatar.ms-avatar-papa{color:var(--blue);background:color-mix(in srgb,var(--blue) 22%,transparent);}
+.avatar.ms-avatar-mama{color:var(--purple);background:color-mix(in srgb,var(--purple) 22%,transparent);}
+.ms-name{font-size:15px;font-weight:600;}
 .mesada-persona-fila{display:flex;gap:6px;align-items:center;margin-top:3px;}
 .mesada-persona-btn{padding:0;background:none;border:none;font-size:11px;color:var(--text3);text-decoration:underline;cursor:pointer;}
 .mesada-persona-btn.vinculada{color:var(--accent);text-decoration:none;font-weight:600;}
 .mesada-persona-btn[hidden]{display:none;}
-.ms-card-sub{font-size:10px;color:var(--text3);font-family:'DM Mono',monospace;}
-.ms-right{text-align:right;}
-.ms-cuota-lbl{font-size:10px;color:var(--text3);margin-bottom:3px;}
-input.money-input.ms-cuota-input{width:90px;padding:4px 8px;font-size:12px;text-align:right;}
+.ms-card-sub{font-size:11.5px;line-height:1.4;color:var(--text2);margin-top:2px;}
+.ms-right{flex:1 1 100%;display:flex;align-items:center;justify-content:space-between;margin:12px 0;}
+.ms-cuota-lbl{font:500 10px 'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text3);}
+input.money-input.ms-cuota-input{width:104px;padding:7px 12px;border-width:1px;font:500 13px 'DM Mono',monospace;text-align:right;border-radius:9px;}
 
 /* ── Diferencial ("El valor era diferente") y Split de fuentes — Paso 5 (estilos inline → clases, 2026-10-20) ──
    Antes vivían como style="" en js/core/diferencial.js y js/core/split.js. Va al FINAL del archivo a propósito: un style=""

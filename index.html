@@ -678,6 +678,8 @@
       </aside>
       <header class="header">
         <div><h1><span class="encabezado-app">Mis finanzas</span><span class="encabezado-seccion" id="hSeccion"></span></h1><p id="hDate"></p></div>
+        <!-- Solo PC y solo con Mesada abierta (css/pc.css): los 5 años a la vista, como el prototipo (los pinta renderMesada). -->
+        <div class="anio-tira" id="anio-tira"></div>
         <div class="ix-div-001">
           <button class="ix-btn-buscar-global" type="button" id="btn-buscar-global"
             aria-label="Buscar">
@@ -1627,36 +1629,35 @@
         <!-- MESADA -->
         <div class="screen" id="screen-mesada">
           <div id="mesadaSection">
-            <div class="sec-title ms-sec-top" data-mesada>Mesada
-              de papás</div>
-            <!-- Navegación año -->
-            <!-- Solo PC: los 5 años a la vista, como el prototipo (los pinta renderMesada). -->
-<div class="anio-tira" id="anio-tira"></div>
-<div class="anio-nav ms-mb10">
-              <button type="button" class="anio-btn" id="btn-anio-prev" aria-label="Año anterior"><svg aria-hidden="true"
-                  width="13" height="13" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2.5"
-                  stroke-linecap="round"><polyline
-                    points="15 18 9 12 15 6" /></svg></button>
-              <span class="anio-label" id="anioLabel"></span>
-              <button type="button" class="anio-btn" id="btn-anio-next" aria-label="Año siguiente"><svg aria-hidden="true"
-                  width="13" height="13" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2.5"
-                  stroke-linecap="round"><polyline
-                    points="9 18 15 12 9 6" /></svg></button>
+            <!-- Título de la sección con el selector de año (celular). En PC el título va en la cabecera y la tira de años también (#anio-tira). -->
+            <div class="mesada-titulo-fila">
+              <h2 class="mesada-titulo" data-mesada>Mesada de papás</h2>
+              <div class="anio-nav">
+                <button type="button" class="anio-btn" id="btn-anio-prev" aria-label="Año anterior"><svg aria-hidden="true"
+                    width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><polyline
+                      points="15 18 9 12 15 6" /></svg></button>
+                <span class="anio-label" id="anioLabel"></span>
+                <button type="button" class="anio-btn" id="btn-anio-next" aria-label="Año siguiente"><svg aria-hidden="true"
+                    width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round"><polyline
+                      points="9 18 15 12 9 6" /></svg></button>
+              </div>
             </div>
             <!-- Resumen año -->
-            <div class="grid2 ms-mb9">
-              <div class="stat"><div class="stat-label">Recibido este
-                  año</div><div class="stat-value c-green"
+            <div class="grid2 mesada-resumen">
+              <div class="stat mesada-stat mesada-stat-verde"><div class="stat-label">Recibido este
+                  año</div><div class="stat-value"
                   id="ms-total">$0</div></div>
-              <div class="stat"><div class="stat-label">Meses pagados</div><div
-                  class="stat-value c-blue" id="ms-count">0/0</div></div>
+              <div class="stat mesada-stat mesada-stat-azul"><div class="stat-label">Meses pagados</div><div
+                  class="stat-value" id="ms-count">0/0</div></div>
             </div>
-            <!-- Banner de mensualidades con pago parcial pendiente -->
-            <div id="ms-pendiente-banner" class="card card-sm attn-card ms-banner" style="display:none;"></div>
+            <!-- Mensualidades con pago parcial pendiente (papá y/o mamá) -->
+            <div id="ms-pendiente-banner" class="mesada-pendiente" style="display:none;"><div class="stat-label">Pendiente</div><div class="mesada-pendiente-texto" id="ms-pendiente-texto"></div></div>
             <!-- Papa -->
-            <div class="card ms-mb9">
+            <div class="card mesada-persona">
               <div class="ms-card-head">
                 <div class="ms-head-left">
                   <div class="avatar ms-avatar ms-avatar-papa">PA</div>
@@ -1680,7 +1681,7 @@
               <div class="mesada-grid" id="mesadaGridPapa"></div>
             </div>
             <!-- Mama -->
-            <div class="card">
+            <div class="card mesada-persona">
               <div class="ms-card-head">
                 <div class="ms-head-left">
                   <div class="avatar ms-avatar ms-avatar-mama">MA</div>

@@ -968,7 +968,6 @@
   "ms-avatar-papa",
   "ms-aviso-mes",
   "ms-badge-enc",
-  "ms-banner",
   "ms-btn-top",
   "ms-card-head",
   "ms-card-mb",
@@ -998,9 +997,7 @@
   "ms-lbl",
   "ms-lbl-amber",
   "ms-mb0",
-  "ms-mb10",
   "ms-mb8",
-  "ms-mb9",
   "ms-mono",
   "ms-name",
   "ms-nota",
@@ -1009,7 +1006,6 @@
   "ms-preview-amber",
   "ms-right",
   "ms-saldado",
-  "ms-sec-top",
   "ms-split-monto",
   "ms-split-row",
   "ms-splits",
@@ -1221,5 +1217,5 @@
   "cuenta-action-btn--rojo"
  ],
  "importantes": 42,
- "hex": 64
+ "hex": 60
 }

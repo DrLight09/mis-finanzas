@@ -170,21 +170,7 @@ function encargoLibre(encargo) {
 
 /* ---- Spotify (antes en spotify.js) — 2026-09-20 ----
    Mismo motivo: los avisos "Cobro Spotify de X vencido" de "Necesita
-   atención". spotifyNombreDe usa getPersona() (personas.js, carga de entrada) con
-   guard typeof, así que no depende del orden de carga. */
-// Nombre a mostrar/guardar para un integrante de Spotify: si está vinculado a una
-// persona del sistema unificado, usa siempre su nombre ACTUAL (por si lo editaron
-// desde "Personas"); si no hay vínculo, o la persona ya no existe, usa el nombre
-// crudo guardado en el propio registro de Spotify.
-function spotifyNombreDe(p){
-  if(!p)return '';
-  if(p.personaId){
-    const per=(typeof getPersona==='function')?getPersona(p.personaId):null;
-    if(per&&per.nombre)return per.nombre;
-  }
-  return p.nombre||'';
-}
-
+   atención". El nombre del integrante sale de Personas.nombre(p.personaId) (personas-core.js). */
 function spotifyPersonaPagadaVigente(p){
   // Determina si el "Pagó" de esta persona sigue vigente para el ciclo actual.
   // Si ya llegó (o pasó) su fecha de próximo pago, el ciclo vencido ya terminó

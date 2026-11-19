@@ -63,12 +63,9 @@ const Reglas = (() => {
     if (!p.proximoPago) return true;
     return dias(hoy, p.proximoPago) > 0;
   };
-  // Nombre de una persona de Spotify: el de su ficha en Personas si la tiene, si no el propio.
-  const nombreSpotify = (S, p) => {
-    if (!p) return '';
-    if (p.personaId) { const per = (S.personas || []).find(x => x.id === p.personaId); if (per && per.nombre) return per.nombre; }
-    return p.nombre || '';
-  };
+  // Nombre de una persona por id, leído de S.personas. Función pura sobre `S`: este archivo también corre en Node (push) sin el núcleo de
+  // la app, así que no puede usar Personas.nombre; es el mismo dato (única fuente), solo que sin depender de globals.
+  const nombrePersona = (S, id) => { const per = ((S && S.personas) || []).find(x => x && x.id === id); return (per && per.nombre) || ''; };
 
   /* ---- Registro ---- */
   const _reglas = [];
@@ -208,8 +205,8 @@ const Reglas = (() => {
   registrar({ id: 'spotify-vencido', canales: AP, evaluar(ctx) {
     const S = ctx.S || {}; if (!(S.modulos && S.modulos.spotify)) return [];
     const out = [];
-    ((S.spotify && S.spotify.personas) || []).forEach(p => {
-      if (p.proximoPago && p.proximoPago < ctx.hoy && !spotifyPagadoVigente(p, ctx.hoy)) out.push({ tipo: 'red', texto: 'Cobro Spotify de ' + nombreSpotify(S, p) + ' vencido', ir: 'spotify' });
+    ((S.spotify && S.spotify.integrantes) || []).forEach(p => {
+      if (p.proximoPago && p.proximoPago < ctx.hoy && !spotifyPagadoVigente(p, ctx.hoy)) out.push({ tipo: 'red', texto: 'Cobro Spotify de ' + nombrePersona(S, p.personaId) + ' vencido', ir: 'spotify' });
     });
     return out;
   } });
@@ -227,8 +224,8 @@ const Reglas = (() => {
     const S = ctx.S || {}, f = _fmt(ctx), out = [];
     (S.encargos || []).forEach(encargo => (encargo.partes || []).filter(p => !p.usada && p.fecha).forEach(p => {
       const d = dias(ctx.hoy, p.fecha);
-      if (d < 0) out.push({ tipo: 'red', texto: encargo.nombre + ': "' + p.desc + '" (' + f(p.monto) + ') venció hace ' + Math.abs(d) + 'd sin usarse — sigue comprometida', ir: 'encargos' });
-      else if (d <= 1) out.push({ tipo: 'amber', texto: encargo.nombre + ': "' + p.desc + '" (' + f(p.monto) + ') es ' + (d === 0 ? 'hoy' : 'mañana') + ' — esa plata ya está comprometida', ir: 'encargos' });
+      if (d < 0) out.push({ tipo: 'red', texto: nombrePersona(S, encargo.personaId) + ': "' + p.desc + '" (' + f(p.monto) + ') venció hace ' + Math.abs(d) + 'd sin usarse — sigue comprometida', ir: 'encargos' });
+      else if (d <= 1) out.push({ tipo: 'amber', texto: nombrePersona(S, encargo.personaId) + ': "' + p.desc + '" (' + f(p.monto) + ') es ' + (d === 0 ? 'hoy' : 'mañana') + ' — esa plata ya está comprometida', ir: 'encargos' });
     }));
     return out;
   } });
@@ -238,7 +235,7 @@ const Reglas = (() => {
     return mes === '01' && dia === '01' ? [{ tipo: 'amber', texto: 'Tu resumen anual (Wrapped) ya está disponible 🎉', ir: 'wrapped' }] : [];
   } });
 
-  return { registrar, evaluar, lista, dias, fmtPesos, fechaCorta, mesesCubiertos, nivelRunway, fmtMeses, textoRunway, rachaDeficitRelevante, spotifyPagadoVigente, nombreSpotify };
+  return { registrar, evaluar, lista, dias, fmtPesos, fechaCorta, mesesCubiertos, nivelRunway, fmtMeses, textoRunway, rachaDeficitRelevante, spotifyPagadoVigente, nombrePersona };
 })();
 if (typeof window !== 'undefined') window.Reglas = Reglas;
 if (typeof module !== 'undefined' && module.exports) module.exports = Reglas;

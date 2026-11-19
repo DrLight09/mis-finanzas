@@ -39,7 +39,7 @@ Cada encargo vive en `S.encargos[]`:
   id, nombre, nota,
   saldoInicial, cuentaInicial,      // plata con la que se creó el encargo, y dónde quedó guardada
   fechaCreacion,
-  personaId,                        // obligatorio en encargos nuevos (ver §7) — puede faltar solo en encargos creados antes de que esto se exigiera
+  personaId,                        // obligatorio en encargos nuevos (ver §7)
   movimientos: [ ... ],
   partes: [ ... ]                   // opcional — partes comprometidas
 }
@@ -141,7 +141,7 @@ prestar el resto"
    de una salida normal de encargo, que nunca toca cuentas reales
 ```
 
-Requisito: el encargo necesita `personaId` (obligatorio en encargos nuevos, ver §3). Si falta — solo posible en encargos viejos de antes de que esto se exigiera — se avisa que hay que vincular una persona desde "Editar" antes de poder usar esta opción; no se genera ningún movimiento a medias. Mismo criterio de "todo o nada" si la cuenta propia elegida no tiene el saldo que hace falta prestar: se avisa (con el mismo hint en vivo que ya usa "Yo puse la plata") y no se registra ni la salida del encargo ni el préstamo.
+Requisito: el encargo necesita `personaId` (obligatorio en encargos nuevos, ver §3). Si falta (no debería ocurrir; `Personas.verificar` lo reporta como I1) se avisa que hay que vincular una persona desde "Editar" antes de poder usar esta opción; no se genera ningún movimiento a medias. Mismo criterio de "todo o nada" si la cuenta propia elegida no tiene el saldo que hace falta prestar: se avisa (con el mismo hint en vivo que ya usa "Yo puse la plata") y no se registra ni la salida del encargo ni el préstamo.
 
 **Eliminar un movimiento**
 `deleteMovimientoEncargo(encargoId, movimientoId) revierte según qué marca tenga el movimiento (_esAbonoDeudor, _esTcEncargo, _traspasoEncargo, diferencial con pagadoPorMi, _miaCuentaSale) antes de quitarlo de enc.movimientos`

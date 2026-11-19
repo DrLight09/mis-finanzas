@@ -175,7 +175,7 @@ La solución no fue tocar `styles.css` (esa animación puede ser intencional en 
 
 ## 7ter. Dominios "de terceros" agregados
 
-Agrega cinco slides nuevos, cada uno condicionado a que su módulo dueño tenga datos ese año — igual que ya funciona `s.alcanciaPeriodo > 0` para Alcancía. Ninguno guarda nada nuevo en `S`, ninguno duplica un cálculo centralizado si existe uno (ver regla de §3), y todos resuelven nombres de persona vía `getPersonaNombre` (personas.md §2) con fallback al nombre crudo del propio registro.
+Agrega cinco slides nuevos, cada uno condicionado a que su módulo dueño tenga datos ese año — igual que ya funciona `s.alcanciaPeriodo > 0` para Alcancía. Ninguno guarda nada nuevo en `S`, ninguno duplica un cálculo centralizado si existe uno (ver regla de §3), y todos resuelven nombres de persona con `Personas.nombre(personaId)` (personas.md §2); los agregados guardan solo `personaId`.
 
 | Dominio | Lee de | Qué muestra | Función |
 |---|---|---|---|
@@ -410,7 +410,6 @@ Pruebas: `tests/cierre-wrapped.test.js` (criterio y límites exactos, banco, ins
 | `_wrappedValidarDatos(S)` | Advertencias (nunca correcciones) sobre la forma de `S` — arrays esperados, montos numéricos, fechas `YYYY-MM-DD` — solo se imprimen en consola con `?debug=1`/`#debug` en la URL, nunca al usuario |
 | `_wrappedDebugOn()` | Único punto que decide si la URL trae `?debug=1`/`#debug` (2026-09-15) — antes vivía duplicado dentro de `_wrappedLogDebug`; ahora también lo usa el panel visual, ver abajo |
 | `_wrappedDebugPanelHtml(S, debugInfo)` | Arma el HTML del panel de debug visual (2026-09-15) — ver §7duodecies |
-| `_wrappedNombrePersona(personaId, nombreCrudo)` | Nombre de una persona para los dominios de terceros: `getPersonaNombre` si hay `personaId`, si no el nombre crudo del propio registro — siempre escapado |
 | `_wrappedCalcularEncargos(S, tipo, mesK, anioK)` | Ver §7ter |
 | `_wrappedCalcularInteresesTC(S, tipo, mesK, anioK)` / `_wrappedCalcularComisionesTC(S, tipo, mesK, anioK)` | Ver §7ter — Tarjetas de crédito (dos candidatos aparte, mismo origen de datos) |
 | `_wrappedCalcularPrestado(S, tipo, mesK, anioK)` | Ver §7ter — "Me deben" |
@@ -465,6 +464,6 @@ Pruebas: `tests/cierre-wrapped.test.js` (criterio y límites exactos, banco, ins
 |---|---|
 | `_esGastoVarNoReal`, `_esEntradaEspejoNoIngreso` | Núcleo eager (usadas también por Inicio, Análisis, Salud financiera) |
 | `window._alcanciaRachaAhorro` | `alcancia.js`, grupo lazy aparte |
-| `getPersonaNombre` | `personas.js`, núcleo eager — resolución de nombres para los dominios de terceros (§7ter); con guard `typeof`, cae al nombre crudo si no está |
+| `Personas.nombre` | `personas-core.js`, núcleo eager — nombre de las personas para los dominios de terceros (§7ter); los agregados del Wrapped guardan solo `personaId` y el nombre se lee al pintar, escapado con `escHtml` |
 | `showScreen` | Núcleo eager (`navegacion.js`) — usada para entrar (desde `config:irA`) y para volver a Configuración al cerrar la historia |
 | `fmt`, `escHtml`, `hoy` | Núcleo eager |

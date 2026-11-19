@@ -228,8 +228,8 @@ function _verificarIntegridadSaldoDeudor(d, saldoAntes, deltaEsperado) {
   const saldoDespues = Deudas.saldo(d);
   const deltaReal = saldoDespues - saldoAntes;
   if (Math.abs(deltaReal - deltaEsperado) > Deudas.TOL) {
-    console.warn(`[Integridad] Saldo de ${escHtml(d.nombre)} cambió ${deltaReal} en vez de ${deltaEsperado} (antes: ${saldoAntes}, después: ${saldoDespues}). Revisa d.movimientos por duplicados.`, d.movimientos);
-    toast(`El saldo de ${d.nombre} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
+    console.warn(`[Integridad] Saldo de ${escHtml(Personas.nombre(d.personaId))} cambió ${deltaReal} en vez de ${deltaEsperado} (antes: ${saldoAntes}, después: ${saldoDespues}). Revisa d.movimientos por duplicados.`, d.movimientos);
+    toast(`El saldo de ${Personas.nombre(d.personaId)} no cambió como se esperaba (esperado: ${fmt(deltaEsperado)}, real: ${fmt(deltaReal)}). Revisa su historial antes de seguir.`, 'err', 6000);
   }
 }
 // ── Libro (js/core/cuentas-fuentes.js): origen de cada cambio de saldo ────────────────────────────────────────────────
@@ -371,7 +371,7 @@ const _UI_LISTA = {
   favor: {
     el: 'deudoresList', abrir: 'prestado:abrirDeudor',
     // Con persona vinculada, el avatar abre su perfil; si no, el detalle.
-    avatarAccion: d => d.personaId ? ['prestado:abrirPerfilDeudor', d.id] : ['prestado:abrirDeudor', d.id],
+    avatarAccion: d => ['prestado:abrirPerfilDeudor', d.id],
     // Estado vacío (emptyState de js/core/utilidades-ui.js): mismo molde en las dos listas; cambian el icono,
     // el título y la descripción, que dicen quién le debe a quién. Los dos botones abren el mismo
     // selector de personas, por eso los dos se llaman «Agregar persona».
@@ -385,7 +385,7 @@ const _UI_LISTA = {
   },
   contra: {
     el: 'misDeudasList', abrir: 'prestado:abrirMiDeuda',
-    avatarAccion: d => d.personaId ? ['prestado:abrirPerfilPersonaDeDeuda', d.personaId] : ['prestado:abrirMiDeuda', d.id],
+    avatarAccion: d => ['prestado:abrirPerfilPersonaDeDeuda', d.personaId],
     btnPie: 'btn-nueva-deuda', titulo: 'titulo-mis-deudas', btnAccion: 'prestado:abrirSheetNuevaDeuda',
     vacioIcono: '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><line x1="17" y1="7" x2="7" y2="17"/><polyline points="17 17 7 17 7 7"/></svg>',
     vacioTitulo: 'No le debes a nadie por ahora',
@@ -396,11 +396,8 @@ const _UI_LISTA = {
   }
 };
 
-// Color de una deuda: la persona vinculada es la fuente de verdad (ver Personas); d.color es el respaldo.
-function _colorDeuda(d) {
-  const p = d.personaId && typeof getPersona === 'function' ? getPersona(d.personaId) : null;
-  return (p && p.color) ? p.color : (d.color || '#60b0f0');
-}
+// Color de una deuda: sale de la persona (Personas.color); la deuda no guarda copia.
+function _colorDeuda(d) { return Personas.color(d.personaId); }
 
 function _renderListaDeudas(dir) {
   const ui = _UI_LISTA[dir];
@@ -419,19 +416,18 @@ function _renderListaDeudas(dir) {
   }
   el.innerHTML = html`${list.map(d => {
     const saldo = Deudas.saldo(d);
-    const initials = d.nombre.substring(0, 2).toUpperCase();
+    const initials = Personas.nombre(d.personaId).substring(0, 2).toUpperCase();
     const ultimoMovimiento = (d.movimientos || []).slice(-1)[0];
-    const tienePerfil = !!d.personaId;
     const color = _colorDeuda(d);
     const [accionAvatar, argAvatar] = ui.avatarAccion(d);
     return html`<div class="card card-sm pr-card-8${(dir === 'favor' ? deudorActualId : miDeudaActualId) === d.id ? ' persona-card-activa' : ''}">
       <div class="pr-fila-10">
         <button type="button" class="avatar pr-avatar" ${raw(Events.attr(accionAvatar, argAvatar))}
-          style="color:${raw(color)};background:${raw(color)}18;${raw(tienePerfil ? 'box-shadow:0 0 0 2px ' + color + '44;' : '')}"
-          title="${tienePerfil ? 'Ver perfil de ' + d.nombre : d.nombre}">${initials}</button>
+          style="color:${raw(color)};background:${raw(color)}18;box-shadow:0 0 0 2px ${raw(color)}44;"
+          title="Ver perfil de ${Personas.nombre(d.personaId)}">${initials}</button>
         <div class="pr-flex1 pr-click" ${raw(Events.attr(ui.abrir, d.id))}>
           <div class="pr-fila-sb">
-            <div class="row-name">${d.nombre}</div>
+            <div class="row-name">${Personas.nombre(d.personaId)}</div>
             <div class="row-amount ${raw(ui.claseMonto(saldo))}">${ui.monto(saldo)}</div>
           </div>
           <div class="pr-fila-sb pr-mt-3">
@@ -488,12 +484,12 @@ function _htmlHistorialPorGrupos(d, porGrupo) {
 function _pintarEncabezadoDeuda(ids, d, saldoTxt, saldoColor, total1, total2) {
   const color = _colorDeuda(d);
   const av = document.getElementById(ids.avatar);
-  av.textContent = d.nombre.substring(0, 2).toUpperCase();
+  av.textContent = Personas.nombre(d.personaId).substring(0, 2).toUpperCase();
   av.style.color = color;
   av.style.borderColor = color + '44';
   av.style.background = color + '20';
-  av.style.boxShadow = d.personaId ? '0 0 0 2px ' + color + '44' : '';
-  document.getElementById(ids.nombre).textContent = d.nombre;
+  av.style.boxShadow = '0 0 0 2px ' + color + '44';
+  document.getElementById(ids.nombre).textContent = Personas.nombre(d.personaId);
   const lbl = document.getElementById(ids.saldo);
   lbl.textContent = saldoTxt;
   lbl.style.color = saldoColor;
@@ -631,7 +627,7 @@ function abrirDeudor(id) {
         </div>`;
       }
       // Origen y otras cuentas implicadas (para sheet de detalle)
-      const origenDD = m._viaTC ? 'Tarjeta de crédito' : m._viaEncargo ? ('Encargos · ' + (m._encargoNombre||'')) : ('Préstamos · ' + d.nombre);
+      const origenDD = m._viaTC ? 'Tarjeta de crédito' : m._viaEncargo ? ('Encargos · ' + (m._encargoNombre||'')) : ('Préstamos · ' + Personas.nombre(d.personaId));
       let otrasCuentasDD = [];
       if (esPrestamo) {
         if (m.fuentes && m.fuentes.length) otrasCuentasDD = m.fuentes.map(f=>({fuente:f.fuente, monto:-f.monto}));
@@ -641,7 +637,7 @@ function abrirDeudor(id) {
         else if (m.destino) otrasCuentasDD = [{fuente:m.destino, monto:+m.monto}];
       }
       const dataOtrasDD = otrasCuentasDD.length ? html`data-movimiento-otras="${JSON.stringify(otrasCuentasDD)}"` : '';
-      const _cardHtml = html`<div class="card card-sm pr-mov-card" data-movimiento-id="${m.id}" data-movimiento-tipo="${m.tipo}" data-movimiento-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-movimiento-origen="${origenDD}" ${dataOtrasDD} data-movimiento-saldo-antes="${saldoAntesDeuda}" data-movimiento-saldo-despues="${saldoDespuesDeuda}" data-movimiento-saldo-label="Deuda de ${d.nombre}" data-movimiento-desc="${m.nota || (esPrestamo?'Préstamo': m._perdon?'Deuda perdonada': esPagoCompleto?'Pago completo':'Abono')}" data-movimiento-fecha="${m.fecha}" ${raw(Events.attr('prestado:abrirDetalleMovimiento'))}>
+      const _cardHtml = html`<div class="card card-sm pr-mov-card" data-movimiento-id="${m.id}" data-movimiento-tipo="${m.tipo}" data-movimiento-monto="${Math.abs(m.monto)}" data-cuenta-key="deudor" data-movimiento-origen="${origenDD}" ${dataOtrasDD} data-movimiento-saldo-antes="${saldoAntesDeuda}" data-movimiento-saldo-despues="${saldoDespuesDeuda}" data-movimiento-saldo-label="Deuda de ${Personas.nombre(d.personaId)}" data-movimiento-desc="${m.nota || (esPrestamo?'Préstamo': m._perdon?'Deuda perdonada': esPagoCompleto?'Pago completo':'Abono')}" data-movimiento-fecha="${m.fecha}" ${raw(Events.attr('prestado:abrirDetalleMovimiento'))}>
         <div class="pr-fila-sb pr-gap-8">
           <div class="pr-flex1">
             <div class="pr-fila-wrap">
@@ -674,31 +670,17 @@ function abrirDeudor(id) {
   _mostrarPanelPrestamos('deudorDetalle');
   document.getElementById('scrollArea').scrollTop = 0;
 
-  // Mostrar chip "Ver perfil" si tiene personaId
   const chip = document.getElementById('dd-perfil-chip');
   if (chip) chip.style.display = d.personaId ? '' : 'none';
 }
 
-// Abre el perfil de un deudor; si aún no tiene personaId crea/vincula uno automáticamente
+// Abre el perfil de la persona de un deudor
 function _abrirPerfilDesdeDeudor(deudorId) {
   if (!deudorId) return;
   const d = Deudas.lista('favor').find(x => x.id === deudorId);
   if (!d) return;
   _inyectarPersonaSheets();
-  if (d.personaId) {
-    abrirPerfilPersona(d.personaId);
-    return;
-  }
-  // Crear persona vinculada
-  if (!S.personas) S.personas = [];
-  let p = S.personas.find(x => x.nombre.trim().toLowerCase() === d.nombre.trim().toLowerCase());
-  if (!p) {
-    p = { id: uid(), nombre: d.nombre, color: d.color || '#60b0f0', creadoEn: hoy() };
-    S.personas.push(p);
-  }
-  d.personaId = p.id;
-  save();
-  abrirPerfilPersona(p.id);
+  abrirPerfilPersona(d.personaId);
 }
 
 function volverDeudores() {
@@ -712,11 +694,11 @@ async function eliminarDeudorActual() {
   if (!deudorActualId) return;
   const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
   if (!d) return;
-  const ok = await confirmarEliminar({ titulo: 'Eliminar persona', objeto: `a ${d.nombre} y todo su historial` });
+  const ok = await confirmarEliminar({ titulo: 'Eliminar persona', objeto: `a ${Personas.nombre(d.personaId)} y todo su historial` });
   if (!ok) return;
   Deudas.quitar('favor', deudorActualId);
   save(); refresh(); volverDeudores();
-  toast(`${d.nombre} eliminado`, 'ok');
+  toast(`${Personas.nombre(d.personaId)} eliminado`, 'ok');
 }
 
 // Alcancía es un grupo de carga diferida (Loader.GROUPS.alcancia, ver
@@ -871,7 +853,7 @@ async function eliminarMovimientoDeudor(deudorId, movimientoId, opts) {
   const ok = await confirmarEliminar({
     titulo: 'Eliminar ' + label,
     objeto: `este ${label} de ${fmt(m.monto)}`,
-    detalle: `${efectoAviso} La deuda de ${d.nombre} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
+    detalle: `${efectoAviso} La deuda de ${Personas.nombre(d.personaId)} pasará de ${fmt(_saldoAntesDel)} a ${fmt(_saldoTrasDel)}.${extraAviso}${tcAviso}${antiguedadAviso}`,
     irreversible: false // los avisos de efecto ya dicen qué se revierte; el movimiento se puede volver a registrar
   });
   if (!ok) return;
@@ -1218,7 +1200,7 @@ function _aplicarPerdon(p) {
   const gastoPerdonId = uid();
   S.gastosVar.push({
     id: gastoPerdonId, monto, fecha, cat: 'Otro',
-    desc: esTodo ? `Perdoné deuda — ${d.nombre}` : `Perdoné parte de la deuda — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
+    desc: esTodo ? `Perdoné deuda — ${Personas.nombre(d.personaId)}` : `Perdoné parte de la deuda — ${Personas.nombre(d.personaId)}`, nota, fuente: '', ts: Date.now(),
     _secundario: true, _origenSeccion: 'Prestado · Me deben',
     clase: 'gasto', _esPerdonDeuda: true, _deudorId: d.id, _deudorMovimientoId: perdonMovimientoId
   });
@@ -1284,7 +1266,7 @@ function _aplicarPrestamo(p) {
   // El margen queda como ingreso (fantasma, sin cuenta) enlazado a este préstamo (linkId = movimientoId)
   // para que eliminarMovimientoDeudor() lo borre junto con él.
   if (hayMargen) {
-    const diferencial = diffAplicar('prestamoDif', { desc: nota || 'Préstamo', fecha, _deudorNombre: d.nombre }, movimientoId);
+    const diferencial = diffAplicar('prestamoDif', { desc: nota || 'Préstamo', fecha, _deudorNombre: Personas.nombre(d.personaId) }, movimientoId);
     if (diferencial) movimientoObj.diferencial = diferencial;
   }
 }
@@ -1434,7 +1416,7 @@ function _aplicarAbonoEncargo(p) {
       const id = uid();
       encargo.movimientos.push({
         id, tipo: 'salida', monto: s.monto, cuenta: s.fuente,
-        desc: `Pago de deuda — ${d.nombre}`, fecha, nota, ts: Date.now(),
+        desc: `Pago de deuda — ${Personas.nombre(d.personaId)}`, fecha, nota, ts: Date.now(),
         _esAbonoDeudor: true, _deudorId: d.id, _grupoAbonoId: grupoAbonoId
       });
       return id;
@@ -1446,7 +1428,7 @@ function _aplicarAbonoEncargo(p) {
     encargo.movimientos.push({
       id: encargoMovimientoId, tipo: 'salida', monto,
       cuenta: encargoCuenta === '__sinesp__' ? '' : (encargoCuenta || ''),
-      desc: `Pago de deuda — ${d.nombre}`, fecha, nota, ts: Date.now(),
+      desc: `Pago de deuda — ${Personas.nombre(d.personaId)}`, fecha, nota, ts: Date.now(),
       _esAbonoDeudor: true, _deudorId: d.id
     });
   }
@@ -1456,8 +1438,8 @@ function _aplicarAbonoEncargo(p) {
   const esPagoCompleto = p.tipo === TIPO_PAGO_COMPLETO;
   const tipoGuardar = esPagoCompleto ? TIPO_PAGO_COMPLETO : 'abono';
   const descDestino = esPagoCompleto
-    ? `Pago de deuda completo — ${d.nombre} (vía encargo ${encargo.nombre})`
-    : `Abono de deuda — ${d.nombre} (vía encargo ${encargo.nombre})`;
+    ? `Pago de deuda completo — ${Personas.nombre(d.personaId)} (vía encargo ${Personas.nombre(encargo.personaId)})`
+    : `Abono de deuda — ${Personas.nombre(d.personaId)} (vía encargo ${Personas.nombre(encargo.personaId)})`;
   let movimiento;
   if (destinos) {
     destinos.forEach(r => { if (r.fuente) sumarFuente(r.fuente, r.monto, _origenLibro(abonMovimientoId)); });
@@ -1468,7 +1450,7 @@ function _aplicarAbonoEncargo(p) {
     movimiento = {
       id: abonMovimientoId, tipo: tipoGuardar, monto, fecha, nota,
       destinos: destinos.map(r => ({ fuente: r.fuente, monto: r.monto, _movimientoId: r._movimientoId })),
-      _viaEncargo: true, _encargoId: encargo.id, _encargoNombre: encargo.nombre, _encargoMovimientoId: encargoMovimientoId, _encargoMovimientoIds: encargoMovimientoIds,
+      _viaEncargo: true, _encargoId: encargo.id, _encargoNombre: Personas.nombre(encargo.personaId), _encargoMovimientoId: encargoMovimientoId, _encargoMovimientoIds: encargoMovimientoIds,
       grupoId: p.grupoId, ts: Date.now()
     };
   } else {
@@ -1479,7 +1461,7 @@ function _aplicarAbonoEncargo(p) {
       : null;
     movimiento = {
       id: abonMovimientoId, tipo: tipoGuardar, monto, fecha, nota, destino,
-      _viaEncargo: true, _encargoId: encargo.id, _encargoNombre: encargo.nombre, _encargoMovimientoId: encargoMovimientoId, _encargoMovimientoIds: encargoMovimientoIds,
+      _viaEncargo: true, _encargoId: encargo.id, _encargoNombre: Personas.nombre(encargo.personaId), _encargoMovimientoId: encargoMovimientoId, _encargoMovimientoIds: encargoMovimientoIds,
       _abonoDestinoMovimientoId: abonoDestinoMovimientoId, grupoId: p.grupoId, ts: Date.now()
     };
   }
@@ -1492,14 +1474,14 @@ function _aplicarAbonoEncargo(p) {
     encargo.movimientos.push({
       id: encargoExtraMovimientoId, tipo: 'salida', monto: extraMonto,
       cuenta: encargoCuenta === '__sinesp__' ? '' : (encargoCuenta || ''),
-      desc: `Extra / propina — ${d.nombre} (parte del pago de deuda)`, fecha, ts: Date.now(),
+      desc: `Extra / propina — ${Personas.nombre(d.personaId)} (parte del pago de deuda)`, fecha, ts: Date.now(),
       _esExtraAbonoDeudor: true, _deudorId: d.id, _abonoEncargoMovimientoId: encargoMovimientoId
     });
     movimiento._encargoExtraMovimientoId = encargoExtraMovimientoId;
     _aplicarExtraPartes(p, movimiento, {
-      descGuardar: `Extra del pago de ${d.nombre} — vía encargo ${encargo.nombre}`,
-      descGastar: `Extra del pago de ${d.nombre} — vía encargo ${encargo.nombre}`,
-      notaPendiente: `Extra sin asignar — ${d.nombre} vía encargo ${encargo.nombre}`,
+      descGuardar: `Extra del pago de ${Personas.nombre(d.personaId)} — vía encargo ${Personas.nombre(encargo.personaId)}`,
+      descGastar: `Extra del pago de ${Personas.nombre(d.personaId)} — vía encargo ${Personas.nombre(encargo.personaId)}`,
+      notaPendiente: `Extra sin asignar — ${Personas.nombre(d.personaId)} vía encargo ${Personas.nombre(encargo.personaId)}`,
       extraIngreso: false
     });
   }
@@ -1528,7 +1510,7 @@ function _aplicarAbonoNormal(p) {
   const { d, monto, fecha, nota, destinos, destino, tieneExtra } = p;
   const esPagoCompleto = p.tipo === TIPO_PAGO_COMPLETO;
   const tipoGuardar = esPagoCompleto ? TIPO_PAGO_COMPLETO : 'abono';
-  const desc = esPagoCompleto ? `Pago de deuda completo — ${d.nombre}` : `Abono de deuda — ${d.nombre}`;
+  const desc = esPagoCompleto ? `Pago de deuda completo — ${Personas.nombre(d.personaId)}` : `Abono de deuda — ${Personas.nombre(d.personaId)}`;
   let movimiento;
   if (destinos) {
     const idMovimiento = uid();
@@ -1550,9 +1532,9 @@ function _aplicarAbonoNormal(p) {
   // para poder revertirlas si se elimina.
   if (tieneExtra) {
     _aplicarExtraPartes(p, movimiento, {
-      descGuardar: `Extra de pago — ${d.nombre}`,
-      descGastar: `Extra de pago — ${d.nombre}`,
-      notaPendiente: `Extra sin asignar — ${d.nombre}`,
+      descGuardar: `Extra de pago — ${Personas.nombre(d.personaId)}`,
+      descGastar: `Extra de pago — ${Personas.nombre(d.personaId)}`,
+      notaPendiente: `Extra sin asignar — ${Personas.nombre(d.personaId)}`,
       extraIngreso: true // el extra/propina de un pago SÍ es ingreso real, no un espejo de plata ya contada
     });
   }
@@ -1568,8 +1550,8 @@ function _confirmarMovimientoInterno() {
 
   // Log cambio
   if (window.logCambio) {
-    if (encargo) logCambio(`Abono de ${escHtml(d.nombre)} vía encargo de ${escHtml(encargo.nombre)}`, d.nombre, monto, 'abono');
-    else logCambio(tipo === 'prestamo' ? 'Prestaste a ' + d.nombre : (perdon ? (perdonTodo ? 'Perdonaste la deuda de ' : 'Perdonaste parte de la deuda de ') + d.nombre : 'Registraste abono de ' + d.nombre), d.nombre, monto, tipo === 'prestamo' ? 'prestamo' : 'abono');
+    if (encargo) logCambio(`Abono de ${escHtml(Personas.nombre(d.personaId))} vía encargo de ${escHtml(Personas.nombre(encargo.personaId))}`, Personas.nombre(d.personaId), monto, 'abono');
+    else logCambio(tipo === 'prestamo' ? 'Prestaste a ' + Personas.nombre(d.personaId) : (perdon ? (perdonTodo ? 'Perdonaste la deuda de ' : 'Perdonaste parte de la deuda de ') + Personas.nombre(d.personaId) : 'Registraste abono de ' + Personas.nombre(d.personaId)), Personas.nombre(d.personaId), monto, tipo === 'prestamo' ? 'prestamo' : 'abono');
   }
   _autoCerrarGruposEnCero(d);
   _verificarIntegridadSaldoDeudor(d, plan.saldoAntes, plan.deltaEsperado);
@@ -1577,11 +1559,11 @@ function _confirmarMovimientoInterno() {
   abrirDeudor(deudorActualId);
   if (encargo) {
     const msgExtra = extraMonto > 0 ? ` + ${fmt(extraMonto)} de extra` : '';
-    toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${encargo.nombre}`, 'ok', 3500);
+    toast(`${fmt(monto)}${msgExtra} descontados del encargo de ${Personas.nombre(encargo.personaId)}`, 'ok', 3500);
   } else if (perdon) {
     toast(perdonTodo
-      ? `Deuda de ${d.nombre} perdonada — quedó como gasto de ${fmt(monto)}`
-      : `Le perdonaste ${fmt(monto)} a ${d.nombre} — quedó como gasto. Todavía te debe ${fmt(plan.saldoAntes - monto)}`, 'ok', 4000);
+      ? `Deuda de ${Personas.nombre(d.personaId)} perdonada — quedó como gasto de ${fmt(monto)}`
+      : `Le perdonaste ${fmt(monto)} a ${Personas.nombre(d.personaId)} — quedó como gasto. Todavía te debe ${fmt(plan.saldoAntes - monto)}`, 'ok', 4000);
   }
 }
 
@@ -1623,16 +1605,16 @@ function toggleDesdeEncargo() {
 
   let opts = [html`<option value="">Seleccionar encargo</option>`];
   if (mismaPersona.length > 0) {
-    opts.push(html`<optgroup label="De ${d.nombre}">`);
+    opts.push(html`<optgroup label="De ${Personas.nombre(d.personaId)}">`);
     mismaPersona.forEach(e => {
-      opts.push(html`<option value="${e.id}">${e.nombre} (${fmt(encargoLibre(e))})</option>`);
+      opts.push(html`<option value="${e.id}">${Personas.nombre(e.personaId)} (${fmt(encargoLibre(e))})</option>`);
     });
     opts.push(raw('</optgroup>'));
   }
   if (otros.length > 0) {
     if (mismaPersona.length > 0) opts.push(raw('<optgroup label="Otros encargos">'));
     otros.forEach(e => {
-      opts.push(html`<option value="${e.id}">${e.nombre} (${fmt(encargoLibre(e))})</option>`);
+      opts.push(html`<option value="${e.id}">${Personas.nombre(e.personaId)} (${fmt(encargoLibre(e))})</option>`);
     });
     if (mismaPersona.length > 0) opts.push(raw('</optgroup>'));
   }
@@ -2192,7 +2174,7 @@ function _aplicarMovimientoMiDeuda(p) {
   // A qué préstamo pertenece. Puede crear un grupo, por eso se resuelve acá (al aplicar) y no al validar.
   const grupoId = _resolverGrupoIdSel('md', d, fecha);
   const entra = tipo === 'recibido';
-  const desc = entra ? `Me prestó — ${d.nombre}` : `Pago de deuda — ${d.nombre}`;
+  const desc = entra ? `Me prestó — ${Personas.nombre(d.personaId)}` : `Pago de deuda — ${Personas.nombre(d.personaId)}`;
   const movimientoId = uid();
   const efectos = cuentas.map(c => {
     if (entra) sumarFuente(c.cuenta, c.monto, _origenLibro(movimientoId)); else descontarFuente(c.cuenta, c.monto, _origenLibro(movimientoId));
@@ -2218,7 +2200,7 @@ function _aplicarMovimientoMiDeuda(p) {
     const ingresoId = uid();
     S.movimientos.push({
       id: ingresoId, tipo: 'entrada', fuente: '', monto, fecha, nota,
-      desc: Math.abs(monto - Deudas.saldo(d)) <= Deudas.TOL_FINO ? `Me perdonó la deuda — ${d.nombre}` : `Me perdonó parte de la deuda — ${d.nombre}`,
+      desc: Math.abs(monto - Deudas.saldo(d)) <= Deudas.TOL_FINO ? `Me perdonó la deuda — ${Personas.nombre(d.personaId)}` : `Me perdonó parte de la deuda — ${Personas.nombre(d.personaId)}`,
       // _prestadoDirectamente: sin esta bandera, Inicio no cuenta una entrada sin cuenta (fuente '') como ingreso del mes
       // (ver el filtro de ingresosMes en inicio.js); es la misma que usa el margen de un préstamo (diferencial.js).
       _prestadoDirectamente: true,
@@ -2234,7 +2216,7 @@ function _aplicarMovimientoMiDeuda(p) {
     if (!S.gastosVar) S.gastosVar = [];
     const gastoId = uid();
     S.gastosVar.push({
-      id: gastoId, monto: extra, fecha, cat: 'Otro', desc: `Pagué de más — ${d.nombre}`, nota, fuente: '', ts: Date.now(),
+      id: gastoId, monto: extra, fecha, cat: 'Otro', desc: `Pagué de más — ${Personas.nombre(d.personaId)}`, nota, fuente: '', ts: Date.now(),
       clase: 'gasto', _secundario: true, _origenSeccion: origen, _esExtraDeuda: true, _deudaId: d.id, _deudaMovimientoId: movimiento.id
     });
     movimiento.extra = { monto: extra, gastoId };
@@ -2324,15 +2306,15 @@ async function eliminarMiDeuda() {
   if (!d) return;
   const saldo = getMiDeudaSaldo(d);
   if (Math.abs(saldo) > Deudas.TOL) {
-    await avisarNoSePuede('No se puede eliminar', `Aún le debes ${fmt(saldo)} a ${d.nombre}. Registra el pago completo antes de eliminar.`);
+    await avisarNoSePuede('No se puede eliminar', `Aún le debes ${fmt(saldo)} a ${Personas.nombre(d.personaId)}. Registra el pago completo antes de eliminar.`);
     return;
   }
-  const ok = await confirmarEliminar({ titulo: 'Eliminar deuda', objeto: `el registro de deuda con ${d.nombre}` });
+  const ok = await confirmarEliminar({ titulo: 'Eliminar deuda', objeto: `el registro de deuda con ${Personas.nombre(d.personaId)}` });
   if (!ok) return;
   Deudas.quitar('contra', miDeudaActualId);
   save(); refresh();
   volverMisDeudas();
-  toast(`${d.nombre} eliminado`, 'ok');
+  toast(`${Personas.nombre(d.personaId)} eliminado`, 'ok');
 }
 
 /* ── PRÉSTAMO CON TARJETA DE CRÉDITO ─────────────────────────────────────── */
@@ -2448,7 +2430,7 @@ function confirmarPrestamoTC() {
     id: uid(),
     tcId,
     tipo: 'cargo_prestamo',
-    desc: `Préstamo ${d.nombre}: ${desc}`,
+    desc: `Préstamo ${Personas.nombre(d.personaId)}: ${desc}`,
     monto: montoTC,
     fecha,
     nota: nota || 'Compra a nombre propio para prestarle a alguien — no es gasto tuyo',
@@ -2460,14 +2442,14 @@ function confirmarPrestamoTC() {
   //    El motor lo registra como ingreso fantasma (fuente:'', flag _prestadoDirectamente) y
   //    deja el resumen en movimientoObj.diferencial para futuro uso en el historial.
   if (margen > Deudas.TOL_FINO) {
-    const diferencial = diffAplicar('prtc', { desc, fecha, _deudorNombre: d.nombre }, movimientoId); // movimientoId enlaza el margen al préstamo: así _revertirMovimientoDeudor lo quita con él
+    const diferencial = diffAplicar('prtc', { desc, fecha, _deudorNombre: Personas.nombre(d.personaId) }, movimientoId); // movimientoId enlaza el margen al préstamo: así _revertirMovimientoDeudor lo quita con él
     if (diferencial) movimientoObj.diferencial = diferencial;
   }
 
   save(); refresh();
   closeSheet('prestamo-tc');
   abrirDeudor(deudorActualId);
-  toast(`Préstamo con TC registrado — ${d.nombre} te debe ${fmt(dijo)}`, 'ok', 3500);
+  toast(`Préstamo con TC registrado — ${Personas.nombre(d.personaId)} te debe ${fmt(dijo)}`, 'ok', 3500);
 }
 /* ── ABONO desde encargo: dividir entre VARIAS cuentas del encargo ──────────
    (ej: el encargo tiene 400mil en Nequi y 100mil en efectivo, y el abono de
@@ -2527,19 +2509,6 @@ function editarDeudorActual() {
   if (!deudorActualId) return;
   const d = Deudas.lista('favor').find(x => x.id === deudorActualId);
   if (!d) return;
-  // Todo deudor está vinculado a una persona en S.personas. Si por algún
-  // motivo un registro legado no tiene el vínculo todavía, se crea aquí
-  // para no perder su nombre/color al editar.
-  if (!d.personaId) {
-    let p = (S.personas || []).find(x => x.nombre.trim().toLowerCase() === (d.nombre || '').trim().toLowerCase());
-    if (!p) {
-      if (!S.personas) S.personas = [];
-      p = { id: uid(), nombre: d.nombre || '', color: d.color || '#60b0f0', creadoEn: hoy() };
-      S.personas.push(p);
-    }
-    d.personaId = p.id;
-    save();
-  }
   // Usar el sheet unificado "Editar persona" (misma paleta completa y misma
   // lógica de sincronización que en la sección Personas), en vez del sheet
   // desactualizado propio de Préstamos.
@@ -2763,26 +2732,13 @@ Ui.en('persona-editada', function(personaId) {
 }, { key: 'prestado-detalle-deudor' });
 
 
-/* ── Abrir perfil desde una misDeuda (crea persona si no tiene) ── */
+/* ── Abrir perfil desde una misDeuda ── */
 function _abrirPerfilDesdeMiDeuda(miDeudaId) {
   if (!miDeudaId) return;
   const d = Deudas.lista('contra').find(x => x.id === miDeudaId);
   if (!d) return;
   _inyectarPersonaSheets();
-  if (d.personaId) {
-    abrirPerfilPersona(d.personaId);
-    return;
-  }
-  // Crear persona vinculada on-the-fly
-  if (!S.personas) S.personas = [];
-  let p = S.personas.find(x => x.nombre.trim().toLowerCase() === (d.nombre || '').toLowerCase());
-  if (!p) {
-    p = { id: uid(), nombre: d.nombre, color: d.color || '#f06868', creadoEn: hoy() };
-    S.personas.push(p);
-  }
-  d.personaId = p.id;
-  save();
-  abrirPerfilPersona(p.id);
+  abrirPerfilPersona(d.personaId);
 }
 
 function _abrirPerfilDesdeMiDeudaActual() {
@@ -2807,11 +2763,9 @@ function editarMiDeudaActual() {
   if (!miDeudaActualId) return;
   const d = Deudas.lista('contra').find(x => x.id === miDeudaActualId);
   if (!d) return;
-  // Usar el color real de la persona si está vinculada
-  const _pEdit = d.personaId && typeof getPersona === 'function' ? getPersona(d.personaId) : null;
-  window._miDeudaEditColor = (_pEdit && _pEdit.color) ? _pEdit.color : (d.color || PERSONA_COLORES[4]);
+  window._miDeudaEditColor = Personas.color(d.personaId);
   const inp = document.getElementById('md_edit_nombre');
-  if (inp) inp.value = d.nombre || '';
+  if (inp) inp.value = Personas.nombre(d.personaId);
   const inpTasa = document.getElementById('md_edit_tasa');
   if (inpTasa) inpTasa.value = d.tasaEA > 0 ? String(d.tasaEA).replace('.', ',') : '';
   _renderColorPicker('md_edit_colores', '_miDeudaEditColor');
@@ -2829,19 +2783,15 @@ function guardarEditarMiDeuda() {
   if (!d) return;
   const nombre = (document.getElementById('md_edit_nombre').value || '').trim();
   if (!nombre) { if (typeof toast === 'function') toast('Ingresa el nombre', 'err'); return; }
-  const nuevoColor = window._miDeudaEditColor || d.color;
+  const nuevoColor = window._miDeudaEditColor || Personas.color(d.personaId);
   // Tasa E.A. opcional (P2): vacío = sin intereses conocidos. Entre 0 y 100 %.
   const tasaTxt = ((document.getElementById('md_edit_tasa') || {}).value || '').trim().replace(',', '.');
   const tasaEA = tasaTxt === '' ? null : Number(tasaTxt);
   if (tasaEA !== null && (!isFinite(tasaEA) || tasaEA < 0 || tasaEA > 100)) { if (typeof toast === 'function') toast('La tasa E.A. debe estar entre 0 y 100', 'err'); return; }
+  // Nombre y color son de la persona (única fuente): se cambian ahí. Un nombre que ya tiene otra persona se rechaza antes de tocar nada.
+  const _ed = Personas.editar(d.personaId, { nombre, color: nuevoColor });
+  if (!_ed.ok) { toast(_ed.error === 'duplicado' ? 'Ya existe «' + _ed.persona.nombre + '». Si es otra persona, añade un apellido o apodo.' : 'No se pudo guardar el nombre', 'err', 4200); return; }
   if (tasaEA > 0) d.tasaEA = tasaEA; else delete d.tasaEA;
-  d.nombre = nombre;
-  d.color = nuevoColor;
-  // Sincronizar en S.personas si está vinculada (persona es la fuente de verdad)
-  if (d.personaId && typeof getPersona === 'function') {
-    const p = getPersona(d.personaId);
-    if (p) { p.nombre = nombre; p.color = nuevoColor; }
-  }
   if (typeof save === 'function') save();
   if (typeof refresh === 'function') refresh();
   abrirMiDeuda(miDeudaActualId);
@@ -2887,7 +2837,7 @@ Events.registerAll('prestado-personas', {
 
 /* ── Me deben: "Agregar persona" abre directamente el selector ─── */
 function _onSelPersonaMeDeben(personaId) {
-  const p = getPersona(personaId);
+  const p = Personas.obtener(personaId);
   if (!p) return;
   // Antes se permitía a propósito que una misma persona tuviera varios
   // deudores separados (uno por cada préstamo). Ahora que existen los
@@ -2903,7 +2853,7 @@ function _onSelPersonaMeDeben(personaId) {
     setTimeout(() => abrirDeudor(existente.id), 200);
     return;
   }
-  const d = Deudas.agregar('favor', { id: uid(), nombre: p.nombre, color: p.color || '#60b0f0', personaId: p.id, movimientos: [] });
+  const d = Deudas.agregar('favor', { id: uid(), personaId: p.id, movimientos: [] });
   save(); refresh();
   toast(`${p.nombre} agregado/a`, 'ok');
   showScreen('prestamos');
@@ -2916,7 +2866,7 @@ function _onSelPersonaMeDeben(personaId) {
    vacía y se abre su detalle; el primer "Me prestó" se registra desde
    ahí (con Dividir, movimiento espejo, etc.). */
 function _onSelPersonaYoDebo(personaId) {
-  const p = getPersona(personaId);
+  const p = Personas.obtener(personaId);
   if (!p) return;
   // Red de seguridad: el selector ya no ofrece a quien tiene deuda (excluir), pero si llegara, se abre la existente.
   const existente = Deudas.porPersona('contra', personaId);
@@ -2927,7 +2877,7 @@ function _onSelPersonaYoDebo(personaId) {
     setTimeout(() => abrirMiDeuda(existente.id), 200);
     return;
   }
-  const d = Deudas.agregar('contra', { id: uid(), nombre: p.nombre, color: p.color || '#f06868', personaId: p.id, movimientos: [] });
+  const d = Deudas.agregar('contra', { id: uid(), personaId: p.id, movimientos: [] });
   save(); refresh();
   toast(`${p.nombre} agregado/a`, 'ok');
   showScreen('prestamos');

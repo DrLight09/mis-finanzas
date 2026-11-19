@@ -416,7 +416,7 @@ function _plataComprometidaPoblarPersonas(selId){
       const saldo = typeof getDeudorSaldo === 'function' ? getDeudorSaldo(d) : 0;
       const opt = document.createElement('option');
       opt.value = d.id;
-      opt.textContent = d.nombre + ' — te debe ' + fmt(saldo);
+      opt.textContent = Personas.nombre(d.personaId) + ' — te debe ' + fmt(saldo);
       sel.appendChild(opt);
     });
   }
@@ -945,7 +945,7 @@ function _destinoNuevoConfirmar(){
   const monto = typeof parseMoney === 'function' ? parseMoney(montoStr) : parseFloat(montoStr.replace(/\./g,'').replace(',','.'));
   if(!monto || monto <= 0){ toast('Ingresa el monto','err'); return; }
 
-  const personaId = document.getElementById('cpd-persona') ? document.getElementById('cpd-persona').value : '';
+  const deudorId = document.getElementById('cpd-persona') ? document.getElementById('cpd-persona').value : '';
   const cuentaId  = document.getElementById('cpd-cuenta')  ? document.getElementById('cpd-cuenta').value  : '';
 
   // Para tipo gasto: leer origen (cajita o TC)
@@ -1038,7 +1038,7 @@ function _destinoNuevoConfirmar(){
     fechaPago = fpEl ? (fpEl.value || '') : '';
   }
 
-  _plataComprometidaDestinosTmp.push({ id:destinoId, tipo, desc, monto, personaId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago, _tcCompraId:_tcCompraIdInicial||undefined });
+  _plataComprometidaDestinosTmp.push({ id:destinoId, tipo, desc, monto, deudorId, cuentaId, yaSaque, yaPague, gastoOrigen, gastoCajita, gastoTcId, gastoTcCajita, fechaPago, _tcCompraId:_tcCompraIdInicial||undefined });
   closeSheet('cp-destino');
   _plataComprometidaRenderDestinosTmp();
 };
@@ -1081,9 +1081,9 @@ function _plataComprometidaRenderDestinosTmp(){
           ? `<span class="cp-bd-ok"><i class="fa-solid fa-check"></i> Pagado</span>`
           : `<span class="cp-bd-pend2"><i class="fa-regular fa-clock"></i> Pendiente</span>`;
         badges = origenBadge + ' ' + pagoBadge;
-      } else if(d.tipo === 'abono_deuda' && d.personaId){
-        const deu = Deudas.lista('favor').find(x=>x.id===d.personaId);
-        if(deu) badges = html`<span class="cp-bd-persona"><i class="fa-solid fa-user cp-ico-r2-8"></i>${deu.nombre}</span>`;
+      } else if(d.tipo === 'abono_deuda' && d.deudorId){
+        const deu = Deudas.lista('favor').find(x=>x.id===d.deudorId);
+        if(deu) badges = html`<span class="cp-bd-persona"><i class="fa-solid fa-user cp-ico-r2-8"></i>${Personas.nombre(deu.personaId)}</span>`;
       } else {
         badges = d.yaPague
           ? `<span class="cp-bd-ok2"><i class="fa-solid fa-check"></i> Pagado</span>`
@@ -1163,8 +1163,8 @@ function _plataComprometidaAbrirRecibir(id){
         let extraInfo = '';
 
         if(d.tipo==='abono_deuda'||d.tipo==='prestamo'){
-          const deu = Deudas.lista('favor').find(x=>x.id===d.personaId);
-          if(deu) detalle = html` · ${deu.nombre}`;
+          const deu = Deudas.lista('favor').find(x=>x.id===d.deudorId);
+          if(deu) detalle = html` · ${Personas.nombre(deu.personaId)}`;
         }
         if(d.tipo==='tc'){
           const tc = (S.tarjetasCredito||[]).find(x=>x.id===d.tcId);
@@ -1336,12 +1336,12 @@ function _plataComprometidaConfirmarRecibir(){
           }
         }
       }
-      else if(d.tipo === 'abono_deuda' && d.personaId){
-        const deu = Deudas.lista('favor').find(x=>x.id===d.personaId);
+      else if(d.tipo === 'abono_deuda' && d.deudorId){
+        const deu = Deudas.lista('favor').find(x=>x.id===d.deudorId);
         if(deu){
           if(!deu.movimientos) deu.movimientos = [];
           deu.movimientos.push({id:uid(), tipo:'abono', monto:d.monto, fecha, nota:'Abono desde: '+item.desc, ts:Date.now()});
-          if(window.logCambio) logCambio('Registraste abono de '+deu.nombre, fmt(d.monto)+' de plata comprometida', d.monto, 'abono');
+          if(window.logCambio) logCambio('Registraste abono de '+Personas.nombre(deu.personaId), fmt(d.monto)+' de plata comprometida', d.monto, 'abono');
         }
       }
       else if(d.tipo === 'gasto'){

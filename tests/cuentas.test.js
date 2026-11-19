@@ -1244,7 +1244,7 @@ describe('spotify-cajita', () => {
 
   const NU = { id: 'nu', tipo: 'ahorro', nombre: 'Nu', saldo: 0 };
   const NEQUI = { id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 0 };
-  const spotify = fuenteId => ({ personas: [], costo: 0, fuenteId, historial: [] });
+  const spotify = fuenteId => ({ integrantes: [], costo: 0, fuenteId, historial: [] });
 
   test('getSpotifyFuenteSaldo — sin cuenta elegida da 0', () => {
     assert.equal(freshApp({ cajitas: [] }).getSpotifyFuenteSaldo(), 0);

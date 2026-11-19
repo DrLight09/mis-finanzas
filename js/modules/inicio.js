@@ -44,7 +44,7 @@
 // de "anidamiento sin doble escapado" validada con el piloto de
 // abrirPresupuestos()/renderPresupuestos() en analisis.js), así que el
 // render final (más abajo) puede interpolar `it.texto` sin volver a escapar
-// ni perder el escapado ya aplicado acá. d.nombre, tc.nombre, spotifyNombreDe(p),
+// ni perder el escapado ya aplicado acá. d.nombre, tc.nombre, Personas.nombre(p.personaId),
 // c.nombre, enc.nombre y p.desc son los seis campos de texto libre reales de
 // esta función — pNombre y _mesNombreDeKey(k) son vocabulario fijo/fechas
 // calculadas, sin riesgo, pero quedan igual bajo el escapado por defecto de
@@ -118,7 +118,7 @@ function _ctxReglas(){
     };
   }
   if(typeof getDeudorSaldo==='function'){
-    api.deudas=tipo=>Deudas.lista(tipo).map(d=>({nombre:d.nombre,saldo:getDeudorSaldo(d)}));
+    api.deudas=tipo=>Deudas.lista(tipo).map(d=>({nombre:Personas.nombre(d.personaId),saldo:getDeudorSaldo(d)}));
   }
   if(S.modulos&&S.modulos.mesada&&typeof getMesadaData==='function'){
     api.mesadaPendientes=()=>{
@@ -459,7 +459,7 @@ function _deudasPropias(){
     if(saldo > 0) out.push({ id: tc.id, nombre: tc.nombre, tipo: 'tarjeta', saldo, tasaEA: tc.tasaEA > 0 ? tc.tasaEA : null });
   });
   if(typeof Deudas !== 'undefined' && typeof getDeudorSaldo === 'function'){
-    Deudas.lista('contra').forEach(d => { const saldo = getDeudorSaldo(d); if(saldo > 0) out.push({ id: d.id, nombre: d.nombre, tipo: 'persona', saldo, tasaEA: d.tasaEA > 0 ? d.tasaEA : null }); });
+    Deudas.lista('contra').forEach(d => { const saldo = getDeudorSaldo(d); if(saldo > 0) out.push({ id: d.id, nombre: Personas.nombre(d.personaId), tipo: 'persona', saldo, tasaEA: d.tasaEA > 0 ? d.tasaEA : null }); });
   }
   return out;
 }

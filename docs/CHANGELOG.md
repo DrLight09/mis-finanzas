@@ -33,6 +33,16 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Personas: una sola fuente de nombre y color, fase 3 (2026-11-18, SW v151)
+
+- **Los módulos ya no guardan `nombre` ni `color` de la persona.** `S.deudores`, `S.misDeudas`, `S.encargos` y `S.spotify.integrantes` guardan solo `personaId`; todo lo que se muestra sale de `Personas.nombre(id)` / `Personas.color(id)` (Préstamos, Encargos, Spotify, Inicio, Cuentas, Alcancía, Actividad reciente, Mesada, Plata comprometida, Wrapped y búsqueda global). Renombrar a alguien cambia todos los módulos sin código de sincronización.
+- **Editar el nombre desde Préstamos/Yo debo o desde un encargo** pasa por `Personas.editar` (rechaza el nombre de otra persona antes de tocar nada) en vez de escribir en el registro y en la persona.
+- **Desaparecen los resolvedores duplicados:** `spotifyNombreDe`, `_wrappedNombrePersona`, `getPersona`, `getPersonaNombre`, `getPersonaColor`. `reglas.js` conserva `nombrePersona(S, id)`, función pura sobre `S`, porque también corre en Node (notificaciones push) sin el núcleo de la app. `getPersonaDatos` pasó a ser `_datosPersona`, ayudante local de `personas.js`.
+- **Ramas «sin personaId» eliminadas:** auto-vincular deudas al abrir el perfil o editar, chip «Ver perfil» condicional, aviso «encargo sin persona», agrupación del Wrapped por nombre crudo y emparejamiento legado por nombre del historial de Spotify (ahora solo `spotifyId`). Agregar un integrante de Spotify exige elegir o crear una persona.
+- **Renombres:** `S.spotify.personas` → `S.spotify.integrantes` (evita confundirlo con `S.personas`); en Plata comprometida, `destino.personaId` → `destino.deudorId` (guardaba el id de un deudor, no de una persona).
+- **Invariante I2 definitiva:** `Personas.verificar` reporta `copia-guardada` si un registro de una relación vuelve a guardar `nombre` o `color`. Se quitó la bandera `copia` del registro de relaciones. El `nombre` de `spotify.historial` sigue siendo una foto del momento, a propósito.
+- **Pruebas:** fixtures (`datos-sinteticos.js`, `finanzas.test.js`, `mesada.test.js`, `personas-core.test.js`) y `scripts/smoke-browser.js` ahora siembran personas en vez de copias; el test de renombrado comprueba que ningún registro guarda copia.
+
 ## Personas: núcleo único, fases 1 y 2 (2026-11-18, SW v150)
 
 Fases 1 y 2 del plan [`personas-modelo-unico.md`](personas-modelo-unico.md) (queda ahí lo pendiente). **Sin migración de datos** (esquema sigue en 12): la app no tiene datos que conservar.

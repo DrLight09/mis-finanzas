@@ -69,10 +69,9 @@
    - `window._alcanciaRachaAhorro` — expuesta por alcancia.js (grupo lazy
      aparte); si Alcancía no cargó todavía, esa cifra puntual no se
      muestra.
-   - `getPersonaNombre` — expuesta por personas.js (núcleo eager, ver
-     personas.md §8); si no existe todavía, cada dominio nuevo cae al
-     nombre crudo que ya guarda su propio registro (`d.nombre`,
-     `enc.nombre`), escapado igual con `escHtml`.
+   - `Personas.nombre` — núcleo eager (personas-core.js): el nombre de
+     cada persona sale siempre de ahí (los registros no guardan copia),
+     escapado con `escHtml`.
    - `showScreen` — núcleo eager (navegacion.js); usada solo para volver
      a "Más" al cerrar la historia. Con guard typeof: si no existe, el
      botón cerrar simplemente no navega (no rompe nada).
@@ -1436,31 +1435,31 @@ function _wrappedCopyEncargos(e, fmt2){
     // una sola persona. Ahora se agrega como frase extra, igual que ya
     // hace `_wrappedCopyPrestado` con su `topDeudor` sin importar cuántas
     // personas hubo en total.
-    const detalleTop = (e.topEncargo && e.topEncargo.nombre)
+    const detalleTop = (e.topEncargo && e.topEncargo.personaId)
       ? ' ' + _wrappedBankPick('encargos-top', [
-          `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}${(typeof fmt2 === 'function' && Number.isFinite(e.topEncargo.monto)) ? `, con ${fmt2(e.topEncargo.monto)}` : ''}.`,
-          `Quien más confió en ti para guardarle plata fue ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`,
-          `${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} fue quien más plata te encargó cuidar.`,
-        ], e.topEncargo.nombre)
+          `La mayor parte te la encargó ${escHtml(Personas.nombre(e.topEncargo.personaId))}${(typeof fmt2 === 'function' && Number.isFinite(e.topEncargo.monto)) ? `, con ${fmt2(e.topEncargo.monto)}` : ''}.`,
+          `Quien más confió en ti para guardarle plata fue ${escHtml(Personas.nombre(e.topEncargo.personaId))}.`,
+          `${escHtml(Personas.nombre(e.topEncargo.personaId))} fue quien más plata te encargó cuidar.`,
+        ], e.topEncargo.personaId)
       : '';
     return _wrappedBankPick('encargos-varias', [
       `Repartida entre ${e.nPersonas} personas que confiaron en ti para guardarla.`,
       `${e.nPersonas} personas te encargaron su plata este año.`,
     ], e.nPersonas) + detalleTop;
   }
-  if(e.topEncargo && e.topEncargo.nombre) return _wrappedBankPick('encargos-una', [
-    `La mayor parte te la encargó ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)}.`,
-    `Fue ${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} quien más confió en ti para guardarle plata.`,
-    `${_wrappedNombrePersona(e.topEncargo.personaId, e.topEncargo.nombre)} te encargó su plata todo el año.`,
-  ], e.topEncargo.nombre);
+  if(e.topEncargo && e.topEncargo.personaId) return _wrappedBankPick('encargos-una', [
+    `La mayor parte te la encargó ${escHtml(Personas.nombre(e.topEncargo.personaId))}.`,
+    `Fue ${escHtml(Personas.nombre(e.topEncargo.personaId))} quien más confió en ti para guardarle plata.`,
+    `${escHtml(Personas.nombre(e.topEncargo.personaId))} te encargó su plata todo el año.`,
+  ], e.topEncargo.personaId);
   return _wrappedBankPick('encargos-generica', [
     'Plata ajena que pasó por tus manos este año.',
     'Este año también cuidaste plata que no era tuya.',
   ]);
 }
 function _wrappedCopyPrestado(p, fmt2){
-  if(p.topDeudor && p.topDeudor.nombre){
-    const nombre = _wrappedNombrePersona(p.topDeudor.personaId, p.topDeudor.nombre);
+  if(p.topDeudor && p.topDeudor.personaId){
+    const nombre = escHtml(Personas.nombre(p.topDeudor.personaId));
     const detalle = (typeof fmt2 === 'function' && Number.isFinite(p.topDeudor.n))
       ? `, con ${fmt2(p.topDeudor.monto)} prestados en ${p.topDeudor.n} movimiento${p.topDeudor.n===1?'':'s'}`
       : '';
@@ -1468,7 +1467,7 @@ function _wrappedCopyPrestado(p, fmt2){
       `Tu cliente más frecuente fue ${nombre}${detalle}.`,
       `${nombre} fue quien más confió en tu "banco" este año${detalle}.`,
       `A ${nombre} fue a quien más le prestaste${detalle}.`,
-    ], p.topDeudor.nombre);
+    ], p.topDeudor.personaId);
   }
   if(p.totalDevuelto >= p.totalPrestado && p.totalDevuelto > 0) return _wrappedBankPick('prestado-cobradoTodo', [
     'Y este año te pagaron más de lo que prestaste.',
@@ -2108,21 +2107,6 @@ function _wrappedSiTuAnioFuera(ctx){
    casos especiales.
    ═══════════════════════════════════════════════════════════════════════ */
 
-/* Nombre de una persona: preferimos el sistema unificado de Personas
-   (`getPersonaNombre`, ver personas.md §2 — "el nombre mostrado siempre
-   se resuelve preferentemente desde la persona vinculada") y caemos al
-   nombre crudo que cada módulo ya guarda si Personas no cargó o el
-   registro no tiene `personaId` ("sin perfil", ver personas.md §2/§6).
-   Escapa siempre — un nombre de persona es dato del usuario. */
-function _wrappedNombrePersona(personaId, nombreCrudo){
-  let nombre = nombreCrudo || 'Alguien';
-  if(personaId && typeof getPersonaNombre === 'function'){
-    const resuelto = getPersonaNombre(personaId);
-    if(resuelto) nombre = resuelto;
-  }
-  return escHtml(nombre);
-}
-
 /* ─── ENCARGOS ─────────────────────────────────────────────────────────
    "Cuánta plata ajena te encargaron cuidar este año" — suma de
    movimientos tipo 'entrada' (ver encargos.md §4: es lo único que
@@ -2148,9 +2132,9 @@ function _wrappedCalcularEncargos(S, tipo, mesK, anioK){
     });
     if(totalEsteEncargo > 0){
       totalEncargado += totalEsteEncargo;
-      personasSet.add(encargo.personaId || encargo.nombre || encargo.id);
+      personasSet.add(encargo.personaId);
       if(!topEncargo || totalEsteEncargo > topEncargo.monto){
-        topEncargo = { nombre: encargo.nombre, personaId: encargo.personaId || null, monto: totalEsteEncargo };
+        topEncargo = { personaId: encargo.personaId, monto: totalEsteEncargo };
       }
     }
   });
@@ -2183,7 +2167,7 @@ function _wrappedCalcularPrestado(S, tipo, mesK, anioK){
       else if(esAbonoDeDeuda(m.tipo) && !m._perdon){ totalDevuelto += (m.monto||0); }
     });
     if(prestadoAEsta > 0 && (!topDeudor || prestadoAEsta > topDeudor.monto)){
-      topDeudor = { nombre: d.nombre, personaId: d.personaId || null, monto: prestadoAEsta, n: nPrestamosAEsta };
+      topDeudor = { personaId: d.personaId, monto: prestadoAEsta, n: nPrestamosAEsta };
     }
   });
 
@@ -2633,34 +2617,31 @@ function _wrappedGastoMasRandom(S, tipo, mesK, anioK, gastoMasGrande){
    Prestado, Spotify) — nunca solo uno. Cuenta MOVIMIENTOS (interacción),
    no plata — es una pregunta distinta de "quién te encargó más" o "a
    quién le prestaste más" (esas ya las responden sus propios slides de
-   §7ter). Agrupa por `personaId` cuando existe; si no, por nombre crudo
-   — mismo criterio de "sin perfil" de personas.md §2/§6. */
+   §7ter). Agrupa por `personaId`. */
 function _wrappedProtagonistas(S, tipo, mesK, anioK){
-  const conteo = {}; // key -> {nombre, personaId, n}
-  const sumar = (key, nombre, personaId, n) => {
-    if(!key) return;
-    if(!conteo[key]) conteo[key] = { nombre, personaId, n: 0 };
-    conteo[key].n += n;
+  const conteo = {}; // personaId -> {personaId, n}
+  const sumar = (personaId, n) => {
+    if(!personaId) return;
+    if(!conteo[personaId]) conteo[personaId] = { personaId, n: 0 };
+    conteo[personaId].n += n;
   };
 
   (S.encargos||[]).forEach(encargo => {
     const n = (encargo.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
-    if(n>0) sumar(encargo.personaId||encargo.nombre, encargo.nombre, encargo.personaId||null, n);
+    if(n>0) sumar(encargo.personaId, n);
   });
   Deudas.lista('favor').forEach(d => {
     const n = (d.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
-    if(n>0) sumar(d.personaId||d.nombre, d.nombre, d.personaId||null, n);
+    if(n>0) sumar(d.personaId, n);
   });
   Deudas.lista('contra').forEach(d => {
     const n = (d.movimientos||[]).filter(m => m && _wrappedEnRango(m.fecha, tipo, mesK, anioK)).length;
-    if(n>0) sumar(d.personaId||d.nombre, d.nombre, d.personaId||null, n);
+    if(n>0) sumar(d.personaId, n);
   });
   ((S.spotify||{}).historial||[]).forEach(h => {
     if(h && h.tipo==='cobro' && h.spotifyId && _wrappedEnRango(h.fecha, tipo, mesK, anioK)){
-      const spotify = ((S.spotify||{}).personas||[]).find(p => p.id === h.spotifyId);
-      const nombre = spotify ? spotify.nombre : h.nombre;
-      const personaId = spotify ? spotify.personaId : null;
-      sumar(personaId||nombre, nombre, personaId||null, 1);
+      const spotify = ((S.spotify||{}).integrantes||[]).find(p => p.id === h.spotifyId);
+      if(spotify) sumar(spotify.personaId, 1);
     }
   });
 
@@ -2866,12 +2847,12 @@ function _wrappedSuscripciones(S){
     .map(f => ({ desc: f.nombre || 'Suscripción', monto: f.monto || 0 }))
     .filter(p => p.monto > 0);
 
-  const spotifyActivo = Array.isArray((S.spotify||{}).personas) && (S.spotify||{}).personas.length > 0;
+  const spotifyActivo = Array.isArray((S.spotify||{}).integrantes) && (S.spotify||{}).integrantes.length > 0;
   if(!personales.length && !spotifyActivo) return null;
 
   return {
     personales,
-    spotify: spotifyActivo ? { personas: (S.spotify||{}).personas.length, costoMensual: (S.spotify||{}).costo || 0 } : null
+    spotify: spotifyActivo ? { personas: (S.spotify||{}).integrantes.length, costoMensual: (S.spotify||{}).costo || 0 } : null
   };
 }
 
@@ -2902,7 +2883,7 @@ function _wrappedRecuperacionMasRapida(S, anioK){
     const dias = Fecha.diasEntre(primero.fecha, segundo.fecha);
     if(!Number.isFinite(dias) || dias < 0) return;
     if(!mejor || dias < mejor.dias){
-      mejor = { dias, nombre: d.nombre, personaId: d.personaId || null, monto: primero.monto||0 };
+      mejor = { dias, personaId: d.personaId, monto: primero.monto||0 };
     }
   });
   return mejor;
@@ -2993,15 +2974,14 @@ function _wrappedRecordsAnio(S, anioK, s, prestadoAnio, serieMensual){
 
 /* Cuenta identidades distintas involucradas en dominios "de terceros" —
    deudores, "yo debo", integrantes de Spotify, encargantes — usando
-   `personaId` cuando existe y el nombre crudo como fallback, para no
-   contar dos veces a la misma persona vinculada al sistema unificado. */
+   `personaId`, para no contar dos veces a la misma persona. */
 function _wrappedPersonasInvolucradas(S){
   const set = new Set();
-  const add = (personaId, nombre) => { if(personaId) set.add('p:'+personaId); else if(nombre) set.add('n:'+String(nombre).toLowerCase()); };
-  Deudas.lista('favor').forEach(d => add(d.personaId, d.nombre));
-  Deudas.lista('contra').forEach(d => add(d.personaId, d.nombre));
-  ((S.spotify||{}).personas||[]).forEach(p => add(p.personaId, p.nombre));
-  (S.encargos||[]).forEach(e => add(e.personaId, e.nombre));
+  const add = personaId => { if(personaId) set.add(personaId); };
+  Deudas.lista('favor').forEach(d => add(d.personaId));
+  Deudas.lista('contra').forEach(d => add(d.personaId));
+  ((S.spotify||{}).integrantes||[]).forEach(p => add(p.personaId));
+  (S.encargos||[]).forEach(e => add(e.personaId));
   return set.size;
 }
 
@@ -3228,7 +3208,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
     esBanquero: !!(prestadoAnio && prestadoAnio.totalPrestado > 0),
     tasaAhorroInterna,
     fasesAnio,
-    prestadoDistintoDeRecuperacion: !!(prestadoAnio && prestadoAnio.topDeudor && recuperacion && prestadoAnio.topDeudor.nombre !== recuperacion.nombre)
+    prestadoDistintoDeRecuperacion: !!(prestadoAnio && prestadoAnio.topDeudor && recuperacion && prestadoAnio.topDeudor.personaId !== recuperacion.personaId)
   });
 
   const slides = [];
@@ -3586,7 +3566,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   if(suscripciones){
     const filas = [];
     if(suscripciones.spotify){
-      filas.push(`Spotify compartido: ${fmt2(suscripciones.spotify.costoMensual)} al mes entre ${suscripciones.spotify.personas} persona${suscripciones.spotify.personas===1?'':'s'}.`);
+      filas.push(`Spotify compartido: ${fmt2(suscripciones.spotify.costoMensual)} al mes entre ${suscripciones.spotify.integrantes} persona${suscripciones.spotify.integrantes===1?'':'s'}.`);
     }
     suscripciones.personales.forEach(p => filas.push(`${escHtml(p.desc)}: ${fmt2(p.monto)} al mes.`));
     candidatosInsights.push({
@@ -3610,7 +3590,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
       intensidad: Math.max(0, Math.min(4, (30 - recuperacion.dias) / 6)),
       html: `<div class="wrapped-slide-inner">
         <div class="wrapped-eyebrow">El regreso triunfal</div>
-        <div class="wrapped-headline">${_wrappedNombrePersona(recuperacion.personaId, recuperacion.nombre)}</div>
+        <div class="wrapped-headline">${escHtml(Personas.nombre(recuperacion.personaId))}</div>
         <div class="wrapped-bignum c-green">${recuperacion.dias}</div>
         <div class="wrapped-sub">día${recuperacion.dias===1?'':'s'} para devolverte por completo lo que le prestaste.</div>
       </div>`
@@ -3654,7 +3634,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   }
 
   if(protagonistas && protagonistas.top && protagonistas.top.n >= 3){
-    const nombre = _wrappedNombrePersona(protagonistas.top.personaId, protagonistas.top.nombre);
+    const nombre = escHtml(Personas.nombre(protagonistas.top.personaId));
     candidatosInsights.push({
       involucraPersona: true,
       intensidad: Math.min(4, protagonistas.top.n / 5),
@@ -4261,8 +4241,7 @@ window._wrappedInternals = {
   _wrappedCopyInteresesTC,
   _wrappedCalcularComisionesTC,
   _wrappedCopyComisionesTC,
-  _wrappedNombrePersona,
-  _wrappedMesadaMes,
+    _wrappedMesadaMes,
   _wrappedIngresosFijosMes,
   _wrappedCuotaAnioFallback,
   _wrappedListaCajitas,

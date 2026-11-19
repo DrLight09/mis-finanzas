@@ -10,36 +10,24 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 
 ## 2. Estado actual
 
-**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar` que sincroniza copias por relación, `verificar` I1–I4, `huerfanos`; la lista muestra una fila por persona) y fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda global salen de `Personas.relaciones(id)`; `encargoSaldo/Comprometido/Libre` viven en `calc-helpers.js`). No hay migración de datos: la app no tiene datos que conservar, así que los cambios de forma se hacen directamente en el código.
+**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar`, `verificar` I1–I4, `huerfanos`), fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda salen de `Personas.relaciones(id)`) y fase 3 (nombre y color solo en `S.personas`: ningún módulo guarda copia, un único camino de lectura `Personas.nombre/color`, `S.spotify.integrantes`, `destino.deudorId`, sin ramas «sin personaId»). Todo está en el [`CHANGELOG.md`](./CHANGELOG.md). No hay migración de datos: la app no tiene datos que conservar.
 
 **Queda, de los problemas originales:**
 
-3. **Doble fuente de verdad para nombre y color.** Cada registro sigue copiando `nombre` (y `color` en deudas). Hoy `Personas.editar` las mantiene iguales, pero la copia sigue existiendo (unas 170 lecturas de `.nombre` sobre registros de persona: `prestado.js` ≈60, `encargos.js` ≈34, `personas.js` ≈24, `wrapped.js` ≈14, `busqueda-global.js` ≈13).
-4. **Cuatro resolvedores del mismo nombre:** `getPersonaNombre` (ahora envoltorio), `spotifyNombreDe` (`calc-helpers.js:158`), `nombreSpotify` (`reglas.js:67`) y `_wrappedNombrePersona` (`wrapped.js:2117`).
-5. **Un campo con dos significados.** En Plata comprometida `destino.personaId` guarda el **id de un deudor** (`plata-comprometida.js:1085`, `1166`, `1339`: `Deudas.lista('favor').find(x => x.id === d.personaId)`), no el de una persona. Con el modelo unificado esto se vuelve un bug.
-6. **Ramas por «sin personaId»** que no deberían ocurrir (el invariante I1 lo vigila `save()`) y siguen en el código: `prestado.js` (`avatarAccion` en la línea ≈374, auto-vincular al editar ≈2520 y ≈2759, chip «Ver perfil» condicional), `encargos.js` (≈1851 y ≈3379), Wrapped agrupando por `personaId` o por nombre crudo (`wrapped.js` ≈2636, ≈2996), y los textos de `docs/encargos.md` §3 que dicen «puede faltar en encargos viejos».
 7. **Eliminar, archivar y fusionar:** sigue sin existir ninguna ruta que quite elementos de `S.personas`. (La parte de «duplicados creados por error» ya se previene: `Personas.crear` y `editar` no permiten nombres repetidos.)
 8. **Campos fantasma:** `alias` y `notas` los documenta `estado.js:76` y los lee la búsqueda global (`busqueda-global.js:220`), pero ninguna pantalla los escribe. Un comentario de Spotify habla de «color/foto» y no hay foto.
-9. **Nombre cruzado entre módulos:** `S.spotify.personas` se llama «personas» pero son **integrantes del plan**; confunde con `S.personas`.
 
 ### Tabla de dónde vive la gente (para lo que queda)
 
 | Dónde | Estructura | Falta |
 |---|---|---|
-| Libreta central | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn}]` | `archivada?`; escribir `alias`/`notas` desde la hoja de edición |
-| Préstamos «me deben» | `S.deudores[]` con `nombre`, `color`, `personaId` | quitar `nombre` y `color` |
-| Préstamos «yo debo» | `S.misDeudas[]` igual | quitar `nombre` y `color` |
-| Encargos | `S.encargos[]` con `nombre`, `personaId`, … | quitar `nombre` |
-| Spotify | `S.spotify.personas[]` con `nombre`, `personaId`, `monto`, … | renombrar a `integrantes`; quitar `nombre` |
-| Plata comprometida | destinos con un campo `personaId` que es un id de deudor | renombrar a `deudorId` |
+| Libreta central (única fuente de nombre y color) | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn}]` | `archivada?`; escribir `alias`/`notas` desde la hoja de edición |
 | Diferencial / reparto | `partes[].nombre` de texto libre | vincular opcional (ver §4.7) |
 | Mesada | `MESADA_PADRES = ['papa','mama']` fijos | opcional (ver §4.7) |
 
 ## 3. Hallazgos de la revisión del 2026-11-18 (no estaban en el análisis original)
 
-- **La copia de nombre fue una decisión escrita**, no un descuido: `personas.md` §7 decía que se duplicaba a propósito porque Spotify usa el nombre crudo para emparejar historial viejo (`spotify.js:754`: `x.nombre === h.nombre`) y para no depender de `S.personas`. Ese motivo ya no aplica: el emparejamiento por nombre es solo el camino legado sin `spotifyId`. Al quitar las copias hay que **reescribir §7 de `personas.md`** (hoy lo marca como transitorio) y quitar ese camino legado de Spotify.
-- **Ya resuelto:** el registro de relaciones tiene la mitad de datos y de resumen en el núcleo (no en el módulo lazy) y un módulo puede volver a registrar su `id` para añadir campos (se mezcla). `getPersonaDatos` ya no depende de `encargos.js`; las funciones de Spotify que Personas necesita ya estaban en `calc-helpers.js`.
-- **`scripts/notificaciones/run.js` y `checks.js` no leen nombres de personas** (comprobado en el código): quitar `nombre` de los registros no los afecta. Falta solo una prueba de paridad con un respaldo del esquema 13 al terminar la fase 3.
+- **Notificaciones:** `scripts/notificaciones/run.js` y `checks.js` no leen nombres de las personas desde los registros (la regla de encargos y la de Spotify usan `nombrePersona(S, id)` de `reglas.js`, pura sobre `S`, porque también corre en Node sin el núcleo). Falta una prueba de paridad con un respaldo del esquema final.
 - **Un solo documento de Firestore** (tope 1 MiB, avisa a 800 KB; `firebase-sync.js:246`). Quitar copias ayuda poco; partir el estado por colección es otro proyecto, fuera de este plan.
 
 ## 4. Modelo objetivo (lo que falta)
@@ -49,19 +37,19 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 ```text
 S.personas: [{ id, nombre, color, alias?, notas?, creadoEn, archivada? }]
 
-S.deudores:  [{ id, personaId, movimientos, … }]        // sin nombre ni color
+S.deudores:  [{ id, personaId, movimientos, … }]        // sin nombre ni color (ya así)
 S.misDeudas: [{ id, personaId, tasaEA?, movimientos }]  // sin nombre ni color
 S.encargos:  [{ id, personaId, nota, saldoInicial, … }] // sin nombre
-S.spotify.integrantes: [{ id, personaId, monto, proximoPago, … }]   // antes S.spotify.personas; sin nombre
+S.spotify.integrantes: [{ id, personaId, monto, proximoPago, … }]   // sin nombre
 S.spotify.historial: [{ …, personaId, nombre }]          // `nombre` es FOTO del momento (a propósito)
-plataComprometida destino: { …, deudorId }               // antes `personaId` (id de deudor)
+plataComprometida destino: { …, deudorId }
 ```
 
 ### 4.2 Invariantes
 
-I1, I3 e I4 ya se comprueban (`Personas.verificar`). Quedan:
+I1–I4 ya se comprueban (`Personas.verificar`). Quedan:
 
-- **I2 (definitiva).** Ningún registro guarda copia de `nombre` ni `color` de la persona. Hoy `verificar` la comprueba como `copia-desfasada` (transitoria); al quitar las copias se borra la bandera `copia` de cada relación y la comprobación pasa a «el campo no existe». Excepción: las **fotos** históricas (`spotify.historial`, descripciones del libro, Wrapped guardados), que son texto de un momento y no cambian al renombrar.
+- **I2 (ya definitiva).** `verificar` reporta `copia-guardada` si un registro de una relación tiene `nombre` o `color`. Las **fotos** históricas (`spotify.historial`, descripciones del libro, Wrapped guardados) no son registros de relación y conservan el nombre a propósito.
 - **I3 con archivadas.** Hoy la unicidad de nombre es entre todas las personas; con `archivada` pasa a ser «entre las no archivadas».
 - **I5.** Una persona con relaciones que tengan saldo o historial **no se elimina**: se archiva.
 
@@ -76,11 +64,11 @@ Falta `alFusionar(origen, destino)` por relación (qué hacer si ambas personas 
 
 ### 4.5 Qué ve la persona: lo que falta
 
-Nada pendiente en lista, perfil ni búsqueda. Dos cosas a vigilar al quitar las copias (fase 3): que las secciones del perfil lean `Personas.nombre` en vez de `e.nombre`/`d.nombre`, y que la sección de Encargos del perfil use `e.nota` (hoy cae a `e.nombre` cuando no hay nota).
+Nada pendiente en lista, perfil ni búsqueda.
 
 ### 4.6 Selector único
 
-`PersonaPicker` y `abrirSelPersona` son la puerta para elegir o crear una persona; «crear» ya pasa por `Personas.crear` (detecta el duplicado y usa la existente). Falta: que ningún formulario acepte texto libre como persona (revisar los dos `S.personas.push` que quedan en `prestado.js` ≈693, ≈2536 y ≈2777, que crean personas a mano y se van con las ramas «sin personaId» del problema 6).
+`PersonaPicker` y `abrirSelPersona` son la puerta para elegir o crear una persona; «crear» ya pasa por `Personas.crear` (detecta el duplicado y usa la existente). Falta revisar que ningún formulario acepte texto libre como persona (los `S.personas.push` manuales de `prestado.js` ya se quitaron).
 
 ### 4.7 Texto libre a propósito
 
@@ -91,32 +79,19 @@ Nada pendiente en lista, perfil ni búsqueda. Dos cosas a vigilar al quitar las 
 
 | Archivo | Cambio pendiente |
 |---|---|
-| `core/estado.js` | `S.spotify.integrantes`; corregir el comentario de campos de persona (`estado.js:76-78`) |
-| `core/personas-core.js` | `archivar`, `eliminar`, `fusionar` (+ `alFusionar` por relación); quitar banderas `copia` a medida que cada módulo deja de copiar |
-| `core/persistencia.js` | quitar el aviso por-sesión de I2 cuando ya no haya copias; `_ensureSpotify` con `integrantes` |
-| `core/calc-helpers.js`, `core/reglas.js`, `modules/wrapped.js` | borrar `spotifyNombreDe`, `nombreSpotify`, `_wrappedNombrePersona`; usar `Personas.nombre` |
-| `modules/personas.js` | fusionar, archivar, eliminar; hoja de edición con `alias`/`notas`; borrar los envoltorios `getPersona*` y el adaptador `getPersonaDatos` (el perfil ya recorre relaciones) |
-| `modules/prestado.js` | quitar las ramas «sin personaId» y los `S.personas.push` manuales; leer nombre y color de la persona |
-| `modules/encargos.js`, `modules/spotify.js` | leer nombre y color de la persona; Spotify valida duplicados solo por `personaId` y deja el emparejamiento legado por nombre |
-| `modules/plata-comprometida.js` | `destino.deudorId`; el selector se llena con personas que tienen un «me deben» con saldo |
+| `core/personas-core.js` | `archivar`, `eliminar`, `fusionar` (+ `alFusionar` por relación) |
+| `core/persistencia.js` | el aviso por-sesión de `verificar` ya existe; ampliarlo cuando haya archivadas |
+| `modules/personas.js` | fusionar, archivar, eliminar; hoja de edición con `alias`/`notas` |
 | `modules/configuracion.js` | `_validarEstructuraJSON` comprueba referencias (hoy el import solo reconcilia) |
-| `tests/support/datos-sinteticos.js`, `tests/finanzas.test.js` | dejar de sembrar `nombre` en deudores/encargos cuando se quite la copia |
-| `docs/personas.md`, `docs/glosario-dominio.md`, `docs/encargos.md`, `docs/spotify.md` | reescribir con el modelo final (hoy `personas.md` §7 marca la copia como transitoria) |
+| `docs/glosario-dominio.md` | revisar términos tras archivar/fusionar |
 
-## 6. Cambios de forma pendientes (sin migración)
+## 6. Casos sin cubrir
 
-No hay migración de datos: la app no tiene datos que conservar, así que estos cambios se hacen directamente en el código, en el estado inicial (`estado.js`), en los respaldos de prueba y en `tests/support/datos-sinteticos.js`, sin tocar `SCHEMA_BASE` ni `MIGRACIONES`:
-
-1. **Quitar copias.** Dejar de guardar `nombre` y `color` en `deudores`, `misDeudas`, `encargos` e integrantes de Spotify. En `spotify.historial` se conserva `nombre` como foto.
-2. **Renombrar** `S.spotify.personas` a `S.spotify.integrantes` y, en Plata comprometida, `destino.personaId` a `destino.deudorId`.
-
-Si algún día aparece un respaldo viejo que importar, ahí sí haría falta una migración (la forma de la v13 que se descartó era `Personas.reconciliar`, que vincula huérfanos por nombre y une duplicados exactos).
-
-Casos que siguen sin cubrir: dos deudores de la misma persona (`verificar` lo reporta como I4; falta decidir si se unen sus movimientos o se marca en pantalla), y un destino de Plata comprometida que referencia un deudor que ya no existe.
+- Dos deudores de la misma persona (`verificar` lo reporta como I4; falta decidir si se unen sus movimientos o se marca en pantalla).
+- Un destino de Plata comprometida (`deudorId`) que referencia un deudor que ya no existe.
 
 ## 7. Fases que quedan
 
-3. **Una sola fuente de nombre y color.** Quitar copias y los cuatro resolvedores; borrar las ramas «sin personaId»; renombres de §6. Es la que elimina la deuda técnica; conviene hacerla antes de la 4 para no mantener dos modelos a la vez.
 4. **Ciclo de vida.** Archivar, eliminar, fusionar (con `alFusionar` por módulo).
 5. **Complementos.** Vincular partes del diferencial y la mesada; `alias` y `notas` (o quitarlos del modelo).
 
@@ -124,8 +99,7 @@ Casos que siguen sin cubrir: dos deudores de la misma persona (`verificar` lo re
 
 - **Invariantes tras cada operación.** `Personas.verificar()` debe devolver vacío después de cada operación de los módulos (crear, editar, fusionar, importar). Hoy se prueba el núcleo y la pantalla; falta recorrer las operaciones de Encargos, Spotify y Préstamos.
 - **Escenarios de Inicio.** Los 68 escenarios ya vinculan sus personas; ese chequeo pasaría a ser `Personas.verificar()`.
-- **Renombrar.** Con las copias quitadas, comprobar que cambia en todos los módulos sin código de sincronización.
-- **Notificaciones.** Prueba de paridad de `scripts/notificaciones` con un respaldo del esquema final (`tests/paridad.test.js` ya existe para otras cosas).
+- **Notificaciones.** Prueba de paridad de `scripts/notificaciones` con un respaldo del esquema final.
 
 ## 9. Decisiones abiertas
 
@@ -139,6 +113,6 @@ Se asume lo recomendado salvo que se indique otra cosa.
 
 ## 10. Riesgos y límites
 
-- Cambio transversal que toca unos doce archivos y ≈170 lecturas de `.nombre`. Se compensa con que cada fase es verificable con `Personas.verificar()`; las fases 1 y 2 ya están dentro.
-- La fusión automática por nombre puede unir a dos personas distintas con el mismo nombre (dos «Carlos»). `reconciliar` solo une coincidencias exactas (ignorando mayúsculas, tildes y espacios) y `crear` ya no permite repetirlas; los homónimos reales exigen apellido o apodo.
-- Lo hecho hasta ahora **no** se pudo verificar en el navegador con CSS e íconos reales (no estaban en el adjunto): hay que mirar la lista y el perfil de Personas, sobre todo el bloque «Saldo neto» del perfil, que reutiliza clases existentes (`pe-grid2-mb8`, `pe-celda`).
+- Cada fase es verificable con `Personas.verificar()`; las fases 1 a 3 ya están dentro.
+- La fusión automática por nombre puede unir a dos personas distintas con el mismo nombre (dos «Carlos»). `crear` y `editar` ya no permiten repetir un nombre (ignorando mayúsculas, tildes y espacios); los homónimos reales exigen apellido o apodo.
+- Lo hecho hasta ahora (fases 1 a 3) **no** se pudo verificar por completo en el navegador con CSS e íconos reales (no estaban en el adjunto): hay que mirar la lista y el perfil de Personas, sobre todo el bloque «Saldo neto» del perfil, que reutiliza clases existentes (`pe-grid2-mb8`, `pe-celda`).

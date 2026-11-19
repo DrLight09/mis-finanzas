@@ -141,7 +141,7 @@ describe('fecha-spotify-sin-corrimiento', () => {
   const guion = `
     const { loadApp } = require(${JSON.stringify(path.join(__dirname, 'support', 'load-app.js'))});
     const ctx = loadApp(['core/core-state.js', 'core/periodo.js', 'core/nu-calc.js', 'core/calc-helpers.js', 'core/split.js', 'modules/spotify.js'].map(f => require('path').join(${JSON.stringify(path.join(raiz, 'js'))}, f)), { permissive: true });
-    ctx.S.spotify = { personas: [], historial: [] };
+    ctx.S.spotify = { integrantes: [], historial: [] };
     console.log(JSON.stringify({
       a: ctx.spotifySumarDias('2026-10-31', 30),
       b: ctx.spotifySumarDias('2026-01-08', 60),

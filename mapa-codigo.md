@@ -12,7 +12,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/async-css.js` | de entrada (async) | 0 | 0 |
 | `js/core/bootstrap.js` | de entrada (defer) | 1 | 0 |
 | `js/core/busqueda-global.js` | de entrada (defer) | 0 | 0 |
-| `js/core/calc-helpers.js` | de entrada (defer) | 18 | 0 |
+| `js/core/calc-helpers.js` | de entrada (defer) | 17 | 0 |
 | `js/core/cierre.js` | lazy — grupo `cierre` | 1 | 0 |
 | `js/core/cobros.js` | de entrada (defer) | 13 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
@@ -75,12 +75,12 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/inicio.js` | de entrada (defer) | 26 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 56 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 62 | 0 |
-| `js/modules/personas.js` | de entrada (defer) | 37 | 1 |
+| `js/modules/personas.js` | de entrada (defer) | 34 | 1 |
 | `js/modules/plata-comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 119 | 1 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 42 | 2 |
 | `js/modules/tarjetas-credito.js` | lazy — grupo `tarjetas` | 33 | 2 |
-| `js/modules/wrapped.js` | lazy — grupo `wrapped` | 117 | 3 |
+| `js/modules/wrapped.js` | lazy — grupo `wrapped` | 116 | 3 |
 
 ## 2. Qué declara cada archivo
 
@@ -112,7 +112,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `mesadaOrigenDeMovimientoEncargo`, `spotifyNombreDe`, `spotifyPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
+**Funciones:** `_ensureMesadas`, `_getCuotaAnio`, `_mesNombreDeKey`, `Deudas`, `encargoComprometido`, `encargoLibre`, `encargoSaldo`, `getDeudorSaldo`, `getMesadaData`, `getMiDeudaSaldo`, `getTCById`, `mesadaOrigenDeMovimientoEncargo`, `spotifyPersonaPagadaVigente`, `tcCupoDisponible`, `tcCupoUsadoPct`, `totalMisDeudasPendiente`, `totalPrestadoPendiente`
 
 ### `js/core/cierre.js`
 
@@ -520,7 +520,7 @@ Carga: lazy — grupo `cuentas`
 
 Carga: de entrada (defer)
 
-**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_alternarPerfilPersona`, `_cerrarFichaPersonas`, `_crearPersonaGlobal`, `_editarPersonaDesdePerfilSheet`, `_esPcPersonas`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_mostrarFichaPersona`, `_perfilBalanceNeto`, `_perfilSeccionEncargos`, `_perfilSeccionGenerica`, `_perfilSeccionLeDebo`, `_perfilSeccionPrestamos`, `_perfilSeccionSpotify`, `_pieTarjetaPersona`, `_pintarResumenPersonas`, `_relacionPersonaPc`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_sincronizarFichaPersonas`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `getPersona`, `getPersonaColor`, `getPersonaDatos`, `getPersonaNombre`, `PersonaPicker`
+**Funciones:** `_abrirCrearPersonaGlobal`, `_abrirListaPersonas`, `_actualizarMasPersonasSub`, `_alternarPerfilPersona`, `_cerrarFichaPersonas`, `_crearPersonaGlobal`, `_datosPersona`, `_editarPersonaDesdePerfilSheet`, `_esPcPersonas`, `_guardarEditarPersonaGlobal`, `_inyectarPersonaSheets`, `_irASpotify`, `_mostrarFichaPersona`, `_perfilBalanceNeto`, `_perfilSeccionEncargos`, `_perfilSeccionGenerica`, `_perfilSeccionLeDebo`, `_perfilSeccionPrestamos`, `_perfilSeccionSpotify`, `_pieTarjetaPersona`, `_pintarResumenPersonas`, `_relacionPersonaPc`, `_renderColorPicker`, `_renderListaPersonas`, `_seleccionarColorPersona`, `_selPersonaCrearDirecto`, `_selPersonaElegir`, `_selPersonaFiltrar`, `_sincronizarFichaPersonas`, `_volverASelPersona`, `abrirEditarPersonaGlobal`, `abrirPerfilPersona`, `abrirSelPersona`, `PersonaPicker`
 
 **Globales:** `PERSONA_COLORES`
 
@@ -560,7 +560,7 @@ Carga: lazy — grupo `tarjetas`
 
 Carga: lazy — grupo `wrapped`
 
-**Funciones:** `_wrappedAgruparPorCategoria`, `_wrappedAlcanciaDepositosPeriodo`, `_wrappedAlGuardar`, `_wrappedAnimarBarras`, `_wrappedAnimarLinea`, `_wrappedAnimarNumeros`, `_wrappedAnioDificil`, `_wrappedAnioYMesActual`, `_wrappedBankPick`, `_wrappedBuildSlides`, `_wrappedCalcularComisionesTC`, `_wrappedCalcularComprometida`, `_wrappedCalcularEncargos`, `_wrappedCalcularInteresesTC`, `_wrappedCalcularMesada`, `_wrappedCalcularMisDeudas`, `_wrappedCalcularPeriodo`, `_wrappedCalcularPrestado`, `_wrappedCalcularSpotify`, `_wrappedCambioDeHabitos`, `_wrappedCambioFuerte`, `_wrappedCategoriaMasConcentrada`, `_wrappedCerrar`, `_wrappedColorClase`, `_wrappedComparaciones`, `_wrappedConMascara`, `_wrappedCopyAlcancia`, `_wrappedCopyCategoria`, `_wrappedCopyCierre`, `_wrappedCopyCierrePoema`, `_wrappedCopyComisionesTC`, `_wrappedCopyComprometida`, `_wrappedCopyDesgloseMes`, `_wrappedCopyEncargos`, `_wrappedCopyFases`, `_wrappedCopyGasto`, `_wrappedCopyInteresesTC`, `_wrappedCopyIntro`, `_wrappedCopyMejorMes`, `_wrappedCopyMesada`, `_wrappedCopyMeta`, `_wrappedCopyMisDeudas`, `_wrappedCopyPatrimonio`, `_wrappedCopyPeorMes`, `_wrappedCopyPrestado`, `_wrappedCopyPuente`, `_wrappedCopyRacha`, `_wrappedCopySpotify`, `_wrappedCorteMitadAnio`, `_wrappedCuotaAnioFallback`, `_wrappedDebugOn`, `_wrappedDebugPanelHtml`, `_wrappedDescubrimientos`, `_wrappedEnRango`, `_wrappedEntradasIngreso`, `_wrappedFasesAnio`, `_wrappedFechaLuceValida`, `_wrappedFmtFechaLarga`, `_wrappedFmtSigned`, `_wrappedFraseDelAnio`, `_wrappedFrasesHtml`, `_wrappedGastoMasRandom`, `_wrappedGoTo`, `_wrappedGraficoAnimadoSvg`, `_wrappedGraficoMensualSvg`, `_wrappedGuardar`, `_wrappedHashStr`, `_wrappedHistoriasMensuales`, `_wrappedHoy`, `_wrappedIngresosFijosMes`, `_wrappedIniciarBanco`, `_wrappedInicioRachaReal`, `_wrappedInyectarEstilos`, `_wrappedItemsRealesPeriodo`, `_wrappedLanzarConfeti`, `_wrappedLimpiarNav`, `_wrappedLineaMes`, `_wrappedListaCajitas`, `_wrappedLogDebug`, `_wrappedMarcarGuardado`, `_wrappedMejorPeorMesAnio`, `_wrappedMesadaMes`, `_wrappedMesDetalleHtml`, `_wrappedMesKaAbrev`, `_wrappedMesKaNombre`, `_wrappedMetaCajita`, `_wrappedNombrePersona`, `_wrappedPatrimonioAnio`, `_wrappedPeriodoEnNumeros`, `_wrappedPersonalidad`, `_wrappedPersonasInvolucradas`, `_wrappedProtagonistas`, `_wrappedRangoFechasAnio`, `_wrappedRankingCategorias`, `_wrappedRecordsAnio`, `_wrappedRecordsHtml`, `_wrappedRecuperacionMasRapida`, `_wrappedSaldosOcultos`, `_wrappedScoreInsight`, `_wrappedSeededRandom`, `_wrappedSeleccionarMes`, `_wrappedSerieMensualAnio`, `_wrappedSerieMensualIngresoGasto`, `_wrappedSetupGraficoMensual`, `_wrappedSetupNav`, `_wrappedSinMascara`, `_wrappedSiTuAnioFuera`, `_wrappedSlideBignum`, `_wrappedSlidesDeSnapshot`, `_wrappedSlidesInsuficiente`, `_wrappedSnapshotDe`, `_wrappedSpotifyMes`, `_wrappedSuscripciones`, `_wrappedTopCategoriaDe`, `_wrappedValidarDatos`, `_wrappedVisible`, `escHtml2`
+**Funciones:** `_wrappedAgruparPorCategoria`, `_wrappedAlcanciaDepositosPeriodo`, `_wrappedAlGuardar`, `_wrappedAnimarBarras`, `_wrappedAnimarLinea`, `_wrappedAnimarNumeros`, `_wrappedAnioDificil`, `_wrappedAnioYMesActual`, `_wrappedBankPick`, `_wrappedBuildSlides`, `_wrappedCalcularComisionesTC`, `_wrappedCalcularComprometida`, `_wrappedCalcularEncargos`, `_wrappedCalcularInteresesTC`, `_wrappedCalcularMesada`, `_wrappedCalcularMisDeudas`, `_wrappedCalcularPeriodo`, `_wrappedCalcularPrestado`, `_wrappedCalcularSpotify`, `_wrappedCambioDeHabitos`, `_wrappedCambioFuerte`, `_wrappedCategoriaMasConcentrada`, `_wrappedCerrar`, `_wrappedColorClase`, `_wrappedComparaciones`, `_wrappedConMascara`, `_wrappedCopyAlcancia`, `_wrappedCopyCategoria`, `_wrappedCopyCierre`, `_wrappedCopyCierrePoema`, `_wrappedCopyComisionesTC`, `_wrappedCopyComprometida`, `_wrappedCopyDesgloseMes`, `_wrappedCopyEncargos`, `_wrappedCopyFases`, `_wrappedCopyGasto`, `_wrappedCopyInteresesTC`, `_wrappedCopyIntro`, `_wrappedCopyMejorMes`, `_wrappedCopyMesada`, `_wrappedCopyMeta`, `_wrappedCopyMisDeudas`, `_wrappedCopyPatrimonio`, `_wrappedCopyPeorMes`, `_wrappedCopyPrestado`, `_wrappedCopyPuente`, `_wrappedCopyRacha`, `_wrappedCopySpotify`, `_wrappedCorteMitadAnio`, `_wrappedCuotaAnioFallback`, `_wrappedDebugOn`, `_wrappedDebugPanelHtml`, `_wrappedDescubrimientos`, `_wrappedEnRango`, `_wrappedEntradasIngreso`, `_wrappedFasesAnio`, `_wrappedFechaLuceValida`, `_wrappedFmtFechaLarga`, `_wrappedFmtSigned`, `_wrappedFraseDelAnio`, `_wrappedFrasesHtml`, `_wrappedGastoMasRandom`, `_wrappedGoTo`, `_wrappedGraficoAnimadoSvg`, `_wrappedGraficoMensualSvg`, `_wrappedGuardar`, `_wrappedHashStr`, `_wrappedHistoriasMensuales`, `_wrappedHoy`, `_wrappedIngresosFijosMes`, `_wrappedIniciarBanco`, `_wrappedInicioRachaReal`, `_wrappedInyectarEstilos`, `_wrappedItemsRealesPeriodo`, `_wrappedLanzarConfeti`, `_wrappedLimpiarNav`, `_wrappedLineaMes`, `_wrappedListaCajitas`, `_wrappedLogDebug`, `_wrappedMarcarGuardado`, `_wrappedMejorPeorMesAnio`, `_wrappedMesadaMes`, `_wrappedMesDetalleHtml`, `_wrappedMesKaAbrev`, `_wrappedMesKaNombre`, `_wrappedMetaCajita`, `_wrappedPatrimonioAnio`, `_wrappedPeriodoEnNumeros`, `_wrappedPersonalidad`, `_wrappedPersonasInvolucradas`, `_wrappedProtagonistas`, `_wrappedRangoFechasAnio`, `_wrappedRankingCategorias`, `_wrappedRecordsAnio`, `_wrappedRecordsHtml`, `_wrappedRecuperacionMasRapida`, `_wrappedSaldosOcultos`, `_wrappedScoreInsight`, `_wrappedSeededRandom`, `_wrappedSeleccionarMes`, `_wrappedSerieMensualAnio`, `_wrappedSerieMensualIngresoGasto`, `_wrappedSetupGraficoMensual`, `_wrappedSetupNav`, `_wrappedSinMascara`, `_wrappedSiTuAnioFuera`, `_wrappedSlideBignum`, `_wrappedSlidesDeSnapshot`, `_wrappedSlidesInsuficiente`, `_wrappedSnapshotDe`, `_wrappedSpotifyMes`, `_wrappedSuscripciones`, `_wrappedTopCategoriaDe`, `_wrappedValidarDatos`, `_wrappedVisible`, `escHtml2`
 
 **Globales:** `WRAPPED_BANCO_INSUFICIENTE`, `WRAPPED_MAX_INSIGHTS_POOL`, `WRAPPED_SNAPSHOT_VERSION`
 
@@ -681,6 +681,7 @@ Ninguno.
 | `_cuentasArr` | `js/core/cuentas-fuentes.js` |
 | `_cuentaSelectorHtml` | `js/modules/cuentas.js` |
 | `_cuentasSelector` | `js/modules/cuentas.js` |
+| `_datosPersona` | `js/modules/personas.js` |
 | `_deBase64` | `js/core/payload-codec.js` |
 | `_descriptorCuenta` | `js/modules/cuentas.js` |
 | `_descriptorDeCuenta` | `js/modules/cuentas.js` |
@@ -1085,7 +1086,6 @@ Ninguno.
 | `_wrappedMesKaAbrev` | `js/modules/wrapped.js` |
 | `_wrappedMesKaNombre` | `js/modules/wrapped.js` |
 | `_wrappedMetaCajita` | `js/modules/wrapped.js` |
-| `_wrappedNombrePersona` | `js/modules/wrapped.js` |
 | `_wrappedPatrimonioAnio` | `js/modules/wrapped.js` |
 | `_wrappedPeriodoEnNumeros` | `js/modules/wrapped.js` |
 | `_wrappedPersonalidad` | `js/modules/wrapped.js` |
@@ -1430,10 +1430,6 @@ Ninguno.
 | `getMesadaData` | `js/core/calc-helpers.js` |
 | `getMiDeudaSaldo` | `js/core/calc-helpers.js` |
 | `getMovimientosCuenta` | `js/modules/cuentas.js` |
-| `getPersona` | `js/modules/personas.js` |
-| `getPersonaColor` | `js/modules/personas.js` |
-| `getPersonaDatos` | `js/modules/personas.js` |
-| `getPersonaNombre` | `js/modules/personas.js` |
 | `getSaldoFuente` | `js/core/cuentas-fuentes.js` |
 | `getSpotifyFuente` | `js/modules/spotify.js` |
 | `getSpotifyFuenteSaldo` | `js/modules/spotify.js` |
@@ -1632,7 +1628,6 @@ Ninguno.
 | `spotifyCobradoDePersona` | `js/modules/spotify.js` |
 | `spotifyCostoValido` | `js/modules/spotify.js` |
 | `spotifyMontoAntesDe` | `js/modules/spotify.js` |
-| `spotifyNombreDe` | `js/core/calc-helpers.js` |
 | `spotifyPeriodosVencidos` | `js/modules/spotify.js` |
 | `spotifyPersonaPagadaVigente` | `js/core/calc-helpers.js` |
 | `spotifyResumenCicloActual` | `js/modules/spotify.js` |

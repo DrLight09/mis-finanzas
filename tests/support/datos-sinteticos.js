@@ -97,19 +97,19 @@ function generar(ctx, { desde = '2024-01-01', dias = 1000, semilla = 7 } = {}) {
   const hoyIso = suma(desde, dias - 1);
   // Encargos: cada movimiento lleva `cuenta` (dónde está guardada esa plata) y el saldo se deriva, nunca se guarda.
   S.encargos.push(
-    { id: 'encCerrado', nombre: 'Mamá', personaId: 'pAna', saldoInicial: 0, cuentaInicial: '', partes: [], movimientos: [
+    { id: 'encCerrado', personaId: 'pAna', saldoInicial: 0, cuentaInicial: '', partes: [], movimientos: [
       { id: ctx.uid(), tipo: 'entrada', monto: 500000, fecha: '2024-02-10', cuenta: 'cuenta:efectivo', desc: 'Me dio' },
       { id: ctx.uid(), tipo: 'salida', monto: 500000, fecha: '2024-03-05', cuenta: 'cuenta:efectivo', desc: 'Pagué por ella' }] },
-    { id: 'encAbierto', nombre: 'Tío', personaId: 'pLuis', saldoInicial: 100000, cuentaInicial: 'cuenta:nequi', partes: [], movimientos: [
+    { id: 'encAbierto', personaId: 'pLuis', saldoInicial: 100000, cuentaInicial: 'cuenta:nequi', partes: [], movimientos: [
       { id: ctx.uid(), tipo: 'entrada', monto: 300000, fecha: '2024-06-01', cuenta: 'cuenta:nequi', desc: 'Me dio' },
       { id: ctx.uid(), tipo: 'salida', monto: 50000, fecha: hoyIso, cuenta: 'cuenta:nequi', desc: 'Mandado' }] });
   // Deudas: saldo = abre (prestamo/recibido) − el resto de los tipos.
   S.deudores.push(
-    { id: 'favorCerrada', personaId: 'pAna', nombre: 'Ana', grupos: [], movimientos: [
+    { id: 'favorCerrada', personaId: 'pAna', grupos: [], movimientos: [
       { id: ctx.uid(), tipo: 'prestamo', monto: 200000, fecha: '2024-04-02' }, { id: ctx.uid(), tipo: 'abono', monto: 200000, fecha: '2024-09-02' }] },
-    { id: 'favorAbierta', personaId: 'pLuis', nombre: 'Luis', grupos: [], movimientos: [
+    { id: 'favorAbierta', personaId: 'pLuis', grupos: [], movimientos: [
       { id: ctx.uid(), tipo: 'prestamo', monto: 150000, fecha: '2025-01-10' }, { id: ctx.uid(), tipo: 'abono', monto: 50000, fecha: '2025-03-10' }] });
-  S.misDeudas.push({ id: 'contraAbierta', personaId: 'pAna', nombre: 'Ana', grupos: [], movimientos: [{ id: ctx.uid(), tipo: 'recibido', monto: 80000, fecha: '2025-05-05' }] });
+  S.misDeudas.push({ id: 'contraAbierta', personaId: 'pAna', grupos: [], movimientos: [{ id: ctx.uid(), tipo: 'recibido', monto: 80000, fecha: '2025-05-05' }] });
   // Alcancía: un ciclo destapado (con la copia de sus depósitos dentro del historial) y uno activo.
   const dep1 = { id: ctx.uid(), monto: 100000, fecha: '2024-05-01' }, dep2 = { id: ctx.uid(), monto: 50000, fecha: '2024-06-01' }, dep3 = { id: ctx.uid(), monto: 70000, fecha: '2026-09-01' };
   S.alcancia = { saldoRegistrado: 70000, depositos: 70000, fechaInicio: '2026-09-01', movimientos: [dep3],

@@ -48,7 +48,7 @@ El módulo maneja dos escalas de tiempo que no deben confundirse:
 - **Eliminar un integrante exige confirmación explícita y nunca borra su historial de cobros anteriores.**
 - **Editar el nombre o la cuota de un integrante nunca modifica su próxima fecha de cobro**; solo un cambio real en la fecha de ingreso puede hacerlo, y ese cambio desplaza `proximoPago` la misma cantidad de días — nunca lo recalcula desde cero, para no perder períodos ya pagados por adelantado.
 - **La cuota del administrador usada para la ganancia de un ciclo ya pagado se guarda en el momento de ese pago**, y no se recalcula con la cantidad de integrantes de hoy.
-- **Una vez vinculado a una persona, ese vínculo no se puede cambiar desde Editar**; para reasignar el cupo hay que eliminar y agregar de nuevo. El nombre mostrado y guardado siempre se resuelve desde ese vínculo (`spotifyNombreDe`), nunca desde una copia cruda que pueda desactualizarse.
+- **Una vez vinculado a una persona, ese vínculo no se puede cambiar desde Editar**; para reasignar el cupo hay que eliminar y agregar de nuevo. El nombre siempre se lee de la persona (`Personas.nombre(p.personaId)`): el integrante no guarda copia.
 - **Pagar de menos por un período no bloquea que ese período se cuente como cubierto.** El monto recibido puede editarse por debajo de lo esperado (períodos × cuota); si se marca explícitamente "quedó debiendo la diferencia", el registro de `S.spotify.historial` guarda esa deuda puntual (`pendiente`), pero `proximoPago` avanza igual — lo que queda pendiente es la plata, no el período. Si no se marca el toggle, el monto menor se registra tal cual, sin deuda.
 - **Cada abono de `pendienteHistorial` es un movimiento visible por derecho propio, nunca un dato fundido en silencio dentro del cobro que lo originó.** Tiene su propia fecha, su propia cuenta destino (que puede ser distinta a la del cobro original) y su propio `id` — aparece como su propia línea en el historial de Spotify y como su propia tarjeta en el historial de la cuenta que le corresponde, protegida contra borrado directo igual que cualquier otro movimiento de Spotify (ver §6).
 - **Un cobro de varios períodos no aporta todo su monto al ciclo donde entró la plata.** Solo el primer período cuenta ahí; cada período siguiente pertenece al ciclo que estaba abierto el día en que ESE período empieza (`proximoPagoAntes + 30·k`). Mientras no llegue esa fecha y no se haya pagado Spotify, es plata flotante y no suma a "Recaudado este ciclo".
@@ -67,17 +67,16 @@ El módulo maneja dos escalas de tiempo que no deben confundirse:
 // spotifyCosto, spotifyCajitaId y spotifyHistorial); ya no existen y una guardia de pruebas (nucleo.test.js) impide
 // volver a usarlas.
 S.spotify = {
-  personas: [],   // integrantes (abajo)
+  integrantes: [],   // integrantes (abajo)
   costo: 0,       // costo total del plan
   fuenteId: '',   // cuenta o cajita donde guardas la plata de Spotify ('cajita:ID' | 'cuenta:ID'), solo para mostrar liquidez, no ganancia (ver §7). La elige el usuario («Elegir/Cambiar» en la pantalla de Spotify); NUNCA se busca por nombre
   historial: []   // registro de cobros y pagos (abajo)
 }
 
-S.spotify.personas = [
+S.spotify.integrantes = [
   {
     id: "uid",
-    nombre: "Juan",            // nombre crudo; si hay personaId, se resuelve via spotifyNombreDe() en su lugar
-    personaId: "uid",          // vínculo a S.personas (obligatorio; ver personas.md)
+    personaId: "uid",          // vínculo a S.personas (obligatorio; de ahí salen nombre y color con Personas.nombre; ver personas.md)
     monto: 8000,               // cuota del integrante por período
     pagado: false,             // solo referencial — la fuente real de verdad son los movimientos (ver §3)
     proximoPago: "2026-08-05",
@@ -443,7 +442,7 @@ El módulo no recibe tratamiento especial: un cobro sube el saldo real de la cue
 ## 10. Decisiones de diseño
 
 - **El botón nunca es la fuente de verdad, los movimientos sí** — evita que el estado visual se desincronice de la plata realmente movida (ver §3).
-- **Nombre resuelto vía `spotifyNombreDe`, nunca leído crudo:** cuando un integrante está vinculado a una persona, su nombre real vive en `S.personas`, no en el campo `nombre` del propio registro (que puede quedar desactualizado, ej. si se corrige una falta de ortografía desde "Personas"). Un cobro nuevo guarda el nombre ya resuelto en ese momento; los cobros pasados conservan el nombre tal como estaba cuando se registraron, igual que cualquier dato de un historial financiero.
+- **Nombre desde la persona, sin copia:** el integrante solo guarda `personaId`; su nombre vive en `S.personas` y se corrige desde "Personas" para todos los módulos. Un cobro nuevo guarda en el historial el nombre de ese momento en ese momento; los cobros pasados conservan el nombre tal como estaba cuando se registraron, igual que cualquier dato de un historial financiero.
 - **Vínculo a persona fijo una vez establecido:** permitir reemplazar directamente la persona vinculada era una fuente recurrente de inconsistencias (nombre desincronizado, dos integrantes apuntando a la misma persona). Bloquearlo elimina esa clase de problemas de raíz, a cambio de un flujo (eliminar y volver a agregar) que de todas formas ya se usa cuando alguien deja el plan y otra persona ocupa su lugar.
 - **Eliminar un integrante no borra su historial:** el historial financiero nunca se pierde (ver §3); quitar a alguien de la lista activa es una acción distinta a borrar la plata que ya se le cobró.
 - **Un cobro de varios períodos es un solo registro, no uno por período:** la plata entró a la cuenta en un solo movimiento, así que el historial de la cuenta debe mostrar uno solo (3 períodos de $5.000 = un ingreso de $15.000, no tres de $5.000). El detalle de cuántos períodos cubrió queda en `periodos` y en la nota. Además, las estadísticas que cuentan cobros (ej. "mayor cobro" en la ficha de la persona) reflejan pagos reales, no fragmentos.
@@ -463,7 +462,7 @@ El módulo no recibe tratamiento especial: un cobro sube el saldo real de la cue
 
 **Ubicación:** el módulo vive en un único archivo, [`js/modules/spotify.js`](../js/modules/spotify.js) — funciones base (personas del plan, cobros, pago, ganancia) junto con la integración con el sistema unificado de Personas (`openSheet`, `addSpotify`, `editarSpotify`, `guardarEditarSpotify`, `renderSpotify`, selector de personas).
 
-Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene `<script>` propio en `index.html`. Depende de `js/core/events.js` y de los globals del núcleo (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., definidos en `js/core/`). Dos helpers que el módulo usa viven en `js/core/calc-helpers.js` porque Inicio los necesita en el primer render: `spotifyNombreDe` y `spotifyPersonaPagadaVigente`.
+Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene `<script>` propio en `index.html`. Depende de `js/core/events.js` y de los globals del núcleo (`S`, `save`, `escHtml`, `toast`, `dialogo`, etc., definidos en `js/core/`). Un helper que el módulo usa vive en `js/core/calc-helpers.js` porque Inicio lo necesita en el primer render: `spotifyPersonaPagadaVigente`. El nombre de cada integrante sale de `Personas.nombre(p.personaId)`.
 
 **Spotify no genera movimiento espejo propio en `S.movimientos`** (a diferencia de Mesada, que sí tiene `_mesadaEntrar`). El historial de cada cuenta se arma directamente desde `S.spotify.historial` en dos funciones de `cuentas.js`: `getMovimientosCuenta()` (Nequi/Efectivo/cajitas) y `_getMovimientosCuentaCustom()` (cuentas personalizadas). Esto es relevante para cualquier cambio futuro al modelo de datos de `S.spotify.historial` — cualquier campo nuevo que deba verse en el historial de una cuenta tiene que sintetizarse ahí, no alcanza con guardarlo en `S.spotify.historial`.
 
@@ -472,7 +471,6 @@ Es un grupo lazy (`Loader.GROUPS.spotify` en `js/core/lazy-loader.js`): no tiene
 | Función | Qué hace |
 |---|---|
 | `renderSpotify()` | Pinta toda la pantalla: lista de integrantes, estadísticas, banner de vencidos |
-| `spotifyNombreDe(integrante)` | Resuelve el nombre mostrado: usa la persona vinculada si existe, si no cae al campo crudo (en `js/core/calc-helpers.js`) |
 | `spotifyPersonaPagadaVigente(integrante)` | ¿Su próximo cobro sigue en el futuro? Es lo que decide "Pagó" (en `js/core/calc-helpers.js`) |
 | `confirmarSpotifyDestino()` | Registra un cobro: valida, mueve la plata, avanza `proximoPago`, crea el registro (y el de "pago atrasado" si corresponde) |
 | `confirmarPagarSpotify()` | Registra el pago a Spotify: mueve la plata, crea el gasto, reparte los cobros entre ciclos y congela `_pendienteAlCerrar` |

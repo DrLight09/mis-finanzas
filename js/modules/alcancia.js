@@ -580,7 +580,7 @@ Ui.hoja('alcancia-depositar', function(){
         const deudoresConSaldo = Deudas.lista('favor')
           .filter(d => typeof getDeudorSaldo === 'function' && getDeudorSaldo(d) > 0.5);
         deudorSelReset.innerHTML = '<option value="">Seleccionar persona</option>'
-          + deudoresConSaldo.map(d => `<option value="${d.id}">${escHtml(d.nombre)} (${fmt(getDeudorSaldo(d))})</option>`).join('');
+          + deudoresConSaldo.map(d => `<option value="${d.id}">${escHtml(Personas.nombre(d.personaId))} (${fmt(getDeudorSaldo(d))})</option>`).join('');
       }
       const deudorGrupoWrapReset = document.getElementById('alc_dep_deudor_grupo_wrap');
       if(deudorGrupoWrapReset) deudorGrupoWrapReset.style.display = 'none';
@@ -688,7 +688,7 @@ window.renderAlcancia = function(){
           const fmtFuente = m.fuenteOrigen
             ? _alcanciaNombreFuente(m.fuenteOrigen) // misma resolución de nombre que el resto del módulo
             : (m.tipo === TIPO_ALCANCIA.cobroDeuda && m._prestamoDeudorId
-                ? (() => { const dd=Deudas.lista('favor').find(x=>x.id===m._prestamoDeudorId); return dd?dd.nombre:null; })()
+                ? (() => { const dd=Deudas.lista('favor').find(x=>x.id===m._prestamoDeudorId); return dd?Personas.nombre(dd.personaId):null; })()
                 : null);
           return `
           <div class="card card-sm alc-mov-card">
@@ -933,7 +933,7 @@ window.alcanciaConfirmarDeposito = function(){
         ts: Date.now()
       });
       if(typeof _autoCerrarGruposEnCero === 'function') _autoCerrarGruposEnCero(d);
-      if(typeof logCambio === 'function') logCambio('Abono de ' + escHtml(d.nombre) + ' guardado directo en la alcancía', d.nombre, monto, 'abono');
+      if(typeof logCambio === 'function') logCambio('Abono de ' + escHtml(Personas.nombre(d.personaId)) + ' guardado directo en la alcancía', Personas.nombre(d.personaId), monto, 'abono');
     }
   }
 

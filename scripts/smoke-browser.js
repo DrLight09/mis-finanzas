@@ -107,10 +107,10 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   const tSim = await tocar('simple');
   ev(`abrirCuenta('cuenta:nequi'); renderDetalleCuenta('cuenta:nequi')`);
   // Escenario de Spotify con datos (S.spotify): pinta la pantalla y toca sus botones
-  ev(`S.spotify.costo=17500; S.spotify.personas.push({id:'sp1',nombre:'Ana',monto:5000,pagado:false,proximoPago:'${iso(5)}',fechaIngreso:'${iso(-30)}',ultimoDestino:'',mesesAdelantados:1});
+  ev(`S.personas.push({id:'pSp1',nombre:'Ana'}); S.spotify.costo=17500; S.spotify.integrantes.push({id:'sp1',personaId:'pSp1',monto:5000,pagado:false,proximoPago:'${iso(5)}',fechaIngreso:'${iso(-30)}',ultimoDestino:'',mesesAdelantados:1});
       S.spotify.historial.push({id:'h1',tipo:'cobro',spotifyId:'sp1',nombre:'Ana',fuente:'cuenta:nequi',fecha:'${iso(-2)}',monto:5000});`);
   try { ev(`renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`); } catch (e) { fallos.push('Spotify: render lanzó ' + e.message); }
-  chequea(/Ana/.test(ev(`document.getElementById('spotifyList').innerHTML`)), 'Spotify: la lista no muestra al integrante guardado en S.spotify.personas');
+  chequea(/Ana/.test(ev(`document.getElementById('spotifyList').innerHTML`)), 'Spotify: la lista no muestra al integrante guardado en S.spotify.integrantes');
   const accSpotify = [...new Set([...w.document.querySelectorAll('#screen-spotify [data-action]')].map(e => e.dataset.action))];
   for (const a of accSpotify) {
     const el = w.document.querySelector(`#screen-spotify [data-action="${a}"]`); const w0 = logs.warn.length, u0 = uncaught.length;
@@ -154,11 +154,11 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(`S.tarjetasCredito=[{id:'t1',nombre:'Visa',cupo:1000000,deuda:0,color:'#60b0f0',ultimos4:'1234'}]; renderTCScreen()`);
     c4(nBtn(q('#tc-lista')) === 0 && viz(q('#btn-nueva-tarjeta')), 'Tarjetas con datos: falta el botón de pie');
 
-    ev(`S.spotify.personas=[]; S.spotify.historial=[]; renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`);
+    ev(`S.spotify.integrantes=[]; S.spotify.historial=[]; renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`);
     c4(nBtn(q('#spotifyList')) === 1 && !viz(q('#btn-add-spotify-persona')) && sinSvg(q('#spotifyList')), 'Spotify vacío: un solo «Agregar persona» y sin «svg»');
     c4(!viz(q('#spStatsTitulo')), 'Spotify vacío: el título «Estadísticas» debe estar oculto');
     c4(!!q('#spHistorial .empty-inline'), 'Spotify vacío: «Sin pagos registrados aún» debe quedar dentro del historial');
-    ev(`S.spotify.personas.push({id:'sp9',nombre:'Luz',monto:5000,pagado:false,proximoPago:'2099-01-01',fechaIngreso:'2026-10-01',ultimoDestino:'',mesesAdelantados:0}); renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`);
+    ev(`S.personas.push({id:'pSp9',nombre:'Luz'}); S.spotify.integrantes.push({id:'sp9',personaId:'pSp9',monto:5000,pagado:false,proximoPago:'2099-01-01',fechaIngreso:'2026-10-01',ultimoDestino:'',mesesAdelantados:0}); renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`);
     c4(nBtn(q('#spotifyList')) === 0 && viz(q('#btn-add-spotify-persona')) && viz(q('#spStatsTitulo')), 'Spotify con persona: faltan el botón de pie o el título «Estadísticas»');
 
     ev(`S.deudores=[]; S.misDeudas=[]; renderDeudoresList(); renderMisDeudasList()`);
@@ -167,7 +167,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(fv.querySelector('.empty-state-btn').textContent.trim() === ct.querySelector('.empty-state-btn').textContent.trim(), 'Préstamos vacío: los dos botones deben llamarse igual');
     c4(fv.querySelector('.empty-state-title').textContent !== ct.querySelector('.empty-state-title').textContent, 'Préstamos vacío: los títulos deben distinguir quién debe a quién');
     c4(sinSvg(fv) && sinSvg(ct), 'Préstamos vacío: aparece el texto «svg»');
-    ev(`Deudas.agregar('favor',{id:'d1',nombre:'Ana',color:'#60b0f0',movimientos:[]}); Deudas.agregar('contra',{id:'d2',nombre:'Beto',color:'#f06868',movimientos:[]}); renderDeudoresList(); renderMisDeudasList()`);
+    ev(`S.personas.push({id:'pDa',nombre:'Ana Deuda',color:'#60b0f0'},{id:'pDb',nombre:'Beto',color:'#f06868'}); Deudas.agregar('favor',{id:'d1',personaId:'pDa',movimientos:[]}); Deudas.agregar('contra',{id:'d2',personaId:'pDb',movimientos:[]}); renderDeudoresList(); renderMisDeudasList()`);
     c4(nBtn(fv) === 0 && nBtn(ct) === 0 && viz(q('#btn-nueva-persona')) && viz(q('#btn-nueva-deuda')), 'Préstamos con datos: faltan los botones de pie');
 
     ev(`S.encargos=[]; renderEncargosList()`);
@@ -177,7 +177,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(q('#sheet-nuevo-encargo').classList.contains('open'), 'Encargos vacío: el botón del estado vacío no abre «Nuevo encargo»');
     c4(/Sin especificar/.test(q('#enc_cuenta_ini').innerHTML), 'Encargos vacío: el botón del estado vacío no puebla el select de cuentas');
     ev(`closeSheet('nuevo-encargo')`);
-    ev(`S.encargos=[{id:'e1',nombre:'Mamá',personaId:'',saldoInicial:0,movimientos:[],cuentas:[]}]; renderEncargosList()`);
+    ev(`S.personas.push({id:'pEm',nombre:'Mamá'}); S.encargos=[{id:'e1',personaId:'pEm',saldoInicial:0,movimientos:[],cuentas:[]}]; renderEncargosList()`);
     c4(nBtn(q('#encargosList')) === 0 && viz(q('#btn-nuevo-encargo')), 'Encargos con datos: falta el botón de pie');
 
     // .money-input: miles al escribir y cursor que no salta (campo real de la página)
@@ -347,7 +347,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(`cambiarTabPrestamos('yo-debo')`); c5(panelPrestamos() === 'misDeudasView', 'Prestado: la pestaña Yo debo no dejó solo misDeudasView activo: ' + panelPrestamos());
     ev(`cambiarTabPrestamos('me-deben')`); c5(panelPrestamos() === 'deudoresView' && ev(`document.getElementById('screen-prestamos').dataset.panelActivo`) === 'deudoresView', 'Prestado: la pestaña Me deben no dejó solo deudoresView activo: ' + panelPrestamos());
     // Encargos: en PC se abre el primer encargo; al achicar sin haber elegido otro se vuelve a la lista.
-    ev(`S.encargos=[{id:'enc-prueba',nombre:'Santiago',nota:'',movimientos:[],saldoInicial:0}]; showScreen('encargos')`);
+    ev(`S.personas.push({id:'pEs',nombre:'Santiago'}); S.encargos=[{id:'enc-prueba',personaId:'pEs',nota:'',movimientos:[],saldoInicial:0}]; showScreen('encargos')`);
     const panelEncargos = () => ev(`document.getElementById('screen-encargos').dataset.panelActivo`);
     c5(panelEncargos() === 'encargosListView', 'Encargos: en celular debe verse la lista (' + panelEncargos() + ')');
     cambiarModo(true);
@@ -358,9 +358,9 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     // Personas (como el prototipo): en PC al abrir no hay nadie elegido; tocar una persona abre su ficha (sin hoja), volver a tocarla la cierra
     // y salir de la pantalla también. En celular el perfil sigue siendo una hoja. El saldo neto es préstamos menos Yo debo (los encargos no entran).
     ev(`S.personas=[{id:'per-prueba',nombre:'Laura',color:'#60b0f0'},{id:'per-neta',nombre:'Carlos',color:'#c8f060'}];
-        S.deudores=[{id:'d-neta',nombre:'Carlos',personaId:'per-neta',movimientos:[{id:'m1',tipo:'prestamo',monto:500000,fecha:'2026-10-01'}]}];
-        S.misDeudas=[{id:'md-neta',nombre:'Carlos',personaId:'per-neta',movimientos:[{id:'m2',tipo:'recibido',monto:200000,fecha:'2026-10-02'}]}];
-        S.encargos=[{id:'enc-neto',nombre:'Plata de Carlos',personaId:'per-neta',movimientos:[],saldoInicial:90000}];
+        S.deudores=[{id:'d-neta',personaId:'per-neta',movimientos:[{id:'m1',tipo:'prestamo',monto:500000,fecha:'2026-10-01'}]}];
+        S.misDeudas=[{id:'md-neta',personaId:'per-neta',movimientos:[{id:'m2',tipo:'recibido',monto:200000,fecha:'2026-10-02'}]}];
+        S.encargos=[{id:'enc-neto',personaId:'per-neta',movimientos:[],saldoInicial:90000}];
         showScreen('personas')`);
     const fichaAbierta = () => ev(`document.getElementById('screen-personas').dataset.fichaAbierta`);
     c5(fichaAbierta() === 'no', 'Personas: en celular no debe haber ficha abierta (' + fichaAbierta() + ')');
@@ -387,8 +387,8 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c5(fichaAbierta() === 'si' && ev(`document.getElementById('pficha-nombre').textContent`) === 'Laura', 'Personas: en celular la ficha debe mostrar a la persona');
     ev(`_cerrarFichaPersonas(); S.personas=[]; S.deudores=[]; S.misDeudas=[]; S.encargos=[]; showScreen('inicio')`);
     // Prestado en PC (como el prototipo): se cambia entre Me deben y Yo debo con las pestañas; solo una lista a la vez y el detalle de la primera persona de la pestaña.
-    ev(`S.deudores=[{id:'dp1',nombre:'Laura',movimientos:[{id:'p1',tipo:'prestamo',monto:600000,fecha:'2026-10-01'}]}];
-        S.misDeudas=[{id:'mp1',nombre:'Tío',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; refresh(); showScreen('prestamos')`);
+    ev(`S.personas=[{id:'pL',nombre:'Laura'},{id:'pT',nombre:'Tío'}]; S.deudores=[{id:'dp1',personaId:'pL',movimientos:[{id:'p1',tipo:'prestamo',monto:600000,fecha:'2026-10-01'}]}];
+        S.misDeudas=[{id:'mp1',personaId:'pT',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; refresh(); showScreen('prestamos')`);
     cambiarModo(true);
     const tabPrestamos = () => ev(`document.getElementById('screen-prestamos').dataset.tabPrestamos`);
     c5(tabPrestamos() === 'me-deben' && panelPrestamos() === 'deudorDetalle', 'Prestado PC: debe abrir Me deben con el detalle de la primera persona (' + tabPrestamos() + ', ' + panelPrestamos() + ')');
@@ -402,7 +402,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     ev(`S.misDeudas=[]; refresh(); cambiarTabPrestamos('yo-debo')`);
     c5(tabPrestamos() === 'yo-debo' && panelPrestamos() === 'misDeudasView', 'Prestado PC: una pestaña vacía debe quedarse en su lista vacía (' + tabPrestamos() + ', ' + panelPrestamos() + ')');
     // Abrir a alguien de Yo debo desde fuera (p. ej. «Ver detalle» en Personas) deja la pestaña y la lista de ese lado.
-    ev(`S.misDeudas=[{id:'mp1',nombre:'Tío',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; cambiarTabPrestamos('me-deben'); abrirMiDeuda('mp1')`);
+    ev(`S.misDeudas=[{id:'mp1',personaId:'pT',movimientos:[{id:'p2',tipo:'recibido',monto:380000,fecha:'2026-10-02'}]}]; cambiarTabPrestamos('me-deben'); abrirMiDeuda('mp1')`);
     c5(tabPrestamos() === 'yo-debo' && ev(`document.getElementById('tab-yo-debo').className.indexOf('btn-ghost') === -1`), 'Prestado: abrir a alguien de Yo debo debe pasar a esa pestaña (' + tabPrestamos() + ')');
     // Tarjetas en PC: la primera tarjeta queda elegida y su detalle va en el panel; en celular no hay panel.
     ev(`S.tarjetasCredito=[{id:'tc1',nombre:'Nu Mastercard',banco:'Nu',franquicia:'Mastercard',cupo:3000000,deuda:0,compras:[],pagos:[],estado:'activa'},{id:'tc2',nombre:'Rappi Visa',banco:'Rappi',franquicia:'Visa',cupo:2000000,deuda:0,compras:[],pagos:[],estado:'activa'}]; showScreen('tarjetas'); renderTCScreen()`);

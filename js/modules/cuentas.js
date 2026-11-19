@@ -501,7 +501,7 @@ function _encargosConSaldoEn(fuentes){
     });
     let saldo=0;
     Object.entries(map).forEach(([k,v])=>{if(claves.has(k))saldo+=v;});
-    if(saldo>0)out.push({nombre:encargo.nombre,saldo});
+    if(saldo>0)out.push({nombre:Personas.nombre(encargo.personaId),saldo});
   });
   return out;
 }
@@ -807,16 +807,16 @@ function getMovimientosCuenta(tipo) {
     (d.movimientos || []).forEach(m => {
       const matchFuente = coincide(m.fuente);
       if (m.tipo === 'prestamo' && (matchFuente || (m.fuentes && m.fuentes.length))) {
-        const _origenP = 'Préstamos · ' + d.nombre;
+        const _origenP = 'Préstamos · ' + Personas.nombre(d.personaId);
         if (matchFuente) {
           const otrasFuentesSplit = (m.fuentes || []).filter(f => f.fuente !== m.fuente).map(f => ({ fuente: f.fuente, monto: -f.monto }));
-          movimientos.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movimientoId: m.id, _fuenteOrigen: m.fuente, _origen: _origenP, _otrasCuentas: otrasFuentesSplit.length ? otrasFuentesSplit : null });
+          movimientos.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + Personas.nombre(d.personaId), monto: -m.monto, nota: m.nota, fuente: m.fuente, _idx: _idx++, _movimientoId: m.id, _fuenteOrigen: m.fuente, _origen: _origenP, _otrasCuentas: otrasFuentesSplit.length ? otrasFuentesSplit : null });
         }
         (m.fuentes || []).forEach(f => {
           if (coincide(f.fuente) && f.monto) {
             const otras = (m.fuentes || []).filter(f2 => f2.fuente !== f.fuente).map(f2 => ({ fuente: f2.fuente, monto: -f2.monto }));
             if (m.fuente) otras.push({ fuente: m.fuente, monto: -m.monto });
-            movimientos.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + d.nombre, monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movimientoId: m.id, _fuenteOrigen: f.fuente, _origen: _origenP, _otrasCuentas: otras.length ? otras : null });
+            movimientos.push({ tipo: 'prestamo', fecha: m.fecha, desc: 'Préstamo a ' + Personas.nombre(d.personaId), monto: -f.monto, nota: m.nota, fuente: f.fuente, _idx: _idx++, _movimientoId: m.id, _fuenteOrigen: f.fuente, _origen: _origenP, _otrasCuentas: otras.length ? otras : null });
           }
         });
       }

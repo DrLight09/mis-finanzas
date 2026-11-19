@@ -266,7 +266,7 @@
           tipo:      esPrestamo ? 'prestamo' : 'abono',
           signo:     esPrestamo ? '-' : '+',
           monto:     m.monto || 0,
-          titulo:    esPrestamo ? 'Préstamo a ' + d.nombre : 'Abono de ' + d.nombre,
+          titulo:    esPrestamo ? 'Préstamo a ' + Personas.nombre(d.personaId) : 'Abono de ' + Personas.nombre(d.personaId),
           subtitulo: m.nota || '',
           fuente:    'deudores',
         });
@@ -291,7 +291,7 @@
           tipo:      recibido ? 'abono' : 'prestamo',
           signo:     recibido ? '+' : '-',
           monto:     m.monto || 0,
-          titulo:    recibido ? 'Me prestó ' + d.nombre : 'Pago a ' + d.nombre,
+          titulo:    recibido ? 'Me prestó ' + Personas.nombre(d.personaId) : 'Pago a ' + Personas.nombre(d.personaId),
           subtitulo: m.nota || '',
           fuente:    'misDeudas',
         });
@@ -342,7 +342,7 @@
           tipo:      'encargo',
           signo:     esEntrada ? '+' : '-',
           monto:     m.monto || 0,
-          titulo:    (esEntrada ? 'Entrada encargo' : 'Salida encargo') + ' · ' + (encargo.nombre || ''),
+          titulo:    (esEntrada ? 'Entrada encargo' : 'Salida encargo') + ' · ' + (Personas.nombre(encargo.personaId) || ''),
           subtitulo: m.desc || m.nota || '',
           fuente:    'encargos',
         });

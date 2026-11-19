@@ -58,7 +58,7 @@ Ninguno de estos elementos tiene `onclick` inline — son de solo lectura, salvo
 ## 5. Seguridad — hallazgos de esta migración
 
 - **`onclick` inline:** ninguno. `screen-inicio` es de solo lectura.
-- **`.innerHTML` sin escapar:** un caso — `spotifyNombreDe(p)` (nombre de persona en Spotify) se interpolaba sin `escHtml()` en `renderAttencion()`. Corregido. Es la sexta vez que aparece este mismo patrón (texto libre envuelto en una función auxiliar) desde que empezó la auditoría — ver `auditoria-tecnica.md#2`.
+- **`.innerHTML` sin escapar:** un caso — el nombre de la persona de Spotify (hoy `Personas.nombre(p.personaId)`) se interpolaba sin `escHtml()` en `renderAttencion()`. Corregido. Es la sexta vez que aparece este mismo patrón (texto libre envuelto en una función auxiliar) desde que empezó la auditoría — ver `auditoria-tecnica.md#2`.
 - El resto de `renderAttencion()`, `renderHealthScore()` y `renderProyeccion()` se revisó a mano contra el mismo patrón: solo interpolan números calculados, strings fijos, o valores que ya pasaban por `escHtml()`/`fmt()`.
 
 ## 6. Dependencias de carga

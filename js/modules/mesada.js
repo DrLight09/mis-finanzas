@@ -182,7 +182,7 @@ function mesadaEncargosDelParent(parent) {
   if (typeof encargoSaldo !== 'function' || !S.encargos || !S.encargos.length) return [];
   const claves = _MESADA_CLAVES[parent];
   return S.encargos
-    .filter(e => _mesadaNombreCoincide(e.nombre, claves))
+    .filter(e => _mesadaNombreCoincide(Personas.nombre(e.personaId), claves))
     .map(e => ({ encargo: e, saldo: encargoSaldo(e) }))
     .filter(x => x.saldo > 0.5)
     .sort((a, b) => b.saldo - a.saldo);
@@ -227,7 +227,7 @@ function _mesadaQuitarSalidaEncargo(oe) {
 function _mesadaValidarEncargo(encargo, monto) {
   const d = mesadaDisponibleEncargo(encargo.id, encargo.cuentaSel);
   if (!d) return { ok: false, motivo: 'encargo-invalido' };
-  if (monto > d.disponible + 0.5) return { ok: false, motivo: 'encargo-insuficiente', disponible: d.disponible, encargoNombre: d.encargo.nombre };
+  if (monto > d.disponible + 0.5) return { ok: false, motivo: 'encargo-insuficiente', disponible: d.disponible, encargoNombre: Personas.nombre(d.encargo.personaId) };
   return { ok: true, encargo: d.encargo, disponible: d.disponible };
 }
 
@@ -239,7 +239,7 @@ function _mesadaAplicarEntrada(b, desc, encargo) {
   const registro = { monto: b.monto, fecha: b.fecha, nota: b.nota };
   if (encargo) {
     const movimiento = _mesadaCrearSalidaEncargo(encargo.encargo, b.monto, encargo.cuentaSel, b.fecha, desc, encargo.nota);
-    registro.origenEncargo = { encargoId: encargo.encargo.id, movimientoId: movimiento.id, nombre: encargo.encargo.nombre };
+    registro.origenEncargo = { encargoId: encargo.encargo.id, movimientoId: movimiento.id, nombre: Personas.nombre(encargo.encargo.personaId) };
   }
   if (b.splits) {
     registro.destino = '';
@@ -668,7 +668,7 @@ function _previewDisponible(prev, picker, v) {
   const sel = picker.seleccion();
   const d = mesadaDisponibleEncargo(sel.id, sel.cuentaSel);
   if (!d) { prev.textContent = ''; return null; }
-  if (v > d.disponible + 0.5) { prev.textContent = 'Ahí solo tienes ' + fmt(d.disponible) + ' de ' + d.encargo.nombre; prev.style.color = 'var(--red)'; return null; }
+  if (v > d.disponible + 0.5) { prev.textContent = 'Ahí solo tienes ' + fmt(d.disponible) + ' de ' + Personas.nombre(d.encargo.personaId); prev.style.color = 'var(--red)'; return null; }
   return d;
 }
 
@@ -681,8 +681,8 @@ function actualizarMesadaPagoPreview() {
   if (f.usarEncargo) {
     const d = _previewDisponible(prev, _msPickers.registrarPago, v);
     if (!d) return;
-    if (mesadaPagoSplitMode) { _previewSplit(prev, v, splitGetData('mesadaPago'), d.encargo.nombre); return; }
-    prev.textContent = 'Se descuenta de lo que le tenías guardado a ' + d.encargo.nombre + ' · queda ' + fmt(d.disponible - v);
+    if (mesadaPagoSplitMode) { _previewSplit(prev, v, splitGetData('mesadaPago'), Personas.nombre(d.encargo.personaId)); return; }
+    prev.textContent = 'Se descuenta de lo que le tenías guardado a ' + Personas.nombre(d.encargo.personaId) + ' · queda ' + fmt(d.disponible - v);
     prev.style.color = 'var(--blue)';
     return;
   }
@@ -874,7 +874,7 @@ function actualizarMesadaPagoPendientePreview() {
   if (f.usarEncargo) { d = _previewDisponible(prev, _msPickers.pagoPendiente, v); if (!d) return; }
   const restante = info.pendiente - v;
   prev.textContent = (restante > 0 ? 'Quedaría debiendo ' + fmt(restante) + ' más' : 'Con esto queda saldado')
-    + (d ? ' · se descuenta de lo guardado de ' + d.encargo.nombre : '');
+    + (d ? ' · se descuenta de lo guardado de ' + Personas.nombre(d.encargo.personaId) : '');
   prev.style.color = restante > 0 ? 'var(--amber)' : 'var(--accent)';
 }
 

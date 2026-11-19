@@ -5,7 +5,7 @@
    Vive en js/core/ y no en js/modules/ porque es transversal por
    naturaleza: busca sobre S.gastosVar, S.gastosFijos, S.deudores,
    S.cajitas, S.cuentas, S.encargos, S.personas,
-   S.misDeudas, S.spotify.personas/S.spotify.historial y S.movimientos —
+   S.misDeudas, S.spotify.integrantes/S.spotify.historial y S.movimientos —
    no pertenece a un solo dominio.
 
    Personas: UNA entrada por persona (con sus relaciones, que abren su perfil); Préstamos, Yo debo, Encargos y Spotify ya no se buscan por

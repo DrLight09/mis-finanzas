@@ -674,9 +674,9 @@ describe('migraciones', () => {
   describe('estado de Spotify (S.spotify, esquema 9)', () => {
     test('el estado por defecto y load() dejan S.spotify completo (sin guardas en el resto de la app)', () => {
       const ctx = app();
-      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 0, fuenteId: '', historial: [] });
+      assert.deepEqual(plano(ctx.S.spotify), { integrantes: [], costo: 0, fuenteId: '', historial: [] });
       ctx.S.spotify = { costo: '12000' }; ctx._ensureSpotify();
-      assert.deepEqual(plano(ctx.S.spotify), { personas: [], costo: 12000, fuenteId: '', historial: [] });
+      assert.deepEqual(plano(ctx.S.spotify), { integrantes: [], costo: 12000, fuenteId: '', historial: [] });
     });
     test('guardia: ningún archivo de la app NI de scripts/ usa las cuatro llaves sueltas de antes (S.spotifyPersonas/Costo/CajitaId/Historial)', () => {
       // scripts/notificaciones/checks.js quedaba fuera del recorrido y por eso siguió leyendo S.spotifyPersonas tras la migración (v36).
@@ -757,7 +757,7 @@ describe('backup-import', () => {
   });
   test('un backup exportado por esta versión se valida y no cambia al pasar por aplicarMigraciones', () => {
     const ctx = app();
-    const actual = { schemaVersion: 12, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { personas: [], costo: 0, fuenteId: '', historial: [] } };
+    const actual = { schemaVersion: 12, cuentas: [nuCta(11)], cajitas: [{ id: 'a', cuentaId: 'nu', saldo: 5 }], spotify: { integrantes: [], costo: 0, fuenteId: '', historial: [] } };
     assert.deepEqual(plano(ctx._validarEstructuraJSON(actual)), []);
     assert.deepEqual(plano(ctx.aplicarMigraciones(plano(actual))), actual);
   });
@@ -1412,7 +1412,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
   // ── Punto 2: requisitos para abrir los sheets ────────────────────────────────────────────────
   test('«Pagar Spotify» no abre sin costo válido (vacío, 0, NaN, texto) y abre con costo', () => {
     const app = entorno([core('split.js'), modulo('spotify.js')], { htmlBase: '<input id="spotifyCosto">' });
-    app.S.spotify = { ...(app.S.spotify || {}), personas: [], historial: [] };
+    app.S.spotify = { ...(app.S.spotify || {}), integrantes: [], historial: [] };
     for (const malo of [0, NaN, undefined, '', 'abc', -5]) {
       app.S.spotify.costo = malo; app.abiertos.length = 0; app.toasts.length = 0;
       assert.equal(app.spotifyCostoValido(), false, String(malo));
@@ -1428,7 +1428,7 @@ describe('requisitos-y-filtros-de-sheets', () => {
 
   test('aviso de Spotify: misma condición que el bloqueo, con el texto nuevo, sin estilos inline, y desaparece con un costo válido', () => {
     const app = entorno([core('split.js'), modulo('spotify.js')], { htmlBase: '<div id="padre"><div id="spotifyList"></div></div><input id="spotifyCosto">' });
-    app.S.spotify = { costo: 0, personas: [], historial: [] };
+    app.S.spotify = { costo: 0, integrantes: [], historial: [] };
     app.renderSpotify();
     const aviso = app.document.getElementById('sp-costo-warn');
     assert.ok(aviso.parentNode, 'el aviso está en la página');

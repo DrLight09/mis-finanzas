@@ -49,15 +49,9 @@ const PERSONA_COLORES = [
 
 
 /* ── HELPERS ───────────────────────────────────────────────────── */
-// Lectura: la fuente única es Personas (js/core/personas-core.js). Estas tres siguen existiendo porque las llaman muchos módulos;
-// la fase 3 de docs/personas-modelo-unico.md las reemplaza por Personas.obtener/nombre/color.
-function getPersona(id) { return Personas.obtener(id); }
-function getPersonaNombre(id) { return Personas.nombre(id); }
-function getPersonaColor(id) { return Personas.color(id); }
-
 // Datos vinculados a una persona, con la forma que usan las secciones del perfil y los badges del selector. La fuente es
 // Personas.registros (js/core/personas-core.js): ninguna colección se recorre a mano aquí.
-function getPersonaDatos(personaId) {
+function _datosPersona(personaId) {
   const encargos = Personas.registros(personaId, 'encargos');
   const deudores = Personas.registros(personaId, 'me-deben');
   const misDeudas = Personas.registros(personaId, 'yo-debo');
@@ -340,7 +334,7 @@ function _selPersonaFiltrar() {
   // items: array de fragmentos html`` por persona — se interpolan directo
   // (sin .join('')) en el html`` final, igual criterio que arriba.
   const items = personas.map(p => {
-    const datos = getPersonaDatos(p.id);
+    const datos = _datosPersona(p.id);
     const badges = [];
     if (datos.deudor) {
       const saldo = datos.saldoPrestamo;
@@ -451,7 +445,7 @@ let _editPersonaGlobalId = null;
 var _epgColorSel = '#60b0f0';
 
 function abrirEditarPersonaGlobal(personaId) {
-  const p = getPersona(personaId);
+  const p = Personas.obtener(personaId);
   if (!p) return;
   _editPersonaGlobalId = personaId;
   _epgColorSel = p.color || PERSONA_COLORES[0];
@@ -463,7 +457,7 @@ function abrirEditarPersonaGlobal(personaId) {
 }
 
 function _guardarEditarPersonaGlobal() {
-  const p = getPersona(_editPersonaGlobalId);
+  const p = Personas.obtener(_editPersonaGlobalId);
   if (!p) return;
   const nombre = document.getElementById('epg_nombre').value.trim();
   if (!nombre) { toast('Escribe el nombre', 'err'); return; }
@@ -509,7 +503,7 @@ function _mostrarFichaPersona() {
 function _sincronizarFichaPersonas() {
   const pantalla = document.getElementById('screen-personas');
   if (!pantalla || !pantalla.classList.contains('active')) return;
-  if (_perfilPersonaId && getPersona(_perfilPersonaId)) abrirPerfilPersona(_perfilPersonaId);
+  if (_perfilPersonaId && Personas.obtener(_perfilPersonaId)) abrirPerfilPersona(_perfilPersonaId);
   else _cerrarFichaPersonas();
 }
 function _cerrarFichaPersonas() {
@@ -541,8 +535,8 @@ function _pintarResumenPersonas() {
   poner('pe-resumen-yo-debo', fmtNoCents(Deudas.totalPendiente('contra')));
   poner('pe-resumen-me-deben-sub', nFavor ? nFavor + (nFavor === 1 ? ' persona' : ' personas') : 'Nadie te debe');
   poner('pe-resumen-yo-debo-sub', nContra ? nContra + (nContra === 1 ? ' persona' : ' personas') : 'No debes nada');
-  const enSpotify = (S.spotify && S.spotify.personas) || [];
-  const nombres = enSpotify.map(e => { const persona = e.personaId ? getPersona(e.personaId) : null; return persona ? persona.nombre : e.nombre; }).filter(Boolean);
+  const enSpotify = (S.spotify && S.spotify.integrantes) || [];
+  const nombres = enSpotify.map(e => Personas.nombre(e.personaId));
   poner('pe-resumen-spotify', String(enSpotify.length));
   poner('pe-resumen-spotify-sub', nombres.length ? nombres.slice(0, 2).join(' y ') + (nombres.length > 2 ? ' y ' + (nombres.length - 2) + ' más' : '') : 'Nadie');
 }
@@ -661,7 +655,7 @@ function _perfilSeccionEncargos(datos) {
     ${datos.encargos.map(e => {
       const saldoE = encargoSaldo(e);
       return html`<div class="pe-enc-fila">
-        <div class="pe-enc-nom">${e.nota || e.nombre}</div>
+        <div class="pe-enc-nom">${e.nota || Personas.nombre(e.personaId)}</div>
         <div class="pe-enc-der">
           <div class="pe-enc-saldo">${fmt(saldoE)}</div>
           <button type="button" ${raw(Events.attr('encargos-personas:irAEncargo', e.id))} class="pe-ver-detalle">Ver <i class="fa-solid fa-arrow-right"></i></button>
@@ -842,7 +836,7 @@ function _perfilBalanceNeto(rels, neto) {
 }
 
 function abrirPerfilPersona(personaId) {
-  const p = getPersona(personaId);
+  const p = Personas.obtener(personaId);
   if (!p) return;
   _perfilPersonaId = personaId;
   _inyectarPersonaSheets();
@@ -865,7 +859,7 @@ function abrirPerfilPersona(personaId) {
   }
   if (nm) nm.textContent = p.nombre;
 
-  const datos = getPersonaDatos(personaId);
+  const datos = _datosPersona(personaId);
   const partes = Personas.relaciones(personaId).map(r => (r.resumen ? r.resumen.cab : r.etiqueta));
   if (sb) sb.textContent = partes.length ? partes.join(' · ') : 'Sin actividad registrada';
 
@@ -973,7 +967,7 @@ const PersonaPicker = (() => {
         abrirSelPersona(id => api.elegir(id), api._cfg.titulo || '¿Quién es?');
       },
       elegir(id) {
-        const p = getPersona(id);
+        const p = Personas.obtener(id);
         if (!p) return;
         valor = id; confirmado = true;
         const i = input(); if (i) i.value = p.nombre;
@@ -982,7 +976,7 @@ const PersonaPicker = (() => {
       },
       precargar({ personaId, nombre } = {}) {
         abierto = false; confirmado = false;
-        const p = personaId ? getPersona(personaId) : null;
+        const p = personaId ? Personas.obtener(personaId) : null;
         valor = p ? p.id : null;
         const i = input(); if (i) i.value = p ? p.nombre : (nombre || '');
         pintar(p, p ? '' : nombre);

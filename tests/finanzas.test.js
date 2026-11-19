@@ -28,7 +28,7 @@ function app(sObj = {}, extra = []) {
 const mesHace = n => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); };
 const mesAct = mesHace(0);
 const cuentas = (nequi = 0) => [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: nequi }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }, { id: 'nu', tipo: 'ahorro', nombre: 'Nu', tasaEA: null }];
-const yoDebo = monto => [{ id: 'd1', nombre: 'Fulano', movimientos: [{ tipo: 'recibido', monto }] }];
+const yoDebo = monto => [{ id: 'd1', personaId: 'pF', movimientos: [{ tipo: 'recibido', monto }] }];
 const ingresosEn = (monto, meses) => [{ id: 'ip', nombre: 'Sueldo', monto, desde: '2020-01', cobros: meses.map((m, i) => ({ id: 'c' + i, mesCubre: m, monto, fecha: m + '-15' })) }];
 const ultimosN = (n, desde = 1) => Array.from({ length: n }, (_, i) => mesHace(i + desde));
 const gastosEn = (monto, meses) => ({ gastosFijos: [{ id: 'g1', monto }], pagosGastosFijos: Object.fromEntries(meses.map(m => ['g1_' + m, { monto, fecha: m + '-02' }])) });
@@ -290,7 +290,7 @@ test('con tendencia negativa y plata disponible, la Proyección dice cuánto agu
 
 /* ================= Atención ================= */
 test('Atención avisa liquidez negativa, «Yo debo», déficit sostenido y tarjetas no activas con deuda', () => {
-  const ctx = app({ cuentas: cuentas(100000), misDeudas: yoDebo(500000), tarjetasCredito: [{ id: 't', nombre: 'Vieja', estado: 'cerrada', deuda: 80000, cupo: 1000000 }], ...racha(3) });
+  const ctx = app({ cuentas: cuentas(100000), misDeudas: yoDebo(500000), personas: [{ id: 'pF', nombre: 'Fulano' }], tarjetasCredito: [{ id: 't', nombre: 'Vieja', estado: 'cerrada', deuda: 80000, cupo: 1000000 }], ...racha(3) });
   const { html, raw } = (() => { const l = createHtmlTag(ctx.escHtml); return l; })();
   ctx.html = html; ctx.raw = raw;
   const dom = createFakeDom();
@@ -391,9 +391,9 @@ test('presupuestos: un límite en 0 no produce NaN en la barra', () => {
 });
 
 /* ================= Push ================= */
-test('F6. el chequeo de Spotify vencido lee S.spotify.personas (esquema 9) y avisa', () => {
+test('F6. el chequeo de Spotify vencido lee S.spotify.integrantes (esquema 9) y avisa', () => {
   const { ejecutarChecks } = require('../scripts/notificaciones/checks.js');
-  const S = { modulos: { spotify: true }, personas: [], spotify: { personas: [{ nombre: 'Ana', proximoPago: '2026-10-01' }] } };
+  const S = { modulos: { spotify: true }, personas: [{ id: 'p1', nombre: 'Ana' }], spotify: { integrantes: [{ personaId: 'p1', proximoPago: '2026-10-01' }] } };
   const items = ejecutarChecks(S, '2026-10-20');
   assert.ok(items.some(i => i.texto.includes('Cobro Spotify de Ana vencido')));
 });
@@ -1516,9 +1516,9 @@ test('PARIDAD: Atención y push dicen exactamente lo mismo para las reglas compa
   const S = {
     modulos: { spotify: true },
     personas: [{ id: 'p1', nombre: 'Ana Pérez' }],
-    spotify: { personas: [{ personaId: 'p1', nombre: 'x', proximoPago: '2026-11-01', pagado: false }] },
+    spotify: { integrantes: [{ personaId: 'p1', proximoPago: '2026-11-01', pagado: false }] },
     cajitas: [{ nombre: 'Nu', cdts: [{ vence: '2026-11-08' }, { vence: '2026-11-01' }] }],
-    encargos: [{ nombre: 'Viaje', partes: [{ desc: 'Hotel', monto: 300000, fecha: '2026-11-05' }, { desc: 'Vuelo', monto: 500000, fecha: '2026-11-01' }] }],
+    encargos: [{ personaId: 'p1', partes: [{ desc: 'Hotel', monto: 300000, fecha: '2026-11-05' }, { desc: 'Vuelo', monto: 500000, fecha: '2026-11-01' }] }],
   };
   const comp = ['spotify-vencido', 'cdt', 'encargos-comprometidos'];
   const sol = canal => ev(canal, { hoy: HOY, S }).filter(i => comp.includes(i.regla)).map(i => i.regla + '|' + i.tipo + '|' + i.texto);
@@ -1527,11 +1527,11 @@ test('PARIDAD: Atención y push dicen exactamente lo mismo para las reglas compa
 });
 
 test('Spotify: usa el nombre de la ficha de Personas, y un «Pagó» deja de estar vigente cuando llega el próximo pago', () => {
-  const S = { modulos: { spotify: true }, personas: [{ id: 'p1', nombre: 'Ana' }], spotify: { personas: [
+  const S = { modulos: { spotify: true }, personas: [{ id: 'p1', nombre: 'Ana' }, { id: 'p2', nombre: 'Luis' }, { id: 'p3', nombre: 'Eva' }, { id: 'p4', nombre: 'Sol' }], spotify: { integrantes: [
     { personaId: 'p1', proximoPago: '2026-11-01', pagado: false },
-    { nombre: 'Luis', proximoPago: '2026-11-01', pagado: true },        // pagó, pero su próximo pago (1 nov) ya pasó → pendiente otra vez
-    { nombre: 'Eva', proximoPago: '2026-11-20', pagado: true },         // pagó y aún no le toca → no avisa
-    { nombre: 'Sol', proximoPago: '2026-11-10', pagado: false },        // pendiente pero no vencido → no avisa
+    { personaId: 'p2', proximoPago: '2026-11-01', pagado: true },        // pagó, pero su próximo pago (1 nov) ya pasó → pendiente otra vez
+    { personaId: 'p3', proximoPago: '2026-11-20', pagado: true },         // pagó y aún no le toca → no avisa
+    { personaId: 'p4', proximoPago: '2026-11-10', pagado: false },        // pendiente pero no vencido → no avisa
   ] } };
   assert.deepEqual(textos('push', { hoy: HOY, S }), ['Cobro Spotify de Ana vencido', 'Cobro Spotify de Luis vencido']);
   assert.deepEqual(textos('push', { hoy: HOY, S: { ...S, modulos: {} } }), [], 'sin el módulo Spotify activo no avisa');
@@ -1547,7 +1547,7 @@ test('CDT: avisa 7 días antes (ámbar, con «0d» el mismo día) y en rojo cuan
 });
 
 test('Encargos: «es hoy/mañana» en ámbar, vencida en rojo; usadas y sin fecha no cuentan', () => {
-  const S = { encargos: [{ nombre: 'Viaje', partes: [
+  const S = { personas: [{ id: 'p1', nombre: 'Viaje' }], encargos: [{ personaId: 'p1', partes: [
     { desc: 'a', monto: 1000, fecha: '2026-11-05' }, { desc: 'b', monto: 2000, fecha: '2026-11-06' }, { desc: 'c', monto: 3000, fecha: '2026-11-07' },
     { desc: 'd', monto: 4000, fecha: '2026-11-03' }, { desc: 'e', monto: 5000, fecha: '2026-11-03', usada: true }, { desc: 'f', monto: 6000 },
   ] }] };

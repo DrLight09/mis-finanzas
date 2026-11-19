@@ -35,7 +35,7 @@ let S={
   cajitas:[], // cajitas de las cuentas de ahorro: {id, cuentaId, nombre, saldo, fecha, cdts}; la tasa EA es de la CUENTA (cuenta.tasaEA)
   personas:[],
   deudores:[],misDeudas:[],mesadas:{papa:{cuotas:{},pagos:{}},mama:{cuotas:{},pagos:{}}},mesadaAnio:new Date().getFullYear(),
-  spotify:{personas:[],costo:0,fuenteId:'',historial:[]}, // todo el estado de Spotify en una llave (migración v9); ver _ensureSpotify()
+  spotify:{integrantes:[],costo:0,fuenteId:'',historial:[]}, // todo el estado de Spotify en una llave (migración v9); ver _ensureSpotify()
   gastosFijos:[],
   bienes:[], // activos NO líquidos (una moto, un computador): {id,nombre,valor,fecha,depreciacionAnual?,origenGastoId?}; ver calcBienes()
   pagosGastosFijos:{},
@@ -73,9 +73,8 @@ let S={
   // ingresosFijos: [{id, nombre, monto, desde}]
   // desde: 'YYYY-MM' — el mes desde el cual aplica este ingreso (para escalar en el futuro)
   // tarjetasCredito: [{id, nombre, cupo, deuda, fechaCorte (1-28), fechaPago (1-28), color, icono, compras:[{id,desc,monto,fecha,cat,pagadoEnTC:false}], pagos:[{id,monto,fecha,fuente,nota}]}]
-  // personas: [{id, nombre, color, alias, notas, creadoEn}]
-  // deudores[].personaId → referencia a personas[]
-  // encargos[].personaId → referencia a personas[]
+  // personas: [{id, nombre, color, alias, notas, creadoEn}] — ÚNICA fuente del nombre y el color de cada persona
+  // deudores[]/misDeudas[]/encargos[]/spotify.integrantes[] guardan solo personaId (sin nombre ni color: salen de Personas.nombre/color)
 };
 // Exponer S globalmente para que el módulo de Firebase pueda accederlo
 window.S = S;

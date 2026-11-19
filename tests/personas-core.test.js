@@ -58,21 +58,20 @@ describe('Personas.crear', () => {
 describe('Personas.editar', () => {
   const base = () => entorno({
     personas: [P('p1', 'Ana'), P('p2', 'Luis')],
-    deudores: [{ id: 'd1', personaId: 'p1', nombre: 'Ana', color: '#60b0f0', movimientos: [] }],
-    misDeudas: [{ id: 'm1', personaId: 'p1', nombre: 'Ana', color: '#60b0f0', movimientos: [] }],
-    encargos: [{ id: 'e1', personaId: 'p1', nombre: 'Ana', movimientos: [] }],
-    spotify: { personas: [{ id: 's1', personaId: 'p1', nombre: 'Ana' }], historial: [] },
+    deudores: [{ id: 'd1', personaId: 'p1', movimientos: [] }],
+    misDeudas: [{ id: 'm1', personaId: 'p1', movimientos: [] }],
+    encargos: [{ id: 'e1', personaId: 'p1', movimientos: [] }],
+    spotify: { integrantes: [{ id: 's1', personaId: 'p1' }], historial: [] },
   });
-  test('renombrar y recolorear deja iguales las copias de TODAS las relaciones', () => {
+  test('renombrar y recolorear cambia solo a la persona: todas las relaciones lo ven sin sincronizar nada', () => {
     const c = base();
     const r = c.Personas.editar('p1', { nombre: 'Ana María', color: '#f06868' });
     assert.equal(r.ok, true);
-    assert.equal(c.S.deudores[0].nombre, 'Ana María');
-    assert.equal(c.S.deudores[0].color, '#f06868');
-    assert.equal(c.S.misDeudas[0].nombre, 'Ana María');
-    assert.equal(c.S.misDeudas[0].color, '#f06868');
-    assert.equal(c.S.encargos[0].nombre, 'Ana María');
-    assert.equal(c.S.spotify.personas[0].nombre, 'Ana María');
+    assert.equal(c.Personas.nombre(c.S.deudores[0].personaId), 'Ana María');
+    assert.equal(c.Personas.color(c.S.misDeudas[0].personaId), '#f06868');
+    assert.equal(c.Personas.nombre(c.S.encargos[0].personaId), 'Ana María');
+    assert.equal(c.Personas.nombre(c.S.spotify.integrantes[0].personaId), 'Ana María');
+    ['deudores', 'misDeudas', 'encargos'].forEach(k => assert.equal('nombre' in c.S[k][0] || 'color' in c.S[k][0], false, k + ' no guarda copia'));
     assert.deepEqual(plano(c.Personas.verificar()), []);
   });
   test('rechaza el nombre de OTRA persona, pero acepta cambiar solo mayúsculas del propio', () => {
@@ -90,14 +89,14 @@ describe('Personas.editar', () => {
 
 describe('Personas.verificar (invariantes)', () => {
   test('estado limpio → sin violaciones', () => {
-    const c = entorno({ personas: [P('p1', 'Ana')], deudores: [{ id: 'd1', personaId: 'p1', nombre: 'Ana', color: '#60b0f0' }] });
+    const c = entorno({ personas: [P('p1', 'Ana')], deudores: [{ id: 'd1', personaId: 'p1' }] });
     assert.deepEqual(plano(c.Personas.verificar()), []);
   });
   test('I1: registro sin personaId y registro cuya persona ya no existe, en cualquier relación', () => {
     const c = entorno({
       personas: [P('p1', 'Ana')],
-      encargos: [{ id: 'e1', nombre: 'Sin vínculo' }],
-      spotify: { personas: [{ id: 's1', personaId: 'borrada', nombre: 'Fantasma' }], historial: [] },
+      encargos: [{ id: 'e1' }],
+      spotify: { integrantes: [{ id: 's1', personaId: 'borrada' }], historial: [] },
     });
     const v = plano(c.Personas.verificar()).filter(x => x.regla === 'I1');
     assert.deepEqual(v.map(x => x.tipo + ':' + x.relacion).sort(), ['persona-inexistente:spotify', 'sin-personaId:encargos']);
@@ -110,15 +109,15 @@ describe('Personas.verificar (invariantes)', () => {
   test('I4: dos «me deben» de la misma persona; Encargos sí admite varios', () => {
     const c = entorno({
       personas: [P('p1', 'Ana')],
-      deudores: [{ id: 'd1', personaId: 'p1', nombre: 'Ana', color: '#60b0f0' }, { id: 'd2', personaId: 'p1', nombre: 'Ana', color: '#60b0f0' }],
-      encargos: [{ id: 'e1', personaId: 'p1', nombre: 'Ana' }, { id: 'e2', personaId: 'p1', nombre: 'Ana' }],
+      deudores: [{ id: 'd1', personaId: 'p1' }, { id: 'd2', personaId: 'p1' }],
+      encargos: [{ id: 'e1', personaId: 'p1' }, { id: 'e2', personaId: 'p1' }],
     });
     const v = plano(c.Personas.verificar());
     assert.deepEqual(v.map(x => x.regla + ':' + x.relacion), ['I4:me-deben']);
   });
-  test('I2: copia de nombre desfasada', () => {
-    const c = entorno({ personas: [P('p1', 'Ana')], encargos: [{ id: 'e1', personaId: 'p1', nombre: 'Anita' }] });
-    assert.deepEqual(plano(c.Personas.verificar()).map(x => x.tipo), ['copia-desfasada']);
+  test('I2: un registro que guarda nombre o color de la persona se reporta (ya no hay copias)', () => {
+    const c = entorno({ personas: [P('p1', 'Ana')], encargos: [{ id: 'e1', personaId: 'p1', nombre: 'Anita' }], deudores: [{ id: 'd1', personaId: 'p1', color: '#fff' }] });
+    assert.deepEqual(plano(c.Personas.verificar()).map(x => x.regla + ':' + x.tipo + ':' + x.relacion).sort(), ['I2:copia-guardada:encargos', 'I2:copia-guardada:me-deben']);
   });
   test('no explota con colecciones ausentes', () => {
     const c = entorno({});
@@ -128,13 +127,13 @@ describe('Personas.verificar (invariantes)', () => {
 });
 
 describe('Personas.registrarRelacion', () => {
-  test('un módulo nuevo se conecta con una llamada y entra en verificación y edición', () => {
-    const c = entorno({ personas: [P('p1', 'Ana')], tandas: [{ id: 't1', nombre: 'Ana' }, { id: 't2', personaId: 'p1', nombre: 'Ana' }] });
-    c.Personas.registrarRelacion({ id: 'tandas', etiqueta: 'Tanda', unica: true, copia: { nombre: true }, coleccion: d => d.tandas || [] });
+  test('un módulo nuevo se conecta con una llamada y entra en verificación y lee el nombre de la persona', () => {
+    const c = entorno({ personas: [P('p1', 'Ana')], tandas: [{ id: 't1' }, { id: 't2', personaId: 'p1' }] });
+    c.Personas.registrarRelacion({ id: 'tandas', etiqueta: 'Tanda', unica: true, coleccion: d => d.tandas || [] });
     assert.equal(c.Personas.verificar().some(v => v.relacion === 'tandas' && v.regla === 'I1'), true);
     c.S.tandas.shift();
     c.Personas.editar('p1', { nombre: 'Ana Paula' });
-    assert.equal(c.S.tandas[0].nombre, 'Ana Paula');
+    assert.equal(c.Personas.nombre(c.S.tandas[0].personaId), 'Ana Paula');
     assert.deepEqual(plano(c.Personas.verificar()), []);
   });
   test('exige id y coleccion', () => {
@@ -151,10 +150,10 @@ describe('Personas.relaciones / posicionNeta / registros', () => {
   };
   const base = () => conCalculos({
     personas: [P('ana', 'Ana'), P('beto', 'Beto'), P('sola', 'Sola')],
-    deudores: [{ id: 'd1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 100000 }, { tipo: 'abono', monto: 30000 }] }],
-    misDeudas: [{ id: 'm1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'recibido', monto: 20000 }] }],
-    encargos: [{ id: 'e1', personaId: 'ana', nombre: 'Ana', saldoInicial: 500000, movimientos: [] }, { id: 'e2', personaId: 'beto', nombre: 'Beto', saldoInicial: 10, movimientos: [] }],
-    spotify: { personas: [{ id: 's1', personaId: 'beto', nombre: 'Beto' }], historial: [] },
+    deudores: [{ id: 'd1', personaId: 'ana', movimientos: [{ tipo: 'prestamo', monto: 100000 }, { tipo: 'abono', monto: 30000 }] }],
+    misDeudas: [{ id: 'm1', personaId: 'ana', movimientos: [{ tipo: 'recibido', monto: 20000 }] }],
+    encargos: [{ id: 'e1', personaId: 'ana', saldoInicial: 500000, movimientos: [] }, { id: 'e2', personaId: 'beto', saldoInicial: 10, movimientos: [] }],
+    spotify: { integrantes: [{ id: 's1', personaId: 'beto' }], historial: [] },
   });
 
   test('registros: los de una persona en una relación, y [] si no hay o la relación no existe', () => {
@@ -185,8 +184,8 @@ describe('Personas.relaciones / posicionNeta / registros', () => {
   test('saldado: «Al día» y «Deuda saldada»', () => {
     const c = conCalculos({
       personas: [P('a', 'A')],
-      deudores: [{ id: 'd', personaId: 'a', nombre: 'A', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 5 }, { tipo: 'abono', monto: 5 }] }],
-      misDeudas: [{ id: 'm', personaId: 'a', nombre: 'A', color: '#60b0f0', movimientos: [{ tipo: 'recibido', monto: 5 }, { tipo: 'pago', monto: 5 }] }],
+      deudores: [{ id: 'd', personaId: 'a', movimientos: [{ tipo: 'prestamo', monto: 5 }, { tipo: 'abono', monto: 5 }] }],
+      misDeudas: [{ id: 'm', personaId: 'a', movimientos: [{ tipo: 'recibido', monto: 5 }, { tipo: 'pago', monto: 5 }] }],
     });
     const r = plano(c.Personas.relaciones('a'));
     assert.equal(r[0].resumen.corto.texto, 'Al día');
@@ -226,10 +225,10 @@ describe('Perfil y lista de Personas sobre relaciones', () => {
   };
   const estado = () => ({
     personas: [P('ana', 'Ana'), P('beto', 'Beto'), P('sola', 'Sola')],
-    deudores: [{ id: 'd1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 100000 }, { tipo: 'abono', monto: 30000 }] }],
-    misDeudas: [{ id: 'm1', personaId: 'ana', nombre: 'Ana', color: '#60b0f0', movimientos: [{ tipo: 'recibido', monto: 20000 }] }],
-    encargos: [{ id: 'e1', personaId: 'ana', nombre: 'Ana', saldoInicial: 5000, movimientos: [] }],
-    spotify: { personas: [{ id: 's1', personaId: 'beto', nombre: 'Beto' }], historial: [] },
+    deudores: [{ id: 'd1', personaId: 'ana', movimientos: [{ tipo: 'prestamo', monto: 100000 }, { tipo: 'abono', monto: 30000 }] }],
+    misDeudas: [{ id: 'm1', personaId: 'ana', movimientos: [{ tipo: 'recibido', monto: 20000 }] }],
+    encargos: [{ id: 'e1', personaId: 'ana', saldoInicial: 5000, movimientos: [] }],
+    spotify: { integrantes: [{ id: 's1', personaId: 'beto' }], historial: [] },
   });
 
   test('lista: texto en celular y en PC, etiquetas y saldo neto salen de las relaciones', () => {
@@ -278,7 +277,7 @@ describe('Perfil y lista de Personas sobre relaciones', () => {
   });
   test('Spotify en el perfil cuenta los cobros por spotifyId, no solo por nombre', () => {
     const e = estado();
-    e.spotify.personas[0] = { id: 's1', personaId: 'beto', nombre: 'Beto', monto: 15000, proximoPago: '2026-12-01', pagado: false };
+    e.spotify.integrantes[0] = { id: 's1', personaId: 'beto', monto: 15000, proximoPago: '2026-12-01', pagado: false };
     e.spotify.historial = [{ tipo: 'cobro', spotifyId: 's1', nombre: 'Nombre viejo', monto: 7000 }, { tipo: 'cobro', spotifyId: 'otro', nombre: 'Beto', monto: 999 }];
     const app = montar(e);
     app.abrirPerfilPersona('beto');
@@ -304,10 +303,10 @@ describe('Búsqueda global: una entrada por persona', () => {
   };
   const estado = () => ({
     personas: [P('ana', 'Ana María', { alias: 'ani' }), P('beto', 'Beto')],
-    deudores: [{ id: 'd1', personaId: 'ana', nombre: 'Ana María', color: '#60b0f0', movimientos: [{ tipo: 'prestamo', monto: 100, nota: 'almuerzo' }] }],
-    misDeudas: [{ id: 'm1', personaId: 'ana', nombre: 'Ana María', color: '#60b0f0', movimientos: [] }],
-    encargos: [{ id: 'e1', personaId: 'ana', nombre: 'Ana María', nota: 'Regalo mamá', saldoInicial: 5000, movimientos: [] }],
-    spotify: { personas: [{ id: 's1', personaId: 'ana', nombre: 'Ana María' }], historial: [] },
+    deudores: [{ id: 'd1', personaId: 'ana', movimientos: [{ tipo: 'prestamo', monto: 100, nota: 'almuerzo' }] }],
+    misDeudas: [{ id: 'm1', personaId: 'ana', movimientos: [] }],
+    encargos: [{ id: 'e1', personaId: 'ana', nota: 'Regalo mamá', saldoInicial: 5000, movimientos: [] }],
+    spotify: { integrantes: [{ id: 's1', personaId: 'ana' }], historial: [] },
   });
 
   test('buscar por nombre devuelve UNA entrada (la persona), con sus relaciones, y no una por módulo', () => {
@@ -362,9 +361,9 @@ describe('Pantalla Personas', () => {
     app.document = new JSDOM('<!doctype html><body><div id="screen-personas"></div><div id="lista-personas-body"></div><div id="lista-personas-empty"></div><span id="personas-lista-conteo"></span></body>').window.document;
     Object.assign(app.S, plano({
       personas: [P('p1', 'Ana'), P('p2', 'Beto'), P('p3', 'Carla')],
-      encargos: [{ id: 'e1', personaId: 'p2', nombre: 'Beto', movimientos: [] }],
-      spotify: { personas: [{ id: 's1', personaId: 'p3', nombre: 'Carla' }], historial: [] },
-      misDeudas: [{ id: 'm1', personaId: 'p1', nombre: 'Ana', color: '#60b0f0', movimientos: [] }],
+      encargos: [{ id: 'e1', personaId: 'p2', movimientos: [] }],
+      spotify: { integrantes: [{ id: 's1', personaId: 'p3' }], historial: [] },
+      misDeudas: [{ id: 'm1', personaId: 'p1', movimientos: [] }],
     }));
     app._pintarResumenPersonas = () => {};
     app._sincronizarFichaPersonas = () => {};

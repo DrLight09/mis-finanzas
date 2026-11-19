@@ -45,6 +45,7 @@ describe('mesada-reglas', () => {
       cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: nequi }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: efectivo }],
       movimientos: [],
       encargos,
+      personas: Object.entries(PERS).map(([id, nombre]) => ({ id, nombre })),
       ...extra,
     });
     stubEncargos(ctx);
@@ -52,7 +53,9 @@ describe('mesada-reglas', () => {
   }
 
   const saldo = (ctx, id) => ctx.S.cuentas.find(c => c.id === String(id).replace('cuenta:', '')).saldo;
-  const encargo = (id, nombre, movimientos) => ({ id, nombre, movimientos: movimientos });
+  // El nombre de un encargo es el de su persona (única fuente): cada encargo de prueba trae su persona en S.personas.
+  const PERS = {};
+  const encargo = (id, nombre, movimientos) => { PERS['p' + id] = nombre; return { id, personaId: 'p' + id, movimientos: movimientos }; };
   const entrada = (monto, cuenta = '') => ({ id: 'm' + monto + cuenta, tipo: 'entrada', monto, cuenta });
   const pago = (ctx, over = {}) => ctx.mesadaRegistrarPago({
     parent: 'papa', key: '2026-3', monto: 80000, fecha: '2026-04-05', nota: '', destino: '', ...over,
@@ -424,6 +427,7 @@ describe('mesada-ui', () => {
     Object.assign(ctx.S, {
       cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi', saldo: 1000 }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo', saldo: 0 }],
       movimientos: [], encargos,
+      personas: Object.entries(PERS).map(([id, nombre]) => ({ id, nombre })),
     });
     const movimiento = (e, c) => (e.movimientos || []).reduce((a, m) => (m.cuenta || '') !== (c || '') ? a : a + (m.tipo === 'entrada' ? m.monto : -m.monto), 0);
     ctx.getEncargo = id => ctx.S.encargos.find(e => e.id === id);
@@ -438,7 +442,8 @@ describe('mesada-ui', () => {
     ctx._ensureMesadas(); ctx.S.mesadas.papa.cuotas = { '2026': 80000 };
     return { ctx, d, toasts };
   }
-  const encargo = (id, nombre, monto, cuenta) => ({ id, nombre, movimientos: [{ id: 'in' + id, tipo: 'entrada', monto, cuenta }] });
+  const PERS = {};
+  const encargo = (id, nombre, monto, cuenta) => { PERS['p' + id] = nombre; return { id, personaId: 'p' + id, movimientos: [{ id: 'in' + id, tipo: 'entrada', monto, cuenta }] }; };
 
   test('UI — registrar un pago simple de punta a punta (abrir, escribir, confirmar)', () => {
     const { ctx, d } = ui();

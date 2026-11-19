@@ -85,7 +85,7 @@ function aplicarMigraciones(d) {
 // S.spotify siempre existe y trae sus cuatro campos (como _ensureMesadas con S.mesadas): el resto de la app lo lee sin guardas.
 function _ensureSpotify(){
   if(!S.spotify||typeof S.spotify!=='object'||Array.isArray(S.spotify))S.spotify={};
-  if(!Array.isArray(S.spotify.personas))S.spotify.personas=[];
+  if(!Array.isArray(S.spotify.integrantes))S.spotify.integrantes=[];
   if(!Array.isArray(S.spotify.historial))S.spotify.historial=[];
   if(typeof S.spotify.costo!=='number')S.spotify.costo=Number(S.spotify.costo)||0;
   // `fuenteId`: cuenta o cajita donde guarda la plata de Spotify ('cajita:ID' | 'cuenta:ID'); '' = ninguna.

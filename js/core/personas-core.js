@@ -6,17 +6,17 @@
    Vive en el núcleo (carga de entrada, justo después de estado.js) por la misma razón que `Deudas` en calc-helpers.js: la integridad,
    el borrado y la fusión de personas tienen que ver TODAS las relaciones aunque el módulo dueño (Encargos, Spotify, Préstamos) sea lazy
    y todavía no haya cargado. Por eso este archivo declara aquí la mitad de DATOS de cada relación (dónde están sus registros, si es
-   única por persona, qué campos copia). Con eso la lista, el perfil y la posición neta de Personas salen de las relaciones, no de código escrito por módulo.
+   única por persona). Con eso la lista, el perfil y la posición neta de Personas salen de las relaciones, no de código escrito por módulo.
 
    Todo recibe opcionalmente un objeto de datos `d` (por defecto el S global), para poder comprobar un estado aislado.
 
    Invariantes (lo que verificar() comprueba):
      I1. Todo registro de una relación tiene `personaId` y esa persona existe en S.personas.
-     I2. (transitoria, hasta quitar las copias) `nombre`/`color` copiados en un registro coinciden con los de su persona.
+     I2. Ningún registro de una relación guarda `nombre` ni `color` de la persona: salen siempre de S.personas (una sola fuente).
      I3. Los ids de S.personas son únicos y los nombres también (ignorando mayúsculas, tildes y espacios sobrantes).
      I4. Como máximo un registro vivo por (persona, relación) en las relaciones `unica`.
 
-   Qué NO hace todavía (ver docs/personas-modelo-unico.md): archivar/eliminar/fusionar, quitar las copias de nombre y color.
+   Qué NO hace todavía (ver docs/personas-modelo-unico.md): archivar/eliminar/fusionar.
    ═══════════════════════════════════════════════════════════════ */
 
 const Personas = (() => {
@@ -33,8 +33,6 @@ const Personas = (() => {
        etiqueta   cómo se llama en pantalla.
        coleccion(d) → arreglo VIVO con los registros (todos con `personaId`). Debe tolerar que la colección no exista todavía.
        unica      true = a lo más un registro por persona (I4).
-       copia      {nombre?, color?}: campos que el registro todavía guarda copiados de la persona. Mientras existan, editar() los mantiene
-                  iguales y verificar() los vigila; al quitar la copia de un módulo se borra su bandera.
        pantalla   pantalla del módulo (para «ver en el módulo»).
        saldo(r)   aporte del registro a la posición neta con la persona: positivo = te deben, negativo = le debes. Sin `saldo` no aporta.
        resumen(registros, saldo) → { tag, cab, corto: {texto, tono}, pc }: lo que muestran la lista y la cabecera del perfil.
@@ -47,7 +45,7 @@ const Personas = (() => {
   function registrarRelacion(rel) {
     if (!rel || typeof rel.id !== 'string') throw new Error('Personas.registrarRelacion: se necesita { id, coleccion(d) }');
     const i = _relaciones.findIndex(r => r.id === rel.id);
-    const nueva = i >= 0 ? { ..._relaciones[i], ...rel } : { etiqueta: rel.id, unica: false, copia: {}, ...rel };
+    const nueva = i >= 0 ? { ..._relaciones[i], ...rel } : { etiqueta: rel.id, unica: false, ...rel };
     if (typeof nueva.coleccion !== 'function') throw new Error('Personas.registrarRelacion: se necesita { id, coleccion(d) }');
     if (i >= 0) _relaciones[i] = nueva; else _relaciones.push(nueva);
     return nueva;
@@ -62,7 +60,7 @@ const Personas = (() => {
 
   // El orden de registro es el orden en que el perfil muestra las secciones.
   registrarRelacion({
-    id: 'me-deben', etiqueta: 'Me debe', unica: true, copia: { nombre: true, color: true }, pantalla: 'prestamos',
+    id: 'me-deben', etiqueta: 'Me debe', unica: true, pantalla: 'prestamos',
     coleccion: d => _arr(d.deudores),
     saldo: _saldoDeudor,
     resumen: (regs, saldo) => ({
@@ -72,19 +70,19 @@ const Personas = (() => {
     }),
   });
   registrarRelacion({
-    id: 'encargos', etiqueta: 'Encargo', unica: false, copia: { nombre: true }, pantalla: 'encargos',
+    id: 'encargos', etiqueta: 'Encargo', unica: false, pantalla: 'encargos',
     coleccion: d => _arr(d.encargos),
     // Sin `saldo`: el saldo de un encargo NO entra en la posición neta. Es plata suya que solo administras, no una deuda a tu favor ni en
     // tu contra (mismo criterio que Préstamos e Inicio).
     resumen: regs => { const t = _plural(regs.length, 'encargo', 'encargos'); return { tag: 'Encargo', cab: t, corto: { texto: t, tono: '' }, pc: t }; },
   });
   registrarRelacion({
-    id: 'spotify', etiqueta: 'Spotify', unica: true, copia: { nombre: true }, pantalla: 'spotify',
-    coleccion: d => _arr(d.spotify && d.spotify.personas),
+    id: 'spotify', etiqueta: 'Spotify', unica: true, pantalla: 'spotify',
+    coleccion: d => _arr(d.spotify && d.spotify.integrantes),
     resumen: () => ({ tag: 'Spotify', cab: 'Spotify', corto: { texto: 'Spotify', tono: '' }, pc: 'Spotify' }),
   });
   registrarRelacion({
-    id: 'yo-debo', etiqueta: 'Yo debo', unica: true, copia: { nombre: true, color: true }, pantalla: 'prestamos',
+    id: 'yo-debo', etiqueta: 'Yo debo', unica: true, pantalla: 'prestamos',
     coleccion: d => _arr(d.misDeudas),
     saldo: r => -_saldoMiDeuda(r),
     resumen: (regs, saldo) => ({
@@ -139,7 +137,7 @@ const Personas = (() => {
     return { persona: p, creada: true };
   }
 
-  // Cambia nombre y/o color y deja iguales las copias que los registros todavía guardan. Rechaza un nombre que ya tiene OTRA persona.
+  // Cambia nombre y/o color de la persona (los módulos lo leen de aquí, no hay nada que sincronizar). Rechaza un nombre que ya tiene OTRA persona.
   function editar(id, cambios, d) {
     const est = _d(d);
     const p = obtener(id, est);
@@ -153,21 +151,7 @@ const Personas = (() => {
       p.nombre = n;
     }
     if (c.color !== undefined && c.color) p.color = c.color;
-    _sincronizarCopias(est, p);
     return { ok: true, persona: p };
-  }
-
-  function _sincronizarCopias(est, p) {
-    let n = 0;
-    _relaciones.forEach(rel => {
-      if (!rel.copia || (!rel.copia.nombre && !rel.copia.color)) return;
-      rel.coleccion(est).forEach(r => {
-        if (!r || r.personaId !== p.id) return;
-        if (rel.copia.nombre && r.nombre !== p.nombre) { r.nombre = p.nombre; n++; }
-        if (rel.copia.color && p.color && r.color !== p.color) { r.color = p.color; n++; }
-      });
-    });
-    return n;
   }
 
   /* ── Integridad ───────────────────────────────────────────── */
@@ -194,7 +178,7 @@ const Personas = (() => {
       if (nombres.has(k)) out.push({ regla: 'I3', tipo: 'nombre-repetido', personaId: p.id, otraId: nombres.get(k), nombre: p.nombre });
       else nombres.set(k, p.id);
     });
-    huerfanos(est).forEach(h => out.push({ regla: 'I1', tipo: h.motivo, relacion: h.relacion, id: h.registro.id, nombre: h.registro.nombre }));
+    huerfanos(est).forEach(h => out.push({ regla: 'I1', tipo: h.motivo, relacion: h.relacion, id: h.registro.id }));
     _relaciones.forEach(rel => {
       const vistos = new Map();
       rel.coleccion(est).forEach(r => {
@@ -204,9 +188,7 @@ const Personas = (() => {
           if (vistos.has(r.personaId)) out.push({ regla: 'I4', tipo: 'relacion-repetida', relacion: rel.id, personaId: r.personaId, ids: [vistos.get(r.personaId), r.id] });
           else vistos.set(r.personaId, r.id);
         }
-        if (p && rel.copia) {
-          if ((rel.copia.nombre && r.nombre !== p.nombre) || (rel.copia.color && p.color && r.color !== p.color)) out.push({ regla: 'I2', tipo: 'copia-desfasada', relacion: rel.id, id: r.id, personaId: p.id });
-        }
+        if (p && (Object.prototype.hasOwnProperty.call(r, 'nombre') || Object.prototype.hasOwnProperty.call(r, 'color'))) out.push({ regla: 'I2', tipo: 'copia-guardada', relacion: rel.id, id: r.id, personaId: p.id });
       });
     });
     return out;

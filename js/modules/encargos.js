@@ -53,7 +53,7 @@ function editarEncargoActual() {
   if (!encargoActualId) return;
   const encargo = getEncargo(encargoActualId);
   if (!encargo) return;
-  document.getElementById('enc_edit_nombre').value = encargo.nombre || '';
+  document.getElementById('enc_edit_nombre').value = Personas.nombre(encargo.personaId);
   document.getElementById('enc_edit_nota').value = encargo.nota || '';
   openSheet('editar-encargo');
 }
@@ -63,13 +63,10 @@ function guardarEditarEncargo() {
   if (!encargo) return;
   const nombre = document.getElementById('enc_edit_nombre').value.trim();
   if (!nombre) { toast('Ingresa el nombre', 'err'); return; }
-  encargo.nombre = nombre;
+  // El nombre es de la persona (única fuente): se cambia ahí, y un nombre que ya tiene otra persona se rechaza.
+  const ed = Personas.editar(encargo.personaId, { nombre });
+  if (!ed.ok) { toast(ed.error === 'duplicado' ? 'Ya existe «' + ed.persona.nombre + '». Si es otra persona, añade un apellido o apodo.' : 'No se pudo guardar el nombre', 'err', 4200); return; }
   encargo.nota = document.getElementById('enc_edit_nota').value.trim();
-  // Sincronizar nombre en S.personas si hay vínculo
-  if (encargo.personaId) {
-    const p = (S.personas || []).find(x => x.id === encargo.personaId);
-    if (p) p.nombre = nombre;
-  }
   save();
   abrirEncargoDetalle(encargoActualId);
   closeSheet('editar-encargo');
@@ -151,9 +148,9 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
       return html`
         <div class="enc-nu-caja" data-encargo-id="${encargo.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', encargo.id))}>
           <div class="enc-nu-cab">
-            <div class="avatar enc-av-azul-26">${iniciales(encargo.nombre)}</div>
+            <div class="avatar enc-av-azul-26">${iniciales(Personas.nombre(encargo.personaId))}</div>
             <div class="enc-flex1-min0">
-              <div class="enc-nombre-ell">${encargo.nombre}</div>
+              <div class="enc-nombre-ell">${Personas.nombre(encargo.personaId)}</div>
               ${encargo.nota?html`<div class="enc-nota">${encargo.nota}</div>`:''}
             </div>
             <div class="enc-der">
@@ -224,9 +221,9 @@ function renderEncargosEnCuenta(elId, tipoCuenta) {
       ${filas.map(({encargo, saldo}) => html`
         <div class="enc-lista-fila" data-encargo-id="${encargo.id}" ${raw(Events.attr('encargos:abrirDesdeCuenta', encargo.id))}>
           <div class="enc-lista-pers" ${raw(Events.attr('encargos:abrirDesdeCuenta', encargo.id))}>
-            <div class="avatar enc-av-azul-28">${iniciales(encargo.nombre)}</div>
+            <div class="avatar enc-av-azul-28">${iniciales(Personas.nombre(encargo.personaId))}</div>
             <div class="enc-lista-nombre">
-              <div class="enc-nombre-ell">${encargo.nombre}</div>
+              <div class="enc-nombre-ell">${Personas.nombre(encargo.personaId)}</div>
               ${encargo.nota?html`<div class="enc-nota">${encargo.nota}</div>`:''}
             </div>
           </div>
@@ -294,8 +291,8 @@ function _pintarEncargosList() {
     const saldo = encargoSaldo(encargo);
     const comprometido = encargoComprometido(encargo);
     const libre = encargoLibre(encargo);
-    const ini = iniciales(encargo.nombre);
-    const per = encargo.personaId ? getPersona(encargo.personaId) : null;
+    const ini = iniciales(Personas.nombre(encargo.personaId));
+    const per = encargo.personaId ? Personas.obtener(encargo.personaId) : null;
     // Avatar con el color de la persona y clic al perfil: todo en el HTML de la fila (antes se parchaba el DOM después de pintar).
     const colorPer = per && /^#[0-9a-fA-F]{6}$/.test(per.color || '') ? per.color : '#60b0f0';
     const avatar = per
@@ -306,7 +303,7 @@ function _pintarEncargosList() {
         <div class="enc-pers-cab">
           ${avatar}
           <div>
-            <div class="row-name">${encargo.nombre}</div>
+            <div class="row-name">${Personas.nombre(encargo.personaId)}</div>
             <div class="row-sub">${(encargo.movimientos||[]).length} movimiento${(encargo.movimientos||[]).length!==1?'s':''} · ${encargo.nota||'Encargo'}</div>
           </div>
         </div>
@@ -376,8 +373,8 @@ function _pintarEncargoDetalle(id) {
   const salidas = (encargo.movimientos||[]).filter(m=>m.tipo==='salida').reduce((a,m)=>a+m.monto,0);
 
   _mostrarPanelEncargos('encargoDetalle');
-  document.getElementById('encargoAvatar').textContent = iniciales(encargo.nombre);
-  document.getElementById('encargoNombreDet').textContent = encargo.nombre;
+  document.getElementById('encargoAvatar').textContent = iniciales(Personas.nombre(encargo.personaId));
+  document.getElementById('encargoNombreDet').textContent = Personas.nombre(encargo.personaId);
   document.getElementById('encargoSaldoLabel').textContent = encargo.nota||'';
   document.getElementById('encargoSaldoHero').textContent = fmt(libre);
   const compHint = document.getElementById('encargoComprometidoHint');
@@ -477,7 +474,7 @@ function _pintarEncargoDetalle(id) {
     const _encargoAttrs=(m, origenLbl)=>{
       const sd=m._sd||_encargoSaldoPorId.get(m.id);
       if(!sd) return '';
-      return `data-movimiento-id="${m.id}" data-movimiento-tipo="${m.tipo}" data-movimiento-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-movimiento-origen="${escHtml(origenLbl)}" data-movimiento-saldo-antes="${sd.antes}" data-movimiento-saldo-despues="${sd.despues}" data-movimiento-saldo-label="Saldo de ${escHtml(encargo.nombre)}" data-movimiento-desc="${escHtml(m.desc||'')}" data-movimiento-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" data-action="core:abrirDetalleMovimiento"`;
+      return `data-movimiento-id="${m.id}" data-movimiento-tipo="${m.tipo}" data-movimiento-monto="${Math.abs(m.monto)}" data-cuenta-key="encargo" data-movimiento-origen="${escHtml(origenLbl)}" data-movimiento-saldo-antes="${sd.antes}" data-movimiento-saldo-despues="${sd.despues}" data-movimiento-saldo-label="Saldo de ${escHtml(Personas.nombre(encargo.personaId))}" data-movimiento-desc="${escHtml(m.desc||'')}" data-movimiento-fecha="${escHtml(m.fecha)}" style="cursor:pointer;" data-action="core:abrirDetalleMovimiento"`;
     };
     // Salidas divididas → una sola fila (ver _encargoGrupoSplit)
     const _gruposVistos = new Set();
@@ -501,7 +498,7 @@ function _pintarEncargoDetalle(id) {
         const lblCuentaIni = m.cuenta ? fuenteLabel(m.cuenta) : '';
         return filaMovimiento({
           clase: 'enc-item-ent',
-          attrs: _encargoAttrs(m,'Encargos · '+encargo.nombre),
+          attrs: _encargoAttrs(m,'Encargos · '+Personas.nombre(encargo.personaId)),
           nombre: 'Saldo inicial',
           sub: `${m.fecha!=='0000-00-00'?m.fecha:''}${lblCuentaIni?' · '+lblCuentaIni:''}`,
           monto: fmt(m.monto),
@@ -519,7 +516,7 @@ function _pintarEncargoDetalle(id) {
       const _miaLbl = arr => (arr||[]).map(r=>fuenteLabel(r.cuenta)+' '+fmt(r.monto)).join(' + ');
       const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
-      const origenEncargo = esAbonoPrestamo ? ('Préstamos · ' + ((Deudas.lista('favor').find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+encargo.nombre);
+      const origenEncargo = esAbonoPrestamo ? ('Préstamos · ' + ((Deudas.lista('favor').find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+Personas.nombre(encargo.personaId));
       return filaMovimiento({
         clase: 'enc-item ' + (esEntrada?'enc-item-b-ent':esAbonoPrestamo?'enc-item-b-abono':esTcEncargo?'enc-item-b-tc':'enc-item-b-sal'),
         attrs: _encargoAttrs(m,origenEncargo),
@@ -744,9 +741,9 @@ function crearEncargo() {
   // personaId es obligatorio: no debe existir un encargo sin persona vinculada (enc_nombre se llena al elegirla).
   const pId = _encargoPicker().valor;
   if (!pId) { toast('Selecciona una persona', 'err'); return; }
-  const persona = getPersona(pId);
-  const nombre = persona ? persona.nombre : document.getElementById('enc_nombre').value.trim();
-  if (!nombre) { toast('Ingresa el nombre de la persona', 'err'); return; }
+  const persona = Personas.obtener(pId);
+  if (!persona) { toast('No se encontró la persona', 'err'); return; }
+  const nombre = persona.nombre;
   const saldoIni = parseMoney(document.getElementById('enc_saldo').value)||0;
   const cuentaIni = document.getElementById('enc_cuenta_ini').value || '';
   const nota = document.getElementById('enc_nota').value.trim();
@@ -754,7 +751,6 @@ function crearEncargo() {
   S.encargos.push({
     id: uid(),
     personaId: pId,
-    nombre,
     nota,
     saldoInicial: saldoIni,
     cuentaInicial: cuentaIni,
@@ -1264,7 +1260,7 @@ async function _confirmarUsarParte() {
         fuente,
         monto,
         fecha: hoy(),
-        desc: `Margen encargo ${encargo.nombre} — ${parte.desc}`,
+        desc: `Margen encargo ${Personas.nombre(encargo.personaId)} — ${parte.desc}`,
         clase: 'ingreso',
         _esExtraIngreso: true   // margen = plata nueva tuya (ver _esEntradaEspejoNoIngreso)
       });
@@ -1358,7 +1354,7 @@ function abrirMovimientoEncargo(tipo) {
     return;
   }
   document.getElementById('movEncTitle').textContent = tipo==='entrada'?'Registrar entrada de plata':'Registrar salida de plata';
-  document.getElementById('movEncNombre').textContent = encargo.nombre;
+  document.getElementById('movEncNombre').textContent = Personas.nombre(encargo.personaId);
   document.getElementById('movEncSaldo').textContent = (tipo === 'salida' && comprometido > 0)
     ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
     : fmt(tipo === 'salida' ? libre : saldo);
@@ -1759,8 +1755,8 @@ function _movimientoEncargoActualizarFaltante() {
   const detalle = document.getElementById('movenc-faltante-detalle');
   if (detalle) {
     detalle.textContent = libre > 0
-      ? `Se retiran ${fmt(libre)} del encargo (todo lo disponible) y los otros ${fmt(faltante)} quedan como un préstamo tuyo aparte a ${encargo.nombre}, en "Me deben" — no forman parte de este encargo.`
-      : `Este encargo no tiene nada disponible ahora mismo. Los ${fmt(faltante)} completos quedarían como un préstamo tuyo a ${encargo.nombre}, en "Me deben".`;
+      ? `Se retiran ${fmt(libre)} del encargo (todo lo disponible) y los otros ${fmt(faltante)} quedan como un préstamo tuyo aparte a ${Personas.nombre(encargo.personaId)}, en "Me deben" — no forman parte de este encargo.`
+      : `Este encargo no tiene nada disponible ahora mismo. Los ${fmt(faltante)} completos quedarían como un préstamo tuyo a ${Personas.nombre(encargo.personaId)}, en "Me deben".`;
   }
   const selCuenta = document.getElementById('movenc_faltante_cuenta');
   if (selCuenta) {
@@ -1830,11 +1826,7 @@ function _movimientoEncargoConfirmarPrestarFaltante() {
   if (monto <= libre + 0.5) { toast('El encargo ya alcanza para este monto — usa "Guardar"', 'err'); return; }
   const faltante = monto - libre;
 
-  if (!encargo.personaId) {
-    toast('Este encargo no tiene una persona vinculada — vinculala desde Editar antes de prestar el faltante', 'err', 4500);
-    return;
-  }
-  const persona = typeof getPersona === 'function' ? getPersona(encargo.personaId) : null;
+  const persona = Personas.obtener(encargo.personaId);
   if (!persona) { toast('No se encontró la persona vinculada a este encargo', 'err'); return; }
 
   const fuentePrestamo = document.getElementById('movenc_faltante_cuenta').value;
@@ -1879,7 +1871,7 @@ function _movimientoEncargoConfirmarPrestarFaltante() {
   //    encargo si existe (nunca duplicar persona, ver prestado.md §6).
   let deudor = Deudas.porPersona('favor', encargo.personaId);
   if (!deudor) {
-    deudor = Deudas.agregar('favor', { id: uid(), nombre: persona.nombre, color: persona.color || '#60b0f0', personaId: persona.id, movimientos: [] });
+    deudor = Deudas.agregar('favor', { id: uid(), personaId: persona.id, movimientos: [] });
   }
   if (!deudor.movimientos) deudor.movimientos = [];
   const grupoId = _autoGrupoIdMovimiento(deudor, fecha);
@@ -1889,7 +1881,7 @@ function _movimientoEncargoConfirmarPrestarFaltante() {
     monto: faltante,
     fecha,
     fuente: fuentePrestamo,
-    nota: `Encargo "${encargo.nombre}": ${desc} (no alcanzaba ${fmt(libre)} del encargo)`,
+    nota: `Encargo "${Personas.nombre(encargo.personaId)}": ${desc} (no alcanzaba ${fmt(libre)} del encargo)`,
     grupoId,
     _encargoOrigenId: encargo.id,
     _encargoOrigenMovimientoId: movimientoEncargoId,
@@ -2103,7 +2095,7 @@ async function eliminarEncargoActual() {
 
   const ok = await confirmarEliminar({
     titulo: 'Eliminar encargo',
-    objeto: `el encargo de ${encargo.nombre}`,
+    objeto: `el encargo de ${Personas.nombre(encargo.personaId)}`,
     detalle: 'Los movimientos que ya pasaron (compras con TC, pagos de deudas, traspasos, etc.) quedan tal cual — eliminar el encargo no revierte nada, solo deja de llevarle el registro a esta persona.'
   });
   if (!ok) return;
@@ -2150,12 +2142,12 @@ function abrirTraspasoEncargo() {
   const libre = encargoLibre(encargo);
   if (libre <= 0) { toast(comprometido > 0 ? 'Toda la plata de este encargo ya está comprometida' : 'El encargo no tiene saldo disponible', 'err'); return; }
 
-  document.getElementById('traspasoEncNombre').textContent = encargo.nombre;
+  document.getElementById('traspasoEncNombre').textContent = Personas.nombre(encargo.personaId);
   document.getElementById('traspasoEncSaldo').textContent = comprometido > 0
     ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
     : fmt(libre);
   document.getElementById('traspaso_monto').value = '';
-  document.getElementById('traspaso_desc').value = 'Sobrante de encargo — ' + encargo.nombre;
+  document.getElementById('traspaso_desc').value = 'Sobrante de encargo — ' + Personas.nombre(encargo.personaId);
   document.getElementById('traspaso_fecha').value = hoy();
   document.getElementById('traspaso_preview').textContent = '';
 
@@ -2289,7 +2281,7 @@ function confirmarTraspasoEncargo() {
     fuente: destino,
     monto,
     fecha,
-    desc: desc + ' (de encargo ' + encargo.nombre + ')',
+    desc: desc + ' (de encargo ' + Personas.nombre(encargo.personaId) + ')',
     _encargoMovimientoId: encargoMovimientoId,
     clase: 'ingreso',
     _esExtraIngreso: true   // regalo recibido = ingreso real (ver _esEntradaEspejoNoIngreso)
@@ -2313,7 +2305,7 @@ function abrirMoverEntreCuentasEncargo() {
   const saldo = encargoSaldo(encargo);
   if (saldo <= 0) { toast('El encargo no tiene saldo disponible', 'err'); return; }
 
-  document.getElementById('moverEncNombre').textContent = encargo.nombre;
+  document.getElementById('moverEncNombre').textContent = Personas.nombre(encargo.personaId);
   document.getElementById('moverEncSaldo').textContent = fmt(saldo);
   document.getElementById('moverenc_monto').value = '';
   document.getElementById('moverenc_fecha').value = hoy();
@@ -2686,18 +2678,18 @@ function abrirTransferenciaEncargo() {
   const otros = (S.encargos||[]).filter(e => e.id !== encargo.id);
   if (!otros.length) { toast('No hay otro encargo al cual transferirle plata', 'err'); return; }
 
-  document.getElementById('transfEncOrigenNombre').textContent = encargo.nombre;
+  document.getElementById('transfEncOrigenNombre').textContent = Personas.nombre(encargo.personaId);
   document.getElementById('transfEncOrigenSaldo').textContent = comprometido > 0
     ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
     : fmt(libre);
   document.getElementById('transfenc_monto').value = '';
-  document.getElementById('transfenc_desc').value = 'Plata para ' + encargo.nombre;
+  document.getElementById('transfenc_desc').value = 'Plata para ' + Personas.nombre(encargo.personaId);
   document.getElementById('transfenc_fecha').value = hoy();
   document.getElementById('transfenc_preview').innerHTML = '';
 
   // Select destino: los demás encargos
   const selDestino = document.getElementById('transfenc_destino');
-  selDestino.innerHTML = html`<option value="">Seleccionar encargo</option>${otros.map(o => html`<option value="${o.id}">${o.nombre}</option>`)}`;
+  selDestino.innerHTML = html`<option value="">Seleccionar encargo</option>${otros.map(o => html`<option value="${o.id}">${Personas.nombre(o.personaId)}</option>`)}`;
 
   // Select origen: de qué cuenta del encargo actual salió (mismo criterio que Traspaso)
   const selOrigen = document.getElementById('transfenc_origen');
@@ -2736,8 +2728,8 @@ function _actualizarTransfEncargoPreview(encargo) {
   const nuevoOrigen = libreOrigen - monto;
   const saldoDestino = encargoSaldo(destino);
   const colorOrigen = nuevoOrigen < 0 ? 'enc-c-red' : 'enc-c-blue';
-  prev.innerHTML = html`<span class="${colorOrigen}">${encargo.nombre} (disponible): ${fmt(libreOrigen)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoOrigen)}</span><br>
-    <span class="enc-c-blue">${destino.nombre}: ${fmt(saldoDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoDestino + monto)}</span>
+  prev.innerHTML = html`<span class="${colorOrigen}">${Personas.nombre(encargo.personaId)} (disponible): ${fmt(libreOrigen)} <i class="fa-solid fa-arrow-right"></i> ${fmt(nuevoOrigen)}</span><br>
+    <span class="enc-c-blue">${Personas.nombre(destino.personaId)}: ${fmt(saldoDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoDestino + monto)}</span>
     ${nuevoOrigen < 0 ? html`<br><span class="enc-aviso-rojo10">Más de lo que el encargo tiene disponible (sin contar lo comprometido)</span>` : ''}`;
 }
 
@@ -2780,7 +2772,7 @@ function confirmarTransferenciaEncargo() {
   encargoOrigen.movimientos.push({
     id: uid(),
     tipo: 'salida',
-    desc: desc + ' a ' + encargoDestino.nombre,
+    desc: desc + ' a ' + Personas.nombre(encargoDestino.personaId),
     monto,
     cuenta: cuentaOrigen,
     fecha,
@@ -2795,7 +2787,7 @@ function confirmarTransferenciaEncargo() {
   encargoDestino.movimientos.push({
     id: uid(),
     tipo: 'entrada',
-    desc: desc + ' desde ' + encargoOrigen.nombre,
+    desc: desc + ' desde ' + Personas.nombre(encargoOrigen.personaId),
     monto,
     cuenta: cuentaFisica,
     fecha,
@@ -2813,7 +2805,7 @@ function confirmarTransferenciaEncargo() {
   refresh();
   closeSheet('transferencia-encargo');
   abrirEncargoDetalle(encargoActualId);
-  toast(`${fmt(monto)} transferidos a ${encargoDestino.nombre}`, 'ok', 3500);
+  toast(`${fmt(monto)} transferidos a ${Personas.nombre(encargoDestino.personaId)}`, 'ok', 3500);
 }
 
 // Listener para el botón confirmar
@@ -2962,7 +2954,7 @@ function abrirCompraConTC() {
   const libre = encargoLibre(encargo);
   if (libre <= 0) { toast(comprometido > 0 ? 'Toda la plata de este encargo ya está comprometida' : 'El encargo no tiene saldo disponible', 'err'); return; }
 
-  document.getElementById('compraTcEncNombre').textContent = encargo.nombre;
+  document.getElementById('compraTcEncNombre').textContent = Personas.nombre(encargo.personaId);
   document.getElementById('compraTcEncSaldo').textContent = comprometido > 0
     ? fmt(libre) + ' disponible (de ' + fmt(saldo) + ', ' + fmt(comprometido) + ' comprometido)'
     : fmt(libre);
@@ -3075,7 +3067,7 @@ function _compraConTcActualizarPreview() {
   const lblDestino = destino ? fuenteLabel(destino) : '';
 
   const lines = [];
-  lines.push(html`<span class="enc-c-red">Encargo ${encargo?encargo.nombre:''}: ${fmt(saldoEncargoCuenta)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoEncargoCuenta - monto)}</span>`);
+  lines.push(html`<span class="enc-c-red">Encargo ${encargo?Personas.nombre(encargo.personaId):''}: ${fmt(saldoEncargoCuenta)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoEncargoCuenta - monto)}</span>`);
   if (destino) lines.push(html`<span class="enc-c-accent">${lblDestino}: ${fmt(saldoDestino)} <i class="fa-solid fa-arrow-right"></i> ${fmt(saldoDestino + monto)}</span>`);
   if (tc) lines.push(html`<span class="enc-c-red">Deuda ${nombreTC}: ${fmt(deudaTC)} <i class="fa-solid fa-arrow-right"></i> ${fmt(deudaTC + tcMonto)}</span>`);
   if (margen > 0) lines.push(html`<span class="enc-c-accent">Diferencial tuyo: +${fmt(margen)}</span>`);
@@ -3160,7 +3152,7 @@ function confirmarCompraConTC() {
     _esTcEncargo: true,
     monto: tcMonto,
     fecha,
-    desc: `TC encargo ${encargo.nombre}: ${desc}`,
+    desc: `TC encargo ${Personas.nombre(encargo.personaId)}: ${desc}`,
     nota: 'Dinero del encargo recibido para pagar la tarjeta de crédito.',
     ts: Date.now()
   });
@@ -3177,7 +3169,7 @@ function confirmarCompraConTC() {
     id: uid(),
     tcId,
     tipo: 'cargo_encargo',
-    desc: `Compra encargo ${encargo.nombre}: ${desc}`,
+    desc: `Compra encargo ${Personas.nombre(encargo.personaId)}: ${desc}`,
     monto: tcMonto,
     fecha,
     nota: nota || 'Cargo de encargo — no es gasto propio',
@@ -3187,7 +3179,7 @@ function confirmarCompraConTC() {
 
   // ── 5. Si hay diferencial, registrar el margen vía el motor común (usa el mismo _encargoMovimientoId para poder revertir)
   if (margen > 0.5) {
-    const movimientoTemp = { desc, fecha, _encargoNombre: encargo.nombre };
+    const movimientoTemp = { desc, fecha, _encargoNombre: Personas.nombre(encargo.personaId) };
     const diferencial = diffAplicar('ctc', movimientoTemp, _encargoMovimientoId);
     if (diferencial) movimientoEncargo.diferencial = diferencial;
   }
@@ -3195,7 +3187,7 @@ function confirmarCompraConTC() {
   // ── 6. Registrar en historial de cambios
   if (window.logCambio) {
     logCambio(
-      `Compra TC encargo ${escHtml(encargo.nombre)}`,
+      `Compra TC encargo ${escHtml(Personas.nombre(encargo.personaId))}`,
       fmt(monto),
       tc ? tc.nombre : tcId,
       'tc_encargo'
@@ -3326,7 +3318,7 @@ Events.registerAll('encargos', {
    lista y en el detalle de un encargo. Ver docs/encargos.md.
 
    Antes vivía en un archivo aparte, cargado más abajo en index.html,
-   por la premisa de que dependía de getPersona()/abrirSelPersona()/
+   por la premisa de que dependía de Personas.obtener()/abrirSelPersona()/
    PERSONA_COLORES/_inyectarPersonaSheets() (definidos en personas.js,
    que cargaba después). Esa premisa no se sostenía contra el código
    real: todas esas llamadas viven DENTRO de funciones (nunca a nivel
@@ -3374,7 +3366,7 @@ function _encargoDetallePersona(encargo) {
     if (chipViejo) chipViejo.remove();
     return;
   }
-  const p = getPersona(encargo.personaId);
+  const p = Personas.obtener(encargo.personaId);
   if (!p) return;
   // Aplicar color de la persona al avatar del detalle
   if (av) {

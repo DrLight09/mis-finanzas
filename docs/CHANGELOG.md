@@ -35,7 +35,7 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ## Menú lateral: icono de Spotify (2026-11-19)
 
-El icono de Spotify del menú lateral (`#lateral-spotify`) pasó de la nota musical al logo de Spotify (círculo con tres ondas), tomado de `icons8-spotify.svg`. Se redibujó como trazo (viewBox 24, `stroke-width` 1.7, extremos redondeados, sin relleno) para que tenga el mismo peso que los demás iconos; el SVG original, de relleno y con líneas de ~0,7 px a 17 px, se habría visto borroso. Solo cambia el menú lateral de PC: el botón «Más» y la barra inferior del celular conservan su icono.
+El icono de Spotify del menú lateral (`#lateral-spotify`) pasó de la nota musical al logo de Spotify (círculo con tres ondas), de `icons8-spotify_1.svg` (viewBox 24, igual que los demás; relleno con `currentColor`, así toma el color de reposo, de hover y de activo como el resto). Un primer intento redibujado como trazo se veía raro y se descartó. El menú lateral muestra los iconos a 17 × 17 px (`.menu-lateral-icono`, `css/pc.css`). Solo cambia el menú lateral de PC: el botón «Más» del celular tiene su propio icono de Spotify (20 × 20, viewBox 64) y no se tocó.
 
 ## Versión PC y celular, parte 20: Mesada como el prototipo (2026-11-19, SW v159)
 

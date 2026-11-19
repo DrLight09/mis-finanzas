@@ -25,10 +25,10 @@ Da una identidad única a cada persona con la que hay relación financiera (fami
 ## 3. Reglas que nunca deben romperse
 
 - **Personas es una libreta de identidad, no una fuente de saldos propia.** Todo lo que se muestra en un perfil (deuda pendiente, encargos activos, estado de Spotify) se calcula en el momento a partir de los datos reales de cada módulo (`S.deudores`, `S.encargos`, `S.misDeudas`, `S.spotify.integrantes`) — Personas nunca guarda un total o un estado por su cuenta que pueda desincronizarse.
-- **No hay dos personas con el mismo nombre** (ignorando mayúsculas, tildes y espacios): `Personas.crear` devuelve la existente en vez de crear otra, y `Personas.editar` rechaza el nombre de otra persona. El selector compartido además ofrece elegir una existente antes de crear una.
-- **Renombrar o cambiar el color de una persona se sincroniza en todos los módulos vinculados en el mismo momento** — lo hace `Personas.editar` recorriendo las relaciones declaradas en personas-core.js (no una lista escrita a mano en la pantalla), así que un módulo nuevo que se declare como relación queda incluido sin tocar `personas.js`.
+- **No hay dos personas con el mismo nombre** (ignorando mayúsculas, tildes y espacios) **entre las no archivadas** (el nombre de una archivada se puede reutilizar): `Personas.crear` devuelve la existente en vez de crear otra, y `Personas.editar` rechaza el nombre de otra persona. El selector compartido además ofrece elegir una existente antes de crear una.
+- **Renombrar o cambiar el color de una persona cambia todos los módulos a la vez, sin sincronizar nada:** los módulos solo guardan `personaId` y leen con `Personas.nombre/color`; `Personas.editar` cambia la persona y listo.
 - **Todo registro con relación a una persona tiene `personaId` válido.** Crear un deudor, encargo o integrante sin pasar por una persona existente rompe el invariante I1: `save()` lo avisa en consola (`window._personasViolaciones`) y la próxima carga lo repara.
-- **Eliminar una persona no es una operación de este módulo.** No existe "borrar persona" acá a propósito (ver §7): su historial financiero vive en otros módulos y son esos módulos los que deciden si algo se puede borrar, no Personas.
+- **Una persona con historial no se borra: se archiva (invariante I5).** `Personas.eliminar` solo borra a una persona **sin ninguna relación** (ni préstamos, ni encargos, ni Spotify, aunque estén en cero). Archivar no toca ningún registro: la persona deja de salir en la lista y en los selectores y sus datos siguen en su módulo. Fusionar junta dos personas en una (ver §5).
 - **El destino de un cobro/pago nunca se decide acá.** Personas no mueve plata ni genera movimientos — es un directorio de identidad; las reglas de dinero (fuente de verdad son los movimientos, TC nunca como destino de entrada, etc.) viven en cada módulo dueño de esos movimientos.
 - **Cerrar cualquier sheet de Personas sin confirmar no debe dejar cambios a medias:** crear o editar una persona son operaciones atómicas (o se guardó, o no se guardó nada) — no hay estados intermedios persistidos.
 
@@ -113,6 +113,18 @@ Se arma una sección por cada relación viva (_PERFIL_SECCIONES: Préstamos, Enc
 Si no tiene actividad en ningún módulo, se muestra un estado vacío
 ```
 
+### Archivar, restaurar, eliminar y fusionar
+
+Desde el final del perfil (`_perfilAcciones`):
+
+- **Archivar / Restaurar** (`Personas.archivar/restaurar`): pone o quita `archivada: true`. Una archivada no sale en la lista (queda el enlace «Ver archivadas (n)»), ni en los selectores (`Personas.activas`), ni en la búsqueda global. Restaurar falla con `duplicado` si otra persona tomó su nombre mientras estuvo archivada.
+- **Eliminar** (`Personas.eliminar`): el botón solo aparece si la persona no tiene ninguna relación; con relaciones devuelve `tiene-relaciones`.
+- **Fusionar** (`Personas.fusionar(origen, destino)`): elige al destino con el selector compartido, muestra qué pasará y pide confirmar. Queda el nombre y el color del destino (el alias y las notas del origen se conservan si el destino no tiene). Por relación:
+  - una relación que solo tiene el origen, o que admite varios registros (Encargos), se reasigna al destino;
+  - una relación `unica` que las dos personas ya tienen se **une** con el `alFusionar.unir` de la relación: Préstamos y Yo debo suman los movimientos y los grupos, y toda referencia a la deuda que desaparece (`deudorId`, `_deudorId`, `miDeudaId`, `_deudaId`, incluidos los destinos de Plata comprometida y las compras de tarjeta) pasa a la que queda; el total pendiente no cambia;
+  - si una relación `unica` no declara `alFusionar` (hoy Spotify: dos integrantes no se mezclan) la fusión se **rechaza antes de tocar nada** con error `conflicto`.
+  - `Personas.puedeFusionar(origen, destino)` dice lo mismo sin modificar nada. No se puede fusionar con una persona archivada.
+
 ### Selector de persona (usado por Encargos, Deudores y Spotify)
 
 ```
@@ -140,7 +152,7 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 ## 7. Decisiones de diseño
 
 - **El nombre y el color viven solo en `S.personas`; los módulos no guardan copia.** Cada módulo guarda `personaId` y lee con `Personas.nombre/color`. Se descartó la copia con resincronización (la tuvimos hasta SW v150) porque duplicaba la fuente de verdad y obligaba a vigilar desfases (I2). Lo único que conserva un nombre es una **foto histórica** a propósito: `spotify.historial`, descripciones del libro de movimientos y Wrapped guardados.
-- **No existe "eliminar persona" en este módulo, a propósito.** Encargos y Spotify sí tienen su propio flujo de "eliminar integrante/encargo", con sus propias reglas sobre qué pasa con el historial (ver `spotify.md §3`, `encargos.md`). Meter un "eliminar persona" acá obligaría a decidir en un solo lugar central qué hacer con la plata y el historial de cada módulo vinculado — una decisión que le corresponde a cada módulo dueño de esos datos, no a la libreta de identidad.
+- **Eliminar solo sin relaciones; con historial, archivar.** Cada módulo sigue siendo dueño de sus datos (Encargos y Spotify tienen su propio «eliminar» con sus reglas), pero la persona ya no queda huérfana de ciclo de vida: sin relaciones se puede borrar, con ellas se archiva, y si hay dos registros de la misma persona se fusionan. El borrado nunca arrastra historial ajeno.
 - **El perfil no cachea ni guarda las estadísticas que muestra.** Se recalculan siempre desde los datos reales de cada módulo al momento de abrir el perfil (mismo principio que atraviesa toda la app: los movimientos son la fuente de verdad, nunca un valor guardado aparte). El costo es recalcular en cada apertura; la ganancia es que nunca puede haber un perfil desincronizado de la plata real.
 - **El selector de persona es un componente compartido, no una copia por módulo.** Encargos, Deudores y Spotify abren el mismo sheet (`abrirSelPersona`) en vez de tener cada uno su propio buscador de personas — mismo criterio que llevó a compartir `crearSplitWidget` entre Encargos y Préstamos (ver `mesada.md §8` para el caso ya documentado de motores compartidos).
 
@@ -152,7 +164,7 @@ Crear una nueva → mismo flujo que "Crear persona nueva" de arriba,
 
 | Función | Qué hace |
 |---|---|
-| `Personas` (js/core/personas-core.js) | API del núcleo: `obtener/nombre/color/lista/buscarPorNombre`, `crear` (sin duplicar), `editar` (nombre/color de la persona, rechaza duplicados), `registrarRelacion`, `verificar` (I1–I4), `huerfanos` |
+| `Personas` (js/core/personas-core.js) | API del núcleo: `obtener/nombre/color/lista/activas/buscarPorNombre`, `crear` (sin duplicar), `editar` (nombre/color, rechaza duplicados), `archivar/restaurar/eliminar`, `puedeFusionar/fusionar`, `registrarRelacion` (con `alFusionar` opcional), `verificar` (I1–I4), `huerfanos` |
 | `_datosPersona(personaId)` | Ayudante local de personas.js (no global), adaptador sobre `Personas.registros`: deudor(es), encargos, misDeudas e integrante de Spotify de una persona, con sus saldos ya calculados |
 | `_renderListaPersonas()` | Pinta la pantalla "Personas": una fila por persona (repara antes cualquier huérfano) |
 | `abrirPerfilPersona(personaId)` | Arma y abre el perfil consolidado recorriendo `Personas.relaciones(id)`: una sección por relación viva |

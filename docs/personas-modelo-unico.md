@@ -10,18 +10,17 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 
 ## 2. Estado actual
 
-**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar`, `verificar` I1–I4, `huerfanos`), fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda salen de `Personas.relaciones(id)`) y fase 3 (nombre y color solo en `S.personas`: ningún módulo guarda copia, un único camino de lectura `Personas.nombre/color`, `S.spotify.integrantes`, `destino.deudorId`, sin ramas «sin personaId»). Todo está en el [`CHANGELOG.md`](./CHANGELOG.md). No hay migración de datos: la app no tiene datos que conservar.
+**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar`, `verificar` I1–I4, `huerfanos`), fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda salen de `Personas.relaciones(id)`) fase 4 (archivar, restaurar, eliminar solo sin relaciones y fusionar con `alFusionar` por relación) y fase 3 (nombre y color solo en `S.personas`: ningún módulo guarda copia, un único camino de lectura `Personas.nombre/color`, `S.spotify.integrantes`, `destino.deudorId`, sin ramas «sin personaId»). Todo está en el [`CHANGELOG.md`](./CHANGELOG.md). No hay migración de datos: la app no tiene datos que conservar.
 
 **Queda, de los problemas originales:**
 
-7. **Eliminar, archivar y fusionar:** sigue sin existir ninguna ruta que quite elementos de `S.personas`. (La parte de «duplicados creados por error» ya se previene: `Personas.crear` y `editar` no permiten nombres repetidos.)
-8. **Campos fantasma:** `alias` y `notas` los documenta `estado.js:76` y los lee la búsqueda global (`busqueda-global.js:220`), pero ninguna pantalla los escribe. Un comentario de Spotify habla de «color/foto» y no hay foto.
+7. **Campos fantasma:** `alias` y `notas` los documenta `estado.js:76` y los lee la búsqueda global (`busqueda-global.js:220`), pero ninguna pantalla los escribe. Un comentario de Spotify habla de «color/foto» y no hay foto.
 
 ### Tabla de dónde vive la gente (para lo que queda)
 
 | Dónde | Estructura | Falta |
 |---|---|---|
-| Libreta central (única fuente de nombre y color) | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn}]` | `archivada?`; escribir `alias`/`notas` desde la hoja de edición |
+| Libreta central (única fuente de nombre y color) | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn, archivada?}]` | escribir `alias`/`notas` desde la hoja de edición |
 | Diferencial / reparto | `partes[].nombre` de texto libre | vincular opcional (ver §4.7) |
 | Mesada | `MESADA_PADRES = ['papa','mama']` fijos | opcional (ver §4.7) |
 
@@ -35,7 +34,7 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 ### 4.1 Datos finales
 
 ```text
-S.personas: [{ id, nombre, color, alias?, notas?, creadoEn, archivada? }]
+S.personas: [{ id, nombre, color, alias?, notas?, creadoEn, archivada? }]   // archivada ya existe
 
 S.deudores:  [{ id, personaId, movimientos, … }]        // sin nombre ni color (ya así)
 S.misDeudas: [{ id, personaId, tasaEA?, movimientos }]  // sin nombre ni color
@@ -50,17 +49,16 @@ plataComprometida destino: { …, deudorId }
 I1–I4 ya se comprueban (`Personas.verificar`). Quedan:
 
 - **I2 (ya definitiva).** `verificar` reporta `copia-guardada` si un registro de una relación tiene `nombre` o `color`. Las **fotos** históricas (`spotify.historial`, descripciones del libro, Wrapped guardados) no son registros de relación y conservan el nombre a propósito.
-- **I3 con archivadas.** Hoy la unicidad de nombre es entre todas las personas; con `archivada` pasa a ser «entre las no archivadas».
-- **I5.** Una persona con relaciones que tengan saldo o historial **no se elimina**: se archiva.
+- **I3 con archivadas** e **I5** (una persona con relaciones no se elimina, se archiva) ya se cumplen: `verificar` vigila I3 solo entre las no archivadas y `eliminar` rechaza a quien tenga relaciones.
 
 ### 4.3 API de `Personas` que falta
 
-- Lectura: `iniciales(id)` (hoy existe un `iniciales` global en `bootstrap.js`), `lista({archivadas})`.
-- Escritura: `archivar(id)`, `eliminar(id)` (solo sin relaciones), `fusionar(origenId, destinoId)`; `editar` con `alias` y `notas`.
+- Lectura: `iniciales(id)` (hoy existe un `iniciales` global en `bootstrap.js`).
+- Escritura: `editar` con `alias` y `notas`.
 
 ### 4.4 Relaciones: lo que falta
 
-Falta `alFusionar(origen, destino)` por relación (qué hacer si ambas personas ya tienen esa relación: `'bloquear'`, `'unir'`…), que usa la fusión de la fase 4. Con eso fusionar, archivar y eliminar son genéricos: recorren las relaciones declaradas.
+Nada: `alFusionar` ya existe (Préstamos y Yo debo se unen; Spotify bloquea). Un módulo nuevo con relación `unica` decide si declara `alFusionar.unir`; sin él, la fusión con alguien que ya tiene esa relación se rechaza.
 
 ### 4.5 Qué ve la persona: lo que falta
 
@@ -79,21 +77,17 @@ Nada pendiente en lista, perfil ni búsqueda.
 
 | Archivo | Cambio pendiente |
 |---|---|
-| `core/personas-core.js` | `archivar`, `eliminar`, `fusionar` (+ `alFusionar` por relación) |
-| `core/persistencia.js` | el aviso por-sesión de `verificar` ya existe; ampliarlo cuando haya archivadas |
-| `modules/personas.js` | fusionar, archivar, eliminar; hoja de edición con `alias`/`notas` |
+| `modules/personas.js` | hoja de edición con `alias`/`notas` |
 | `modules/configuracion.js` | `_validarEstructuraJSON` comprueba referencias (hoy el import solo reconcilia) |
 | `docs/glosario-dominio.md` | revisar términos tras archivar/fusionar |
 
 ## 6. Casos sin cubrir
 
-- Dos deudores de la misma persona (`verificar` lo reporta como I4; falta decidir si se unen sus movimientos o se marca en pantalla).
 - Un destino de Plata comprometida (`deudorId`) que referencia un deudor que ya no existe.
 
 ## 7. Fases que quedan
 
-4. **Ciclo de vida.** Archivar, eliminar, fusionar (con `alFusionar` por módulo).
-5. **Complementos.** Vincular partes del diferencial y la mesada; `alias` y `notas` (o quitarlos del modelo).
+5. **Complementos** (la siguiente). Vincular partes del diferencial y la mesada; `alias` y `notas` (o quitarlos del modelo).
 
 ## 8. Pruebas que faltan
 
@@ -107,12 +101,10 @@ Se asume lo recomendado salvo que se indique otra cosa.
 
 1. **`alias` y `notas`:** ¿se añaden a la hoja de edición (el modelo y la búsqueda ya los esperan; sirven para distinguir homónimos) o se eliminan del modelo? *Recomendado: añadirlos.*
 2. **Nombre en `spotify.historial` al renombrar a la persona:** foto del momento *(recomendado: es un registro histórico)* o nombre vivo.
-3. **Eliminar con historial:** solo archivar *(recomendado)* o permitir borrar con confirmación reasignando a otra persona.
-4. **Dos «me deben» de la misma persona:** se permiten (el modelo lo admite, el selector lo impide) o se unen siempre. *Recomendado: uno por persona (`unica`), porque el deudor ya tiene `grupos` internos.*
-5. **Mesada y diferencial:** entran ya o se dejan como texto libre. *Recomendado: texto libre por ahora.*
+3. **Mesada y diferencial:** entran ya o se dejan como texto libre. *Recomendado: texto libre por ahora.*
 
 ## 10. Riesgos y límites
 
-- Cada fase es verificable con `Personas.verificar()`; las fases 1 a 3 ya están dentro.
-- La fusión automática por nombre puede unir a dos personas distintas con el mismo nombre (dos «Carlos»). `crear` y `editar` ya no permiten repetir un nombre (ignorando mayúsculas, tildes y espacios); los homónimos reales exigen apellido o apodo.
-- Lo hecho hasta ahora (fases 1 a 3) **no** se pudo verificar por completo en el navegador con CSS e íconos reales (no estaban en el adjunto): hay que mirar la lista y el perfil de Personas, sobre todo el bloque «Saldo neto» del perfil, que reutiliza clases existentes (`pe-grid2-mb8`, `pe-celda`).
+- Cada fase es verificable con `Personas.verificar()`; las fases 1 a 4 ya están dentro.
+- Fusionar no se puede deshacer (junta registros y borra a la persona de origen). Por eso pide confirmación explicando qué pasa a quién, y se rechaza antes de tocar nada cuando una relación `unica` no sabe unirse (Spotify). `crear` y `editar` no permiten repetir un nombre entre las no archivadas; los homónimos reales exigen apellido o apodo.
+- Lo hecho hasta ahora (fases 1 a 4) pasa todos los tests y el smoke con el CSS real, pero **no se ha visto en un navegador de verdad**: hay que mirar la lista y el perfil de Personas (bloque «Saldo neto» y los botones nuevos de Fusionar, Archivar/Restaurar y Eliminar, que reutilizan `btn btn-ghost pe-mt10`), y probar a fusionar dos personas con préstamos y a archivar una con saldo.

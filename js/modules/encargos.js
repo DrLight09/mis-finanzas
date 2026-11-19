@@ -516,7 +516,7 @@ function _pintarEncargoDetalle(id) {
       const _miaLbl = arr => (arr||[]).map(r=>fuenteLabel(r.cuenta)+' '+fmt(r.monto)).join(' + ');
       const miaSaleLbl  = esMia ? ((m._miaCuentas && m._miaCuentas.sale.length>1) ? _miaLbl(m._miaCuentas.sale) : fuenteLabel(m._miaCuentaSale)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
       const miaEntraLbl = esMia && m._miaCuentaEntra ? ((m._miaCuentas && m._miaCuentas.entra.length>1) ? _miaLbl(m._miaCuentas.entra) : fuenteLabel(m._miaCuentaEntra)+(m._miaMonto?' '+fmt(m._miaMonto):'')) : '';
-      const origenEncargo = esAbonoPrestamo ? ('Préstamos · ' + ((Deudas.lista('favor').find(x=>x.id===m._deudorId)||{}).nombre||'')) : ('Encargos · '+Personas.nombre(encargo.personaId));
+      const origenEncargo = esAbonoPrestamo ? ('Préstamos · ' + Personas.nombre((Deudas.lista('favor').find(x=>x.id===m._deudorId)||{}).personaId)) : ('Encargos · '+Personas.nombre(encargo.personaId));
       return filaMovimiento({
         clase: 'enc-item ' + (esEntrada?'enc-item-b-ent':esAbonoPrestamo?'enc-item-b-abono':esTcEncargo?'enc-item-b-tc':'enc-item-b-sal'),
         attrs: _encargoAttrs(m,origenEncargo),

@@ -205,6 +205,7 @@
 
     // Personas
     (S.personas||[]).forEach(p => {
+      if(p.archivada) return; // las archivadas no salen en la búsqueda: se encuentran con «Ver archivadas» en Personas
       if((p.nombre||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)||(p.alias||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)||(p.notas||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').includes(q)){
         // Una sola entrada por persona; abre su perfil, que tiene una sección por relación (Préstamos, Encargos, Spotify, Le debo…).
         const relaciones = Personas.relaciones(p.id).map(r => (r.resumen ? r.resumen.tag : r.etiqueta)).join(' · ');

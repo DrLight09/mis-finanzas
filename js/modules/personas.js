@@ -205,16 +205,18 @@ function _renderListaPersonas() {
   if (!body) return;
 
   // Una fila por persona. No hay «sin perfil»: todo registro de un módulo tiene persona (invariante I1 de personas-core.js;
-  // save() avisa si algún código lo rompe).
-  const personas = [...Personas.lista()];
+  // save() avisa si algún código lo rompe). Las archivadas no salen, salvo que se pidan con «Ver archivadas».
+  const todas = Personas.lista();
+  const archivadas = todas.filter(p => p && p.archivada);
+  const personas = [...Personas.activas(), ...(_verArchivadas ? archivadas : [])];
 
   _pintarResumenPersonas();
-  const total = personas.length;
+  const total = Personas.activas().length;
   const pantallaPersonas = document.getElementById('screen-personas');
-  if (pantallaPersonas) pantallaPersonas.dataset.listaVacia = total ? 'no' : 'si'; // PC: sin personas no hay resumen (solo el estado vacío)
+  if (pantallaPersonas) pantallaPersonas.dataset.listaVacia = todas.length ? 'no' : 'si'; // PC: sin personas no hay resumen (solo el estado vacío)
   const conteo = document.getElementById('personas-lista-conteo');
   if (conteo) conteo.textContent = total ? ' · ' + total : '';
-  if (!total) {
+  if (!todas.length) {
     body.innerHTML = '';
     if (empty) empty.style.display = '';
     _sincronizarFichaPersonas();
@@ -244,13 +246,14 @@ function _renderListaPersonas() {
     const subTexto = partesFrag.length
       ? partesConSeparador
       : html`<span class="pe-c-text3">Sin actividad</span>`;
+    const subArchivada = p.archivada ? html`<span class="pe-c-text3">Archivada · </span>` : '';
     const tags = rels.map(r => (r.resumen ? r.resumen.tag : r.etiqueta));
 
     contenido.push(html`<div ${raw(Events.attr('personas:abrirPerfil', p.id))} class="_persona-row-hover pe-fila" data-hover-color="${color}">
       <div class="avatar pe-av-40" style="color:${color};background:${color}18;border-color:${color}33;">${iniciales(p.nombre)}</div>
       <div class="pe-flex1-min0">
         <div class="pe-nombre">${p.nombre}</div>
-        <div class="pe-sub personas-sub-movil">${subTexto}</div>
+        <div class="pe-sub personas-sub-movil">${subArchivada}${subTexto}</div>
         <div class="pe-sub personas-sub-pc">${_relacionPersonaPc(rels)}</div>
       </div>
       <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="2" stroke-linecap="round" class="pe-chev"><polyline points="9 18 15 12 9 6"/></svg>
@@ -258,6 +261,9 @@ function _renderListaPersonas() {
     </div>`);
   });
 
+  if (archivadas.length) {
+    contenido.push(html`<button type="button" class="btn btn-ghost" ${raw(Events.attr('personas:alternarArchivadas'))}>${_verArchivadas ? 'Ocultar archivadas' : 'Ver archivadas (' + archivadas.length + ')'}</button>`);
+  }
   body.innerHTML = html`${contenido}`;
 
   // Hover effect (antes onmouseenter/onmouseleave inline — docs/auditoria-tecnica.md #1).
@@ -272,7 +278,7 @@ function _renderListaPersonas() {
 
 // Actualizar el sub-texto del ítem Personas (ahora en Configuración)
 function _actualizarMasPersonasSub() {
-  const total = Personas.lista().length;
+  const total = Personas.activas().length;
   const txt = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
   // Actualizar en Config
   const cfgSub = document.getElementById('cfg-personas-sub');
@@ -305,7 +311,7 @@ function _selPersonaFiltrar() {
   const q = (document.getElementById('sel-persona-buscar')?.value || '').toLowerCase().trim();
   const lista = document.getElementById('sel-persona-lista');
   if (!lista) return;
-  const todas = S.personas || [];
+  const todas = Personas.activas();
   const excluidas = _selPersonaExcluir ? todas.filter(p => _selPersonaExcluir(p)) : [];
   const personas = todas.filter(p => !(_selPersonaExcluir && _selPersonaExcluir(p)) && (!q || p.nombre.toLowerCase().includes(q)));
   if (!personas.length) {
@@ -484,6 +490,7 @@ function _guardarEditarPersonaGlobal() {
 
 /* ── PERFIL DE PERSONA ─────────────────────────────────────────── */
 let _perfilPersonaId = null;
+let _verArchivadas = false; // la lista de Personas oculta las archivadas hasta que se pidan
 let _fichaAbierta = false;
 // PC (≥900 px): el perfil de una persona es una ficha dentro de la pantalla Personas (lista | ficha); en celular sigue siendo una hoja.
 const _consultaPcPersonas = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
@@ -835,6 +842,19 @@ function _perfilBalanceNeto(rels, neto) {
   </div>`;
 }
 
+// Fusionar, archivar y eliminar: el ciclo de vida de la persona (Personas.fusionar/archivar/eliminar). Eliminar solo aparece si no tiene
+// ninguna relación (con historial se archiva).
+function _perfilAcciones(p, rels) {
+  return html`<div class="pe-mt10">
+    ${p.archivada ? html`<div class="pe-sub pe-c-text3">Archivada: no sale en la lista ni en los selectores. Sus préstamos y encargos siguen en su módulo.</div>` : ''}
+    <button type="button" class="btn btn-ghost pe-mt10" ${raw(Events.attr('personas:fusionar', p.id))}>Fusionar con otra persona…</button>
+    ${p.archivada
+      ? html`<button type="button" class="btn btn-ghost pe-mt10" ${raw(Events.attr('personas:restaurar', p.id))}>Restaurar</button>`
+      : html`<button type="button" class="btn btn-ghost pe-mt10" ${raw(Events.attr('personas:archivar', p.id))}>Archivar</button>`}
+    ${rels.length ? '' : html`<button type="button" class="btn btn-ghost pe-mt10" ${raw(Events.attr('personas:eliminar', p.id))}>Eliminar</button>`}
+  </div>`;
+}
+
 function abrirPerfilPersona(personaId) {
   const p = Personas.obtener(personaId);
   if (!p) return;
@@ -879,6 +899,7 @@ function abrirPerfilPersona(personaId) {
   if (rels.filter(r => r.tieneSaldo).length > 1) contenido.push(_perfilBalanceNeto(rels, Personas.posicionNeta(personaId)));
   rels.forEach(r => contenido.push((_PERFIL_SECCIONES[r.id] || _perfilSeccionGenerica)(datos, r)));
   if (!rels.length) contenido.push(raw(emptyInline('Esta persona no tiene préstamos, encargos ni está en Spotify todavía.')));
+  contenido.push(_perfilAcciones(p, rels));
 
   body.innerHTML = html`${contenido}`;
   if (enFicha) _mostrarFichaPersona();
@@ -890,6 +911,81 @@ function _editarPersonaDesdePerfilSheet() {
   abrirEditarPersonaGlobal(_perfilPersonaId);
   document.getElementById('sheet-perfil-persona').classList.remove('open');
 }
+
+/* ── CICLO DE VIDA: archivar, restaurar, eliminar, fusionar ────── */
+function _trasCambioDePersonas(abrirId) {
+  save(); refresh();
+  if (abrirId && Personas.obtener(abrirId)) _perfilPersonaId = abrirId; else _cerrarFichaPersonas();
+  _renderListaPersonas();
+}
+
+async function _archivarPersona(personaId) {
+  const p = Personas.obtener(personaId);
+  if (!p) return;
+  const ok = await dialogo('Archivar a ' + p.nombre, 'Deja de aparecer en la lista y en los selectores. Sus préstamos, encargos y movimientos no cambian y se siguen viendo en su módulo. La puedes restaurar cuando quieras.', 'Archivar');
+  if (!ok) return;
+  Personas.archivar(personaId);
+  _trasCambioDePersonas(personaId);
+  toast(p.nombre + ' archivado/a', 'ok');
+}
+
+function _restaurarPersona(personaId) {
+  const p = Personas.obtener(personaId);
+  if (!p) return;
+  const r = Personas.restaurar(personaId);
+  if (!r.ok) {
+    toast(r.error === 'duplicado' ? 'Ya hay otra persona llamada «' + r.persona.nombre + '». Cámbiale el nombre a una de las dos antes de restaurar.' : 'No se pudo restaurar', 'err', 4500);
+    return;
+  }
+  _trasCambioDePersonas(personaId);
+  toast(p.nombre + ' restaurado/a', 'ok');
+}
+
+async function _eliminarPersona(personaId) {
+  const p = Personas.obtener(personaId);
+  if (!p) return;
+  if (Personas.relaciones(personaId).length) {
+    await avisarNoSePuede('No se puede eliminar', p.nombre + ' tiene préstamos, encargos o Spotify. Para no perder ese historial, archívala.');
+    return;
+  }
+  const ok = await confirmarEliminar({ titulo: 'Eliminar persona', objeto: 'a ' + p.nombre });
+  if (!ok) return;
+  const r = Personas.eliminar(personaId);
+  if (!r.ok) { toast('No se pudo eliminar', 'err'); return; }
+  _trasCambioDePersonas(null);
+  toast(p.nombre + ' eliminado/a', 'ok');
+}
+
+function _motivoFusion(pf, o, dst) {
+  if (pf.error === 'conflicto') return o.nombre + ' y ' + dst.nombre + ' están las dos en ' + pf.etiqueta + ', y ese módulo no puede mezclar dos registros. Quita a una de las dos de ' + pf.etiqueta + ' y vuelve a intentarlo.';
+  if (pf.error === 'destino-archivada') return dst.nombre + ' está archivada. Restáurala o elige otra persona.';
+  return 'No se pueden fusionar.';
+}
+
+// Elige a la persona con la que se junta (selector compartido), explica qué pasa y, si se confirma, fusiona.
+function _fusionarPersona(origenId) {
+  const o = Personas.obtener(origenId);
+  if (!o) return;
+  abrirSelPersona(async destinoId => {
+    const dst = Personas.obtener(destinoId);
+    if (!dst || destinoId === origenId) return;
+    const pf = Personas.puedeFusionar(origenId, destinoId);
+    if (!pf.ok) { await avisarNoSePuede('No se pueden fusionar', _motivoFusion(pf, o, dst)); return; }
+    const rels = Personas.relaciones(origenId);
+    const detalle = rels.length ? rels.map(r => (r.resumen ? r.resumen.cab : r.etiqueta)).join(', ') : 'su nombre';
+    const ok = await dialogo('Fusionar a ' + o.nombre + ' con ' + dst.nombre,
+      'Todo lo de ' + o.nombre + ' (' + detalle + ') pasa a ' + dst.nombre + ' y ' + o.nombre + ' desaparece. Queda el nombre y el color de ' + dst.nombre + '. Esto no se puede deshacer.', 'Fusionar', true);
+    if (!ok) return;
+    const r = Personas.fusionar(origenId, destinoId);
+    if (!r.ok) { toast('No se pudo fusionar: ' + (r.error === 'conflicto' ? 'conflicto en ' + r.etiqueta : r.error), 'err', 4500); return; }
+    if (typeof _prestadoSoltarSeleccion === 'function') _prestadoSoltarSeleccion();
+    _trasCambioDePersonas(destinoId);
+    toast(o.nombre + ' se fusionó con ' + dst.nombre, 'ok', 3500);
+    abrirPerfilPersona(destinoId);
+  }, 'Fusionar a ' + o.nombre + ' con…', { excluir: p => p.id === origenId });
+}
+
+function _alternarArchivadas() { _verArchivadas = !_verArchivadas; _renderListaPersonas(); }
 
 // _irADeudor() vive en js/modules/prestado.js; _irAEncargo() en js/modules/encargos.js.
 
@@ -1019,6 +1115,11 @@ Events.registerAll('personas', {
   selElegir: _selPersonaElegir,
   selCrearDirecto: _selPersonaCrearDirecto,
   irASpotify: _irASpotify,
+  archivar: _archivarPersona,
+  restaurar: _restaurarPersona,
+  eliminar: _eliminarPersona,
+  fusionar: _fusionarPersona,
+  alternarArchivadas: _alternarArchivadas,
   irAPantalla: pantalla => showScreen(pantalla),
   seleccionarColor: _seleccionarColorPersona,
   pickerAbrir: (el) => { const p = PersonaPicker.de(el && el.dataset && el.dataset.picker); if (p) p.abrir(); },

@@ -33,6 +33,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Personas: ciclo de vida, fase 4 (2026-11-18, SW v152)
+
+- **Archivar y restaurar personas** (`Personas.archivar/restaurar`, campo `archivada`). Una archivada no sale en la lista (hay un enlace «Ver archivadas (n)»), ni en los selectores, ni en la búsqueda global; sus préstamos, encargos y movimientos no cambian. Su nombre se puede reutilizar (I3 pasa a valer solo entre las no archivadas) y restaurar avisa si otra persona lo tomó.
+- **Eliminar solo sin relaciones** (`Personas.eliminar`, invariante I5): con préstamos, encargos o Spotify (aunque estén en cero) se rechaza con `tiene-relaciones` y el botón ni aparece; con historial se archiva.
+- **Fusionar personas** (`Personas.fusionar/puedeFusionar`): lo del origen pasa al destino y el origen desaparece; queda el nombre y el color del destino. Cada relación declara qué hacer si las dos personas ya la tienen (`alFusionar`): dos «me deben» o dos «yo debo» se **unen** (suman movimientos y grupos y todas las referencias a la deuda que desaparece —`deudorId`, `_deudorId`, `miDeudaId`, `_deudaId`, destinos de Plata comprometida, compras de tarjeta— pasan a la que queda; el total pendiente no cambia); dos integrantes de Spotify **bloquean** la fusión antes de tocar nada. Un módulo nuevo sin `alFusionar` también bloquea.
+- **Pantalla Personas:** el final del perfil trae Fusionar con otra persona…, Archivar/Restaurar y Eliminar (solo sin relaciones), cada uno con su confirmación. `prestado.js` suelta la deuda abierta tras una fusión (`_prestadoSoltarSeleccion`).
+- **Dos lectores que se me escaparon en la fase 3** (`tarjetas-credito.js` y `encargos.js` leían `(Deudas.porId(...)||{}).nombre`, que ya no existe y mostraba vacío): corregidos, y un test nuevo busca ese patrón en `js/core` y `js/modules` para que no vuelva.
+- **Pruebas:** `personas-core.test.js` cubre archivar/restaurar/eliminar, fusión (reasignar, unir deudas con sus referencias y total intacto, bloqueo por Spotify, destino archivado, un módulo nuevo con `alFusionar`) y los botones del perfil. Con el CSS real en el proyecto pasa la suite completa.
+
 ## Personas: una sola fuente de nombre y color, fase 3 (2026-11-18, SW v151)
 
 - **Los módulos ya no guardan `nombre` ni `color` de la persona.** `S.deudores`, `S.misDeudas`, `S.encargos` y `S.spotify.integrantes` guardan solo `personaId`; todo lo que se muestra sale de `Personas.nombre(id)` / `Personas.color(id)` (Préstamos, Encargos, Spotify, Inicio, Cuentas, Alcancía, Actividad reciente, Mesada, Plata comprometida, Wrapped y búsqueda global). Renombrar a alguien cambia todos los módulos sin código de sincronización.

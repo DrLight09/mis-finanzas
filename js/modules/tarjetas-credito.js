@@ -994,8 +994,8 @@ function abrirDetalleTCSheet(tcId){
             ? `<i class="fa-solid fa-arrow-down tc-favor-ico"></i>`
             : `<i class="fa-solid fa-hand-holding-dollar tc-favor-ico"></i>`);
         const _origenM=esEncargo?'Encargos':(esDeuda
-          ?('Préstamos · Yo debo · '+((Deudas.porId('contra',m.miDeudaId)||{}).nombre||''))
-          :('Préstamos · '+((Deudas.porId('favor',m.deudorId)||{}).nombre||'')));
+          ?('Préstamos · Yo debo · '+Personas.nombre((Deudas.porId('contra',m.miDeudaId)||{}).personaId))
+          :('Préstamos · '+Personas.nombre((Deudas.porId('favor',m.deudorId)||{}).personaId)));
         return filaMovimiento({
           clase: 'tc-item ' + claseBorde,
           attrs: _tcAttrs(m,_origenM,null),

@@ -33,6 +33,11 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Personas: alias y notas, fase 5 (2026-11-18, SW v153)
+
+- **`alias` y `notas` ya se escriben:** la hoja «Editar persona» tiene los campos «Apodo o alias» y «Notas» (opcionales; vacío los quita) y `Personas.editar` los acepta. El perfil los muestra arriba, el selector de personas también busca por alias y la búsqueda global ya los leía. Sirven para distinguir homónimos.
+- **Decisión:** las partes del diferencial y los padres de la Mesada se quedan como texto libre (la recomendación del plan): no son personas a las que se les presta ni deben plata, y obligar a crear una persona por cada invitado de un gasto compartido añade más fricción que valor. Si algún día se quiere, `Personas.registrarRelacion` ya permite añadirlos sin tocar el núcleo.
+
 ## Personas: ciclo de vida, fase 4 (2026-11-18, SW v152)
 
 - **Archivar y restaurar personas** (`Personas.archivar/restaurar`, campo `archivada`). Una archivada no sale en la lista (hay un enlace «Ver archivadas (n)»), ni en los selectores, ni en la búsqueda global; sus préstamos, encargos y movimientos no cambian. Su nombre se puede reutilizar (I3 pasa a valer solo entre las no archivadas) y restaurar avisa si otra persona lo tomó.

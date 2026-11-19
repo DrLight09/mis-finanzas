@@ -10,17 +10,16 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 
 ## 2. Estado actual
 
-**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar`, `verificar` I1–I4, `huerfanos`), fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda salen de `Personas.relaciones(id)`) fase 4 (archivar, restaurar, eliminar solo sin relaciones y fusionar con `alFusionar` por relación) y fase 3 (nombre y color solo en `S.personas`: ningún módulo guarda copia, un único camino de lectura `Personas.nombre/color`, `S.spotify.integrantes`, `destino.deudorId`, sin ramas «sin personaId»). Todo está en el [`CHANGELOG.md`](./CHANGELOG.md). No hay migración de datos: la app no tiene datos que conservar.
+**Hecho:** fase 1 (`Personas` en el núcleo: lectura, `crear` sin duplicados, `editar`, `verificar` I1–I4, `huerfanos`), fase 2 (cada relación declara `saldo`, `resumen` y `pantalla` en el núcleo; lista, perfil y búsqueda salen de `Personas.relaciones(id)`) fase 5 (`alias` y `notas` editables), fase 4 (archivar, restaurar, eliminar solo sin relaciones y fusionar con `alFusionar` por relación) y fase 3 (nombre y color solo en `S.personas`: ningún módulo guarda copia, un único camino de lectura `Personas.nombre/color`, `S.spotify.integrantes`, `destino.deudorId`, sin ramas «sin personaId»). Todo está en el [`CHANGELOG.md`](./CHANGELOG.md). No hay migración de datos: la app no tiene datos que conservar.
 
 **Queda, de los problemas originales:**
 
-7. **Campos fantasma:** `alias` y `notas` los documenta `estado.js:76` y los lee la búsqueda global (`busqueda-global.js:220`), pero ninguna pantalla los escribe. Un comentario de Spotify habla de «color/foto» y no hay foto.
 
 ### Tabla de dónde vive la gente (para lo que queda)
 
 | Dónde | Estructura | Falta |
 |---|---|---|
-| Libreta central (única fuente de nombre y color) | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn, archivada?}]` | escribir `alias`/`notas` desde la hoja de edición |
+| Libreta central (única fuente de nombre y color) | `S.personas: [{id, nombre, color, alias?, notas?, creadoEn, archivada?}]` | nada |
 | Diferencial / reparto | `partes[].nombre` de texto libre | vincular opcional (ver §4.7) |
 | Mesada | `MESADA_PADRES = ['papa','mama']` fijos | opcional (ver §4.7) |
 
@@ -53,8 +52,7 @@ I1–I4 ya se comprueban (`Personas.verificar`). Quedan:
 
 ### 4.3 API de `Personas` que falta
 
-- Lectura: `iniciales(id)` (hoy existe un `iniciales` global en `bootstrap.js`).
-- Escritura: `editar` con `alias` y `notas`.
+- Lectura: `iniciales(id)` (hoy existe un `iniciales` global en `bootstrap.js`); opcional.
 
 ### 4.4 Relaciones: lo que falta
 
@@ -77,7 +75,6 @@ Nada pendiente en lista, perfil ni búsqueda.
 
 | Archivo | Cambio pendiente |
 |---|---|
-| `modules/personas.js` | hoja de edición con `alias`/`notas` |
 | `modules/configuracion.js` | `_validarEstructuraJSON` comprueba referencias (hoy el import solo reconcilia) |
 | `docs/glosario-dominio.md` | revisar términos tras archivar/fusionar |
 
@@ -87,7 +84,7 @@ Nada pendiente en lista, perfil ni búsqueda.
 
 ## 7. Fases que quedan
 
-5. **Complementos** (la siguiente). Vincular partes del diferencial y la mesada; `alias` y `notas` (o quitarlos del modelo).
+Las cinco fases previstas están hechas. Solo queda lo opcional de §4.7 (vincular partes del diferencial y los padres de la mesada), que se decidió dejar como texto libre.
 
 ## 8. Pruebas que faltan
 
@@ -97,14 +94,13 @@ Nada pendiente en lista, perfil ni búsqueda.
 
 ## 9. Decisiones abiertas
 
-Se asume lo recomendado salvo que se indique otra cosa.
+Decididas con lo recomendado; se reabren solo si tú lo pides.
 
-1. **`alias` y `notas`:** ¿se añaden a la hoja de edición (el modelo y la búsqueda ya los esperan; sirven para distinguir homónimos) o se eliminan del modelo? *Recomendado: añadirlos.*
-2. **Nombre en `spotify.historial` al renombrar a la persona:** foto del momento *(recomendado: es un registro histórico)* o nombre vivo.
-3. **Mesada y diferencial:** entran ya o se dejan como texto libre. *Recomendado: texto libre por ahora.*
+1. **Nombre en `spotify.historial` al renombrar a la persona:** se dejó como foto del momento (es un registro histórico).
+2. **Mesada y diferencial:** entran ya o se dejan como texto libre. *Recomendado: texto libre por ahora.*
 
 ## 10. Riesgos y límites
 
-- Cada fase es verificable con `Personas.verificar()`; las fases 1 a 4 ya están dentro.
+- Cada fase es verificable con `Personas.verificar()`; las cinco fases ya están dentro.
 - Fusionar no se puede deshacer (junta registros y borra a la persona de origen). Por eso pide confirmación explicando qué pasa a quién, y se rechaza antes de tocar nada cuando una relación `unica` no sabe unirse (Spotify). `crear` y `editar` no permiten repetir un nombre entre las no archivadas; los homónimos reales exigen apellido o apodo.
-- Lo hecho hasta ahora (fases 1 a 4) pasa todos los tests y el smoke con el CSS real, pero **no se ha visto en un navegador de verdad**: hay que mirar la lista y el perfil de Personas (bloque «Saldo neto» y los botones nuevos de Fusionar, Archivar/Restaurar y Eliminar, que reutilizan `btn btn-ghost pe-mt10`), y probar a fusionar dos personas con préstamos y a archivar una con saldo.
+- Lo hecho hasta ahora (fases 1 a 5) pasa todos los tests y el smoke con el CSS real, pero **no se ha visto en un navegador de verdad**: hay que mirar la lista y el perfil de Personas (bloque «Saldo neto» y los botones nuevos de Fusionar, Archivar/Restaurar y Eliminar, que reutilizan `btn btn-ghost pe-mt10`), y probar a fusionar dos personas con préstamos y a archivar una con saldo.

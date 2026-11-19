@@ -80,6 +80,16 @@ describe('Personas.editar', () => {
     assert.equal(c.S.personas[0].nombre, 'Ana', 'no se tocó');
     assert.equal(c.Personas.editar('p1', { nombre: 'ANA' }).ok, true);
   });
+  test('alias y notas: se guardan limpios, vacío los quita', () => {
+    const c = base();
+    assert.equal(c.Personas.editar('p1', { alias: '  Anita   la  prima ', notas: 'de Medellín' }).ok, true);
+    assert.equal(c.S.personas[0].alias, 'Anita la prima');
+    assert.equal(c.S.personas[0].notas, 'de Medellín');
+    assert.equal(c.Personas.editar('p1', { color: '#f06868' }).ok, true);
+    assert.equal(c.S.personas[0].alias, 'Anita la prima', 'no tocar el alias lo deja igual');
+    c.Personas.editar('p1', { alias: ' ', notas: '' });
+    assert.equal('alias' in c.S.personas[0] || 'notas' in c.S.personas[0], false);
+  });
   test('nombre vacío o persona inexistente', () => {
     const c = base();
     assert.equal(c.Personas.editar('p1', { nombre: ' ' }).error, 'sin-nombre');
@@ -402,6 +412,14 @@ describe('Perfil y lista de Personas sobre relaciones', () => {
     assert.ok(cuerpo.querySelector('.pe-card-azul'), 'sección Encargos');
     assert.ok(cuerpo.querySelector('.pe-card-rojo'), 'sección Le debo');
     assert.match(cuerpo.textContent, /Saldo neto/);
+  });
+  test('perfil: muestra el alias y las notas de la persona', () => {
+    const e = estado(); e.personas[0].alias = 'Anita'; e.personas[0].notas = 'prima';
+    const app = montar(e);
+    app.abrirPerfilPersona('ana');
+    assert.match(app.document.getElementById('pficha-body').textContent, /«Anita» · prima/);
+    app.abrirPerfilPersona('beto');
+    assert.doesNotMatch(app.document.getElementById('pficha-body').textContent, /«/);
   });
   test('perfil: sin saldo neto si solo hay una relación con saldo, y estado vacío si no hay relaciones', () => {
     const app = montar(estado());

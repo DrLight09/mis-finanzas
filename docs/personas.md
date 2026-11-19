@@ -80,10 +80,10 @@ El callback del módulo que abrió el selector recibe el personaId nuevo
 Ese módulo vincula su propio registro (deudor/encargo/integrante) a ese personaId
 ```
 
-### Editar una persona (nombre o color)
+### Editar una persona (nombre, color, alias y notas)
 
 ```
-Abrir perfil → botón editar → sheet "Editar persona"
+Abrir perfil → botón editar → sheet "Editar persona" (nombre, color, apodo/alias opcional, notas opcionales)
   ↓
 Guardar cambios
   ↓
@@ -91,6 +91,8 @@ Se actualiza S.personas
   ↓
 Personas.editar iguala nombre/color en TODAS las relaciones declaradas:
   deudores, misDeudas, encargos, integrantes de Spotify (y las que se registren)
+  ↓
+(alias y notas se guardan en la persona; vacío los borra; el selector de personas también busca por alias)
   ↓
 Se refresca la lista de Personas y las pantallas de Encargos / Mis deudas
   ↓

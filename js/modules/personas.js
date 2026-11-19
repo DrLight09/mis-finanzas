@@ -150,6 +150,10 @@ function _inyectarPersonaSheets() {
       <div class="sheet-title">Editar persona</div>
       <div class="ig"><label class="il" for="epg_nombre">Nombre</label>
         <input type="text" id="epg_nombre" placeholder="Ej: Papá, Carlos, Mamá..."></div>
+      <div class="ig"><label class="il" for="epg_alias">Apodo o alias (opcional)</label>
+        <input type="text" id="epg_alias" placeholder="Ej: Mami, el flaco…" autocomplete="off"></div>
+      <div class="ig"><label class="il" for="epg_notas">Notas (opcional)</label>
+        <input type="text" id="epg_notas" placeholder="Ej: prima de Medellín, la del trabajo…" autocomplete="off"></div>
       <div class="ig"><div class="il">Color del avatar</div>
         <div class="pe-colores" id="epg_colores"></div>
       </div>
@@ -313,7 +317,7 @@ function _selPersonaFiltrar() {
   if (!lista) return;
   const todas = Personas.activas();
   const excluidas = _selPersonaExcluir ? todas.filter(p => _selPersonaExcluir(p)) : [];
-  const personas = todas.filter(p => !(_selPersonaExcluir && _selPersonaExcluir(p)) && (!q || p.nombre.toLowerCase().includes(q)));
+  const personas = todas.filter(p => !(_selPersonaExcluir && _selPersonaExcluir(p)) && (!q || p.nombre.toLowerCase().includes(q) || (p.alias || '').toLowerCase().includes(q)));
   if (!personas.length) {
     // Lo que escribió coincide exacto con alguien que ya está en esa lista: no tiene sentido ofrecer crearla de nuevo.
     const yaEsta = q && excluidas.find(p => p.nombre.trim().toLowerCase() === q);
@@ -457,6 +461,8 @@ function abrirEditarPersonaGlobal(personaId) {
   _epgColorSel = p.color || PERSONA_COLORES[0];
   _inyectarPersonaSheets();
   document.getElementById('epg_nombre').value = p.nombre;
+  document.getElementById('epg_alias').value = p.alias || '';
+  document.getElementById('epg_notas').value = p.notas || '';
   _renderColorPicker('epg_colores', '_epgColorSel');
   document.getElementById('sheet-editar-persona-global').classList.add('open');
   focusSheetField('epg_nombre');
@@ -469,7 +475,7 @@ function _guardarEditarPersonaGlobal() {
   if (!nombre) { toast('Escribe el nombre', 'err'); return; }
   // Personas.editar cambia la persona y deja iguales las copias de nombre/color de TODAS las relaciones (las declara cada una en
   // personas-core.js): un módulo nuevo no puede quedar fuera de la sincronización por olvido.
-  const r = Personas.editar(p.id, { nombre, color: _epgColorSel });
+  const r = Personas.editar(p.id, { nombre, color: _epgColorSel, alias: document.getElementById('epg_alias').value, notas: document.getElementById('epg_notas').value });
   if (!r.ok) {
     toast(r.error === 'duplicado' ? 'Ya existe «' + r.persona.nombre + '». Usa otro nombre (apellido o apodo).' : 'No se pudo guardar', 'err', 4200);
     return;
@@ -895,6 +901,7 @@ function abrirPerfilPersona(personaId) {
   // volver a escaparlo (verificado contra la implementación real de
   // js/core/html-tag.js, ver auditoria-tecnica.md nota 2026-08-26).
   const contenido = [];
+  if (p.alias || p.notas) contenido.push(html`<div class="pe-sub pe-c-text3">${[p.alias ? '«' + p.alias + '»' : '', p.notas || ''].filter(Boolean).join(' · ')}</div>`);
   const rels = Personas.relaciones(personaId);
   if (rels.filter(r => r.tieneSaldo).length > 1) contenido.push(_perfilBalanceNeto(rels, Personas.posicionNeta(personaId)));
   rels.forEach(r => contenido.push((_PERFIL_SECCIONES[r.id] || _perfilSeccionGenerica)(datos, r)));

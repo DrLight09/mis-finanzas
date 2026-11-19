@@ -168,7 +168,7 @@ const Personas = (() => {
     return { persona: p, creada: true };
   }
 
-  // Cambia nombre y/o color de la persona (los módulos lo leen de aquí, no hay nada que sincronizar). Rechaza un nombre que ya tiene OTRA persona.
+  // Cambia nombre, color, alias y/o notas de la persona (los módulos lo leen de aquí, no hay nada que sincronizar). Rechaza un nombre que ya tiene OTRA persona.
   function editar(id, cambios, d) {
     const est = _d(d);
     const p = obtener(id, est);
@@ -182,6 +182,12 @@ const Personas = (() => {
       p.nombre = n;
     }
     if (c.color !== undefined && c.color) p.color = c.color;
+    // alias (otro nombre con el que la buscas, p. ej. «Mami») y notas (texto libre para distinguirla): vacío = se quita el campo.
+    ['alias', 'notas'].forEach(k => {
+      if (c[k] === undefined) return;
+      const v = String(c[k]).replace(/\s+/g, ' ').trim();
+      if (v) p[k] = v; else delete p[k];
+    });
     return { ok: true, persona: p };
   }
 

@@ -202,6 +202,7 @@ describe('firebase-sync', () => {
   const respaldosSrc = leer('respaldos.js').replace(/^export\s+/gm, ''); // firebase-sync.js importa sus funciones (respaldos automáticos)
   const syncSrc = leer('firebase-sync.js').replace(/^import .*$/gm, '');
   const CODEC = escribir('codec.js', codecSrc);
+  const FUSION = escribir('fusion.js', leer('fusion.js').replace(/^export\s+/gm, '') + '\n' + leer('validar-estado.js').replace(/^export\s+/gm, ''));
   const RESPALDOS = escribir('respaldos.js', respaldosSrc);
   const SYNC = escribir('sync.js', 'const waitFor = () => {};\n' + syncSrc);
   const plano = x => JSON.parse(JSON.stringify(x));
@@ -214,7 +215,7 @@ describe('firebase-sync', () => {
   const gz = txt => 'gz1:' + zlib.gzipSync(txt).toString('base64');
 
   function entorno(estado) {
-    const app = loadApp([CODEC, RESPALDOS, SYNC], { permissive: true });
+    const app = loadApp([CODEC, RESPALDOS, FUSION, SYNC], { permissive: true });
     const dom = createFakeDom();
     app.document = dom.document;
     Object.assign(app.globalThis.document || {}, {});
@@ -293,6 +294,19 @@ describe('firebase-sync', () => {
     const r = await guardar(app);
     assert.equal(escritos.length, 0);
     assert.equal(r && r.reason, 'too-large');
+  });
+
+  test('guardado — un saldo NaN (se guardaría como null sin avisar) NO se escribe y se avisa', async () => {
+    const { app, escritos } = entorno();
+    app._dataLoaded = true;
+    const avisos = []; app.toast = m => avisos.push(m);
+    app.S.cuentas[0].saldo = NaN;
+    const r = await guardar(app);
+    assert.equal(r && r.reason, 'invalid');
+    assert.equal(escritos.length, 0, 'la nube conserva el último estado bueno');
+    assert.ok(avisos.some(m => /datos inválidos/i.test(m)));
+    app.S.cuentas[0].saldo = 5;                         // al corregirlo vuelve a guardar
+    assert.equal((await guardar(app)).ok, true);
   });
 
   test('listener — carga inicial con payload comprimido aplica los datos y habilita el guardado', async () => {
@@ -426,6 +440,7 @@ describe('firebase-sync', () => {
     const e = entornoRev(nubeDoc(1, 3));
     await cargar(e);
     e.almacen.doc = nubeDoc(500, 4, Date.now()); // el otro dispositivo guardó la revisión 4
+    e.app.fusionarEstados = () => { throw new Error('sin fusión'); }; // camino sin fusión (con fusión: pruebas «fusión —» más abajo)
     const avisos = []; e.app.toast = m => avisos.push(m);
     e.app.S.cuentas[0].saldo = 99; // cambio local sobre la revisión 3
     const r = await guardar(e.app);
@@ -464,6 +479,7 @@ describe('firebase-sync', () => {
   test('dos pestañas — la secundaria sin transacción NO pisa a ciegas: con lectura del servidor detecta el conflicto y no escribe', async () => {
     const { a, b, nube } = dosPestanas(true);
     await cargar(a); await cargar(b);
+    for (const x of [a, b]) x.app.fusionarEstados = () => { throw new Error('sin fusión'); };
     a.app.S.cuentas[0].saldo = 500; await guardar(a.app);              // A guarda la revisión 4
     b.app.S.cuentas[0].saldo = 7;
     const r = await guardar(b.app);                                     // B (base 3) ve que la nube ya está en 4
@@ -479,6 +495,7 @@ describe('firebase-sync', () => {
     a.app.toast = m => avisosA.push(m); b.app.toast = m => avisosB.push(m);
     a.app.window = a.app.window || a.app; a.app.window.toast = a.app.toast; a.app.window.dispatchEvent = () => {};
     b.app.window = b.app.window || b.app; b.app.window.toast = b.app.toast; b.app.window.dispatchEvent = () => {};
+    for (const x of [a, b]) x.app.fusionarEstados = () => { throw new Error('sin fusión'); };
     await cargar(a); await cargar(b); await esperar(30); // la primera carga ya terminó: lo que llegue después es «tiempo real»
     a.app.S.cuentas[0].saldo = 500; await guardar(a.app); const docA = nube.doc;   // A: revisión 4
     await esperar(5);
@@ -493,6 +510,57 @@ describe('firebase-sync', () => {
     assert.ok(avisosA.some(m => /otro dispositivo/i.test(m)), 'A avisa (antes divergían en silencio)');
     const copia = await a.app._firebaseConflictoGuardado();
     assert.equal(JSON.parse(copia.payload).cuentas[0].saldo, 500, 'lo que A había escrito queda como copia');
+  });
+
+  // ── Fusión: cambios en cosas distintas hechos a la vez en dos pestañas se UNEN (js/core/fusion.js) ─────────────────────
+  const estadoNube = async (e, nube) => JSON.parse(await e.app.decodificarPayload(nube.doc.payload));
+
+  test('fusión — al guardar con la nube más nueva: los cambios de las dos pestañas (cosas distintas) quedan en la nube', async () => {
+    const { a, b, nube } = dosPestanas(true);
+    await cargar(a); await cargar(b);
+    const avisos = []; b.app.toast = m => avisos.push(m);
+    a.app.S.notaA = 'de A'; await guardar(a.app);                 // A guarda la revisión 4
+    b.app.S.notaB = 'de B';                                       // B (todavía en la revisión 3) cambia OTRA cosa
+    const r = await guardar(b.app);
+    assert.equal(r.reason, 'conflict');
+    assert.equal(b.app.S.notaA, 'de A', 'B recibió lo de A');
+    assert.equal(b.app.S.notaB, 'de B', 'y conserva lo suyo (antes se descartaba)');
+    assert.ok(avisos.some(m => /combinaron/i.test(m)), JSON.stringify(avisos));
+    b.app._firebaseFlushSave();                                   // sube lo combinado
+    await hasta(() => nube.doc.rev === 5);
+    const final = await estadoNube(b, nube);
+    assert.equal(final.notaA, 'de A'); assert.equal(final.notaB, 'de B');
+  });
+
+  test('fusión — en tiempo real: llega lo de otro dispositivo mientras editas otra cosa; se combinan y se sube', async () => {
+    const { a, b, nube } = dosPestanas(true);
+    for (const x of [a, b]) { x.app.window = x.app.window || x.app; x.app.window.toast = () => {}; x.app.window.dispatchEvent = () => {}; }
+    await cargar(a); await cargar(b); await esperar(30);
+    a.app.S.notaA = 'de A'; await guardar(a.app);
+    b.app.S.notaB = 'de B';                                       // edición de B sin guardar todavía
+    entregar(b, nube.doc);                                        // Firestore le entrega a B lo que guardó A
+    await hasta(() => b.app.S.notaA === 'de A');
+    assert.equal(b.app.S.notaB, 'de B', 'lo que B estaba editando no se pierde');
+    b.app._firebaseFlushSave();
+    await hasta(() => nube.doc.rev === 5);
+    const final = await estadoNube(b, nube);
+    assert.equal(final.notaA, 'de A'); assert.equal(final.notaB, 'de B');
+  });
+
+  test('fusión — las dos pestañas escribieron la MISMA revisión sin verse: se combinan en vez de quedar divergentes', async () => {
+    const { a, b, nube } = dosPestanas(false);                    // sin lectura del servidor: la escritura a ciegas es posible
+    for (const x of [a, b]) { x.app.window = x.app.window || x.app; x.app.window.toast = () => {}; x.app.window.dispatchEvent = () => {}; }
+    await cargar(a); await cargar(b); await esperar(30);
+    a.app.S.notaA = 'de A'; await guardar(a.app);
+    await esperar(5);
+    b.app.S.notaB = 'de B'; await guardar(b.app); const docB = nube.doc;
+    entregar(a, docB);                                            // A se entera de lo que escribió B
+    await hasta(() => a.app.S.notaB === 'de B');
+    assert.equal(a.app.S.notaA, 'de A');
+    a.app._firebaseFlushSave();
+    await hasta(() => nube.doc.rev === 5);
+    const final = await estadoNube(a, nube);
+    assert.equal(final.notaA, 'de A'); assert.equal(final.notaB, 'de B');
   });
 
   test('guardado — si llega una versión nueva mientras se prepara el guardado, el payload viejo NO se escribe encima', async () => {

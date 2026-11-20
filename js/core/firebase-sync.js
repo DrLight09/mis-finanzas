@@ -13,6 +13,8 @@
 // changelog/infraestructura-seguridad.md.
 import { waitFor } from './wait-for-module.js';
 import { codificarPayload, decodificarPayload } from './payload-codec.js';
+import { fusionarEstados } from './fusion.js';
+import { validarEstado } from './validar-estado.js';
 import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusionar, leerRespaldo, borrarRespaldosNube, almacenIndexedDB, fechaLocal } from './respaldos.js';
 
   // ── Helpers de estado de sync ──────────────────────────────────────────────
@@ -240,10 +242,33 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     if (donde === 'vacio') return inicio;
     return inicio + ' ATENCIÓN: no se pudo guardar copia de lo que habías cambiado aquí; esos cambios se perdieron.';
   }
+  // Fusiona lo local con lo que hay en la nube (js/core/fusion.js). `baseTxt` = último estado común. Devuelve el texto JSON fusionado o
+  // null si no se puede (sin base, o alguno ilegible): entonces vale lo de siempre, se carga la nube y lo local queda como copia.
+  function _fusionarConNube(baseTxt, localTxt, remotoTxt) {
+    try {
+      if (!baseTxt || !localTxt || !remotoTxt) return null;
+      const base = JSON.parse(baseTxt), merged = fusionarEstados(base, JSON.parse(localTxt), JSON.parse(remotoTxt));
+      if (typeof Libro !== 'undefined' && Libro && typeof Libro.recalcularSaldos === 'function') Libro.recalcularSaldos(merged, base);
+      return JSON.stringify(merged);
+    } catch (e) { console.warn('[Sync] No se pudo fusionar con la nube:', e); return null; }
+  }
+  // Pone el estado fusionado en S (la nube ya se aplicó antes: `_lastSavedPayload` es la nube, así el siguiente guardado ve la diferencia).
+  // `remotoTxt`: el texto de la nube. `_lastSavedPayload` debe ser ESO (no S tal como quedó tras _applyCloudData, que conserva las claves
+  // que solo existían aquí): así el guardado siguiente ve la diferencia y sube lo combinado.
+  function _aplicarFusion(textoFusionado, remotoTxt) {
+    const f = JSON.parse(textoFusionado);
+    Object.keys(window.S).forEach(k => { if (!(k in f)) delete window.S[k]; });
+    Object.assign(window.S, f);
+    window._lastSavedPayload = JSON.stringify(JSON.parse(remotoTxt));
+  }
   async function _resolverConflicto(snapCrudo, payloadLocal) {
-    const donde = await _guardarCopiaConflicto(payloadLocal);
+    const baseTxt = window._lastSavedPayload; // el último estado de la nube que este dispositivo vio, ANTES de aplicar la nueva
+    const donde = await _guardarCopiaConflicto(payloadLocal); // la copia se guarda siempre, aunque después se fusione
     const snap = await _decodificarSnap(snapCrudo);
+    const remotoTxt = snap.exists() ? (snap.data() || {}).payload : null;
+    const fusion = _fusionarConNube(baseTxt, payloadLocal, remotoTxt);
     _applyCloudData(snap);
+    if (fusion) _aplicarFusion(fusion, remotoTxt);
     const tsNube = (snap.data() || {}).updatedAt || 0;
     window._lastSavedAt = tsNube;
     try { localStorage.setItem('mf_lastSavedAt', String(tsNube)); } catch (_) {}
@@ -252,7 +277,12 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     if (typeof refresh === 'function') refresh();
     if (window.applyModulos) applyModulos();
     setSyncStatus('ok', 'Sincronizado con la nube');
-    if (typeof toast === 'function') toast(_textoAvisoConflicto('Otro dispositivo guardó antes que tú: se cargó su versión.', donde), 'warn', donde === 'equipo' || donde === 'vacio' ? 10000 : 14000);
+    if (fusion) {
+      if (typeof toast === 'function') toast('Otro dispositivo guardó al mismo tiempo: se combinaron los cambios de los dos.', 'info', 6000);
+      if (typeof window._firebaseSaveToCloud === 'function') window._firebaseSaveToCloud(); // sube lo combinado
+    } else if (typeof toast === 'function') {
+      toast(_textoAvisoConflicto('Otro dispositivo guardó antes que tú: se cargó su versión.', donde), 'warn', donde === 'equipo' || donde === 'vacio' ? 10000 : 14000);
+    }
   }
   // Copia de seguridad de lo local cuando una actualización de otro dispositivo llega con cambios locales sin guardar.
   // Solo existe la del último recurso (localStorage); la normal está en el almacén de respaldos. Devuelve { ts, payload } con el JSON ya en texto.
@@ -276,6 +306,21 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
         // Se serializa UNA sola vez. Antes se clonaba con JSON.parse(JSON.stringify(S)) para «limpiar los undefined» y se volvía a
         // serializar: el clon costaba ~3/4 del tiempo de este paso y la cadena es idéntica (JSON.stringify ya descarta los undefined, y
         // lo que va a Firestore es una cadena, no un objeto). Una prueba de sync.test.js fija esa igualdad.
+        // Antes de serializar: un número roto (NaN) se guardaría como null sin avisar. Si hay un problema grave no se escribe y la nube
+        // conserva el último estado bueno; lo leve (ids repetidos) solo se deja en consola.
+        const validacion = validarEstado(window.S);
+        window._validacionEstado = validacion;
+        if(validacion.leves.length) console.warn('[Validación] ' + validacion.leves.join('; '));
+        if(!validacion.ok) {
+          console.error('[Validación] el estado tiene problemas graves y NO se guardó:', validacion.graves);
+          setSyncStatus('error', 'Datos inválidos: no se guardó');
+          if(typeof toast === 'function' && !window._avisoValidacionMostrado) {
+            window._avisoValidacionMostrado = true;
+            toast('No se guardó en la nube: hay datos inválidos (' + validacion.graves[0] + '). La nube sigue con el último estado bueno; avisa para revisarlo.', 'err', 12000);
+          }
+          resolve({ok:false, reason:'invalid', problemas:validacion.graves});
+          return;
+        }
         const payloadStr = JSON.stringify(window.S);
         const baseAlSerializar = window._revNube; // la revisión sobre la que se calculó este payload (ver _escribirNube)
         const miSeq = ++_saveSeq; // antes del chequeo "¿cambió algo?": un guardado sin cambios también deja viejo a uno en vuelo
@@ -337,6 +382,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
           resolve({ok:false, reason:'conflict'});
           return;
         }
+        window._baseAntesDeEscribir = window._lastSavedPayload; // el estado común de partida de esta escritura (para fusionar si otro escribió la misma revisión)
         window._lastSavedPayload = payloadStr;
         setSyncStatus('ok', 'Guardado en la nube · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
         resolve({ok:true});
@@ -593,17 +639,24 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
             window._ultimaEscrituraPropia = null;
             _remotoAplicadoTs = Math.max(_remotoAplicadoTs, remoteTs);
             console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
-            // Cambios locales sin guardar que esta actualización va a reemplazar: se guarda una copia antes.
-            // El texto local se toma AHORA (síncrono, antes de _applyCloudData); guardarlo y avisar es asíncrono y no frena la carga.
+            // Cambios locales sin guardar (o, si otro escribió la misma revisión, lo que yo había escrito): en vez de descartarlos se
+            // fusionan con lo de la nube (js/core/fusion.js). Siempre queda además una copia en Respaldos.
+            // El texto local y la base se toman AHORA (síncrono, antes de _applyCloudData); guardar la copia y avisar es asíncrono.
+            let fusion = null, hayLocal = false;
             try {
               const planoLocal = window._lastSavedPayload ? JSON.stringify(window.S) : null;
-              if(planoLocal && (planoLocal !== window._lastSavedPayload || mismaRevOtroEscritor)) {
+              hayLocal = !!planoLocal && (planoLocal !== window._lastSavedPayload || mismaRevOtroEscritor);
+              if(hayLocal) {
+                const baseTxt = mismaRevOtroEscritor ? window._baseAntesDeEscribir : window._lastSavedPayload;
+                fusion = _fusionarConNube(baseTxt, planoLocal, snap.data().payload);
                 _guardarCopiaConflicto(planoLocal).then(donde => {
+                  if(fusion) return; // se fusionó: la copia es solo un seguro y no hace falta avisar de ella
                   if(window.toast) window.toast(_textoAvisoConflicto('Otro dispositivo guardó mientras editabas aquí: se cargó su versión.', donde), 'warn', donde === 'equipo' ? 10000 : 14000);
                 });
               }
             } catch(_){}
             _applyCloudData(snap);
+            if(fusion) { try { _aplicarFusion(fusion, snap.data().payload); } catch(e) { console.warn('[Sync] No se pudo aplicar la fusión:', e); fusion = null; } }
             // Materializar intereses antes de renderizar para minimizar diferencia con Nu
             (window.S&&window.S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
             // Re-renderizar la UI sin reinicializar event listeners
@@ -612,7 +665,8 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
               refresh();
               if(window.applyModulos) applyModulos();
               setSyncStatus('ok', 'Sincronizado · ' + new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'}));
-              if(window.toast) window.toast('Datos actualizados desde otro dispositivo', 'info', 3000);
+              if(window.toast) window.toast(fusion ? 'Se combinaron tus cambios con los de otro dispositivo' : 'Datos actualizados desde otro dispositivo', 'info', fusion ? 5000 : 3000);
+              if(fusion && typeof window._firebaseSaveToCloud === 'function') window._firebaseSaveToCloud(); // sube lo combinado
             }
           }
         }

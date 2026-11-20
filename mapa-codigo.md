@@ -17,7 +17,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cobros.js` | de entrada (defer) | 13 | 1 |
 | `js/core/color-picker.js` | de entrada (defer) | 1 | 0 |
 | `js/core/cuenta-efectos.js` | de entrada (defer) | 3 | 0 |
-| `js/core/cuentas-fuentes.js` | de entrada (defer) | 40 | 3 |
+| `js/core/cuentas-fuentes.js` | de entrada (defer) | 42 | 3 |
 | `js/core/dialogos.js` | de entrada (defer) | 10 | 0 |
 | `js/core/diferencial.js` | de entrada (defer) | 23 | 0 |
 | `js/core/disposicion-pc.js` | de entrada (defer) | 0 | 0 |
@@ -30,6 +30,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/formulario.js` | de entrada (defer) | 1 | 0 |
 | `js/core/formularios-ui.js` | de entrada (defer) | 1 | 0 |
 | `js/core/fuentes-filtro.js` | de entrada (defer) | 1 | 0 |
+| `js/core/fusion.js` | módulo ES — importado por `js/core/firebase-sync.js` | 9 | 0 |
 | `js/core/gastos-fijos-progress.js` | de entrada (defer) | 0 | 0 |
 | `js/core/html-tag.js` | de entrada (defer) | 3 | 0 |
 | `js/core/huella.js` | lazy — grupo `cierre` | 1 | 0 |
@@ -62,6 +63,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/ui.js` | de entrada (defer) | 1 | 0 |
 | `js/core/umbrales.js` | de entrada (defer) | 1 | 0 |
 | `js/core/utilidades-ui.js` | de entrada (defer) | 8 | 2 |
+| `js/core/validar-estado.js` | módulo ES — importado por `js/core/firebase-sync.js` | 1 | 0 |
 | `js/core/wait-for-module.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/pin-bio.js` | 0 | 0 |
 | `js/core/wait-for.js` | de entrada (defer) | 1 | 0 |
 | `js/core/wrapped-gate.js` | de entrada (defer) | 9 | 2 |
@@ -144,7 +146,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_buildFuentesOpts`, `_clasePorCuenta`, `_cuentasArr`, `_fuenteHuerfana`, `_libroPata`, `_listaFuentes`, `_luminancia`, `ajustarSaldoCuenta`, `asegurarEfectivo`, `cajitasDeCuenta`, `colorCuenta`, `colorLegible`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `descontarFuente`, `esCuentaAhorro`, `esCuentaFija`, `esFuenteCuenta`, `Fuente`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteHtml`, `fuenteLabel`, `fuenteTexto`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getSaldoFuente`, `idDeFuenteCuenta`, `Libro`, `nombreCuenta`, `opcionesCuenta`, `Plata`, `poblarFuente`, `saldoCuentas`, `sumarFuente`
+**Funciones:** `_buildFuentesOpts`, `_clasePorCuenta`, `_cuentasArr`, `_fijarSaldoReconciliado`, `_fuenteHuerfana`, `_libroPata`, `_listaFuentes`, `_luminancia`, `ajustarSaldoCuenta`, `asegurarEfectivo`, `cajitasDeCuenta`, `colorCuenta`, `colorLegible`, `cuentaDeCajita`, `cuentasActivas`, `cuentasAhorro`, `cuentasConSaldo`, `cuentasTodas`, `descontarFuente`, `esCuentaAhorro`, `esCuentaFija`, `esFuenteCuenta`, `Fuente`, `fuenteBadgeClass`, `fuenteDeCuenta`, `fuenteHtml`, `fuenteLabel`, `fuenteTexto`, `getCuenta`, `getCuentaDeFuente`, `getFuentes`, `getFuentesSinTC`, `getSaldoFuente`, `idDeFuenteCuenta`, `Libro`, `nombreCuenta`, `opcionesCuenta`, `Plata`, `poblarFuente`, `redondearCentavos`, `saldoCuentas`, `sumarFuente`
 
 **Globales:** `CuentaPantallas`, `FUENTE_CUENTA_PREFIJO`, `TIPOS_CUENTA`
 
@@ -223,6 +225,12 @@ Carga: de entrada (defer)
 Carga: de entrada (defer)
 
 **Funciones:** `FuentesFiltro`
+
+### `js/core/fusion.js`
+
+Carga: módulo ES — importado por `js/core/firebase-sync.js`
+
+**Funciones:** `ADITIVOS_POR_RUTA`, `clon`, `conId`, `esObjeto`, `fusionarConjunto`, `fusionarListaConId`, `fusionarRegistro`, `fusionarValor`, `igual`
 
 ### `js/core/gastos-fijos-progress.js`
 
@@ -427,6 +435,12 @@ Carga: de entrada (defer)
 **Globales:** `ICONO_VACIO_CUENTAS`, `SIN_DATO`
 
 **Asigna a `window`:** `_locallyModified`
+
+### `js/core/validar-estado.js`
+
+Carga: módulo ES — importado por `js/core/firebase-sync.js`
+
+**Funciones:** `esRegistro`
 
 ### `js/core/wait-for-module.js`
 
@@ -735,6 +749,7 @@ Ninguno.
 | `_fechaCorta` | `js/modules/inicio.js` |
 | `_fechaSafe` | `js/core/dialogos.js` |
 | `_fechasCambioEncargoEnCajita` | `js/core/nu-calc.js` |
+| `_fijarSaldoReconciliado` | `js/core/cuentas-fuentes.js` |
 | `_fmtMeses` | `js/modules/inicio.js` |
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteHuerfana` | `js/core/cuentas-fuentes.js` |
@@ -1205,6 +1220,7 @@ Ninguno.
 | `addGastoFijo` | `js/modules/gastos.js` |
 | `addGastoVar` | `js/modules/gastos.js` |
 | `addSpotify` | `js/modules/spotify.js` |
+| `ADITIVOS_POR_RUTA` | `js/core/fusion.js` |
 | `agregarCat` | `js/modules/configuracion.js` |
 | `ahorroAplicarTasaEscrita` | `js/core/nu-calc.js` |
 | `ahorroTasaConfigurada` | `js/core/nu-calc.js` |
@@ -1268,6 +1284,7 @@ Ninguno.
 | `CLASES` | `js/core/respaldos.js` |
 | `CLASES_MOVIMIENTO` | `js/core/ingresos.js` |
 | `clickMesDot` | `js/modules/mesada.js` |
+| `clon` | `js/core/fusion.js` |
 | `closeSheet` | `js/core/navegacion.js` |
 | `closeSwipeSheet` | `js/modules/alcancia.js` |
 | `COBRO_MES_RE` | `js/core/cobros.js` |
@@ -1312,6 +1329,7 @@ Ninguno.
 | `confirmarTransferenciaEncargo` | `js/modules/encargos.js` |
 | `confirmarTransferir` | `js/modules/cuentas.js` |
 | `confirmarTraspasoEncargo` | `js/modules/encargos.js` |
+| `conId` | `js/core/fusion.js` |
 | `corregirChequeoNu` | `js/modules/nu.js` |
 | `crearCuenta` | `js/modules/cuentas.js` |
 | `crearEncargo` | `js/modules/encargos.js` |
@@ -1397,6 +1415,8 @@ Ninguno.
 | `esCuentaAhorro` | `js/core/cuentas-fuentes.js` |
 | `esCuentaFija` | `js/core/cuentas-fuentes.js` |
 | `esFuenteCuenta` | `js/core/cuentas-fuentes.js` |
+| `esObjeto` | `js/core/fusion.js` |
+| `esRegistro` | `js/core/validar-estado.js` |
 | `Events` | `js/core/events.js` |
 | `exportarCSV` | `js/modules/configuracion.js` |
 | `exportarJSON` | `js/modules/configuracion.js` |
@@ -1424,6 +1444,10 @@ Ninguno.
 | `fuenteLabel` | `js/core/cuentas-fuentes.js` |
 | `FuentesFiltro` | `js/core/fuentes-filtro.js` |
 | `fuenteTexto` | `js/core/cuentas-fuentes.js` |
+| `fusionarConjunto` | `js/core/fusion.js` |
+| `fusionarListaConId` | `js/core/fusion.js` |
+| `fusionarRegistro` | `js/core/fusion.js` |
+| `fusionarValor` | `js/core/fusion.js` |
 | `gastosMes` | `js/core/ingresos.js` |
 | `getAperturaMovimiento` | `js/modules/cuentas.js` |
 | `getCajitaNombre` | `js/core/nu-calc.js` |
@@ -1465,6 +1489,7 @@ Ninguno.
 | `ICONO_VACIO_CUENTAS` | `js/core/utilidades-ui.js` |
 | `ICONOS_CUENTA` | `js/modules/cuentas.js` |
 | `idDeFuenteCuenta` | `js/core/cuentas-fuentes.js` |
+| `igual` | `js/core/fusion.js` |
 | `importarJSON` | `js/modules/configuracion.js` |
 | `ingresoFijoEsperadoEn` | `js/core/cobros.js` |
 | `ingresoFijoEstadoMes` | `js/core/cobros.js` |
@@ -1552,6 +1577,7 @@ Ninguno.
 | `raw` | `js/core/html-tag.js` |
 | `reactivarCuenta` | `js/modules/cuentas.js` |
 | `recalcularMontoBaseHistorial` | `js/core/patrimonio.js` |
+| `redondearCentavos` | `js/core/cuentas-fuentes.js` |
 | `Refresh` | `js/core/refresh.js` |
 | `refresh` | `js/core/refresh.js` |
 | `registrarEntradaConApertura` | `js/modules/cuentas.js` |

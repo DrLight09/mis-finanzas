@@ -198,6 +198,7 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
   const escribir = (nombre, codigo) => { const p = path.join(TMP, nombre); fs.writeFileSync(p, codigo); return p; };
   const CODEC = escribir('codec.js', leer('payload-codec.js').replace(/^export\s+/gm, ''));
   const RESPALDOS = escribir('respaldos.js', leer('respaldos.js').replace(/^export\s+/gm, ''));
+  const FUSION = escribir('fusion.js', leer('fusion.js').replace(/^export\s+/gm, '') + '\n' + leer('validar-estado.js').replace(/^export\s+/gm, ''));
   const SYNC = escribir('sync.js', 'const waitFor = () => {};\n' + leer('firebase-sync.js').replace(/^import .*$/gm, ''));
   const guardar = app => { const p = app._firebaseSaveToCloud(); app._firebaseFlushSave(); return p; };
   let R;
@@ -205,7 +206,7 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
 
   // Una app cargada con la nube simulada. `nubeInicial`: lo que ya hay en usuarios/u1/data/finanzas.
   async function entorno(nubeInicial, { denegarRespaldos = false } = {}) {
-    const app = loadApp([CODEC, RESPALDOS, SYNC], { permissive: true });
+    const app = loadApp([CODEC, RESPALDOS, FUSION, SYNC], { permissive: true });
     app.document = createFakeDom().document;
     Object.assign(app, { CompressionStream, DecompressionStream, Blob, Response, btoa, atob, TextEncoder, Uint8Array });
     const nube = crearNube(nubeInicial ? { [PRINCIPAL]: nubeInicial } : {});
@@ -344,7 +345,11 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
     assert.ok(e.app._firebaseRespaldos.estado().ultimo, 'recuerda cuándo se creó el último');
   });
   // ── Copia de lo local cuando otro dispositivo guardó antes (conflicto) ──
+  // Estos tests cubren el camino SIN fusión (lo local se descarta y queda como copia): la fusión se apaga a propósito; con fusión
+  // (lo normal) los cambios se combinan y están en tests/sesion-y-despliegue.test.js y tests/fusion.test.js.
+  const sinFusion = e => { e.app.fusionarEstados = () => { throw new Error('fusión no disponible'); }; };
   const conflictoPorGuardado = async (e, opciones = {}) => {
+    sinFusion(e);
     e.nube.docs.set(PRINCIPAL, doc0(500, 4));        // el otro dispositivo guardó la revisión 4
     e.app.S.cuentas[0].saldo = 99;                   // cambio local sobre la revisión 3
     const r = await guardar(e.app);
@@ -387,6 +392,7 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
 
   test('conflicto en tiempo real (otro dispositivo guarda mientras editas): copia en el equipo y aviso, sin frenar la carga de lo nuevo', async () => {
     const e = await entorno(doc0(1, 3));
+    sinFusion(e);
     e.app.S.cuentas[0].saldo = 77;                    // edición local sin guardar
     e.nube.docs.set(PRINCIPAL, doc0(500, 4));
     e.listeners.next({ exists: () => true, data: () => e.nube.docs.get(PRINCIPAL), metadata: { fromCache: false, hasPendingWrites: false } });

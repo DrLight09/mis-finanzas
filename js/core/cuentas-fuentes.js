@@ -163,6 +163,10 @@ function saldoCuentas(opts){return cuentasConSaldo(opts).reduce((a,c)=>a+(c.sald
    Entrada: { id, fecha, cuenta, monto (con signo), tipo, desc?, origen:{modulo, ref?, rev?} }
      tipo: 'apertura' | 'movimiento' | 'reversion' | 'rendimiento' | 'ajuste' | 'cdt'
    Documentación: libro-de-movimientos.md. */
+// El dinero se guarda con 2 decimales como máximo: sumar y restar decimales binarios (0,1 + 0,2) deja residuos como 0,30000000000000004 que
+// se acumulan y acaban descuadrando el saldo contra el libro. Todo monto que entra a un saldo o al libro pasa por aquí (puerta única).
+// Los pesos van en enteros; los 2 decimales cubren los intereses.
+function redondearCentavos(x){return Math.round((Number(x)||0)*100)/100;}
 const Libro = (() => {
   const TOL = 0.01; // diferencia máxima tolerada entre el saldo guardado y el libro
   let _seq = 0, _ctx = null;
@@ -195,6 +199,7 @@ const Libro = (() => {
 
   // Añade una entrada. `o`: { tipo, desc, origen, fecha }. Devuelve su id (o null si la cuenta no tiene saldo en el libro).
   function registrar(cuenta, monto, o, estado) {
+    monto = redondearCentavos(monto);
     if (!esCuenta(cuenta) || !monto) return null;
     const estadoActual = estado || S; if (!Array.isArray(estadoActual.libro)) estadoActual.libro = [];
     o = o || {};
@@ -204,7 +209,7 @@ const Libro = (() => {
       const mes = fecha.slice(0, 7);
       for (let i = estadoActual.libro.length - 1, n = 0; i >= 0 && n < 400; i--, n++) {
         const l = estadoActual.libro[i];
-        if (l && l.cuenta === cuenta && l.tipo === 'rendimiento' && String(l.fecha).slice(0, 7) === mes) { l.monto += monto; if (fecha > l.fecha) l.fecha = fecha; return l.id; }
+        if (l && l.cuenta === cuenta && l.tipo === 'rendimiento' && String(l.fecha).slice(0, 7) === mes) { l.monto = redondearCentavos(l.monto + monto); if (fecha > l.fecha) l.fecha = fecha; return l.id; }
       }
     }
     const registro = { id: _id(), fecha, cuenta, monto, tipo };
@@ -222,6 +227,25 @@ const Libro = (() => {
     const descuadres = filas.filter(f => Math.abs(f.diferencial) >= TOL);
     return { ok: descuadres.length === 0, filas, descuadres };
   }
+  // Tras fusionar el estado de dos dispositivos (js/core/fusion.js) el saldo de una cuenta puede quedar mal (los dos lo cambiaron: la
+  // fusión elige un valor, pero lo correcto es la suma de TODAS las entradas del libro de los dos). Se recalcula SOLO donde la base
+  // (el estado común de partida) ya cuadraba con su libro: en una cuenta que ya venía descuadrada no se inventa un saldo.
+  // Devuelve las cuentas cuyo saldo cambió.
+  function recalcularSaldos(estado, base) {
+    const hecho = [];
+    const suma = e => { const s = {}; _arr(e.libro).forEach(l => { if (l) s[l.cuenta] = (s[l.cuenta] || 0) + (l.monto || 0); }); return s; };
+    const cu = _cuentasDe(estado), cb = _cuentasDe(base || {}), sm = suma(estado), sb = suma(base || {});
+    const objeto = {};
+    _arr(estado.cuentas).forEach(c => { if (c && c.id) objeto[FUENTE_CUENTA_PREFIJO + c.id] = c; });
+    _arr(estado.cajitas).forEach(c => { if (c && c.id) objeto['cajita:' + c.id] = c; });
+    Object.keys(cu).forEach(k => {
+      const enBase = cb[k];
+      if (enBase && Math.abs(enBase.saldo - (sb[k] || 0)) >= TOL) return;   // ya venía descuadrada
+      const bueno = sm[k] || 0;
+      if (Math.abs((objeto[k].saldo || 0) - bueno) >= TOL) { _fijarSaldoReconciliado(objeto[k], bueno); hecho.push(k); }
+    });
+    return hecho;
+  }
   const saldo = (cuenta, estado) => _arr((estado || S).libro).reduce((a, l) => (l && l.cuenta === cuenta ? a + (l.monto || 0) : a), 0);
 
   // Entradas que NINGÚN registro de módulo representa (no tienen fila propia en el historial de una cuenta): intereses de Nu,
@@ -230,7 +254,7 @@ const Libro = (() => {
     return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt'));
   }
 
-  return { esCuenta, registrar, origen, conOrigen, verificar, entradasVisibles, saldo, TOL };
+  return { esCuenta, registrar, origen, conOrigen, verificar, recalcularSaldos, entradasVisibles, saldo, TOL };
 })();
 if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen como ctx.Libro
 
@@ -246,7 +270,8 @@ const _libroPata = (fuente, monto, opts) => Libro.registrar(fuente, monto, opts)
 function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
   const c=Fuente.esCajita(fuente)?(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]):getCuentaDeFuente(fuente);
   if(!c||esCuentaAhorro(c))return 0;
-  const delta=nuevoSaldo-(c.saldo||0);
+  nuevoSaldo=redondearCentavos(nuevoSaldo);
+  const delta=redondearCentavos(nuevoSaldo-(c.saldo||0));
   c.saldo=nuevoSaldo;
   if(Math.abs(delta)>1e-9)_libroPata(fuente,delta,opts);
   return delta;
@@ -255,6 +280,7 @@ function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
 // refleja exactamente lo restado, aunque quede negativo — los selectores ya solo ofrecen cuentas con saldo
 // suficiente, así que un negativo indica un movimiento mal registrado y se ve en vez de esconderse.
 function descontarFuente(fuente,monto,opts){
+  monto=redondearCentavos(monto);
   if(!fuente||!monto)return false;
   if(fuente==='ganancia'){
     // Plata virtual: no salió de ninguna cuenta real, es ganancia futura
@@ -262,7 +288,7 @@ function descontarFuente(fuente,monto,opts){
   }
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)-monto;_libroPata(fuente,-monto,opts);return true;}
+    if(c&&!esCuentaAhorro(c)){c.saldo=redondearCentavos((c.saldo||0)-monto);_libroPata(fuente,-monto,opts);return true;}
   } else if(Fuente.esCajita(fuente)){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -277,7 +303,7 @@ function descontarFuente(fuente,monto,opts){
       // el interés de ese día hasta que se visite Cuentas) en vez de tumbar
       // el gasto/movimiento completo con un ReferenceError.
       if(typeof materializarIntereses==='function') materializarIntereses(c);
-      c.saldo=(c.saldo||0)-monto;
+      c.saldo=redondearCentavos((c.saldo||0)-monto);
       _libroPata(fuente,-monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
       return true;
@@ -291,17 +317,18 @@ function descontarFuente(fuente,monto,opts){
   return _fuenteHuerfana(fuente);
 }
 function sumarFuente(fuente,monto,opts){
+  monto=redondearCentavos(monto);
   if(!fuente||!monto)return false;
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c&&!esCuentaAhorro(c)){c.saldo=(c.saldo||0)+monto;_libroPata(fuente,monto,opts);return true;}
+    if(c&&!esCuentaAhorro(c)){c.saldo=redondearCentavos((c.saldo||0)+monto);_libroPata(fuente,monto,opts);return true;}
   } else if(Fuente.esCajita(fuente)){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c){
       // Ver nota equivalente en descontarFuente() más arriba.
       if(typeof materializarIntereses==='function') materializarIntereses(c);
-      c.saldo=(c.saldo||0)+monto;
+      c.saldo=redondearCentavos((c.saldo||0)+monto);
       _libroPata(fuente,monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
       return true;
@@ -427,6 +454,10 @@ if(typeof window!=='undefined')window.Plata=Plata;
 // Lista de cuentas que se pueden elegir como origen/destino: las cajitas de cada cuenta de ahorro activa, las demás cuentas
 // activas (en el orden en que se crearon) y, si incluirTC, las tarjetas activas. Las archivadas no se ofrecen. getFuentes() y
 // getFuentesSinTC() son la misma lista, con y sin TC.
+// Parte de la puerta única: la ÚNICA asignación de saldo que no lleva entrada de libro, porque el saldo se iguala a la suma del libro que
+// ya tiene todas las entradas (Libro.recalcularSaldos, tras fusionar el estado de dos dispositivos). No usar para nada más.
+function _fijarSaldoReconciliado(cuentaOCajita,saldoDelLibro){cuentaOCajita.saldo=saldoDelLibro;}
+
 function _listaFuentes(incluirTC){
   const arr=[];
   const activas=cuentasActivas();

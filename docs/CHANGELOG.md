@@ -35,6 +35,20 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-20 — Validador de forma del estado y dinero a centavos
+- `js/core/validar-estado.js` (`validarEstado`, módulo puro): antes de escribir en la nube comprueba que las listas sean listas y que `monto`/`saldo`/`deuda` sean números finitos. Un NaN se guardaría como `null` sin avisar. Si hay un problema grave NO se escribe (la nube conserva el último estado bueno), el estado de sincronización pasa a error y se avisa una vez; los ids repetidos solo se dejan en consola (`window._validacionEstado`).
+- Puerta única de saldos: todo monto que entra a un saldo o al libro se redondea a 2 decimales (`redondearCentavos`), también el saldo resultante. Evita residuos binarios (0,1 + 0,2) que se acumulaban contra el libro. Los pesos siguen en enteros.
+- Tests: `tests/validar-estado.test.js` (8) y 1 en `tests/sesion-y-despliegue.test.js`.
+
+## 2026-11-20 — Fusión de tres vías: dos dispositivos que cambian cosas distintas ya no se pisan
+- Antes: si dos dispositivos o pestañas guardaban a la vez, ganaba el último y lo del otro se descartaba (quedaba solo una copia en Respaldos).
+- Ahora `js/core/fusion.js` (`fusionarEstados(base, local, remoto)`, módulo puro) une los dos cambios cuando no tocan lo mismo. La base es el último estado de la nube que el dispositivo vio (`_lastSavedPayload`; `_baseAntesDeEscribir` si dos escribieron la misma revisión). Sin marcas de borrado ni horas por registro: lo que estaba en la base y falta en un lado se borró en ese lado.
+- Reglas: objetos por clave; listas con `id` por registro (alta se conserva; baja sin tocar en el otro lado se borra; baja y editado se conserva lo editado); listas sin `id` como conjuntos; el monto de una entrada del libro que crece en el sitio (intereses) suma los dos aumentos; choque real sobre el mismo valor: gana el local.
+- `Libro.recalcularSaldos(estado, base)` vuelve a dejar el saldo de cada cuenta igual a la suma del libro tras fusionar (solo donde la base ya cuadraba).
+- Se usa en los tres caminos: guardado con la nube más nueva (`_resolverConflicto`), actualización en tiempo real con cambios sin guardar, y dos escrituras de la misma revisión. Tras fusionar se sube lo combinado. La copia en Respaldos (`conflicto`) se sigue guardando como seguro; si no hay base o falla la fusión, vale el comportamiento anterior (se carga la nube y lo local queda como copia).
+- Corrección: el nombre de la función exportada es `fusionarEstados` porque `respaldos.js` ya exporta `fusionar` (dos importaciones con el mismo nombre habrían roto el módulo en el navegador); un test lo vigila.
+- Tests: `tests/fusion.test.js` (18) y 3 de dos pestañas en `tests/sesion-y-despliegue.test.js`.
+
 ## 2026-11-20 — Dos pestañas ya no divergen en silencio (sync)
 - Caso real: dos pestañas guardando a la vez terminaban con datos distintos, sin aviso y ambas en «Sincronizado»; luego la pestaña vieja, al guardar, reemplazaba los datos nuevos en la nube y en las demás.
 - Causa probable: si la transacción de Firestore respondía «sin conexión» (también ocurre en línea, p. ej. en una pestaña secundaria), el guardado caía a `setDoc` sin comparar la revisión. Ahora primero lee la revisión directo del servidor (`getDocFromServer`) y compara; solo si de verdad no hay red se encola.

@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Descargar el repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Instalar Node
         uses: actions/setup-node@v5
@@ -63,7 +63,7 @@ jobs:
       url: ${{ steps.despliegue.outputs.page_url }}
     steps:
       - name: Descargar el repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Instalar Node
         uses: actions/setup-node@v5

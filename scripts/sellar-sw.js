@@ -2,18 +2,17 @@
 /* ═══════════════════════════════════════════════════════════════
    scripts/sellar-sw.js — sella el Service Worker con una huella del contenido desplegable
 
-   Problema que resuelve (revisión de mejoras, A10: docs/changelog/cronologico-2026-11.md): `VERSION` en sw.js se sube a mano. Si se olvida, el navegador conserva la
-   caché vieja y sirve los .js anteriores por «stale-while-revalidate» sin avisar. Ahora el nombre de la caché es
-   `${VERSION}-${BUILD}`, y BUILD es un hash (SHA-256, 12 caracteres) de los archivos que se despliegan: cualquier cambio en
-   index.html, css/, js/, manifest o icons/ cambia BUILD → el SW nuevo se instala y borra la caché anterior, aunque se olvide subir VERSION.
-   VERSION se sigue subiendo a propósito (es el número que se lee en el CHANGELOG); BUILD es la red de seguridad.
+   Se corre EN EL DESPLIEGUE, sobre la carpeta dist/ (scripts/preparar-despliegue.js → `npm run build`), no sobre el repo: el sw.js del
+   repo queda con BUILD='dev' y PRECACHE vacío, así que nunca puede quedar con un sello viejo ni hay número de versión que subir a mano.
+   El nombre de la caché es `mis-finanzas-v-${BUILD}` y BUILD es un hash (SHA-256, 12 caracteres) de los archivos que se despliegan:
+   cualquier cambio en index.html, css/, js/, manifest o icons/ cambia BUILD → el SW nuevo se instala y borra la caché anterior.
    Además escribe en sw.js el bloque `// <PRECACHE> … // </PRECACHE>` con TODOS los archivos desplegables: el SW los baja juntos al
    instalarse (si falta uno, la versión nueva no se instala y sigue la anterior) y los sirve de esa misma caché.
 
-   Uso (desde la raíz del repo):
-     node scripts/sellar-sw.js            → calcula la huella y la escribe en sw.js (línea `const BUILD = '…'`)
-     node scripts/sellar-sw.js --check    → no escribe; sale con código 1 si sw.js no coincide con los archivos
-                                            (lo corre `npm test`, tests/sesion-y-despliegue.test.js)
+   Uso:
+     node scripts/sellar-sw.js <carpeta>          → calcula la huella y la escribe en <carpeta>/sw.js (línea `const BUILD = '…'`)
+     node scripts/sellar-sw.js --check <carpeta>  → no escribe; sale con código 1 si <carpeta>/sw.js no coincide con los archivos
+     (sin <carpeta> usa el directorio actual. Lo normal es `npm run build`, que copia lo desplegable a dist/ y lo sella.)
 
    Sin dependencias. Determinista: los saltos de línea se normalizan a LF (Windows con autocrlf da el mismo hash) y las rutas se
    ordenan. Qué entra: index.html, manifest.webmanifest, css/**, js/**, icons/**. Qué NO entra: cualquier .zip, sw.js (se sella a sí mismo),
@@ -93,4 +92,4 @@ function sellar({ chequear }) {
 }
 
 if (require.main === module) process.exit(sellar({ chequear: process.argv.includes('--check') }));
-module.exports = { huella, sellar, listaPrecache };
+module.exports = { huella, sellar, listaPrecache, archivosDesplegables };

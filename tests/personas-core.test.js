@@ -455,8 +455,8 @@ describe('Personas: cableado en la app', () => {
     const i = h.indexOf('js/core/estado.js'), j = h.indexOf('js/core/personas-core.js'), k = h.indexOf('js/core/persistencia.js');
     assert.ok(i > 0 && j > i && k > j);
   });
-  test('sw.js precachea personas-core.js', () => {
-    assert.match(leer('sw.js'), /"js\/core\/personas-core\.js"/);
+  test('el despliegue precachea personas-core.js (la lista sale de lo desplegable; el sw.js del repo va sin sellar)', () => {
+    assert.ok(require('../scripts/sellar-sw.js').listaPrecache(path.join(__dirname, '..')).includes('js/core/personas-core.js'));
   });
   test('la pantalla Personas ya no tiene bloques «sin perfil» ni lee personaId a mano para listar', () => {
     const t = leer('js/modules/personas.js');

@@ -399,11 +399,11 @@ test('F6. el chequeo de Spotify vencido lee S.spotify.integrantes (esquema 9) y 
 });
 
 /* ================= Service Worker ================= */
-test('A10. la línea de VERSION de sw.js es corta: el historial de versiones vive en CHANGELOG.md, no en un comentario de 12 KB', () => {
+test('A10. la línea de BUILD y el prefijo de caché de sw.js son cortos: el historial de versiones vive en CHANGELOG.md, no en un comentario de 12 KB', () => {
   const sw = require('node:fs').readFileSync(path.join(RAIZ, 'sw.js'), 'utf8');
-  const linea = sw.split('\n').find(l => l.startsWith('const VERSION'));
-  assert.ok(linea && linea.length < 200, 'la línea de VERSION mide ' + (linea || '').length);
-  assert.match(linea, /mis-finanzas-v\d+/);
+  const linea = sw.split('\n').find(l => l.startsWith('const BUILD'));
+  assert.ok(linea && linea.length < 200, 'la línea de BUILD mide ' + (linea || '').length);
+  assert.match(sw, /^const PREFIJO_CACHE = 'mis-finanzas-v';/m);
 });
 
 /* ================= P7: gastos fijos con día de vencimiento ================= */

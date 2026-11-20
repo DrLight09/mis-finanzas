@@ -1,9 +1,10 @@
 // ── Mis Finanzas — Service Worker ────────────────────────────────────────────
-const VERSION = 'mis-finanzas-v158'; // bump manual en cada despliegue; qué cambió en cada versión vive en docs/CHANGELOG.md (no aquí)
-// Huella del contenido desplegable: la sella `node scripts/sellar-sw.js` (y `npm test` falla si quedó vieja). Así, aunque se olvide
-// subir VERSION, la caché cambia de nombre en cuanto cambia cualquier archivo y no se sirven los .js anteriores.
-const BUILD = '267d159a683f'; // sellado por scripts/sellar-sw.js — NO editar a mano (huella del contenido desplegable)
-const CACHE = VERSION + '-' + BUILD;
+// Sin número de versión a mano. BUILD es la huella del contenido desplegable y la escribe scripts/sellar-sw.js EN EL DESPLIEGUE
+// (`npm run build` → dist/, que corre el job «deploy» de .github/workflows/ci.yml). En el repo queda 'dev' con PRECACHE vacío: un
+// servidor local sirve todo por red, sin caché de versión. NO editar BUILD ni PRECACHE a mano: el despliegue los sobrescribe.
+const PREFIJO_CACHE = 'mis-finanzas-v'; // toda caché con este prefijo es de una versión de la app: activate borra las que no son la actual
+const BUILD = 'dev'; // sellado por scripts/sellar-sw.js en el despliegue — NO editar a mano (huella del contenido desplegable)
+const CACHE = PREFIJO_CACHE + '-' + BUILD;
 // Caché que SÍ sobrevive entre versiones: fuentes y SDK de Firebase (de otro origen, no forman parte de la versión de la app).
 const CACHE_EXT = 'mis-finanzas-ext';
 
@@ -15,94 +16,8 @@ const BASE = new URL('./', self.registration.scope).pathname;
 // scripts/sellar-sw.js escribe acá TODOS los archivos desplegables. install los baja juntos a la caché de ESTA versión: si uno falla,
 // la versión nueva no se instala y la gente sigue con la anterior completa. fetch sirve de esa misma caché: una versión = un
 // conjunto coherente (nunca un index nuevo con JS viejo) y la app funciona completa sin conexión.
-// <PRECACHE> — lo escribe scripts/sellar-sw.js: todo lo desplegable (una versión = un conjunto coherente y offline completo)
-const PRECACHE = [
-  "./",
-  "css/fa-solid-subset.woff2",
-  "css/fa-subset.css",
-  "css/pc.css",
-  "css/styles.css",
-  "icons/apple-touch-icon.png",
-  "icons/favicon-32.png",
-  "icons/icon-192.png",
-  "icons/icon-512.png",
-  "icons/icon-maskable-512.png",
-  "index.html",
-  "js/core/arranque-ui.js",
-  "js/core/async-css.js",
-  "js/core/bootstrap.js",
-  "js/core/busqueda-global.js",
-  "js/core/calc-helpers.js",
-  "js/core/cierre.js",
-  "js/core/cobros.js",
-  "js/core/color-picker.js",
-  "js/core/cuenta-efectos.js",
-  "js/core/cuentas-fuentes.js",
-  "js/core/dialogos.js",
-  "js/core/diferencial.js",
-  "js/core/disposicion-pc.js",
-  "js/core/estado.js",
-  "js/core/eventos-base.js",
-  "js/core/events.js",
-  "js/core/fecha.js",
-  "js/core/firebase-init.js",
-  "js/core/firebase-sync.js",
-  "js/core/formulario.js",
-  "js/core/formularios-ui.js",
-  "js/core/fuentes-filtro.js",
-  "js/core/gastos-fijos-progress.js",
-  "js/core/html-tag.js",
-  "js/core/huella.js",
-  "js/core/ingresos.js",
-  "js/core/lazy-loader.js",
-  "js/core/mas-menu.js",
-  "js/core/modulos-activos.js",
-  "js/core/money-input.js",
-  "js/core/movimientos.js",
-  "js/core/navegacion.js",
-  "js/core/notificaciones-push.js",
-  "js/core/nu-calc.js",
-  "js/core/patrimonio.js",
-  "js/core/payload-codec.js",
-  "js/core/periodo.js",
-  "js/core/persistencia.js",
-  "js/core/personas-core.js",
-  "js/core/personas-init.js",
-  "js/core/pin-bio.js",
-  "js/core/plan-deudas.js",
-  "js/core/refresh.js",
-  "js/core/reglas.js",
-  "js/core/reordenable.js",
-  "js/core/respaldos.js",
-  "js/core/saldos-ocultos.js",
-  "js/core/salud.js",
-  "js/core/sheet-behavior.js",
-  "js/core/split.js",
-  "js/core/sw-registro.js",
-  "js/core/ui.js",
-  "js/core/umbrales.js",
-  "js/core/utilidades-ui.js",
-  "js/core/wait-for-module.js",
-  "js/core/wait-for.js",
-  "js/core/wrapped-gate.js",
-  "js/modules/actividad-reciente.js",
-  "js/modules/alcancia.js",
-  "js/modules/analisis.js",
-  "js/modules/configuracion.js",
-  "js/modules/cuentas.js",
-  "js/modules/encargos.js",
-  "js/modules/gastos.js",
-  "js/modules/inicio.js",
-  "js/modules/mesada.js",
-  "js/modules/nu.js",
-  "js/modules/personas.js",
-  "js/modules/plata-comprometida.js",
-  "js/modules/prestado.js",
-  "js/modules/spotify.js",
-  "js/modules/tarjetas-credito.js",
-  "js/modules/wrapped.js",
-  "manifest.webmanifest"
-];
+// <PRECACHE> — lo escribe scripts/sellar-sw.js en el despliegue: todo lo desplegable (una versión = un conjunto coherente y offline completo)
+const PRECACHE = [];
 // </PRECACHE>
 
 // ── Firebase Cloud Messaging (notificaciones en segundo plano) ─────────────
@@ -180,7 +95,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       // Solo se borran las cachés de versiones anteriores de la app; la de fuentes/SDK se conserva.
-      Promise.all(keys.filter(k => k.startsWith('mis-finanzas-v') && k !== CACHE).map(k => caches.delete(k)))
+      Promise.all(keys.filter(k => k.startsWith(PREFIJO_CACHE) && k !== CACHE).map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
   );
 });

@@ -1,11 +1,23 @@
-name: CI
+name: CI y despliegue
 
-# Corre en cada push y pull request. Hace lo mismo que subir.sh (tests, los tres humos y el mapa de código al día), con la misma
-# versión de Node que .nvmrc. OJO: por sí solo NO bloquea la publicación: GitHub Pages publica desde la rama. Para que sea
-# compuerta de verdad hay que desplegar por Actions (ver docs: revisión estructural, M5).
+# Qué hace:
+#   · En cada push y pull request corre `ci`: tests, los tres humos y el mapa de código al día (lo mismo que subir.sh).
+#   · En cada push a main, SI `ci` pasó, corre `deploy`: arma dist/ (solo lo desplegable, con sw.js sellado por scripts/preparar-despliegue.js)
+#     y lo publica en GitHub Pages. Con tests rojos no se publica nada.
+#
+# REQUISITO (una sola vez): Settings → Pages → Build and deployment → Source = «GitHub Actions».
+# Mientras Pages siga en «Deploy from a branch», este job de deploy fallará y la rama se seguirá publicando como antes.
 on:
   push:
   pull_request:
+
+permissions:
+  contents: read
+
+# Un solo despliegue a la vez; uno nuevo reemplaza al que esté esperando, pero no corta el que ya está publicando.
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
   ci:
@@ -23,7 +35,7 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
-      # Incluye la comprobación de que sw.js está sellado con la huella actual.
+      # Incluye armar dist/ y comprobar que su sw.js queda sellado (tests/sesion-y-despliegue.test.js, tests/sw.test.js).
       - name: Tests
         run: npm test
 
@@ -38,3 +50,38 @@ jobs:
 
       - name: mapa-codigo.md al día
         run: node scripts/generar-mapa.js --check
+
+  deploy:
+    needs: ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write      # publicar en Pages
+      id-token: write   # verificar que el despliegue viene de este workflow
+    environment:
+      name: github-pages
+      url: ${{ steps.despliegue.outputs.page_url }}
+    steps:
+      - name: Descargar el repo
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # Copia solo index.html, manifest, css/, js/, icons/ y sw.js a dist/ y sella ahí el Service Worker (BUILD + PRECACHE).
+      - name: Armar dist/
+        run: node scripts/preparar-despliegue.js dist
+
+      - name: Configurar Pages
+        uses: actions/configure-pages@v5
+
+      - name: Subir dist/
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Publicar
+        id: despliegue
+        uses: actions/deploy-pages@v4

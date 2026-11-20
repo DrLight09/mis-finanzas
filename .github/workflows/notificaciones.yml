@@ -20,11 +20,11 @@ jobs:
       - name: Instalar Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version-file: .nvmrc
 
       - name: Instalar dependencias
         working-directory: scripts/notificaciones
-        run: npm install
+        run: npm ci   # exactamente lo de scripts/notificaciones/package-lock.json (maneja la clave de servicio: sin versiones sorpresa)
 
       - name: Correr el chequeo de notificaciones
         working-directory: scripts/notificaciones

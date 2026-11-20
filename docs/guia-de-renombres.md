@@ -38,7 +38,7 @@ Vivió en un entorno temporal. Si hace falta de nuevo hay que rehacerla:
 
 ## 4. Protocolo de verificación por entrega
 
-`npm test` + los tres humos (`smoke`, `smoke:wrapped`, `smoke:cierre`) + `npm run sellar:check` + `node scripts/generar-mapa.js --check` + prueba de equivalencia (`node scripts/equivalencia.js <backup>` con el código anterior y el nuevo, luego `--comparar … --tol=1`) con un backup del esquema vigente + comprobar que `index.html` conserva sus `data-action` + aplicar el zip sobre una copia limpia y correr la suite ahí. Entregar el zip **acumulativo** (todo lo cambiado desde la última versión que se sabe aplicada) y recordar que un zip **no borra** archivos. Como ninguna prueba mira el aspecto, tras renombrar ids o clases abrir a mano los sheets afectados.
+`npm test` + los tres humos (`smoke`, `smoke:wrapped`, `smoke:cierre`) + `npm run build` (arma dist/ y comprueba el sello) + `node scripts/generar-mapa.js --check` + prueba de equivalencia (`node scripts/equivalencia.js <backup>` con el código anterior y el nuevo, luego `--comparar … --tol=1`) con un backup del esquema vigente + comprobar que `index.html` conserva sus `data-action` + aplicar el zip sobre una copia limpia y correr la suite ahí. Entregar el zip **acumulativo** (todo lo cambiado desde la última versión que se sabe aplicada) y recordar que un zip **no borra** archivos. Como ninguna prueba mira el aspecto, tras renombrar ids o clases abrir a mano los sheets afectados.
 
 ## 5. Lo que se evaluó y no se hizo
 

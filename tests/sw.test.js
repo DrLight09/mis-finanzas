@@ -5,10 +5,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
+const os = require('node:os');
+const { spawnSync } = require('node:child_process');
 const { listaPrecache } = require('../scripts/sellar-sw.js');
 
 const raiz = path.join(__dirname, '..');
-const swSrc = fs.readFileSync(path.join(raiz, 'sw.js'), 'utf8');
+// El sw.js del repo va sin sellar (BUILD 'dev', PRECACHE vacío): lo que se publica es el de dist/. Se prueba ESE: se arma el despliegue
+// en una carpeta temporal con el mismo script que usa el job «deploy» y se lee su sw.js.
+const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'dist-sw-'));
+const armado = spawnSync(process.execPath, [path.join(raiz, 'scripts', 'preparar-despliegue.js'), dist], { encoding: 'utf8' });
+assert.equal(armado.status, 0, 'preparar-despliegue falló: ' + armado.stdout + armado.stderr);
+const swSrc = fs.readFileSync(path.join(dist, 'sw.js'), 'utf8');
 
 // Mini-entorno de Service Worker: caches, clients, registration y un registro de eventos.
 function crearSW({ scope = 'https://x.github.io/mis-finanzas/', red = {} } = {}) {
@@ -60,11 +67,11 @@ function crearSW({ scope = 'https://x.github.io/mis-finanzas/', red = {} } = {})
 }
 
 describe('PRECACHE', () => {
-  test('lo sellado coincide con lo desplegable y cubre index, css, js e iconos', () => {
+  test('lo sellado en dist/ coincide con lo desplegable y cubre index, css, js e iconos', () => {
     const m = /\/\/ <PRECACHE>[\s\S]*?const PRECACHE = (\[[\s\S]*?\]);\n\/\/ <\/PRECACHE>/.exec(swSrc);
     assert.ok(m, 'sw.js debe tener el bloque PRECACHE');
     const enSw = JSON.parse(m[1]);
-    assert.deepEqual(enSw, listaPrecache(raiz), 'PRECACHE desactualizado: corre node scripts/sellar-sw.js');
+    assert.deepEqual(enSw, listaPrecache(raiz), 'el PRECACHE de dist/sw.js no coincide con lo desplegable');
     for (const f of ['./', 'index.html', 'css/styles.css', 'js/core/estado.js', 'js/core/sw-registro.js', 'js/modules/spotify.js', 'manifest.webmanifest']) assert.ok(enSw.includes(f), f);
     assert.ok(!enSw.includes('sw.js'));
   });

@@ -504,17 +504,32 @@ const { huella } = require('../scripts/sellar-sw.js');
 
 const RAIZ = path.join(__dirname, '..');
 
-test('sw.js está sellado: BUILD coincide con la huella actual de los archivos desplegables', () => {
+test('el sw.js del repo NO lleva sello (BUILD \'dev\', PRECACHE vacío): el sello se escribe en el despliegue, nunca queda viejo', () => {
   const sw = fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8');
-  const m = /^const BUILD = '([^']*)';/m.exec(sw);
-  assert.ok(m, 'sw.js debe declarar const BUILD');
-  assert.equal(m[1], huella(RAIZ).build, 'sw.js desactualizado: corre `node scripts/sellar-sw.js` antes de desplegar');
+  assert.match(sw, /^const BUILD = 'dev';/m, 'no commitees un BUILD sellado: lo escribe `npm run build` en dist/');
+  assert.match(sw, /const PRECACHE = \[\];/);
 });
 
-test('la caché se nombra con VERSION y BUILD, y se limpia con ese mismo nombre', () => {
+test('npm run build: dist/ contiene SOLO lo desplegable, su sw.js está sellado con la huella de dist/ y el repo no se toca', () => {
+  const swAntes = fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8');
+  const dist = fs.mkdtempSync(path.join(os.tmpdir(), 'dist-'));
+  const r = require('node:child_process').spawnSync(process.execPath, [path.join(RAIZ, 'scripts', 'preparar-despliegue.js'), dist], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const sw = fs.readFileSync(path.join(dist, 'sw.js'), 'utf8');
+  const m = /^const BUILD = '([0-9a-f]{12})';/m.exec(sw);
+  assert.ok(m, 'dist/sw.js debe quedar sellado');
+  assert.equal(m[1], huella(dist).build);
+  const raizDist = fs.readdirSync(dist).filter(f => f !== '.gitignore').sort();
+  for (const f of raizDist) assert.ok(['css', 'icons', 'index.html', 'js', 'manifest.webmanifest', 'sw.js'].includes(f), 'no debe publicarse: ' + f);
+  assert.equal(fs.readFileSync(path.join(dist, '.gitignore'), 'utf8'), '*\n', 'dist/ se ignora a sí misma en git');
+  assert.equal(fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8'), swAntes, 'el repo no se modifica');
+});
+
+test('la caché se nombra con el prefijo y BUILD, y se limpia con ese mismo nombre', () => {
   const sw = fs.readFileSync(path.join(RAIZ, 'sw.js'), 'utf8');
-  assert.match(sw, /const CACHE = VERSION \+ '-' \+ BUILD;/);
-  assert.doesNotMatch(sw.replace(/\/\/.*$/gm, ''), /caches\.open\(VERSION\)|k !== VERSION/, 'nadie debe seguir usando VERSION a secas como nombre de caché');
+  assert.match(sw, /const CACHE = PREFIJO_CACHE \+ '-' \+ BUILD;/);
+  assert.match(sw, /k\.startsWith\(PREFIJO_CACHE\) && k !== CACHE/);
+  assert.doesNotMatch(sw.replace(/\/\/.*$/gm, ''), /\bVERSION\b/, 'ya no hay número de versión a mano');
 });
 
 test('la huella cambia con cualquier archivo desplegable, es estable y no depende de CRLF ni de sw.js', () => {

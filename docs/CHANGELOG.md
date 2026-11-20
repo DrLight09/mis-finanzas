@@ -33,6 +33,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+
+## 2026-11-19 — Despliegue por GitHub Actions, sello del Service Worker en el despliegue, reglas de Firestore en el repo
+
+- **Despliegue:** `.github/workflows/ci.yml` corre tests, los tres humos y `generar-mapa.js --check`; en push a `main`, si pasó, el job `deploy` arma `dist/` (`scripts/preparar-despliegue.js` = `npm run build`: solo `index.html`, manifest, `css/`, `js/`, `icons/` y `sw.js`) y lo publica en Pages. Con tests rojos no se publica. Requiere Settings → Pages → Source = «GitHub Actions». Reemplaza `test.yml` y `mapa-codigo.yml`.
+- **Service Worker:** ya no hay `VERSION` a mano ni sello en el repo. `sw.js` queda con `BUILD = 'dev'` y `PRECACHE = []`; el despliegue los escribe en `dist/sw.js`. Caché: `mis-finanzas-v-<BUILD>`. `subir.sh` ya no sella (se quitó `npm run sellar` / `sellar:check`; se usa `npm run build`). Los tests de `sw` ejercitan el `sw.js` ya construido.
+- **`uid()`:** garantiza ids distintos dentro del mismo milisegundo (el sufijo avanza desde un punto al azar); mismo formato de 11 caracteres, que lee `diaCreacionMovimiento`. `tests/ids.test.js`.
+- **Reglas de Firestore:** `firestore.rules` + `firebase.json` (forma de cada documento y tope de payload; acceso = solo el dueño). Despliegue manual: `npx firebase-tools deploy --only firestore:rules`. Sin probar en emulador.
+- **Proceso:** `.nvmrc` (22), `engines` `>=20.19`, `subir.sh` con `npm ci`, lockfile para `scripts/notificaciones` y `npm ci` en su workflow.
+
 ## Mesada: aviso del mes, X y «Cancelar» en las hojas, confirmar al borrar (2026-11-19)
 
 Prototipos: `MesadaRegistrar`, `MesadaRegistrarParcial`, `MesadaMesPagado` y `MovilMesadaRegistrar` (`mesada_ac27e3.zip`). Donde el prototipo y la app difieren se dejó la app, salvo lo de esta lista.

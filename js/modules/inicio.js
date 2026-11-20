@@ -323,10 +323,6 @@ function calcImpactoCompra(monto){
   }
   return { monto, grande, pctLiquidez, pctPatrimonio, antes, despues, netaDespues, nivel, texto };
 }
-// Meses seguidos de déficit que merecen aviso (0 si no merecen): solo con ingreso reciente registrado (sin él, «déficit» sería solo
-// no haber anotado ingresos) y sin un fondo sólido (≥ 6 meses de gasto) que la absorba.
-function _rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos){ return Reglas.rachaDeficitRelevante(racha, ingresoTipico, mesesCubiertos, UMBRALES); }
-
 function calcHealthScore(sit){
   const S = window.S || {};
   if(!S.cajitas) return null;

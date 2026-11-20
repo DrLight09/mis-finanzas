@@ -35,6 +35,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-20 — Limpieza: código muerto y detalles
+- Se borraron 4 funciones sin ningún llamador (el análisis estático y la búsqueda en js/, tests y index.html lo confirmaron): `spotifyCobradoDePersona`, `_misDeudasPickColor`, `renderMetaProgress` y `_rachaDeficitRelevante` (la regla vive en `Reglas.rachaDeficitRelevante`; la doc de Salud financiera se ajustó).
+- Se quitó el chip «Mesada» del filtro de movimientos de una cuenta: filtraba por `tipo === 'mesada'`, un tipo que ningún movimiento tiene (los de Mesada son entradas), así que nunca aparecía.
+- `manifest.webmanifest`: se agregaron `id`, `lang` y `description` (el `id` fija la identidad de la PWA aunque cambie la `start_url`).
+- `scripts/notificaciones/package.json`: `engines.node >= 20.19`, igual que el proyecto.
+
 ## 2026-11-20 — Validador de forma del estado y dinero a centavos
 - `js/core/validar-estado.js` (`validarEstado`, módulo puro): antes de escribir en la nube comprueba que las listas sean listas y que `monto`/`saldo`/`deuda` sean números finitos. Un NaN se guardaría como `null` sin avisar. Si hay un problema grave NO se escribe (la nube conserva el último estado bueno), el estado de sincronización pasa a error y se avisa una vez; los ids repetidos solo se dejan en consola (`window._validacionEstado`).
 - Puerta única de saldos: todo monto que entra a un saldo o al libro se redondea a 2 decimales (`redondearCentavos`), también el saldo resultante. Evita residuos binarios (0,1 + 0,2) que se acumulaban contra el libro. Los pesos siguen en enteros.

@@ -438,41 +438,6 @@ function calcMetaProgreso(c){
   return { saldo, obj, pct, falta, cuotaMensual, esperadoHoy, diferencia, mesesRestantes, totalMeses, mesesPasados };
 }
 
-function renderMetaProgress(c){
-  const p = calcMetaProgreso(c);
-  if(!p) return '';
-  const estado = p.diferencia >= 0 ? 'ok' : (p.diferencia > -(p.cuotaMensual*0.5) ? 'warn' : 'late');
-  const estadoLabels = {ok:'Al día', warn:'Un poco atrás', late:'Atrasado/a'};
-  const aportesHtml = c.meta.aportes && c.meta.aportes.length ? c.meta.aportes.map(ap=>`<span class="cajita-meta-aporte-chip">${escHtml(ap.desc)}: ${fmt(ap.monto)}/mes</span>`).join('') : '';
-  // saldo mínimo
-  const minInfo = c.meta.minimo ? `<div class="nu-min-caja">
-    <div class="nu-min-cap">Saldo mínimo configurado</div>
-    <div class="nu-fila-sb">
-      <span class="nu-min-txt">Mínimo: <b class="nu-b-text">${fmt(c.meta.minimo)}</b></span>
-      ${p.saldo < c.meta.minimo ? `<span class="nu-min-bajo">¡Bajo el mínimo! Faltan ${fmt(c.meta.minimo - p.saldo)}</span>` : `<span class="nu-min-ok">OK (${fmt(p.saldo - c.meta.minimo)} sobre el mínimo)</span>`}
-    </div>
-    ${_calcPrestadoMeta(c.id) > 0 ? `<div class="nu-prestado-aviso">${fmt(_calcPrestadoMeta(c.id))} prestado de esta cajita · Debería haber: ${fmt(p.saldo + _calcPrestadoMeta(c.id))}</div>` : ''}
-  </div>` : '';
-  return `<div class="cajita-meta-box">
-    <div class="cajita-meta-header">
-      <span class="cajita-meta-title">Meta: ${fmt(p.obj)}</span>
-      <button type="button" ${Events.attr('nu:abrirMetaCajita', c.id)} data-stop-propagation="true" class="nu-link-editar">editar</button>
-    </div>
-    <div class="cajita-meta-progress"><div class="cajita-meta-fill nu-fill-${estado}" style="width:${p.pct.toFixed(1)}%;"></div></div>
-    <div class="nu-meta-pct-fila">
-      <span>${p.pct.toFixed(0)}% logrado</span>
-      <span>${p.mesesRestantes} ${p.mesesRestantes===1?'mes':'meses'} restantes · ${fmt(p.falta)} por ahorrar</span>
-    </div>
-    <div class="cajita-meta-stats">
-      <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Cuota/mes</div><div class="cajita-meta-stat-val">${fmt(p.cuotaMensual)}</div></div>
-      <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Esperado hoy</div><div class="cajita-meta-stat-val">${fmt(p.esperadoHoy)}</div></div>
-      <div class="cajita-meta-stat"><div class="cajita-meta-stat-label">Estado</div><div class="cajita-meta-stat-val ${estado}">${estadoLabels[estado]}</div></div>
-    </div>
-    ${aportesHtml ? `<div class="cajita-meta-aporte-row">${aportesHtml}</div>` : ''}
-    ${minInfo}
-  </div>`;
-}
-
 function _calcPrestadoMeta(cajitaId){
   // Suma todos los préstamos pendientes que incluyen esta cajita como fuente
   let total = 0;

@@ -486,7 +486,7 @@ function hexToRgb(hex){
 // #cuentas-detalle-simple al final de este archivo).
 // Se elimina la función completa en vez de dejarla como código muerto sin
 // llamador (mismo criterio que en configuracion.js, ver su nota de cabecera
-// sobre leerArchivoImport/import-validado.js).
+// sobre leerArchivoImport/validación del archivo).
 
 // Plata de encargos guardada en una fuente (o en varias): [{nombre, saldo}] de los encargos con saldo positivo ahí.
 function _encargosConSaldoEn(fuentes){
@@ -921,7 +921,6 @@ function renderMovimientosFiltros(elId, cuentaKey, movimientos, accentColor) {
     { val: 'salida_manual', label: 'Retiro' },
     { val: 'gasto', label: 'Gasto' },
     { val: 'transferencia', label: 'Transferencia' },
-    { val: 'mesada', label: 'Mesada' },
     { val: 'prestamo', label: 'Préstamo' },
     { val: 'abono', label: 'Abono' },
     { val: 'alcancia', label: 'Alcancía' },

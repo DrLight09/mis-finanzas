@@ -2772,11 +2772,6 @@ function editarMiDeudaActual() {
   if (typeof openSheet === 'function') openSheet('editar-mi-deuda');
 }
 
-function _misDeudasPickColor(c) {
-  window._miDeudaEditColor = c;
-  _renderColorPicker('md_edit_colores', '_miDeudaEditColor');
-}
-
 function guardarEditarMiDeuda() {
   if (!miDeudaActualId) return;
   const d = Deudas.lista('contra').find(x => x.id === miDeudaActualId);

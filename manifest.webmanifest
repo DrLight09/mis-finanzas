@@ -1,6 +1,9 @@
 {
   "name": "Mis Finanzas",
   "short_name": "Finanzas",
+  "id": "./",
+  "lang": "es-CO",
+  "description": "Finanzas personales: cuentas, gastos, deudas y ahorro.",
   "display": "standalone",
   "background_color": "#0f0f0f",
   "theme_color": "#0f0f0f",

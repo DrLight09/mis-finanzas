@@ -169,11 +169,6 @@ function spotifyCicloCobrosActual(){
   return historial.map((h,idx)=>({...h,_idx:idx})).filter(h=>h.tipo==='cobro'&&h._idx>lastPagoIdx&&!h._pagoIdCierre);
 }
 
-function spotifyCobradoDePersona(p,cicloCobros){
-  // Suma lo que una persona ya aportó en el ciclo actual, vinculando por id.
-  return (cicloCobros||spotifyCicloCobrosActual()).filter(h=>h.spotifyId===p.id).reduce((a,h)=>a+(h.monto||0),0);
-}
-
 // ── Períodos flotantes y atribución de cobros a ciclos ─────────────────────
 // Un cobro de N períodos es UN solo registro (una sola entrada de plata), pero cada
 // período tiene su propia fecha de inicio: proximoPagoAntes + 30·k. Ciclo (entre dos

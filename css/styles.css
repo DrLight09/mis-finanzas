@@ -761,11 +761,15 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-preview-amber{color:var(--amber);}
 /* Sin texto no ocupa lugar: el JS lo deja vacío con textContent = '' (mesadaPagoPreview y mesadaPagoPendientePreview) */
 .ms-preview:empty{display:none;}
+.sheet-x{display:none;} /* botón X de la hoja: solo PC (css/pc.css); en celular se cierra con el gesto, el asa o el botón de abajo */
+.sheet-acciones{display:contents;} /* envoltorio de «Guardar» + «Cancelar»: en celular no cambia nada, en PC se ponen en fila (css/pc.css) */
 .ms-aviso-mes{font-size:12px;line-height:1.4;color:var(--amber);margin:-6px 0 14px;}
 .ms-aviso-mes:empty{display:none;}
 .ms-chk{width:17px;height:17px;cursor:pointer;flex-shrink:0;}
 .ms-chk-blue{accent-color:var(--blue);}
-.ms-chk-amber{accent-color:var(--amber);}
+.ms-chk-amber{appearance:none;-webkit-appearance:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--amber);background:var(--bg);}
+.ms-chk-amber:checked{background:var(--amber) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center/12px no-repeat;}
+.ms-chk-amber:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
 
 /* "Me pagó con plata que ya le tenía guardada" (un bloque por sheet) */
 .ms-enc-box{background:rgba(96,176,240,.07);border:1px solid rgba(96,176,240,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;}
@@ -774,13 +778,13 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .ms-enc-detalle{margin-top:10px;}
 
 /* "Te está debiendo la diferencia" (sheet de registrar pago) */
-.ms-debe-box{background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:11px 13px;margin-bottom:14px;align-items:center;gap:10px;cursor:pointer;}
+.ms-debe-box{background:rgba(240,184,64,.07);border:1px solid rgba(240,184,64,.3);border-radius:12px;padding:12px 14px;margin-bottom:14px;align-items:center;gap:12px;cursor:pointer;}
 .ms-debe-label{font-size:13px;font-weight:600;color:var(--amber);}
 
 /* Detalle de un mes */
 .ms-card-mb{margin-bottom:10px;padding:4px 14px;background:var(--bg3);border-radius:12px;}
 .ms-fila{padding:9px 0;}
-.ms-card-mb > .ms-fila + .ms-fila{border-top:1px solid var(--border);}
+.ms-card-mb > .ms-fila + .ms-fila{border-top:1px solid var(--bg);}
 .ms-fila .row-amount{font-size:13.5px;font-weight:500;}
 .ms-fila-pend{padding:9px 0;}
 .ms-lbl{font-size:12.5px;color:var(--text2);}

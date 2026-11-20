@@ -437,6 +437,7 @@ describe('mesada-ui', () => {
     const tag = createHtmlTag(ctx.escHtml); ctx.html = tag.html; ctx.raw = tag.raw;
     const toasts = []; ctx.toast = (m, t) => toasts.push([m, t]);
     ctx.save = () => {}; ctx.refresh = () => {};
+    ctx.confirmarEliminar = async () => true; // el diálogo de «¿Borrar?»: aquí se acepta; abajo hay un test que lo rechaza
     const d = createFakeDom(dom); ctx.document = d.document;
     ctx._msCablear(); // re-cablea los listeners sobre el DOM simulado
     ctx._ensureMesadas(); ctx.S.mesadas.papa.cuotas = { '2026': 80000 };
@@ -548,6 +549,16 @@ describe('mesada-ui', () => {
     assert.ok(!/style="margin-bottom/.test(h));
   });
 
+  test('UI — borrar un mes pide confirmación y, si se rechaza, no borra nada', async () => {
+    const { ctx } = ui();
+    ctx.mesadaRegistrarPago({ parent: 'papa', key: '2026-3', monto: 80000, fecha: hoyISO(), destino: '' });
+    let pedido = null;
+    ctx.confirmarEliminar = async (o) => { pedido = o; return false; };
+    await ctx.eliminarMesadaPago('papa', '2026-3');
+    assert.ok(ctx.S.mesadas.papa.pagos['2026-3'], 'sigue ahí');
+    assert.match(pedido.objeto, /Papá · /);
+  });
+
   test('UI — borrar un mes revierte todo', async () => {
     const { ctx, d } = ui({ encargos: [encargo('e1', 'Papá', 100000, 'cuenta:nequi')] });
     ctx.mesadaRegistrarPago({ parent: 'papa', key: '2026-3', monto: 80000, fecha: hoyISO(), destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
@@ -561,12 +572,13 @@ describe('mesada-ui', () => {
   test('UI — aviso informativo si la fecha del pago cae en otro mes que el que cubre (la Mesada cuenta en el mes en que te pagan)', () => {
     const { ctx, d } = ui();
     ctx.abrirRegistrarMesada('papa', '2026-0', 'Ene 2026');
-    // Se abre con la fecha de hoy: enero no es el mes en curso → avisa (con «este mes» si hoy es de otro mes).
+    // Se abre con la fecha de hoy: si hoy no cae en enero de 2026, avisa con el nombre del mes de hoy (nunca «este mes»).
     const hoyMes = ctx.mesActual();
-    assert.equal(d.el('mesadaPagoAvisoMes').textContent, hoyMes === '2026-01' ? '' : 'Cubre Ene 2026, pero cuenta como ingreso de este mes: el mes en que te la pagan.');
+    if (hoyMes === '2026-01') assert.equal(d.el('mesadaPagoAvisoMes').textContent, '');
+    else assert.match(d.el('mesadaPagoAvisoMes').textContent, /^Corresponde a Ene 2026, pero se cuenta como ingreso de [A-Za-zñ]{3} \d{4}, el mes de la fecha de pago\.$/);
     // Cambiar la fecha actualiza el aviso al escribir.
     d.el('mesadaPagoFecha').value = '2026-03-15'; d.fire('mesadaPagoFecha', 'input');
-    assert.equal(d.el('mesadaPagoAvisoMes').textContent, 'Cubre Ene 2026, pero cuenta como ingreso de Mar 2026: el mes en que te la pagan.');
+    assert.equal(d.el('mesadaPagoAvisoMes').textContent, 'Corresponde a Ene 2026, pero se cuenta como ingreso de Mar 2026, el mes de la fecha de pago.');
     d.el('mesadaPagoFecha').value = '2026-01-20'; d.fire('mesadaPagoFecha', 'change');
     assert.equal(d.el('mesadaPagoAvisoMes').textContent, '', 'la fecha cae en el mes que cubre: sin aviso');
     d.el('mesadaPagoFecha').value = ''; d.fire('mesadaPagoFecha', 'input');
@@ -576,8 +588,10 @@ describe('mesada-ui', () => {
   test('UI — mesadaAvisoMesPago: casos de borde (diciembre, año distinto, clave inválida)', () => {
     const { ctx } = ui();
     assert.equal(ctx.mesadaAvisoMesPago('2026-11', '2026-12-31'), '', 'diciembre = índice 11');
-    assert.equal(ctx.mesadaAvisoMesPago('2026-11', '2027-01-02'), 'Cubre Dic 2026, pero cuenta como ingreso de Ene 2027: el mes en que te la pagan.');
-    assert.equal(ctx.mesadaAvisoMesPago('2026-0', '2027-01-15'), 'Cubre Ene 2026, pero cuenta como ingreso de Ene 2027: el mes en que te la pagan.', 'mismo mes de otro año también avisa');
+    assert.equal(ctx.mesadaAvisoMesPago('2026-11', '2027-01-02'), 'Corresponde a Dic 2026, pero se cuenta como ingreso de Ene 2027, el mes de la fecha de pago.');
+    assert.equal(ctx.mesadaAvisoMesPago('2026-0', '2027-01-15'), 'Corresponde a Ene 2026, pero se cuenta como ingreso de Ene 2027, el mes de la fecha de pago.', 'mismo mes de otro año también avisa');
+    assert.equal(ctx.mesadaAvisoMesPago('2026-1', '2026-02-10'), '', 'misma fecha y mes pagado: sin aviso');
+    assert.match(ctx.mesadaAvisoMesPago('2026-1', '2026-11-19'), /Feb 2026.*Nov 2026/, 'siempre el nombre del mes, nunca «este mes»');
     assert.equal(ctx.mesadaAvisoMesPago('', '2026-01-15'), '');
     assert.equal(ctx.mesadaAvisoMesPago('2026-0', 'x'), '');
   });

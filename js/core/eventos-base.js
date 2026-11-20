@@ -27,6 +27,17 @@ function _initEventListeners() {
     btnBuscar.click();
   });
 
+  // --- Esc cierra la hoja de arriba si tiene botón X (las de PC): mismo cierre que la X. Con un diálogo de confirmación abierto no hace nada ---
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || e.defaultPrevented) return;
+    const dialogo = document.getElementById('dialog-overlay');
+    if (dialogo && dialogo.classList.contains('open')) return;
+    const id = _sheetStack[_sheetStack.length - 1];
+    if (!id || !document.querySelector('#sheet-' + id + ' .sheet-x')) return;
+    e.preventDefault();
+    closeSheet(id);
+  });
+
   // --- Header add button ---
   const btnHeaderAdd = document.getElementById('btn-header-add');
   if (btnHeaderAdd) btnHeaderAdd.addEventListener('click', () => openSheet('menu'));

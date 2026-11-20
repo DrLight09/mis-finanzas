@@ -33,6 +33,19 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Mesada: aviso del mes, X y «Cancelar» en las hojas, confirmar al borrar (2026-11-19)
+
+Prototipos: `MesadaRegistrar`, `MesadaRegistrarParcial`, `MesadaMesPagado` y `MovilMesadaRegistrar` (`mesada_ac27e3.zip`). Donde el prototipo y la app difieren se dejó la app, salvo lo de esta lista.
+
+- **Aviso «Cubre …»** (hoja «Registrar pago»): ya no aparecía cuando la fecha cae en el mes que se paga (`mesadaAvisoMesPago` devuelve `''` en ese caso; es lo que cubren los tests); solo salía cuando los meses difieren, que es lo que se pidió. Lo que confundía era el texto: decía «este mes» (¿cuál?) y «el mes en que te la pagan». Ahora: «Corresponde a Feb 2026, pero se cuenta como ingreso de Nov 2026, el mes de la fecha de pago.» (siempre con el nombre del mes).
+- **X y «Cancelar»** (convención en `docs/guia-estilo-sheets.md` §2 ter; hoy solo las hojas de Mesada): formularios: celular igual que antes; PC con X arriba a la derecha y «Cancelar» junto a «Guardar», sin ocupar todo el ancho (`.sheet-x`, `.sheet-acciones`). Detalle de un mes (solo informa): celular «Cerrar» en vez de «Cancelar»; PC sin botón de abajo, se cierra con X, Esc o tocando fuera. **Esc** es nuevo (`js/core/eventos-base.js`): cierra la hoja de arriba si trae X y no actúa con un diálogo abierto. Tocar fuera ya cerraba.
+- **Borrar este registro** pide confirmación («Borrar registro», con el padre y el mes, y avisa si se resta de una cuenta o encargo). Si el pago es «viejo», la confirmación de antigüedad ya cuenta y no se pregunta dos veces. Test nuevo: si se rechaza, no se borra.
+- **Detalle de un mes:** las líneas entre filas (Monto / Fecha / Destino) ahora son más oscuras que el fondo del bloque (`var(--bg)`); antes eran casi del mismo tono y no se veían.
+- **Caja «Te está debiendo …»:** borde y esquinas como el prototipo (radio 12, relleno 12 × 14) y la casilla con borde ámbar (antes la casilla nativa gris): casilla propia de 18 px, ámbar al marcarla, con la palanca de foco visible.
+- **Pruebas:** `tests/mesada.test.js` (textos del aviso, borrar con confirmación aceptada y rechazada).
+- **Sin ver en navegador real.** Revisar: X de las tres hojas a 1366 px, «Cancelar | Guardar» en fila, «Cerrar» en celular, Esc, líneas del detalle y casilla ámbar.
+- **Pendiente de decidir:** el módulo de ingresos fijos (`cobros.js`) tiene un aviso con el mismo texto viejo («Cubre … pero cuenta como ingreso de este mes»). No se tocó por no ser de Mesada.
+
 ## Mesada: meses en 4 columnas y resumen de la tarjeta más corto (2026-11-19)
 
 Según el prototipo nuevo (`mesada_1.zip`: `Mesada.dc.html` y `MovilMesada.dc.html`):

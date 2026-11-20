@@ -106,7 +106,7 @@ Desde 2026-10-09 todo movimiento de ingreso/gasto lleva `clase` (`ingreso` · `g
 
 La clave del pago (`"2026-0"` = enero 2026) es el mes que la mesada **cubre**: sirve para saber qué mes está pagado, pendiente o perdido en esta pantalla. El **ingreso**, en cambio, cuenta en el mes de la fecha del pago (`fecha`), igual que cualquier otra plata que entra y que el historial de patrimonio: una mesada de enero que te pagan el 26 de octubre es ingreso de octubre. Cada abono de un pendiente cuenta en su propia fecha. La regla vive en `Periodo.mesadaEntradas()`/`mesadaDelMes()`; sin monto guardado se usa la cuota del año y sin fecha, el mes que cubre.
 
-Al registrar, el sheet «Registrar pago» lo dice bajo la fecha cuando no coinciden y se actualiza al cambiarla: «Cubre Ene 2026, pero cuenta como ingreso de este mes: el mes en que te la pagan.» (`mesadaAvisoMesPago(key, fecha)` → `#mesadaPagoAvisoMes`). Es solo informativo: pagar con atraso es un caso legítimo.
+Al registrar, el sheet «Registrar pago» lo dice bajo la fecha cuando no coinciden y se actualiza al cambiarla: «Corresponde a Ene 2026, pero se cuenta como ingreso de Nov 2026, el mes de la fecha de pago.» (siempre con el nombre del mes, nunca «este mes»; si la fecha cae en el mes que se paga, no aparece nada) (`mesadaAvisoMesPago(key, fecha)` → `#mesadaPagoAvisoMes`). Es solo informativo: pagar con atraso es un caso legítimo.
 
 ## 5. Flujo
 
@@ -258,3 +258,7 @@ node --test "tests/*.test.js"
 - la suite `mesada-ui` de `tests/mesada.test.js` — la Parte 2 real sobre la Parte 1 real, con el DOM simulado de `tests/support/fake-dom.js`: abrir, escribir, confirmar, previews, detalle (clases y escape).
 
 No cubren el navegador real (layout, CSS, eventos nativos, `html`/`raw` reales): eso sigue requiriendo una pasada manual.
+
+## Borrar un registro
+
+`eliminarMesadaPago(parent, key)` siempre pide confirmación («Borrar registro», con el nombre del padre y el mes y, si el pago movió el saldo de una cuenta o encargo, la advertencia de que se resta). Si además el pago es «viejo» (protección por antigüedad), esa confirmación ya hace de aviso y no se pregunta dos veces; si está bloqueado, solo avisa.

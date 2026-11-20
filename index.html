@@ -4265,6 +4265,7 @@
     <div class="overlay" id="sheet-mesada-pago" data-sheet-id="mesada-pago">
       <div class="sheet">
         <div class="sheet-handle"></div>
+        <button type="button" class="sheet-x" data-close-sheet="mesada-pago" aria-label="Cerrar"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
         <div class="sheet-title" id="mesadaPagoTitle">Mesada recibida</div>
         <p class="ms-desc" id="mesadaPagoDesc">¿Cuándo te pagó y qué hiciste con esa plata?</p>
         <div class="ig">
@@ -4337,10 +4338,12 @@
           <input type="text" id="mesadaPagoNota" maxlength="60"
             placeholder="Ej: 42k Mesada Nu, el resto en Nequi">
         </div>
-        <button type="button" class="btn btn-primary"
-          id="btn-confirmar-mesada">Guardar</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="mesada-pago">Cancelar</button>
+        <div class="sheet-acciones">
+          <button type="button" class="btn btn-primary"
+            id="btn-confirmar-mesada">Guardar</button>
+          <button type="button" class="btn btn-ghost"
+            data-close-sheet="mesada-pago">Cancelar</button>
+        </div>
       </div>
     </div>
 
@@ -4348,10 +4351,11 @@
     <div class="overlay" id="sheet-mesada-det" data-sheet-id="mesada-det">
       <div class="sheet">
         <div class="sheet-handle"></div>
+        <button type="button" class="sheet-x" data-close-sheet="mesada-det" aria-label="Cerrar"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
         <div class="sheet-title" id="mdTitle">Detalle mesada</div>
         <div id="mdContent"></div>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="mesada-det">Cancelar</button>
+        <button type="button" class="btn btn-ghost sheet-cerrar-movil"
+          data-close-sheet="mesada-det">Cerrar</button>
       </div>
     </div>
 
@@ -4359,6 +4363,7 @@
     <div class="overlay" id="sheet-mesada-pend" data-sheet-id="mesada-pend">
       <div class="sheet">
         <div class="sheet-handle"></div>
+        <button type="button" class="sheet-x" data-close-sheet="mesada-pend" aria-label="Cerrar"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
         <div class="sheet-title" id="mesadaPagoPendienteTitle">Pago de lo pendiente</div>
         <p class="ms-desc" id="mesadaPagoPendienteDesc">¿Cuánto te dio de lo que te quedó debiendo?</p>
         <div class="ig">
@@ -4406,10 +4411,12 @@
           <input type="text" id="mesadaPagoPendienteNota" maxlength="60"
             placeholder="Ej: Me dio el resto en efectivo">
         </div>
-        <button type="button" class="btn btn-primary"
-          id="btn-confirmar-mesada-pend">Guardar</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="mesada-pend">Cancelar</button>
+        <div class="sheet-acciones">
+          <button type="button" class="btn btn-primary"
+            id="btn-confirmar-mesada-pend">Guardar</button>
+          <button type="button" class="btn btn-ghost"
+            data-close-sheet="mesada-pend">Cancelar</button>
+        </div>
       </div>
     </div>
 

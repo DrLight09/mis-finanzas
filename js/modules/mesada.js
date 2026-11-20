@@ -620,15 +620,14 @@ function _poblarDestinoMesada(selectId) {
 
 // La Mesada cuenta como ingreso del mes en que te la PAGAN (la fecha), no del mes que cubre (la clave del pago). Si son
 // distintos se dice antes de guardar, para que se entienda dónde va a aparecer la plata en Análisis. Es informativo.
-// Devuelve el texto o '' (clave inválida, sin fecha, o la fecha cae en el mes que cubre).
+// Devuelve el texto o '' (clave inválida, sin fecha, o la fecha cae en el mes que cubre: ahí no hay nada que aclarar).
 function mesadaAvisoMesPago(key, fecha) {
   const k = /^(\d{4})-(\d{1,2})$/.exec(String(key || ''));
   const f = /^(\d{4})-(\d{2})-\d{2}/.exec(String(fecha || ''));
   if (!k || !f) return '';
   if (Number(k[1]) === Number(f[1]) && Number(k[2]) === Number(f[2]) - 1) return '';
-  const mesFecha = f[1] + '-' + f[2];
-  const donde = mesFecha === mesActual() ? 'este mes' : _mesNombreDeKey(f[1] + '-' + (Number(f[2]) - 1));
-  return 'Cubre ' + _mesNombreDeKey(key) + ', pero cuenta como ingreso de ' + donde + ': el mes en que te la pagan.';
+  const donde = _mesNombreDeKey(f[1] + '-' + (Number(f[2]) - 1));
+  return 'Corresponde a ' + _mesNombreDeKey(key) + ', pero se cuenta como ingreso de ' + donde + ', el mes de la fecha de pago.';
 }
 
 function actualizarMesadaPagoAvisoMes() {
@@ -817,6 +816,7 @@ async function eliminarMesadaPago(parent, key) {
   // Protección por antigüedad (docs/proteccion-antiguedad-movimientos.md): solo si borrar
   // realmente movería el saldo de alguna cuenta o encargo. Un pago 100% "no especificar"
   // no revierte nada, así que no hay saldo que proteger.
+  let confirmadoViejo = false;
   if (mesadaTieneCuentaAfectada(info)) {
     const nivel = nivelAntiguedadMovimiento(info.fecha, mesadaOperacionesPosteriores(parent, key, info), 'mesada');
     if (nivel === 'bloqueado') { await avisarMovimientoBloqueado(); return; }
@@ -824,8 +824,13 @@ async function eliminarMesadaPago(parent, key) {
       const fuentes = mesadaFuentesDe(info);
       const nombreCuenta = fuentes.length > 1 ? `${fuentes.length} cuentas` : (fuentes.length ? fuenteLabel(fuentes[0]) : 'Encargos');
       if (!await confirmarBorrarMovimientoViejo(nombreCuenta, info.monto || 0, 'baja')) return;
+      confirmadoViejo = true;
     }
   }
+  // Borrar siempre pide confirmación; si ya se pidió la de «movimiento viejo» (arriba), no se repite.
+  if (!confirmadoViejo && !await confirmarEliminar({ titulo: 'Borrar registro', verbo: 'Borrar', etiqueta: 'Borrar',
+    objeto: 'el registro de ' + mesadaNombrePadre(parent) + ' · ' + _mesNombreDeKey(key),
+    detalle: mesadaTieneCuentaAfectada(info) ? 'La plata se restará de la cuenta (o encargo) donde entró.' : '' })) return;
   const _historialAntes = medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este pago
   mesadaBorrarPago(parent, key);
   purgarEfectoEnHistorial(_historialAntes, info);

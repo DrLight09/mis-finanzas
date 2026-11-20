@@ -11,7 +11,7 @@
     "sellar:check": "node scripts/sellar-sw.js --check"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
   },
   "devDependencies": {
     "jsdom": "^27.4.0"

@@ -1,0 +1,40 @@
+name: CI
+
+# Corre en cada push y pull request. Hace lo mismo que subir.sh (tests, los tres humos y el mapa de código al día), con la misma
+# versión de Node que .nvmrc. OJO: por sí solo NO bloquea la publicación: GitHub Pages publica desde la rama. Para que sea
+# compuerta de verdad hay que desplegar por Actions (ver docs: revisión estructural, M5).
+on:
+  push:
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar el repo
+        uses: actions/checkout@v4
+
+      - name: Instalar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+
+      # npm ci instala EXACTAMENTE lo que dice package-lock.json.
+      - name: Instalar dependencias
+        run: npm ci
+
+      # Incluye la comprobación de que sw.js está sellado con la huella actual.
+      - name: Tests
+        run: npm test
+
+      - name: Humo - página completa (jsdom)
+        run: npm run smoke
+
+      - name: Humo - Wrapped
+        run: npm run smoke:wrapped
+
+      - name: Humo - huella y cierre
+        run: npm run smoke:cierre
+
+      - name: mapa-codigo.md al día
+        run: node scripts/generar-mapa.js --check

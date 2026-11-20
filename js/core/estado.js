@@ -127,7 +127,17 @@ function fmtNoCents(n){ return Dinero.fmt(n, { decimales: 0, redondeo: 'truncar'
 // mil, truncado. Cambiar el formato del selector (redondear, agregar "COP", etc.) es editar
 // esta función — el detalle de cada cuenta sigue usando fmt() con centavos.
 function fmtSaldoSelector(n){return fmtNoCents(n);}
-function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,5);}
+// Id corto: 8 caracteres de hora (Date.now en base 36) + 3 de sufijo. El FORMATO es contrato: diaCreacionMovimiento() (patrimonio.js)
+// lee la hora con id.slice(0,-3) y exige /^[0-9a-z]{10,12}$/, así que el largo no se puede cambiar sin tocarla. Dentro del mismo
+// milisegundo el sufijo avanza de a uno desde un punto al azar (46.656 valores): nunca se repite en una sesión, aunque un bucle
+// cree decenas de ids seguidos (filas de split, meses de mesada). Entre milisegundos y dispositivos el sufijo es aleatorio.
+let _uidMs = 0, _uidBase = 0, _uidN = 0;
+function uid(){
+  let ms = Date.now();
+  if (ms < _uidMs) ms = _uidMs;                 // el reloj retrocedió: se sigue con el último milisegundo usado
+  if (ms !== _uidMs) { _uidMs = ms; _uidBase = Math.floor(Math.random() * 46656); _uidN = 0; }
+  return ms.toString(36) + ((_uidBase + _uidN++) % 46656).toString(36).padStart(3, '0');
+}
 // Mide el ancho de un texto sin tocar el DOM (evita forced reflow en tooltips
 // que se reposicionan muy seguido, ej. arrastrar sobre gráficos). Un canvas
 // fuera del documento no depende del layout de la página, así que medir con

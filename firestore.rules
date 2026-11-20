@@ -1,0 +1,62 @@
+rules_version = '2';
+
+// Reglas de Firestore de Mis Finanzas. Viven en el repo (antes solo en la consola) y se despliegan con:
+//   npx firebase-tools deploy --only firestore:rules
+//
+// Quién: solo el dueño de cada árbol `usuarios/{uid}/…`. Todo lo que no coincide con una ruta de abajo queda denegado.
+// Qué: además, cada documento tiene la forma que escribe el código (js/core/firebase-sync.js, respaldos.js,
+// notificaciones-push.js). Es defensa contra un bug del cliente (basura o un documento que pase de 1 MiB), no contra terceros.
+//
+// Si cambia la forma de un documento (un campo nuevo), hay que cambiarla aquí en el mismo commit, o el guardado se rechaza.
+// El runner de notificaciones usa Admin SDK y se salta estas reglas.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function esDueno(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // `payload` = estado gzip+base64 (solo ASCII). 950.000 deja margen bajo el límite de 1 MiB por documento.
+    function payloadValido(d) {
+      return d.payload is string && d.payload.size() > 0 && d.payload.size() < 950000;
+    }
+
+    // Leer y borrar: el dueño, en todo su árbol `data/`. No se limita por nombre de documento a propósito: borrar la cuenta y limpiar
+    // respaldos hacen getDocs() sobre la colección entera, y una regla que dependa del id no se puede comprobar para una consulta
+    // (Firestore la rechazaría). Lo que se estrecha es la ESCRITURA, abajo.
+    match /usuarios/{userId}/data/{docId} {
+      allow read, delete: if esDueno(userId);
+    }
+
+    // Documento principal: { payload, updatedAt, rev }. setDoc sin merge y tx.set → llega exactamente con estas claves.
+    match /usuarios/{userId}/data/finanzas {
+      allow create, update: if esDueno(userId)
+        && request.resource.data.keys().hasOnly(['payload', 'updatedAt', 'rev'])
+        && request.resource.data.keys().hasAll(['payload', 'updatedAt', 'rev'])
+        && payloadValido(request.resource.data)
+        && request.resource.data.rev is int;
+    }
+
+    // Copias de seguridad en la nube: `respaldo-…` (copia del principal + { respaldo }) y el índice `respaldos-indice` ({ items }).
+    match /usuarios/{userId}/data/{docId} {
+      allow create, update: if esDueno(userId) && (
+        (docId == 'respaldos-indice'
+          && request.resource.data.keys().hasOnly(['items'])
+          && request.resource.data.items is list
+          && request.resource.data.items.size() <= 100)
+        ||
+        (docId.matches('respaldo-.*')
+          && request.resource.data.keys().hasOnly(['payload', 'updatedAt', 'rev', 'respaldo'])
+          && payloadValido(request.resource.data))
+      );
+    }
+
+    // Tokens de notificaciones push de los dispositivos: { fcmTokens: [..] } (setDoc con merge + arrayUnion).
+    match /usuarios/{userId}/data/notificaciones {
+      allow create, update: if esDueno(userId)
+        && request.resource.data.keys().hasOnly(['fcmTokens'])
+        && request.resource.data.fcmTokens is list
+        && request.resource.data.fcmTokens.size() <= 50;
+    }
+  }
+}

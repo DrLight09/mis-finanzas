@@ -422,7 +422,7 @@ describe('firebase-sync', () => {
     assert.equal(e.almacen.doc.rev, 1);
   });
 
-  test('rev — si otro dispositivo guardó en medio NO se pisa: se carga su versión y la copia local queda en mf_conflicto', async () => {
+  test('rev — si otro dispositivo guardó en medio NO se pisa: se carga su versión y la copia local descartada se conserva', async () => {
     const e = entornoRev(nubeDoc(1, 3));
     await cargar(e);
     e.almacen.doc = nubeDoc(500, 4, Date.now()); // el otro dispositivo guardó la revisión 4
@@ -435,7 +435,7 @@ describe('firebase-sync', () => {
     assert.equal(e.almacen.doc.rev, 4, 'la nube sigue intacta');
     assert.equal(e.app.S.cuentas[0].saldo, 500, 'se cargó la versión de la nube');
     assert.equal(e.app._revNube, 4);
-    const copia = JSON.parse(e.store.mf_conflicto);
+    const copia = await e.app._firebaseConflictoGuardado();   // sin almacén de respaldos en este entorno: va al último recurso (localStorage, comprimido)
     assert.equal(JSON.parse(copia.payload).cuentas[0].saldo, 99, 'lo local descartado quedó guardado');
     assert.ok(avisos.some(m => /otro dispositivo/i.test(m)));
     // y con la versión nueva ya cargada, el siguiente guardado pasa

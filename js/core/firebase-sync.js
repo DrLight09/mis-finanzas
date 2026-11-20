@@ -69,7 +69,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   // El documento lleva `rev` (entero que sube de 1 en 1 en cada guardado). `_revNube` es la revisión de la nube que ESTE
   // dispositivo ya aplicó o escribió; un guardado solo se acepta si la nube sigue en esa revisión (se comprueba dentro de una
   // transacción de Firestore: lectura + escritura atómicas). Si otro dispositivo guardó en medio, NO se pisa: se carga su versión
-  // y la copia local descartada queda en localStorage (`mf_conflicto`). Un documento viejo sin `rev` cuenta como 0.
+  // y la copia local descartada queda en el almacén de respaldos del equipo (tipo `conflicto`; último recurso: `mf_conflicto` en localStorage). Un documento viejo sin `rev` cuenta como 0.
   // `_revEnVuelo` es la revisión que este dispositivo está escribiendo ahora: el eco de su propio guardado no es «otro dispositivo».
   window._revNube = null;
   window._revEnVuelo = 0;
@@ -201,8 +201,31 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   window._firebaseEscribirDoc = _escribirNube;
 
   // Otro dispositivo guardó antes que este: se conserva una copia de lo local que se descarta y se carga la versión de la nube.
+  // Guarda una copia de lo local que se va a descartar. Devuelve dónde quedó: 'equipo' (almacén de respaldos del dispositivo: IndexedDB,
+  // comprimido, sin el tope de ~5 MB de localStorage; se ve y se restaura en Configuración → Respaldos), 'ls' (localStorage comprimido:
+  // último recurso, solo recuperable a mano), 'vacio' (no había nada que proteger) o null (NO se pudo guardar). Nunca lanza.
+  async function _guardarCopiaConflicto(plano) {
+    if (typeof plano !== 'string' || !plano) return 'vacio';
+    const almacen = _almacen();
+    if (almacen) {
+      try {
+        const r = await respaldarEnEquipo({ almacen, plano, tipo: 'conflicto', ahora: Date.now(), codificar: codificarPayload });
+        if (r.estado === 'creado') return 'equipo';
+        if (r.estado === 'sin-datos') return 'vacio';
+      } catch (e) { console.warn('[Sync] No se pudo guardar la copia del conflicto en el almacén de respaldos:', e); }
+    }
+    try { localStorage.setItem('mf_conflicto', JSON.stringify({ ts: Date.now(), payload: await codificarPayload(plano) })); return 'ls'; } catch (_) { /* sin cupo o sin almacenamiento */ }
+    return null;
+  }
+  // Texto del aviso según dónde quedó la copia: si NO se pudo guardar, se dice claro (antes el aviso ni salía).
+  function _textoAvisoConflicto(inicio, donde) {
+    if (donde === 'equipo') return inicio + ' Lo que habías cambiado aquí quedó como copia en Respaldos (dentro de Configuración).';
+    if (donde === 'ls') return inicio + ' Lo que habías cambiado aquí quedó como copia temporal en este dispositivo, pero no se puede restaurar desde la app.';
+    if (donde === 'vacio') return inicio;
+    return inicio + ' ATENCIÓN: no se pudo guardar copia de lo que habías cambiado aquí; esos cambios se perdieron.';
+  }
   async function _resolverConflicto(snapCrudo, payloadLocal) {
-    try { localStorage.setItem('mf_conflicto', JSON.stringify({ ts: Date.now(), payload: payloadLocal })); } catch (_) {}
+    const donde = await _guardarCopiaConflicto(payloadLocal);
     const snap = await _decodificarSnap(snapCrudo);
     _applyCloudData(snap);
     const tsNube = (snap.data() || {}).updatedAt || 0;
@@ -213,11 +236,16 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     if (typeof refresh === 'function') refresh();
     if (window.applyModulos) applyModulos();
     setSyncStatus('ok', 'Sincronizado con la nube');
-    if (typeof toast === 'function') toast('Otro dispositivo guardó antes que tú: se cargó su versión. Lo que habías cambiado aquí sin guardar no se subió; revísalo.', 'warn', 10000);
+    if (typeof toast === 'function') toast(_textoAvisoConflicto('Otro dispositivo guardó antes que tú: se cargó su versión.', donde), 'warn', donde === 'equipo' || donde === 'vacio' ? 10000 : 14000);
   }
   // Copia de seguridad de lo local cuando una actualización de otro dispositivo llega con cambios locales sin guardar.
-  window._firebaseConflictoGuardado = function() {
-    try { const c = JSON.parse(localStorage.getItem('mf_conflicto') || 'null'); return c; } catch (_) { return null; }
+  // Solo existe la del último recurso (localStorage); la normal está en el almacén de respaldos. Devuelve { ts, payload } con el JSON ya en texto.
+  window._firebaseConflictoGuardado = async function() {
+    try {
+      const c = JSON.parse(localStorage.getItem('mf_conflicto') || 'null');
+      if (c && c.payload) c.payload = await decodificarPayload(c.payload);
+      return c;
+    } catch (_) { return null; }
   };
 
   // Cuerpo del guardado con debounce, extraído tal cual del setTimeout para
@@ -544,10 +572,13 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
             _remotoAplicadoTs = Math.max(_remotoAplicadoTs, remoteTs);
             console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
             // Cambios locales sin guardar que esta actualización va a reemplazar: se guarda una copia antes.
+            // El texto local se toma AHORA (síncrono, antes de _applyCloudData); guardarlo y avisar es asíncrono y no frena la carga.
             try {
-              if(window._lastSavedPayload && JSON.stringify(window.S) !== window._lastSavedPayload) {
-                localStorage.setItem('mf_conflicto', JSON.stringify({ ts: Date.now(), payload: JSON.stringify(window.S) }));
-                if(window.toast) window.toast('Otro dispositivo guardó mientras editabas aquí: se cargó su versión.', 'warn', 8000);
+              const planoLocal = window._lastSavedPayload ? JSON.stringify(window.S) : null;
+              if(planoLocal && planoLocal !== window._lastSavedPayload) {
+                _guardarCopiaConflicto(planoLocal).then(donde => {
+                  if(window.toast) window.toast(_textoAvisoConflicto('Otro dispositivo guardó mientras editabas aquí: se cargó su versión.', donde), 'warn', donde === 'equipo' ? 10000 : 14000);
+                });
               }
             } catch(_){}
             _applyCloudData(snap);
@@ -850,7 +881,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
         try { localStorage.setItem('mf_lastSavedAt', String(signOutTs)); } catch(_){}
         const r = await _escribirNube(await codificarPayload(JSON.stringify(window.S)), signOutTs, false);
         if(!r.ok) {
-          // Otro dispositivo guardó antes: se carga su versión (la local queda en `mf_conflicto`) y no se cierra la sesión todavía.
+          // Otro dispositivo guardó antes: se carga su versión (la local queda como copia tipo `conflicto`) y no se cierra la sesión todavía.
           await _resolverConflicto(r.snap, JSON.stringify(window.S));
           if(_overlay) _overlay.style.display = 'none';
           return;

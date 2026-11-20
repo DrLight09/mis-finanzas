@@ -23,15 +23,18 @@
 export const PREFIJO_RESPALDO = 'respaldo-';
 export const ID_INDICE = 'respaldos-indice';
 // Cuántos se conservan. La nube cabe de sobra en el plan gratis (1 GiB; cada copia pesa como máximo ~1 MiB, hoy mucho menos).
-export const LIMITES = { diarios: 30, previos: 5, localDiarios: 7, localPrevios: 2 };
+// `conflictos`: copias de lo local que se descartó porque otro dispositivo guardó antes (solo viven en el equipo).
+export const LIMITES = { diarios: 30, previos: 5, localDiarios: 7, localPrevios: 2, conflictos: 5 };
 
 const dos = n => String(n).padStart(2, '0');
+const CLASES = ['diario', 'previo', 'conflicto'];
 
 // AAAA-MM-DD en la hora LOCAL del dispositivo (el «día» de la persona, no el de UTC).
 export function fechaLocal(d = new Date()) {
   return d.getFullYear() + '-' + dos(d.getMonth() + 1) + '-' + dos(d.getDate());
 }
 export const idDiario = fecha => PREFIJO_RESPALDO + fecha;
+export function idConflicto(ahora) { return idPrevio(ahora).replace('previo-', 'conflicto-'); }
 export function idPrevio(ahora) {
   const d = new Date(ahora);
   return PREFIJO_RESPALDO + 'previo-' + fechaLocal(d) + '-' + dos(d.getHours()) + dos(d.getMinutes()) + dos(d.getSeconds());
@@ -54,13 +57,13 @@ export async function payloadTieneDatos(payload, decodificar) {
 
 // Aplica los topes por clase: se queda con los más recientes de cada una. Devuelve { conservar, borrar }.
 export function podar(items, limites = LIMITES, local = false) {
-  const tope = { diario: local ? limites.localDiarios : limites.diarios, previo: local ? limites.localPrevios : limites.previos };
+  const tope = { diario: local ? limites.localDiarios : limites.diarios, previo: local ? limites.localPrevios : limites.previos, conflicto: limites.conflictos };
   const conservar = [], borrar = [];
-  ['diario', 'previo'].forEach(tipo => {
+  CLASES.forEach(tipo => {
     const delTipo = items.filter(i => i.tipo === tipo).sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
     delTipo.forEach((it, n) => (n < tope[tipo] ? conservar : borrar).push(it));
   });
-  items.filter(i => i.tipo !== 'diario' && i.tipo !== 'previo').forEach(i => conservar.push(i)); // clase desconocida: no se toca
+  items.filter(i => !CLASES.includes(i.tipo)).forEach(i => conservar.push(i)); // clase desconocida: no se toca
   conservar.sort((a, b) => (b.creadoEn || 0) - (a.creadoEn || 0));
   return { conservar, borrar };
 }
@@ -166,7 +169,7 @@ export function almacenIndexedDB(nombreDB = 'mf-respaldos', tienda = 'respaldos'
 export async function respaldarEnEquipo({ almacen, plano, tipo, ahora = Date.now(), codificar, limites = LIMITES }) {
   if (!planoTieneDatos(plano)) return { estado: 'sin-datos' };
   const fecha = fechaLocal(new Date(ahora));
-  const id = tipo === 'diario' ? idDiario(fecha) : idPrevio(ahora);
+  const id = tipo === 'diario' ? idDiario(fecha) : tipo === 'conflicto' ? idConflicto(ahora) : idPrevio(ahora);
   if (tipo === 'diario' && await almacen.leer(id)) return { estado: 'ya-existia', id };
   const payload = await codificar(plano);
   await almacen.guardar({ id, tipo, fecha, de: null, bytes: payload.length, creadoEn: ahora, payload });

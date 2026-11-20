@@ -338,13 +338,13 @@ function _respFechaLarga(fila){
   const [a,m,d]=String(fila.fecha||'').split('-').map(Number);
   if(!a||!m||!d)return 'Fecha desconocida';
   const base=d+' de '+_MESES_RESP[m-1]+' de '+a;
-  if(fila.tipo!=='previo')return base;
+  if(fila.tipo!=='previo'&&fila.tipo!=='conflicto')return base;
   const h=new Date(fila.creadoEn||0);
   return base+', '+String(h.getHours()).padStart(2,'0')+':'+String(h.getMinutes()).padStart(2,'0');
 }
 function _respDescripcion(fila){
   const donde=fila.fuentes.length===2?'nube y este dispositivo':(fila.fuentes[0]==='nube'?'nube':'este dispositivo');
-  const que=fila.tipo==='previo'?'Antes de importar o restaurar':'Así quedó todo al empezar el día';
+  const que=fila.tipo==='previo'?'Antes de importar o restaurar':fila.tipo==='conflicto'?'Lo que habías cambiado aquí cuando otro dispositivo guardó antes':'Así quedó todo al empezar el día';
   return que+' · '+Math.max(1,Math.round((fila.bytes||0)/1000))+' KB · '+donde;
 }
 function renderRespaldos(){

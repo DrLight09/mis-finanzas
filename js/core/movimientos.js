@@ -547,7 +547,7 @@ async function _eliminarMovimientoImpl(btn) {
   // Protección por antigüedad — ver docs/proteccion-antiguedad-movimientos.md.
   // Resuelto ANTES de la confirmación genérica de abajo porque el nivel
   // 'viejo'/'bloqueado' usa su propio diálogo en vez del genérico. Cubre
-  // todos los tipos que maneja esta función: 'mesada', 'prestamo'/'abono' y
+  // todos los tipos que maneja esta función: 'prestamo'/'abono' y
   // TC (dentro de 'gasto') tienen además su propio punto de entrada en su
   // módulo (mesada.js, prestado.js, tarjetas-credito.js respectivamente, que
   // aplican la misma protección por su cuenta); 'transferencia',
@@ -556,12 +556,7 @@ async function _eliminarMovimientoImpl(btn) {
   // entrada.
   // Cada tipo declara su protección con Reversibles.registrar() (más abajo en este archivo y en gastos.js).
   let ref = null;
-  if (movimientoTipoEl === 'mesada') {
-    ['papa', 'mama'].forEach(parent => {
-      const data = getMesadaData(parent);
-      Object.keys(data).forEach(k => { if (data[k] && data[k]._id === movimientoId) ref = { parent, key: k, info: data[k] }; });
-    });
-  } else if (movimientoTipoEl === 'gasto') ref = (S.gastosVar || []).find(x => x.id === movimientoId);
+  if (movimientoTipoEl === 'gasto') ref = (S.gastosVar || []).find(x => x.id === movimientoId);
   else if (movimientoTipoEl === 'transferencia') ref = (S.transferencias || []).find(t => t.id === movimientoId);
   else if (movimientoTipoEl === 'salida_manual') ref = (S.movimientos || []).find(x => x.id === movimientoId);
   else if (movimientoTipoEl === 'ingreso' || movimientoTipoEl === 'apertura' || movimientoTipoEl === 'entrada') {
@@ -662,34 +657,6 @@ async function _eliminarMovimientoImpl(btn) {
       }
       S.gastosVar = S.gastosVar.filter(x => x.id !== movimientoId);
     }
-  } else if (movimientoTipoEl === 'mesada') {
-    // Mesada
-    // FIX: getMesadaData es una mutación real (encuentra y borra el registro
-    // original + revierte la plata al destino) — mesada.js ya es un grupo
-    // lazy real, así que esto rompía HOY (no solo en un escenario futuro) si
-    // se eliminaba un movimiento de mesada desde el feed general sin haber
-    // visitado antes la pantalla Mesada.
-    if (typeof getMesadaData!=='function') {
-      try { await Loader.ensure('mesada'); }
-      catch(err) { toast('No se pudo cargar Mesada. Intenta de nuevo.', 'err', 4000); return; }
-    }
-    let found = false;
-    ['papa', 'mama'].forEach(parent => {
-      const data = getMesadaData(parent);
-      Object.keys(data).forEach(k => {
-        const info = data[k];
-        if (info && info._id === movimientoId) {
-          // Revertir destino(s)
-          if (info.splits && info.splits.length) {
-            info.splits.forEach(s => { if (s.fuente) descontarFuente(s.fuente, s.monto, _origenLibroMovimiento(movimientoId, true)); });
-          } else if (info.destino) {
-            descontarFuente(info.destino, info.monto, _origenLibroMovimiento(movimientoId, true));
-          }
-          delete data[k];
-          found = true;
-        }
-      });
-    });
   }
 
   if (_historialApertura) purgarAperturaDelHistorial(_historialApertura);
@@ -725,12 +692,6 @@ Events.on('core:toggleExtraordinario', toggleExtraordinario);
 
 
 /* ---- Reversibles: protección por antigüedad de cada tipo de movimiento (ver js/core/utilidades-ui.js) ---- */
-Reversibles.registrar({ tipo: 'mesada', proteccion(t) {
-  if (!t || !_mesadaTieneCuentaAfectada(t.info)) return null;
-  const fuentes = _mesadaFuentesDe(t.info);
-  return { fecha: t.info.fecha, operaciones: _mesadaOperacionesPosteriores(t.parent, t.key, t.info), modulo: 'mesada',
-    nombre: fuentes.length > 1 ? `${fuentes.length} cuentas` : fuenteLabel(fuentes[0]), monto: t.info.monto || 0, direccion: 'baja' };
-} });
 Reversibles.registrar({ tipo: 'transferencia', proteccion(tr, c) {
   if (!tr) return null;
   const fecha = tr.fecha || (c && c.fechaItem);

@@ -1,0 +1,8 @@
+# Mantiene al día las acciones de los workflows (las versiones viejas acaban deprecadas, como pasó con Node 20).
+# Abre un pull request por semana solo si hay versiones nuevas.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

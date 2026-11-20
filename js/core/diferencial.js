@@ -43,7 +43,7 @@
 
    Lo que SÍ estaba 100% bajo control de este archivo y se migró:
      - diffRenderPartes(): generaba onclick/oninput/onchange en cada
-       fila de beneficiario (removeParte, togglePagoYo, setNombre,
+       fila de beneficiario (removeParte, togglePagoYo,
        setMonto, setCuentaSalida, setCuentaEntrada). Ahora los clicks
        usan data-action (diferencial:removeParte / diferencial:togglePagoYo)
        y los oninput/onchange se re-adjuntan con addEventListener
@@ -91,7 +91,6 @@ function diffRegistrarInstancia(instanciaId, cfg) {
     toggle: () => diffToggle(instanciaId),
     addParte: () => diffAddParte(instanciaId),
     removeParte: i => diffRemoveParte(instanciaId, i),
-    setNombre: (i, v) => diffSetNombre(instanciaId, i, v),
     setMonto: (i, v) => diffSetMonto(instanciaId, i, v),
     togglePagoYo: i => diffTogglePagoYo(instanciaId, i),
     setCuentaSalida: (i, v) => diffSetCuentaSalida(instanciaId, i, v),

@@ -27,7 +27,8 @@ function getCatsFijo(){return S.catsFijo&&S.catsFijo.length?S.catsFijo:[...CATS_
 function poblarCatSelect(selectId, cats, valorActual){
   const sel=document.getElementById(selectId);
   if(!sel)return;
-  sel.innerHTML=cats.map(c=>`<option value="${c}"${c===valorActual?' selected':''}>${c}</option>`).join('');
+  // Las categorías son texto libre de la persona: html`` escapa comillas y < (con `"` el value se cortaba y el gasto se guardaba con otra categoría).
+  sel.innerHTML=html`${cats.map(c=>html`<option value="${c}" ${c===valorActual?'selected':''}>${c}</option>`)}`;
 }
 
 let S={

@@ -233,7 +233,7 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
     app._firebaseLoadData();
     listeners.next({ exists: () => nube.docs.has(PRINCIPAL), data: () => nube.docs.get(PRINCIPAL), metadata: { fromCache: false, hasPendingWrites: false } });
     await hasta(() => app._dataLoaded);
-    return { app, nube, store, avisos, intentos: () => intentosRespaldo };
+    return { app, nube, store, avisos, listeners, intentos: () => intentosRespaldo };
   }
   const doc0 = (saldo, rev = 3) => ({ payload: gz(plano({ cuentas: [{ id: 'nequi', saldo }], libro: [] })), updatedAt: Date.now() - 600000, rev });
   const respaldosNube = n => [...n.docs.keys()].filter(k => k.includes('/data/respaldo-'));
@@ -343,6 +343,71 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
     assert.equal(JSON.parse(await e.app._firebaseRespaldos.leer(filas[0])).cuentas[0].saldo, 1);
     assert.ok(e.app._firebaseRespaldos.estado().ultimo, 'recuerda cuándo se creó el último');
   });
+  // ── Copia de lo local cuando otro dispositivo guardó antes (conflicto) ──
+  const conflictoPorGuardado = async (e, opciones = {}) => {
+    e.nube.docs.set(PRINCIPAL, doc0(500, 4));        // el otro dispositivo guardó la revisión 4
+    e.app.S.cuentas[0].saldo = 99;                   // cambio local sobre la revisión 3
+    const r = await guardar(e.app);
+    assert.equal(r.reason, 'conflict');
+    await new Promise(res => setTimeout(res, 20));
+    return r;
+  };
+
+  test('conflicto: lo local descartado queda como copia tipo «conflicto» en el almacén del equipo (comprimida, restaurable) y el aviso lo dice', async () => {
+    const e = await entorno(doc0(1, 3));
+    await conflictoPorGuardado(e);
+    const filas = await e.app._almacenRespaldosPrueba.listar();
+    const c = filas.filter(f => f.tipo === 'conflicto');
+    assert.equal(c.length, 1);
+    assert.match(c[0].id, /^respaldo-conflicto-/);
+    const completa = await e.app._almacenRespaldosPrueba.leer(c[0].id);
+    assert.ok(completa.payload.startsWith('gz1:'), 'va comprimida');
+    assert.equal(JSON.parse(await decodificar(completa.payload)).cuentas[0].saldo, 99, 'lo local que se iba a perder');
+    assert.equal(e.store.mf_conflicto, undefined, 'no hace falta el último recurso');
+    assert.ok(e.avisos.some(a => /Respaldos \(dentro de Configuración\)/.test(a.m)), 'el aviso dice dónde quedó la copia');
+  });
+
+  test('conflicto: sin almacén del equipo, la copia va a localStorage COMPRIMIDA y se puede leer', async () => {
+    const e = await entorno(doc0(1, 3));
+    e.app._almacenRespaldosPrueba = null;
+    await conflictoPorGuardado(e);
+    const guardada = JSON.parse(e.store.mf_conflicto);
+    assert.ok(guardada.payload.startsWith('gz1:'));
+    assert.equal(JSON.parse((await e.app._firebaseConflictoGuardado()).payload).cuentas[0].saldo, 99);
+    assert.ok(e.avisos.some(a => /temporal/.test(a.m)));
+  });
+
+  test('conflicto: si NO se puede guardar la copia en ningún lado, el aviso lo dice claro (antes se tragaba el error y ni avisaba)', async () => {
+    const e = await entorno(doc0(1, 3));
+    e.app._almacenRespaldosPrueba = null;
+    e.app.localStorage.setItem = () => { throw new Error('QuotaExceededError'); };
+    await conflictoPorGuardado(e);
+    assert.ok(e.avisos.some(a => /no se pudo guardar copia/i.test(a.m)), JSON.stringify(e.avisos));
+  });
+
+  test('conflicto en tiempo real (otro dispositivo guarda mientras editas): copia en el equipo y aviso, sin frenar la carga de lo nuevo', async () => {
+    const e = await entorno(doc0(1, 3));
+    e.app.S.cuentas[0].saldo = 77;                    // edición local sin guardar
+    e.nube.docs.set(PRINCIPAL, doc0(500, 4));
+    e.listeners.next({ exists: () => true, data: () => e.nube.docs.get(PRINCIPAL), metadata: { fromCache: false, hasPendingWrites: false } });
+    await hasta(() => e.avisos.some(a => /Respaldos/.test(a.m)));
+    assert.equal(e.app.S.cuentas[0].saldo, 500, 'se cargó la versión de la nube');
+    const c = (await e.app._almacenRespaldosPrueba.listar()).filter(f => f.tipo === 'conflicto');
+    assert.equal(c.length, 1);
+    assert.equal(JSON.parse(await decodificar((await e.app._almacenRespaldosPrueba.leer(c[0].id)).payload)).cuentas[0].saldo, 77);
+    assert.ok(e.avisos.some(a => /Otro dispositivo guardó mientras editabas aquí.*Respaldos/.test(a.m)));
+  });
+
+  test('conflicto: se conservan solo las 5 copias más recientes y no se tocan los respaldos diarios', () => {
+    const items = [];
+    for (let i = 0; i < 7; i++) items.push({ id: 'c' + i, tipo: 'conflicto', creadoEn: 100 + i });
+    items.push({ id: 'd', tipo: 'diario', creadoEn: 1 });
+    const { conservar, borrar } = R.podar(items, R.LIMITES, true);
+    assert.equal(conservar.filter(i => i.tipo === 'conflicto').length, 5);
+    assert.deepEqual(borrar.map(i => i.id).sort(), ['c0', 'c1']);
+    assert.ok(conservar.some(i => i.id === 'd'));
+  });
+
 });
 
 // ── Pantalla: Configuración → Datos → Respaldos automáticos (js/modules/configuracion.js) ─────────────────────────────

@@ -38,7 +38,9 @@ Lo único que un respaldo no trae es lo que registraste *después* de que se cre
 | | Dónde | Cuántos | Para qué |
 |---|---|---|---|
 | **Nube** | Documentos hermanos del principal, en `usuarios/{uid}/data/` (`respaldo-AAAA-MM-DD`, `respaldo-previo-…`) y un índice `respaldos-indice` | 30 diarios · 5 previos | Es la copia principal, disponible desde cualquier dispositivo |
-| **Dispositivo** | IndexedDB del navegador (`mf-respaldos`) | 7 diarios · 2 previos | Sirve sin conexión y no depende de Firebase; se pierde si borras los datos del navegador o desinstalas la app |
+| **Dispositivo** | IndexedDB del navegador (`mf-respaldos`) | 7 diarios · 2 previos · 5 de conflicto | Sirve sin conexión y no depende de Firebase; se pierde si borras los datos del navegador o desinstalas la app |
+
+**Copias de «conflicto» (solo en el dispositivo):** si otro dispositivo guarda mientras editas aquí, se carga su versión y lo tuyo sin guardar se conserva como respaldo de este tipo (`respaldo-conflicto-…`, comprimido). Aparece en Configuración, en Respaldos, con el texto «Lo que habías cambiado aquí cuando otro dispositivo guardó antes». Se guardan las 5 más recientes.
 
 Al llegar al tope se borra el más antiguo de cada clase. El índice guarda fecha, tamaño y origen de cada respaldo, así listar cuesta una sola lectura en vez de descargar todos. Se actualiza en la misma transacción que crea o borra el respaldo, así que no se desincroniza.
 

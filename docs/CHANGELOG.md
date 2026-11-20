@@ -34,6 +34,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 ---
 
 
+
+## 2026-11-20 — Copia de conflicto recuperable, análisis estático, categorías escapadas, código muerto fuera
+
+- **Copia del conflicto de sincronización (N1):** cuando otro dispositivo guarda antes, lo local descartado ahora se guarda como respaldo tipo `conflicto` en el almacén del equipo (IndexedDB, comprimido, sin el tope de ~5 MB de `localStorage`), y aparece en Configuración, en Respaldos, desde donde se restaura. Se conservan las 5 más recientes (`LIMITES.conflictos`). Último recurso: `localStorage` comprimido (`mf_conflicto`, ya legible con `_firebaseConflictoGuardado()`, que ahora es async). Antes la copia iba SIN comprimir a `localStorage`, nada en la app la leía, y en el camino de tiempo real el aviso estaba dentro del mismo `try` que el `setItem`: si fallaba por cupo no salía ni la copia ni el aviso. Ahora el aviso dice dónde quedó la copia o, si no se pudo guardar en ningún lado, lo dice claro. Cambios en `respaldos.js`, `firebase-sync.js`, `configuracion.js`; 5 tests nuevos en `tests/respaldos.test.js`.
+- **`poblarCatSelect` (N2):** las categorías (texto libre) se pintan con `html```: con comillas el `value` se cortaba y el gasto se guardaba con otra categoría sin error. `tests/poblar-cat-select.test.js`.
+- **Análisis estático (H1):** `scripts/lint-globales.js` + `eslint.config.js` (`npm run lint`; lo corre `npm test` vía `tests/lint-globales.test.js`, así que lo cubren `subir.sh` y el CI). Concatena los scripts clásicos en el orden de la página y busca nombres que no existen, duplicados y similares; cuenta como definido lo que algún archivo expone con `window.X = …`.
+- **Código muerto con referencias rotas (H1):** fuera el registro `Reversibles` de tipo `'mesada'` y las dos ramas `'mesada'` de `eliminarMovimiento` (ningún movimiento se guarda con ese tipo; el de Mesada es una `entrada` y su protección vive en `mesada.js`), y `setNombre` de `diferencial.js` (llamaba a una función inexistente).
+
 ## 2026-11-19 — Despliegue por GitHub Actions, sello del Service Worker en el despliegue, reglas de Firestore en el repo
 
 - **Despliegue:** `.github/workflows/ci.yml` corre tests, los tres humos y `generar-mapa.js --check`; en push a `main`, si pasó, el job `deploy` arma `dist/` (`scripts/preparar-despliegue.js` = `npm run build`: solo `index.html`, manifest, `css/`, `js/`, `icons/` y `sw.js`) y lo publica en Pages. Con tests rojos no se publica. Requiere Settings → Pages → Source = «GitHub Actions». Reemplaza `test.yml` y `mapa-codigo.yml`.

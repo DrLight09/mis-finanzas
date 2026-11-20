@@ -7,12 +7,15 @@
     "smoke": "node scripts/smoke-browser.js",
     "smoke:wrapped": "node scripts/smoke-wrapped.js",
     "smoke:cierre": "node scripts/smoke-cierre.js",
-    "build": "node scripts/preparar-despliegue.js"
+    "build": "node scripts/preparar-despliegue.js",
+    "lint": "node scripts/lint-globales.js"
   },
   "engines": {
     "node": ">=20.19"
   },
   "devDependencies": {
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
     "jsdom": "^27.4.0"
   }
 }

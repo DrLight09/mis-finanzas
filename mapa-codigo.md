@@ -53,7 +53,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/refresh.js` | de entrada (defer) | 6 | 0 |
 | `js/core/reglas.js` | de entrada (defer) | 1 | 0 |
 | `js/core/reordenable.js` | de entrada (defer) | 1 | 0 |
-| `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 1 | 0 |
+| `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 1 | 1 |
 | `js/core/saldos-ocultos.js` | de entrada (defer) | 0 | 0 |
 | `js/core/salud.js` | de entrada (defer) | 1 | 0 |
 | `js/core/sheet-behavior.js` | de entrada (defer) | 0 | 0 |
@@ -373,6 +373,8 @@ Carga: de entrada (defer)
 Carga: módulo ES — importado por `js/core/firebase-sync.js`
 
 **Funciones:** `dos`
+
+**Globales:** `CLASES`
 
 ### `js/core/saldos-ocultos.js`
 
@@ -1263,6 +1265,7 @@ Ninguno.
 | `cerrarPartSheet` | `js/modules/encargos.js` |
 | `Cierre` | `js/core/cierre.js` |
 | `claseEfectivaMovimiento` | `js/core/persistencia.js` |
+| `CLASES` | `js/core/respaldos.js` |
 | `CLASES_MOVIMIENTO` | `js/core/ingresos.js` |
 | `clickMesDot` | `js/modules/mesada.js` |
 | `closeSheet` | `js/core/navegacion.js` |

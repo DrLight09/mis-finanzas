@@ -5,7 +5,7 @@
       import { initializeApp } from "https://www.gstatic.com/firebasejs/11.1.0/firebase-app.js";
       import { initializeAuth, indexedDBLocalPersistence, browserLocalPersistence, browserSessionPersistence, browserPopupRedirectResolver, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, deleteUser, reauthenticateWithPopup }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-auth.js";
-      import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, setDoc, deleteDoc, onSnapshot, runTransaction, arrayUnion, collection, getDocs }
+      import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, getDocFromServer, setDoc, deleteDoc, onSnapshot, runTransaction, arrayUnion, collection, getDocs }
         from "https://www.gstatic.com/firebasejs/11.1.0/firebase-firestore.js";
 
       // NOTA DE SEGURIDAD: Esta API Key de Firebase es de dominio público por diseño
@@ -70,7 +70,7 @@
       // runTransaction (2026-09-19): lo usa firebase-sync.js para leer el
       // documento DIRECTO del servidor, sin pasar por la caché local ni por
       // el listener (ver _leerDocEnServidor).
-      window._firebase = { auth, db, provider, popupResolver: browserPopupRedirectResolver, signInWithPopup, signOut, doc, getDoc, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction, arrayUnion, collection, getDocs };
+      window._firebase = { auth, db, provider, popupResolver: browserPopupRedirectResolver, signInWithPopup, signOut, doc, getDoc, getDocFromServer, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction, arrayUnion, collection, getDocs };
 
       // Escuchar estado de auth y arrancar la app
       //

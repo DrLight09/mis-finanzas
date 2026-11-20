@@ -164,10 +164,13 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     const { db, doc, setDoc, runTransaction } = window._firebase;
     if(!(opciones && opciones.sinRespaldo)) await _respaldarAntesDeEscribir(forzar ? 'previo' : 'diario');
     const ref = doc(db, 'usuarios', window._firebaseUser.uid, 'data', 'finanzas');
-    const base = window._revNube;
+    // `base` = la revisión sobre la que se calculó ESTE payload (se toma al serializar, no ahora): si mientras tanto llegó una
+    // versión nueva de otro dispositivo, el payload ya está viejo y la comparación con la nube falla en vez de pisarla.
+    const base = (opciones && 'base' in opciones) ? opciones.base : window._revNube;
     const directa = async (revBase) => {
       const rev = (revBase || 0) + 1;
       window._revEnVuelo = rev;
+      window._ultimaEscrituraPropia = { rev, ts };
       await setDoc(ref, { payload: payloadNube, updatedAt: ts, rev });
       window._revNube = rev;
       return { ok: true, rev };
@@ -186,6 +189,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
         const revNube = s.exists() ? _revDe(s.data()) : 0;
         if (revNube !== base) return { conflicto: true, snap: s };
         window._revEnVuelo = base + 1;
+        window._ultimaEscrituraPropia = { rev: base + 1, ts };
         tx.set(ref, { payload: payloadNube, updatedAt: ts, rev: base + 1 });
         return { rev: base + 1 };
       });
@@ -193,9 +197,21 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
       window._revNube = res.rev;
       return { ok: true, rev: res.rev };
     } catch (e) {
-      // Sin conexión la transacción falla de inmediato; setDoc, en cambio, queda en la cola local de Firestore y sube al volver la red.
-      if (_errorSinRed(e)) return directa(base);
-      throw e;
+      if (!_errorSinRed(e)) throw e;
+      // La transacción dijo «sin conexión». Eso también pasa estando en línea (p. ej. una pestaña secundaria con varias pestañas
+      // abiertas), y escribir a ciegas con setDoc pisaría lo de otra pestaña sin avisar. Primero se intenta leer la revisión
+      // directo del servidor: si responde, se compara igual que en la transacción (queda una ventana de milisegundos, que el
+      // listener cierra al detectar dos escrituras con la misma revisión). Solo si de verdad no hay red se encola con setDoc.
+      const { getDocFromServer } = window._firebase;
+      if (typeof getDocFromServer === 'function') {
+        try {
+          const s = await getDocFromServer(ref);
+          const revNube = s.exists() ? _revDe(s.data()) : 0;
+          if (revNube !== base) return { ok: false, reason: 'conflict', snap: s };
+          return directa(base);
+        } catch (e2) { if (!_errorSinRed(e2)) throw e2; }
+      }
+      return directa(base);
     }
   }
   window._firebaseEscribirDoc = _escribirNube;
@@ -261,6 +277,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
         // serializar: el clon costaba ~3/4 del tiempo de este paso y la cadena es idéntica (JSON.stringify ya descarta los undefined, y
         // lo que va a Firestore es una cadena, no un objeto). Una prueba de sync.test.js fija esa igualdad.
         const payloadStr = JSON.stringify(window.S);
+        const baseAlSerializar = window._revNube; // la revisión sobre la que se calculó este payload (ver _escribirNube)
         const miSeq = ++_saveSeq; // antes del chequeo "¿cambió algo?": un guardado sin cambios también deja viejo a uno en vuelo
         // Nada cambió desde el último guardado real (ni local ni el que
         // acabamos de recibir de la nube) — no hay razón para escribir.
@@ -313,7 +330,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
         window._lastSavedAt = savedAt;
         try { localStorage.setItem('mf_lastSavedAt', String(savedAt)); } catch(_){}
         const forzar = _forzarProximo; _forzarProximo = false;
-        const r = await _escribirNube(payloadNube, savedAt, forzar);
+        const r = await _escribirNube(payloadNube, savedAt, forzar, { base: baseAlSerializar });
         if (!r.ok) {
           // Conflicto: la nube cambió desde la última vez que este dispositivo la leyó. No se pisa.
           await _resolverConflicto(r.snap, payloadStr);
@@ -568,14 +585,19 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
           const esNueva = hayRev
             ? remoteData.rev > Math.max(window._revNube || 0, window._revEnVuelo || 0)
             : (remoteTs > localTs + 5000 && remoteTs > _remotoAplicadoTs);
-          if(esNueva) {
+          // Misma revisión que acabo de escribir pero con otra hora: otro dispositivo/pestaña escribió esa revisión a la vez que yo
+          // (ninguno vio al otro). No es el eco de mi guardado: se trata como actualización de otro y se conserva copia de lo local.
+          const mia = window._ultimaEscrituraPropia;
+          const mismaRevOtroEscritor = hayRev && !!mia && remoteData.rev === mia.rev && remoteTs !== mia.ts;
+          if(esNueva || mismaRevOtroEscritor) {
+            window._ultimaEscrituraPropia = null;
             _remotoAplicadoTs = Math.max(_remotoAplicadoTs, remoteTs);
             console.log('[Sync] Datos más nuevos del servidor — aplicando actualización en tiempo real.');
             // Cambios locales sin guardar que esta actualización va a reemplazar: se guarda una copia antes.
             // El texto local se toma AHORA (síncrono, antes de _applyCloudData); guardarlo y avisar es asíncrono y no frena la carga.
             try {
               const planoLocal = window._lastSavedPayload ? JSON.stringify(window.S) : null;
-              if(planoLocal && planoLocal !== window._lastSavedPayload) {
+              if(planoLocal && (planoLocal !== window._lastSavedPayload || mismaRevOtroEscritor)) {
                 _guardarCopiaConflicto(planoLocal).then(donde => {
                   if(window.toast) window.toast(_textoAvisoConflicto('Otro dispositivo guardó mientras editabas aquí: se cargó su versión.', donde), 'warn', donde === 'equipo' ? 10000 : 14000);
                 });

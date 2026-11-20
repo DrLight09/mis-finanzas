@@ -444,6 +444,74 @@ describe('firebase-sync', () => {
     assert.equal(e.almacen.doc.rev, 5);
   });
 
+  // ── Dos pestañas a la vez (caso real: la pestaña secundaria dice «sin conexión» en la transacción) ─────────────────────
+  function dosPestanas(conServidor) {
+    const a = entornoRev(nubeDoc(1, 3));
+    const b = entornoRev(nubeDoc(1, 3));
+    b.almacen.doc = null; // B comparte la «nube» de A
+    Object.defineProperty(b, 'almacen', { value: a.almacen });
+    const compartido = a.almacen;
+    for (const e of [a, b]) {
+      e.app._firebase.setDoc = async (ref, datos) => { compartido.doc = datos; e.escritos.push(datos); };
+    }
+    // B: la transacción siempre responde «sin conexión» (como una pestaña secundaria); A: normal.
+    b.app._firebase.runTransaction = async () => { const err = new Error('Failed to get document because the client is offline.'); err.code = 'unavailable'; throw err; };
+    if (conServidor) b.app._firebase.getDocFromServer = async () => ({ exists: () => compartido.doc != null, data: () => compartido.doc });
+    return { a, b, nube: compartido };
+  }
+  const entregar = (e, doc) => e.listeners.next({ exists: () => true, data: () => doc, metadata: { fromCache: false, hasPendingWrites: false } });
+
+  test('dos pestañas — la secundaria sin transacción NO pisa a ciegas: con lectura del servidor detecta el conflicto y no escribe', async () => {
+    const { a, b, nube } = dosPestanas(true);
+    await cargar(a); await cargar(b);
+    a.app.S.cuentas[0].saldo = 500; await guardar(a.app);              // A guarda la revisión 4
+    b.app.S.cuentas[0].saldo = 7;
+    const r = await guardar(b.app);                                     // B (base 3) ve que la nube ya está en 4
+    assert.equal(r.ok, false); assert.equal(r.reason, 'conflict');
+    assert.equal(nube.doc.rev, 4);
+    assert.equal(JSON.parse(await a.app.decodificarPayload(nube.doc.payload)).cuentas[0].saldo, 500, 'lo de A sigue en la nube');
+    assert.equal(b.app.S.cuentas[0].saldo, 500, 'B cargó la versión de la nube');
+  });
+
+  test('dos pestañas — si las dos escriben la MISMA revisión sin verse, cada una lo detecta y conserva copia de lo suyo', async () => {
+    const { a, b, nube } = dosPestanas(false); // sin lectura del servidor: la escritura a ciegas sigue siendo posible (de verdad sin red)
+    const avisosA = [], avisosB = [];
+    a.app.toast = m => avisosA.push(m); b.app.toast = m => avisosB.push(m);
+    a.app.window = a.app.window || a.app; a.app.window.toast = a.app.toast; a.app.window.dispatchEvent = () => {};
+    b.app.window = b.app.window || b.app; b.app.window.toast = b.app.toast; b.app.window.dispatchEvent = () => {};
+    await cargar(a); await cargar(b); await esperar(30); // la primera carga ya terminó: lo que llegue después es «tiempo real»
+    a.app.S.cuentas[0].saldo = 500; await guardar(a.app); const docA = nube.doc;   // A: revisión 4
+    await esperar(5);
+    b.app.S.cuentas[0].saldo = 7; await guardar(b.app); const docB = nube.doc;      // B: también revisión 4, otra hora
+    assert.equal(docA.rev, 4); assert.equal(docB.rev, 4);
+    // Firestore entrega a cada pestaña el documento que dejó el otro:
+    entregar(a, docB);
+    await hasta(() => a.app.S.cuentas[0].saldo === 7);
+    // Ojo: «Datos actualizados desde otro dispositivo» sale al instante, ANTES de que termine de guardarse la copia (asíncrona).
+    // El aviso que dice «copia» sale cuando ya está guardada: se espera ese (en una máquina lenta el otro llega primero).
+    await hasta(() => avisosA.some(m => /copia/i.test(m)));
+    assert.ok(avisosA.some(m => /otro dispositivo/i.test(m)), 'A avisa (antes divergían en silencio)');
+    const copia = await a.app._firebaseConflictoGuardado();
+    assert.equal(JSON.parse(copia.payload).cuentas[0].saldo, 500, 'lo que A había escrito queda como copia');
+  });
+
+  test('guardado — si llega una versión nueva mientras se prepara el guardado, el payload viejo NO se escribe encima', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    await cargar(e);
+    e.app.S.cuentas[0].saldo = 99;                      // cambio local sobre la revisión 3
+    const original = e.app.codificarPayload;
+    e.app.codificarPayload = async t => { const r = await original(t); await esperar(30); return r; };
+    const p = guardar(e.app);
+    await esperar(5);
+    // mientras se comprime llega la revisión 4 de otro dispositivo y se aplica (el listener sube _revNube)
+    e.almacen.doc = nubeDoc(500, 4, Date.now());
+    e.listeners.next({ exists: () => true, data: () => e.almacen.doc, metadata: { fromCache: false, hasPendingWrites: false } });
+    const r = await p;
+    assert.equal(r.ok, false);
+    assert.equal(e.almacen.doc.rev, 4);
+    assert.equal(JSON.parse(e.almacen.doc.payload).cuentas[0].saldo, 500, 'la nube conserva lo del otro dispositivo');
+  });
+
   test('rev — forzar (importar un backup) pisa la nube aunque haya cambiado y sube la revisión', async () => {
     const e = entornoRev(nubeDoc(1, 3));
     await cargar(e);

@@ -35,6 +35,13 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-20 — Dos pestañas ya no divergen en silencio (sync)
+- Caso real: dos pestañas guardando a la vez terminaban con datos distintos, sin aviso y ambas en «Sincronizado»; luego la pestaña vieja, al guardar, reemplazaba los datos nuevos en la nube y en las demás.
+- Causa probable: si la transacción de Firestore respondía «sin conexión» (también ocurre en línea, p. ej. en una pestaña secundaria), el guardado caía a `setDoc` sin comparar la revisión. Ahora primero lee la revisión directo del servidor (`getDocFromServer`) y compara; solo si de verdad no hay red se encola.
+- El guardado usa la revisión sobre la que se serializó (no la de después de esperar): si llegó una versión nueva mientras tanto, el payload viejo no se escribe encima.
+- El listener detecta dos escrituras con la misma revisión y distinta hora (otro escritor), aplica la de la nube y guarda copia de lo local como respaldo `conflicto`.
+- Tests: 3 nuevos en `tests/sesion-y-despliegue.test.js`. Pendiente de confirmar en navegador real (ver LEEME).
+
 ## 2026-11-20 — Copia de conflicto recuperable, análisis estático, categorías escapadas, código muerto fuera
 
 - **Copia del conflicto de sincronización (N1):** cuando otro dispositivo guarda antes, lo local descartado ahora se guarda como respaldo tipo `conflicto` en el almacén del equipo (IndexedDB, comprimido, sin el tope de ~5 MB de `localStorage`), y aparece en Configuración, en Respaldos, desde donde se restaura. Se conservan las 5 más recientes (`LIMITES.conflictos`). Último recurso: `localStorage` comprimido (`mf_conflicto`, ya legible con `_firebaseConflictoGuardado()`, que ahora es async). Antes la copia iba SIN comprimir a `localStorage`, nada en la app la leía, y en el camino de tiempo real el aviso estaba dentro del mismo `try` que el `setItem`: si fallaba por cupo no salía ni la copia ni el aviso. Ahora el aviso dice dónde quedó la copia o, si no se pudo guardar en ningún lado, lo dice claro. Cambios en `respaldos.js`, `firebase-sync.js`, `configuracion.js`; 5 tests nuevos en `tests/respaldos.test.js`.

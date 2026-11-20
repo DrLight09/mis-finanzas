@@ -53,8 +53,10 @@
   .sheet{max-width:520px;border-radius:22px;padding-bottom:26px;max-height:88svh;}
   /* Hojas con X (las de Mesada por ahora): la X arriba a la derecha, «Cancelar» al lado de «Guardar» (no a todo el ancho) y, en las que solo
      informan, sin botón de abajo (se cierran con la X, con Esc o tocando fuera). En celular nada de esto aplica. */
+  .sheet-handle{display:none;} /* la barra de arrastre es para el dedo: en PC es un modal centrado y no se arrastra */
+  .sheet{padding-top:22px;} /* el espacio que daba la barra */
   .sheet:has(.sheet-x){position:relative;}
-  .sheet-x{display:grid;place-items:center;position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:50%;border:0;background:var(--bg3);color:var(--text2);cursor:pointer;}
+  .sheet-x{display:grid;place-items:center;position:absolute;top:18px;right:18px;width:30px;height:30px;border-radius:50%;border:0;background:var(--bg3);color:var(--text2);cursor:pointer;}
   .sheet-x:hover{color:var(--text);}
   .sheet:has(.sheet-x) .sheet-title{padding-right:40px;}
   .sheet-acciones{display:flex;flex-direction:row-reverse;justify-content:flex-start;gap:10px;margin-top:4px;}

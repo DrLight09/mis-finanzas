@@ -784,7 +784,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 /* Detalle de un mes */
 .ms-card-mb{margin-bottom:10px;padding:4px 14px;background:var(--bg3);border-radius:12px;}
 .ms-fila{padding:9px 0;}
-.ms-card-mb > .ms-fila + .ms-fila{border-top:1px solid var(--bg);}
+.ms-card-mb > .ms-fila + .ms-fila{border-top:1px solid var(--bg2);}
 .ms-fila .row-amount{font-size:13.5px;font-weight:500;}
 .ms-fila-pend{padding:9px 0;}
 .ms-lbl{font-size:12.5px;color:var(--text2);}

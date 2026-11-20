@@ -142,6 +142,7 @@ No usar "Sumar"/"Restar", "Entró plata"/"Salió plata" en Cuentas. **Encargos**
 
 - **Formularios** (`sheet-mesada-pago`, `sheet-mesada-pend`): en celular, sin cambios («Guardar» y debajo «Cancelar», a todo el ancho). En PC, botón **X** arriba a la derecha (`.sheet-x`, con `data-close-sheet`) y «Cancelar» al lado de «Guardar», a la derecha y sin ocupar todo el ancho: los dos botones van dentro de `<div class="sheet-acciones">` (en celular es `display:contents`, no cambia nada; en PC es una fila).
 - **Hojas que solo informan** (`sheet-mesada-det`): en celular el botón de abajo dice **«Cerrar»** (no hay nada que cancelar; lleva `.sheet-cerrar-movil`); en PC no hay botón de abajo, se cierran con la X, con **Esc** o tocando fuera.
+- **Barra de arrastre (`.sheet-handle`):** solo celular; en PC se oculta en todas las hojas (es un modal centrado, no se arrastra).
 - **Esc** cierra la hoja de arriba de la pila solo si trae `.sheet-x` (`js/core/eventos-base.js`) y no hace nada con el diálogo de confirmación abierto. Tocar fuera ya cerraba todas las hojas.
 - Para sumar otra hoja: `<button type="button" class="sheet-x" data-close-sheet="ID" aria-label="Cerrar">…</button>` justo después del asa, y los botones del pie en `.sheet-acciones`.
 

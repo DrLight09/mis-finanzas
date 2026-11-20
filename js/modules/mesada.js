@@ -551,9 +551,8 @@ function renderMesada() {
   MESADA_PADRES.forEach(parent => {
     const x = r.padres[parent];
     _msEl(parent === 'papa' ? 'mesadaGridPapa' : 'mesadaGridMama').innerHTML = x.meses.map(m => _htmlMesDot(parent, m, a)).join('');
-    let sub = fmt(x.totalRecibido) + ' recibidos (' + x.mesesPagados + '/12)';
-    if (x.mesesPerdidos > 0) sub += ' · ' + x.mesesPerdidos + ' sin pagar';
-    if (x.mesesPendientes > 0) sub += ' · ' + fmt(x.totalPendiente) + ' pendiente';
+    // Solo lo recibido: lo que se debe ya está en el cuadro «Pendiente» y en cada casilla («debe …», «sin pagar»), como en el prototipo.
+    const sub = fmt(x.totalRecibido) + ' recibidos (' + x.mesesPagados + '/12)';
     _msEl('ms-' + parent + '-sub').textContent = sub;
     // Vínculo opcional con una persona de la app (para que aparezca en su perfil).
     const personaId = getMesadaPersonaId(parent), btnP = _msEl('ms-' + parent + '-persona'), btnQ = _msEl('ms-' + parent + '-persona-quitar');
@@ -585,7 +584,7 @@ function _htmlMesDot(parent, m, anio) {
   const tooltip = m.estado === 'pendiente' ? fmt(info.monto) + ' recibidos · debe ' + fmt(info.pendiente)
     : m.estado === 'pagado' ? (info.fecha || 'pagado')
     : m.estado === 'perdido' ? 'Sin pagar' : '';
-  // Segunda línea de la casilla (solo se ve en PC): lo recibido, lo que se debe o «sin pagar».
+  // Segunda línea de la casilla (PC y celular): lo recibido, lo que se debe o «sin pagar».
   const textoDetalle = m.estado === 'pendiente' ? 'debe ' + fmt(info.pendiente) : m.estado === 'pagado' ? fmt(info.monto) : m.estado === 'perdido' ? 'sin pagar' : '';
   const detalle = textoDetalle ? `<small class="mesada-mes-detalle">${escHtml(textoDetalle)}</small>` : '';
   return `<div class="${_MES_DOT_CLASE[m.estado]}" title="${tooltip}"

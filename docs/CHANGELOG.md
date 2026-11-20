@@ -33,6 +33,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Mesada: meses en 4 columnas y resumen de la tarjeta más corto (2026-11-19)
+
+Según el prototipo nuevo (`mesada_1.zip`: `Mesada.dc.html` y `MovilMesada.dc.html`):
+
+- **Meses en 4 columnas** (12 meses = 3 filas, sin hueco), en PC y celular. Celular: hueco de 7 px y casilla de 56 px de alto; PC: hueco de 8 px y 62 px. El texto bajo el mes no se corta ni desborda la casilla (puntos suspensivos), porque en pantallas angostas «debe $75.000» ya no cabía entero.
+- **Resumen bajo el nombre:** queda solo «$1.410.000 recibidos (10/12)». Se quitaron « · $75.000 pendiente» y « · 1 sin pagar»: lo pendiente ya está en el cuadro «Pendiente» y cada casilla dice «debe …» o «sin pagar».
+- **Cabecera de la tarjeta:** en celular el avatar y el texto se alinean arriba y hay 14 px antes de los meses; en PC siguen centrados. «Cuota 2026» sigue encima del campo (el prototipo nuevo también lo pone así); campo de 92 px.
+
 ## Menú lateral: icono de Spotify (2026-11-19)
 
 El icono de Spotify del menú lateral (`#lateral-spotify`) pasó de la nota musical al logo de Spotify: un disco con las tres ondas recortadas (como el logo real). Partió de `icons8-spotify-24.svg`, pero ese (anillo fino + ondas pequeñas) se veía borroso a 17 px, así que se rehízo: disco de radio 10,6 en viewBox 24 y ondas de 2 de grosor, todo en **un solo `<path>` con `fill-rule="evenodd"`** (sin máscara ni ids), relleno `currentColor`: toma el color de reposo, de hover y de activo como los demás. Se probó a 17 px contra los iconos vecinos (Cuentas, Gastos) antes de elegirlo. El menú lateral muestra los iconos a 17 × 17 px (`.menu-lateral-icono`, `css/pc.css`). Solo cambia el menú lateral de PC; el botón «Más» del celular tiene su propio icono de Spotify (20 × 20, viewBox 64) y no se tocó. Para volver a la nota musical: `<path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" />`.

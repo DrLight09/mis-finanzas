@@ -205,7 +205,7 @@ El `id` de cada movimiento espejo se guarda junto al dato que lo originó (`_mov
 
 ### Pantalla principal (`#screen-mesada`)
 
-Título «Mesada de papás» con navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años; en PC la tira `#anio-tira` vive en la cabecera), resumen (`#ms-total`, `#ms-count`), cuadro «Pendiente» (`#ms-pendiente-banner`, texto en `#ms-pendiente-texto`) y una tarjeta por padre (`.mesada-persona`) con input de cuota (`mesadaMontoPapa`/`mesadaMontoMama`, `data-save-refresh`) y cuadrícula de 12 meses en 3 columnas (cada casilla trae el mes y, debajo, el monto, «debe …» o «sin pagar»). `renderMesada()` solo pinta lo que calcula `mesadaResumenAnio()`. Diseño de referencia y detalle de PC/celular: `docs/version-pc.md` §10 bis.
+Título «Mesada de papás» con navegación de año (`#anioLabel`, `cambiarAnio(d)`, rango ±2 años; en PC la tira `#anio-tira` vive en la cabecera), resumen (`#ms-total`, `#ms-count`), cuadro «Pendiente» (`#ms-pendiente-banner`, texto en `#ms-pendiente-texto`) y una tarjeta por padre (`.mesada-persona`) con input de cuota (`mesadaMontoPapa`/`mesadaMontoMama`, `data-save-refresh`) y cuadrícula de 12 meses en 4 columnas (cada casilla trae el mes y, debajo, el monto, «debe …» o «sin pagar»). `renderMesada()` solo pinta lo que calcula `mesadaResumenAnio()`. Diseño de referencia y detalle de PC/celular: `docs/version-pc.md` §10 bis.
 
 ### Sheets
 

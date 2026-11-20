@@ -166,9 +166,10 @@
   .mesada-pendiente .stat-label{font-size:10px;}
   .mesada-pendiente-texto{font-size:17px;margin-top:2px;}
   #mesadaSection > .mesada-persona{grid-column:span 5;margin:0;padding:18px 20px;}
-  .ms-card-head{margin-bottom:14px;}
-  input.money-input.ms-cuota-input{width:92px;padding:6px 10px;}
-  .mesada-grid{gap:10px;}
+  .ms-card-head,.ms-head-left{align-items:center;}
+  .ms-cuota-lbl{font-size:10px;}
+  input.money-input.ms-cuota-input{padding:6px 10px;}
+  .mesada-grid{gap:8px;}
   .mes-dot{height:62px;}
 
   /* ── Spotify: lo de siempre (costo, resumen, integrantes, estadísticas) a la izquierda y el historial de pagos en el riel derecho ─────── */

@@ -226,9 +226,9 @@ html.kb-open .sheet{transition:translate var(--kb-ms) var(--kb-ease),max-height 
 .sheet-title{font-size:18px;font-weight:700;margin-bottom:20px;letter-spacing:-.2px;}
 .progress{height:4px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-top:8px;}
 .progress-fill{height:100%;border-radius:2px;background:var(--accent);transition:width .4s;}
-.mesada-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;}
-.mes-dot{height:58px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 13px 'DM Mono',monospace;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s;user-select:none;}
-.mesada-mes-detalle{display:block;font:400 10px 'DM Mono',monospace;opacity:.75;} /* monto, «debe …» o «sin pagar» bajo el nombre del mes */
+.mesada-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;} /* 4 columnas: 12 meses = 3 filas */
+.mes-dot{height:56px;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font:600 13px 'DM Mono',monospace;cursor:pointer;border:1px solid var(--border);background:var(--bg3);color:var(--text3);transition:all .15s;user-select:none;}
+.mesada-mes-detalle{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:400 10px 'DM Mono',monospace;opacity:.75;} /* monto, «debe …» o «sin pagar» bajo el nombre del mes */
 .mes-dot.on{background:color-mix(in srgb,var(--accent) 13%,transparent);border-color:color-mix(in srgb,var(--accent) 55%,transparent);color:var(--accent);}
 .mes-dot.perdido{background:color-mix(in srgb,var(--red) 9%,transparent);border-color:color-mix(in srgb,var(--red) 40%,transparent);color:var(--red);}
 .mes-dot.mes-dot-pend{background:color-mix(in srgb,var(--amber) 13%,transparent);border-color:color-mix(in srgb,var(--amber) 60%,transparent);color:var(--amber);}
@@ -823,8 +823,8 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .mesada-pendiente .stat-label{font-size:9.5px;margin-bottom:6px;color:var(--amber);}
 .mesada-pendiente-texto{font-size:16px;color:var(--amber);}
 .mesada-persona{padding:14px;}
-.ms-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
-.ms-head-left{display:flex;align-items:center;gap:12px;flex:1 1 0;min-width:0;}
+.ms-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;}
+.ms-head-left{display:flex;align-items:flex-start;gap:12px;flex:1 1 0;min-width:0;}
 .avatar.ms-avatar{width:38px;height:38px;font:600 12px 'DM Sans',sans-serif;margin-right:0;border-color:transparent;}
 .avatar.ms-avatar-papa{color:var(--blue);background:color-mix(in srgb,var(--blue) 22%,transparent);}
 .avatar.ms-avatar-mama{color:var(--purple);background:color-mix(in srgb,var(--purple) 22%,transparent);}
@@ -834,9 +834,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 .mesada-persona-btn.vinculada{color:var(--accent);text-decoration:none;font-weight:600;}
 .mesada-persona-btn[hidden]{display:none;}
 .ms-card-sub{font-size:11.5px;line-height:1.4;color:var(--text2);margin-top:2px;}
-.ms-right{flex:0 0 auto;text-align:right;}
-.ms-cuota-lbl{margin-bottom:4px;font:500 10px 'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text3);} /* «Cuota 2026» encima del campo donde se escribe la cuota */
-input.money-input.ms-cuota-input{width:104px;padding:7px 12px;border-width:1px;font:500 13px 'DM Mono',monospace;text-align:right;border-radius:9px;}
+.ms-right{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:5px;}
+.ms-cuota-lbl{font:500 9.5px 'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text3);} /* «Cuota 2026» encima del campo donde se escribe la cuota */
+input.money-input.ms-cuota-input{width:92px;padding:7px 12px;border-width:1px;font:500 13px 'DM Mono',monospace;text-align:right;border-radius:9px;}
 
 /* ── Diferencial ("El valor era diferente") y Split de fuentes — Paso 5 (estilos inline → clases, 2026-10-20) ──
    Antes vivían como style="" en js/core/diferencial.js y js/core/split.js. Va al FINAL del archivo a propósito: un style=""

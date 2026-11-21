@@ -35,10 +35,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-21 — Despliegue: redespliegue manual (`workflow_dispatch`)
+- Un despliegue falló con «Found 0 artifact(s)» (el artefacto `github-pages` no apareció a tiempo) y al pulsar «Re-run failed jobs» falló con «Multiple artifacts named "github-pages"… Artifact count is 2»: la repetición queda en la misma ejecución y sube un segundo artefacto con el mismo nombre.
+- Para reintentar sin ese problema: Actions → «CI y despliegue» → Run workflow (rama main), que crea una ejecución nueva, o un commit nuevo. El job `deploy` ahora también corre con `workflow_dispatch` (sigue exigiendo rama main y que `ci` pase).
+
 ## 2026-11-21 — Pruebas en navegador real (M14): `npm run navegador`
 - `scripts/pruebas-navegador.js` abre la app en un Chromium de verdad (servidor local, sin red externa, estado sintético inyectado) y comprueba: (1) axe-core sin violaciones en 12 pantallas y 56 hojas; (2) las hojas son diálogos con nombre, el foco entra y vuelve, Tab/Shift+Tab no se escapan; (3) presupuesto de rendimiento con 5 años de datos (pintar la lista < 80 ms, < 4.000 nodos, hay «Mostrar más»); (4) cero errores de página.
 - Los presupuestos son holgados a propósito (atrapan volver a pintar 7.000 filas, no un 20 % de ruido); `--lento` los triplica. Comprobado que falla de verdad: sin paginación da 281 ms y 123.175 nodos; sin `role="dialog"` falla en las 56 hojas.
-- Nuevas dependencias de desarrollo: `playwright` y `axe-core`. El CI instala Chromium y corre la prueba; `subir.sh` no la corre (necesita el navegador de Playwright: `npx playwright install chromium`, una vez, si la quieres local).
+- Nuevas dependencias de desarrollo: `playwright` y `axe-core`. El CI instala Chromium y corre la prueba. `subir.sh` también la corre (después de los humos, solo si cambió código de la app) e instala Chromium solo la primera vez; si no puede instalarlo (sin red) avisa y la omite, porque el CI la exige igual antes de desplegar.
 
 ## 2026-11-21 — Accesibilidad (H4): hojas como diálogos, foco y teclado
 - Medido con axe-core en Chromium real: 12 pantallas y 56 hojas (sin contraste de color, que se deja para la reforma de estilos). Salieron 4 problemas: botones de editar/eliminar tarjeta sin nombre, dos casillas «Es saldo inicial» sin etiqueta, el área con scroll sin acceso por teclado, y el texto de carga fuera de una región. Todos corregidos; el resultado final es 0 violaciones.

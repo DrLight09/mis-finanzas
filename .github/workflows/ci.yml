@@ -10,6 +10,9 @@ name: CI y despliegue
 on:
   push:
   pull_request:
+  # Redespliegue manual: Actions → «CI y despliegue» → Run workflow (rama main). Crea una ejecución NUEVA. No uses «Re-run jobs» sobre un
+  # despliegue que falló al subir: la repetición queda en la MISMA ejecución y deja dos artefactos «github-pages», que deploy-pages rechaza.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -60,7 +63,7 @@ jobs:
 
   deploy:
     needs: ci
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write      # publicar en Pages

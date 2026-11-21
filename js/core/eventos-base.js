@@ -38,6 +38,52 @@ function _initEventListeners() {
     closeSheet(id);
   });
 
+  // --- Teclado dentro de una hoja abierta: Tab no se escapa de la hoja de arriba (es modal) ---
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const id = _sheetStack[_sheetStack.length - 1];
+    const hoja = id && document.querySelector('#sheet-' + id + ' .sheet');
+    if (!hoja) return;
+    const dialogo = document.getElementById('dialog-overlay');
+    if (dialogo && dialogo.classList.contains('open')) return;
+    const foco = [...hoja.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')]
+      .filter(x => x.offsetParent !== null || x === document.activeElement);
+    if (!foco.length) { e.preventDefault(); hoja.focus(); return; }
+    const primero = foco[0], ultimo = foco[foco.length - 1], actual = document.activeElement;
+    if (e.shiftKey && (actual === primero || actual === hoja || !hoja.contains(actual))) { e.preventDefault(); ultimo.focus(); }
+    else if (!e.shiftKey && (actual === ultimo || actual === hoja || !hoja.contains(actual))) { e.preventDefault(); primero.focus(); }
+  });
+
+  // --- Lo clicable que no es un botón (tarjetas de acción, filas con data-action) también se alcanza y se activa con el teclado ---
+  // Se marca con role="button" + tabindex="0" al aparecer (incluido lo que pintan los módulos después) y Enter / Espacio lo activan.
+  // Un elemento que contiene botones/enlaces/campos NO puede ser role="button" (interactivos anidados): ahí solo se le da tabindex y Enter /
+  // Espacio lo activan igual. Si no tiene texto ni nombre (p. ej. una muestra de color) se le da uno para los lectores de pantalla.
+  const _SEL_CLICABLE_NO_BOTON = '[data-action]:not(button):not(a):not(input):not(select):not(textarea):not([data-teclado]), .action-card:not([data-teclado])';
+  const _SEL_INTERACTIVO = 'button,a[href],input,select,textarea,[data-action]';
+  const _volverBoton = (el) => {
+    el.setAttribute('data-teclado', '1');
+    if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '0');
+    if (el.hasAttribute('role') || el.querySelector(_SEL_INTERACTIVO)) return;
+    el.setAttribute('role', 'button');
+    if (!el.textContent.trim() && !el.hasAttribute('aria-label') && !el.hasAttribute('title')) {
+      el.setAttribute('aria-label', el.dataset.color ? 'Color ' + el.dataset.color : 'Opción');
+    }
+  };
+  const _marcarClicables = (raiz) => {
+    if (!raiz || raiz.nodeType !== 1) return;
+    if (raiz.matches(_SEL_CLICABLE_NO_BOTON)) _volverBoton(raiz);
+    raiz.querySelectorAll(_SEL_CLICABLE_NO_BOTON).forEach(_volverBoton);
+  };
+  _marcarClicables(document.body);
+  new MutationObserver(muts => muts.forEach(m => m.addedNodes.forEach(_marcarClicables))).observe(document.body, { childList: true, subtree: true });
+  document.addEventListener('keydown', (e) => {
+    if ((e.key !== 'Enter' && e.key !== ' ') || e.defaultPrevented) return;
+    const el = e.target;
+    if (!el || !el.hasAttribute || !el.hasAttribute('data-teclado')) return; // solo si el foco está en el propio elemento, no en un botón de dentro
+    e.preventDefault();
+    el.click();
+  });
+
   // --- Header add button ---
   const btnHeaderAdd = document.getElementById('btn-header-add');
   if (btnHeaderAdd) btnHeaderAdd.addEventListener('click', () => openSheet('menu'));

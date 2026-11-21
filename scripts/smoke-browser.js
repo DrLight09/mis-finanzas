@@ -435,11 +435,45 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   } catch (e) { fallos5.push('excepción en la FASE 5: ' + e.message); }
   console.log('FASE 5 (distribución de PC) fallos (' + fallos5.length + '):'); fallos5.forEach(f => console.log('  ' + f));
 
+  // ── Fase 6: accesibilidad — hojas como diálogos, foco que entra y vuelve, y lo clicable que no es botón se alcanza con teclado ──
+  const fallos6 = [];
+  const c6 = (cond, msg) => { if (!cond) fallos6.push(msg); };
+  try {
+    try { ev('_initEventListeners()'); } catch (e) { /* ya inicializado o sin sesión: se prueba con lo que haya */ }
+    const origen = w.document.createElement('button'); origen.id = 'a11y-origen'; w.document.body.appendChild(origen); origen.focus();
+    ev(`openSheet('menu')`);
+    const hoja = w.document.querySelector('#sheet-menu .sheet');
+    c6(hoja && hoja.getAttribute('role') === 'dialog' && hoja.getAttribute('aria-modal') === 'true', 'la hoja «menu» no se anuncia como diálogo modal');
+    const nombreId = hoja && hoja.getAttribute('aria-labelledby');
+    c6(nombreId && w.document.getElementById(nombreId) && w.document.getElementById(nombreId).textContent.trim(), 'la hoja «menu» no tiene nombre (aria-labelledby a su título)');
+    c6(hoja && hoja.contains(w.document.activeElement), 'al abrir la hoja el foco no entra en ella');
+    ev(`closeSheet('menu')`);
+    c6(w.document.activeElement === origen, 'al cerrar la hoja el foco no vuelve a quien lo tenía');
+    // Toda hoja con título queda con nombre accesible (o con aria-label propio)
+    const sinNombre = [...w.document.querySelectorAll('.overlay[id^="sheet-"]')].filter(o => { ev(`openSheet('${o.id.slice(6)}')`); const h = o.querySelector('.sheet'); const ok = !h || h.hasAttribute('aria-label') || h.hasAttribute('aria-labelledby') || !o.querySelector('.sheet-title'); ev(`closeSheet('${o.id.slice(6)}')`); return !ok; }).map(o => o.id);
+    c6(!sinNombre.length, 'hojas con título pero sin nombre accesible: ' + sinNombre.join(', '));
+    // Lo clicable que no es botón: se marca y Enter lo activa
+    const card = w.document.querySelector('.action-card');
+    c6(card && card.getAttribute('tabindex') === '0' && card.getAttribute('role') === 'button', '.action-card no quedó alcanzable con teclado');
+    let clics = 0; if (card) { card.addEventListener('click', () => clics++); card.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); }
+    c6(clics === 1, 'Enter sobre una tarjeta de acción no la activa (clics: ' + clics + ')');
+    // Lo que se pinta después también se marca (MutationObserver)
+    const nuevo = w.document.createElement('div'); nuevo.setAttribute('data-action', 'x:y'); nuevo.textContent = 'Algo'; w.document.body.appendChild(nuevo);
+    await esperar(20);
+    c6(nuevo.getAttribute('role') === 'button' && nuevo.getAttribute('tabindex') === '0', 'un elemento clicable agregado después no se marcó');
+    const conBoton = w.document.createElement('div'); conBoton.setAttribute('data-action', 'x:y'); conBoton.innerHTML = '<button type="button" data-action="x:z">ok</button>'; w.document.body.appendChild(conBoton);
+    await esperar(20);
+    c6(!conBoton.hasAttribute('role') && conBoton.getAttribute('tabindex') === '0', 'un contenedor con botones dentro no debe ser role=button (interactivos anidados)');
+    nuevo.remove(); conBoton.remove(); origen.remove();
+  } catch (e) { fallos6.push('la fase de accesibilidad lanzó: ' + e.message); }
+  console.log('FASE 6 (accesibilidad) fallos (' + fallos6.length + '):'); fallos6.forEach(f => console.log('  ' + f));
+
   const fallosReales = [];
   if (jsFaltan.length) fallosReales.push(`${jsFaltan.length} archivo(s) .js faltante(s): ${jsFaltan.join(', ')}`);
   if (antes > 0) fallosReales.push(`${antes} error(es) no atribuible(s) a un botón durante la carga (ver --verbose)`);
   if (fallos.length) fallosReales.push(`${fallos.length} fallo(s) en FASE 2: ${fallos.join(' | ')}`);
   if (fallos5.length) fallosReales.push(`${fallos5.length} fallo(s) en FASE 5 (distribución de PC): ${fallos5.join(' | ')}`);
+  if (fallos6.length) fallosReales.push(`${fallos6.length} fallo(s) en FASE 6 (accesibilidad): ${fallos6.join(' | ')}`);
   if (fallos4.length) fallosReales.push(`${fallos4.length} fallo(s) en FASE 4 (estados vacíos): ${fallos4.join(' | ')}`);
   if (sinHandlerReales.length) fallosReales.push(`${sinHandlerReales.length} acción(es) sin handler real: ${sinHandlerReales.join(', ')}`);
   if (lanzanReales.length) fallosReales.push(`${lanzanReales.length} acción(es) que lanzan al tocar: ${lanzanReales.join(' | ')}`);

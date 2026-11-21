@@ -453,7 +453,7 @@
           <path d="M15.5 9.2C15.2 8 13.8 7.4 12 7.4 10 7.4 8.6 8.4 8.6 9.9 8.6 11.4 9.8 11.9 12 12.4 14.2 12.9 15.4 13.4 15.4 15 15.4 16.5 14 17.5 12 17.5 10.2 17.5 8.8 16.8 8.5 15.6" />
           </svg>
         </div>
-        <div class="fb-loading-text">Cargando Mis Finanzas</div>
+        <div class="fb-loading-text" role="status">Cargando Mis Finanzas</div>
         <div
           class="fb-loading-dots"><span></span><span></span><span></span></div>
       </div>
@@ -725,7 +725,7 @@
         <div class="ix-busqueda-resultados" id="busqueda-resultados"></div>
       </div>
 
-      <main class="scroll-area" id="scrollArea">
+      <main class="scroll-area" id="scrollArea" tabindex="0">
 
         <!-- INICIO -->
         <div class="screen active" id="screen-inicio">
@@ -4444,7 +4444,7 @@
             id="agregarDineroSaldoActual">$0</div></div>
         <!-- Toggle apertura -->
         <div class="ix-adaperturawrap" id="agregarDineroAperturaWrap">
-          <input class="ix-adesapertura" type="checkbox" id="agregarDineroEsApertura">
+          <input class="ix-adesapertura" type="checkbox" id="agregarDineroEsApertura" aria-label="Es saldo inicial (ya lo tenía)">
           <div class="ix-fx1-minw0">
             <div class="ix-spextralabel">Es
               saldo inicial (ya lo tenía)</div>
@@ -4551,7 +4551,7 @@
 
         <!-- Toggle saldo inicial -->
         <div class="ix-numovaperturawrap" id="nuMovimientoAperturaWrap">
-          <input class="ix-adesapertura" type="checkbox" id="nuMovimientoEsApertura">
+          <input class="ix-adesapertura" type="checkbox" id="nuMovimientoEsApertura" aria-label="Es saldo inicial (ya lo tenía)">
           <div class="ix-fx1-minw0">
             <div class="ix-spextralabel">Es
               saldo inicial (ya lo tenía)</div>

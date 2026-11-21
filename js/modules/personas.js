@@ -122,7 +122,7 @@ function _inyectarPersonaSheets() {
   sheetPerfil.id = 'sheet-perfil-persona';
   sheetPerfil.dataset.sheetId = 'perfil-persona';
   sheetPerfil.innerHTML = `
-    <div class="sheet">
+    <div class="sheet" aria-label="Perfil de la persona">
       <div class="sheet-handle"></div>
       <div id="pperf-header" class="pe-perf-cab">
         <div id="pperf-avatar" class="avatar pe-av-46"></div>

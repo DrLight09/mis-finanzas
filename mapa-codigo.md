@@ -40,7 +40,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/modulos-activos.js` | de entrada (defer) | 1 | 0 |
 | `js/core/money-input.js` | de entrada (defer) | 5 | 0 |
 | `js/core/movimientos.js` | de entrada (defer) | 7 | 0 |
-| `js/core/navegacion.js` | de entrada (defer) | 5 | 0 |
+| `js/core/navegacion.js` | de entrada (defer) | 6 | 0 |
 | `js/core/notificaciones-push.js` | de entrada (defer) | 6 | 0 |
 | `js/core/nu-calc.js` | de entrada (defer) | 28 | 0 |
 | `js/core/patrimonio.js` | de entrada (defer) | 26 | 1 |
@@ -292,7 +292,7 @@ Carga: de entrada (defer)
 
 Carga: de entrada (defer)
 
-**Funciones:** `_hideScreenLoading`, `_showScreenLoading`, `closeSheet`, `openSheet`, `showScreen`
+**Funciones:** `_hideScreenLoading`, `_sheetAccesible`, `_showScreenLoading`, `closeSheet`, `openSheet`, `showScreen`
 
 ### `js/core/notificaciones-push.js`
 
@@ -971,6 +971,7 @@ Ninguno.
 | `_setBtnEstado` | `js/modules/cuentas.js` |
 | `_setBtnTransferir` | `js/modules/cuentas.js` |
 | `_setSaldoOfuscado` | `js/modules/alcancia.js` |
+| `_sheetAccesible` | `js/core/navegacion.js` |
 | `_showCuentasPanel` | `js/modules/cuentas.js` |
 | `_showScreenLoading` | `js/core/navegacion.js` |
 | `_sincronizarFichaPersonas` | `js/modules/personas.js` |

@@ -35,6 +35,13 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-21 — Accesibilidad (H4): hojas como diálogos, foco y teclado
+- Medido con axe-core en Chromium real: 12 pantallas y 56 hojas (sin contraste de color, que se deja para la reforma de estilos). Salieron 4 problemas: botones de editar/eliminar tarjeta sin nombre, dos casillas «Es saldo inicial» sin etiqueta, el área con scroll sin acceso por teclado, y el texto de carga fuera de una región. Todos corregidos; el resultado final es 0 violaciones.
+- Hojas (`navegacion.js`): cada `.sheet` se declara `role="dialog"` + `aria-modal` y toma su nombre del `.sheet-title` (o de un `aria-label` propio, p. ej. el perfil de persona). Al abrir, el foco entra en la hoja si ningún campo lo tomó; al cerrar vuelve a quien lo tenía (no a un campo de texto, para no reabrir el teclado del celular). Se hace en código una vez, no en las ~150 hojas del HTML.
+- Tab no se escapa de la hoja de arriba (`eventos-base.js`), salvo con el diálogo de confirmación abierto.
+- Lo clicable que no es botón (`data-action` en div/span, `.action-card`) recibe `tabindex="0"` y, si no contiene otros interactivos, `role="button"`; Enter y Espacio lo activan. Un `MutationObserver` marca también lo que pintan los módulos después. Si no tiene texto (muestras de color) se le da un `aria-label`.
+- `scripts/smoke-browser.js`: FASE 6 comprueba todo esto en la página real (diálogo, nombre, foco que entra y vuelve, teclado, elementos nuevos).
+
 ## 2026-11-20 — Lista de movimientos de una cuenta: paginación «Mostrar más» (H3)
 - Medido en Chromium real con 5 años de datos sintéticos (3,1 MB, ~7.400 filas en una cuenta): pintar la lista tardaba ~300 ms en un PC y creaba ~123.000 nodos (≈ 17 por fila); en un celular serían varios segundos. Para comparar: serializar todo el estado al guardar cuesta ~8 ms y armar las filas (`getMovimientosCuenta`) ~10 ms: el costo estaba en el DOM, no en los datos.
 - Ahora el detalle de una cuenta pinta 100 filas y un botón «Mostrar más (N restantes)» agrega otras 100. Cualquier cambio de filtro (búsqueda, tipo, fechas, limpiar) vuelve a la primera página. Resultado en la misma medición: ~7 ms y ~1.700 nodos.

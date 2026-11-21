@@ -13,6 +13,27 @@
    ─────────────────────────────────────────────────────────────────────── */
 const _sheetStack = [];
 
+// Accesibilidad de las hojas (sheets). Se hace aquí, una vez por hoja, en vez de repetirlo en las ~150 hojas del HTML:
+//  · la hoja es un diálogo modal con nombre (el de su .sheet-title) para los lectores de pantalla;
+//  · al abrir, el foco entra a la hoja (si ningún campo lo tomó ya) y al cerrar vuelve a lo que lo tenía, para que quien navega con teclado
+//    no pierda el lugar. No se devuelve a un campo de texto: en el celular eso volvería a abrir el teclado.
+const _sheetOrigenFoco = {};
+function _sheetAccesible(overlay, id){
+  const hoja = overlay.querySelector('.sheet');
+  if(!hoja) return null;
+  if(!hoja.hasAttribute('role')){
+    hoja.setAttribute('role', 'dialog');
+    hoja.setAttribute('aria-modal', 'true');
+    hoja.setAttribute('tabindex', '-1');
+    const titulo = hoja.querySelector('.sheet-title');
+    if(titulo && !hoja.hasAttribute('aria-label')){
+      if(!titulo.id) titulo.id = 'sheet-' + id + '-titulo';
+      hoja.setAttribute('aria-labelledby', titulo.id);
+    }
+  }
+  return hoja;
+}
+
 function openSheet(id){
   // Ganchos registrados por los módulos (Ui.hoja, fase 'antes'). Si alguno devuelve false, la hoja no se abre.
   if(Ui.antesDeAbrirHoja(id)===false) return;
@@ -27,8 +48,14 @@ function openSheet(id){
   }
   _sheetStack.push(id);
   const _ssEl = document.getElementById('sheet-' + id);
-  if(_ssEl){ _ssEl.classList.add('open'); _ssEl.classList.remove('sheet-background'); }
+  let _ssHoja = null;
+  if(_ssEl){
+    _ssHoja = _sheetAccesible(_ssEl, id);
+    if(!_ssEl.classList.contains('open')) _sheetOrigenFoco[id] = document.activeElement; // si ya estaba abierta (se reposiciona) se conserva el origen
+    _ssEl.classList.add('open'); _ssEl.classList.remove('sheet-background');
+  }
   Ui.despuesDeAbrirHoja(id);
+  if(_ssHoja && !_ssHoja.contains(document.activeElement)) { try { _ssHoja.focus({ preventScroll: true }); } catch(_) {} }
 }
 
 function closeSheet(id){
@@ -41,6 +68,9 @@ function closeSheet(id){
     if(_csElementoActivo && _csElementoActivo !== document.body && _csEl.contains(_csElementoActivo) && typeof _csElementoActivo.blur === 'function') _csElementoActivo.blur();
     _csEl.classList.remove('open'); _csEl.classList.remove('sheet-background');
   }
+  const _csOrigen = _sheetOrigenFoco[id]; delete _sheetOrigenFoco[id];
+  if(_csOrigen && _csOrigen !== document.body && document.contains(_csOrigen) && typeof _csOrigen.focus === 'function'
+     && !/^(INPUT|TEXTAREA|SELECT)$/.test(_csOrigen.tagName)) { try { _csOrigen.focus({ preventScroll: true }); } catch(_) {} }
   // Quitar de la pila
   const _csIdx = _sheetStack.indexOf(id);
   if(_csIdx !== -1) _sheetStack.splice(_csIdx, 1);

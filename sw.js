@@ -20,39 +20,29 @@ const BASE = new URL('./', self.registration.scope).pathname;
 const PRECACHE = [];
 // </PRECACHE>
 
-// ── Firebase Cloud Messaging (notificaciones en segundo plano) ─────────────
-// Mismo config que en js/core/notificaciones-push.js. Tiene que repetirse
-// acá porque el Service Worker corre en su propio contexto global, sin
-// acceso a `window` ni a lo que carga firebase-init.js en la página — no
-// hay forma de compartir el objeto entre los dos archivos (tests/paridad.test.js
-// vigila que no se desfasen).
-// Requiere sumar https://www.gstatic.com a worker-src en la CSP de
-// index.html (importScripts() cae bajo worker-src, no bajo script-src) y
-// https://fcm.googleapis.com, https://fcmregistrations.googleapis.com,
-// https://firebaseinstallations.googleapis.com a connect-src.
-importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js');
-
-firebase.initializeApp({
-  apiKey: 'AIzaSyBNGhKxrd6nuUXamRytHEgrv3ggrafr4HU',
-  authDomain: 'mis-finanzas-z.firebaseapp.com',
-  projectId: 'mis-finanzas-z',
-  storageBucket: 'mis-finanzas-z.firebasestorage.app',
-  messagingSenderId: '469399538471',
-  appId: '1:469399538471:web:adaf95bc43b3355b087702',
-});
-
-// Los avisos llegan como mensajes SOLO-DATOS ({title, body, link, icon}; ver scripts/notificaciones/run.js) y este handler es el único
-// que los muestra: con un campo `notification` en el mensaje, FCM podía mostrar uno propio además de este (aviso doble).
-const _messaging = firebase.messaging();
-_messaging.onBackgroundMessage((payload) => {
+// ── Avisos push (Firebase Cloud Messaging, sin su SDK en el Service Worker) ──
+// El token FCM lo pide la página (js/core/notificaciones-push.js) sobre ESTE service worker; aquí solo se recibe el aviso con el evento
+// `push` nativo. Así el SW no carga scripts de terceros (ni importScripts, ni worker-src externo en la CSP) ni repite la config de Firebase.
+// Los avisos llegan como mensajes SOLO-DATOS ({title, body, link, icon}; ver scripts/notificaciones/run.js): FCM los entrega como JSON
+// {data:{…}, from, fcmMessageId…}. También se acepta un campo `notification` por si algún día se envía así.
+// Si la app está abierta y visible no se muestra nada (la persona ya la está viendo); es lo mismo que hacía el SDK.
+function _leerPush(e) {
+  if (!e.data) return {};
+  try { return e.data.json() || {}; } catch (_) { return { data: { body: e.data.text() } }; }
+}
+self.addEventListener('push', (e) => {
+  const payload = _leerPush(e);
   const d = payload.data || {};
   const n = payload.notification || {};
-  return self.registration.showNotification(d.title || n.title || 'Mis Finanzas', {
-    body: d.body || n.body || '',
-    icon: d.icon || n.icon || BASE + 'icons/icon-192.png',
-    data: { url: d.link || (payload.fcmOptions && payload.fcmOptions.link) || BASE },
-  });
+  e.waitUntil((async () => {
+    const ventanas = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    if (ventanas.some(w => w.visibilityState === 'visible' && w.url.startsWith(self.registration.scope))) return;
+    await self.registration.showNotification(d.title || n.title || 'Mis Finanzas', {
+      body: d.body || n.body || '',
+      icon: d.icon || n.icon || BASE + 'icons/icon-192.png',
+      data: { url: d.link || (payload.fcmOptions && payload.fcmOptions.link) || BASE },
+    });
+  })());
 });
 
 // Tocar el aviso: si la app ya está abierta se enfoca esa ventana (en vez de abrir otra); si no, se abre.

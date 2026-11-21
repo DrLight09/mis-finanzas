@@ -21,8 +21,8 @@
        hay que agregar esa línea ahí).
      - Reusa el Service Worker que YA registra la app (sw.js) para
        recibir el token, en vez de que Firebase registre uno propio
-       (firebase-messaging-sw.js) — por eso sw.js también necesita el
-       bloque de Firebase Messaging agregado (ver ese archivo).
+       (firebase-messaging-sw.js). sw.js recibe los avisos con el evento
+       `push` nativo, sin el SDK de Firebase (ver ese archivo).
 
    Disparo: cualquier elemento con data-action="notificaciones:activar"
    (ej. un botón en Configuración) llama a activarNotificaciones().

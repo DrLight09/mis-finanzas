@@ -35,6 +35,11 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Avisos push con el evento nativo, sin el SDK de Firebase en el Service Worker (M4)
+- `sw.js` ya no hace `importScripts` de Firebase desde gstatic ni repite la config: recibe el aviso con `addEventListener('push')`, lee el JSON de FCM (`data.title/body/link/icon`; también acepta `notification`) y muestra la notificación. Si la app está abierta y visible no muestra nada, igual que antes con el SDK. Si el aviso llega sin datos o con texto plano, muestra uno genérico (el navegador exige mostrar siempre uno).
+- La CSP baja `worker-src` a `'self'`. La config de Firebase queda en dos archivos (`firebase-init.js`, `notificaciones-push.js`), vigilados por `tests/paridad.test.js`. El token FCM lo sigue pidiendo la página sobre este mismo service worker.
+- Sin probar en un celular real: tests con un SW simulado. Prueba pendiente: activar avisos y recibir uno con la app cerrada.
+
 ## Limpieza de comentarios y docs que contaban historia (2026-11-21)
 - `index.html`: se quitaron los bloques de comentario que narraban migraciones ("migrado a…", "retirado", "fusionados") y los de código ya sacado; quedó una nota corta sobre el orden de los `<script defer>`. Los `<script>` son exactamente los mismos.
 - `js/`: se quitaron los comentarios sobre `import-validado.js` y otros archivos que ya no existen (`prestado-personas.js`, `deudores-personas.js`), la historia de Lighthouse en `lazy-loader.js` (queda la regla vigente) y las fechas entre paréntesis de unos 70 comentarios. El código no cambió.

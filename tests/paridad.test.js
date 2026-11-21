@@ -1,6 +1,6 @@
 'use strict';
 // M9 — lo que está repetido a propósito se vigila con una máquina, no con un comentario «recuerda actualizar…».
-//   1) La configuración de Firebase vive en TRES archivos (firebase-init.js, notificaciones-push.js, sw.js): tienen que ser idénticas.
+//   1) La configuración de Firebase vive en DOS archivos (firebase-init.js, notificaciones-push.js): tienen que ser idénticas.
 //   2) payload-codec.js (navegador, ES) y scripts/notificaciones/payload-codec.js (Node, CommonJS) sirven al mismo formato 'gz1:':
 //      lo que escribe uno lo tiene que leer el otro, en los dos sentidos.
 const { describe, test } = require('node:test');
@@ -22,34 +22,23 @@ function objeto(rel, nombre) {
   for (; fin < src.length; fin++) { if (src[fin] === '{') prof++; else if (src[fin] === '}' && --prof === 0) break; }
   return JSON.parse(JSON.stringify(vm.runInNewContext('(' + src.slice(ini, fin + 1) + ')')));
 }
-function objetoSW() {   // sw.js: firebase.initializeApp({ ... })
-  const src = leer('sw.js');
-  const ini = src.indexOf('{', src.indexOf('firebase.initializeApp('));
-  let prof = 0, fin = ini;
-  for (; fin < src.length; fin++) { if (src[fin] === '{') prof++; else if (src[fin] === '}' && --prof === 0) break; }
-  return JSON.parse(JSON.stringify(vm.runInNewContext('(' + src.slice(ini, fin + 1) + ')')));
-}
-
 describe('paridad-config-firebase', () => {
   const init = objeto('js/core/firebase-init.js', 'firebaseConfig');
   const push = objeto('js/core/notificaciones-push.js', '_FCM_CONFIG');
-  const sw = objetoSW();
   test('la config tiene los 6 campos esperados', () => {
     for (const k of ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId']) assert.ok(init[k], k);
   });
   test('notificaciones-push.js repite exactamente la config de firebase-init.js', () => assert.deepEqual(push, init));
-  test('sw.js repite exactamente la config de firebase-init.js', () => assert.deepEqual(sw, init));
+  test('sw.js ya no carga el SDK de Firebase ni repite su config', () => {
+    const sw = leer('sw.js');
+    assert.ok(!/importScripts\s*\(/.test(sw), 'sin importScripts');
+    assert.ok(!/firebase\.initializeApp|apiKey/.test(sw), 'sin SDK ni config de Firebase');
+    assert.ok(/addEventListener\('push'/.test(sw), 'recibe avisos con el evento push nativo');
+  });
   test('el proyecto es coherente en todos los campos (no queda mezcla de dos proyectos)', () => {
     assert.ok(init.authDomain.startsWith(init.projectId + '.'));
     assert.ok(init.storageBucket.startsWith(init.projectId + '.'));
     assert.ok(init.appId.includes(':web:'));
-  });
-  test('el SDK de FCM del sw.js y el de la página usan la misma versión', () => {
-    const v = rel => [...new Set([...leer(rel).matchAll(/firebasejs\/(\d+\.\d+\.\d+)\//g)].map(m => m[1]))];
-    const dePagina = [...new Set([...leer('js/core/firebase-init.js').matchAll(/firebasejs\/(\d+\.\d+\.\d+)\//g), ...leer('js/core/notificaciones-push.js').matchAll(/firebasejs\/(\d+\.\d+\.\d+)\//g)].map(m => m[1]))];
-    const delSW = v('sw.js');
-    assert.equal(delSW.length, 1, 'sw.js usa una sola versión del SDK');
-    assert.deepEqual(dePagina, delSW, 'página y SW: misma versión del SDK de Firebase');
   });
 });
 

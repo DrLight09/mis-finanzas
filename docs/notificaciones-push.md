@@ -68,6 +68,6 @@ deberías recibir el push del sistema.
 
 ## Formato del mensaje y Service Worker (M8)
 
-- El script de envío manda mensajes **solo-datos** (`data: {title, body, icon, link}`, sin campo `notification`). Así Firebase no pinta un segundo aviso por su cuenta y el SW (`onBackgroundMessage`) muestra exactamente uno.
+- El script de envío manda mensajes **solo-datos** (`data: {title, body, icon, link}`, sin campo `notification`). Así Firebase no pinta un segundo aviso por su cuenta y el SW (evento `push` nativo, sin el SDK de Firebase) muestra exactamente uno. Con la app abierta y visible no muestra nada.
 - `notificationclick` enfoca la ventana de la app si ya está abierta; si no, abre `link`.
 - La URL base de los íconos/enlaces sale de `APP_BASE_URL` (por defecto `https://drlight09.github.io/mis-finanzas/`). Si el repo cambia de nombre o dominio, define esa variable en el workflow de GitHub Actions.

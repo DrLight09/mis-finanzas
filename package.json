@@ -7,6 +7,7 @@
     "smoke": "node scripts/smoke-browser.js",
     "smoke:wrapped": "node scripts/smoke-wrapped.js",
     "smoke:cierre": "node scripts/smoke-cierre.js",
+    "navegador": "node scripts/pruebas-navegador.js",
     "build": "node scripts/preparar-despliegue.js",
     "lint": "node scripts/lint-globales.js"
   },
@@ -14,8 +15,10 @@
     "node": ">=20.19"
   },
   "devDependencies": {
+    "axe-core": "^4.10.2",
     "eslint": "^9.39.5",
     "globals": "^15.15.0",
-    "jsdom": "^27.4.0"
+    "jsdom": "^27.4.0",
+    "playwright": "^1.63.0"
   }
 }

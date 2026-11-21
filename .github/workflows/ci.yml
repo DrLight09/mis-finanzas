@@ -48,6 +48,13 @@ jobs:
       - name: Humo - huella y cierre
         run: npm run smoke:cierre
 
+      # Navegador real (Chromium): accesibilidad con axe, foco y teclado, y presupuesto de rendimiento de la lista de movimientos.
+      - name: Instalar Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Pruebas en navegador real (axe, foco, rendimiento)
+        run: npm run navegador
+
       - name: mapa-codigo.md al día
         run: node scripts/generar-mapa.js --check
 

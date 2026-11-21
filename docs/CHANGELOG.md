@@ -35,6 +35,11 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-21 — Pruebas en navegador real (M14): `npm run navegador`
+- `scripts/pruebas-navegador.js` abre la app en un Chromium de verdad (servidor local, sin red externa, estado sintético inyectado) y comprueba: (1) axe-core sin violaciones en 12 pantallas y 56 hojas; (2) las hojas son diálogos con nombre, el foco entra y vuelve, Tab/Shift+Tab no se escapan; (3) presupuesto de rendimiento con 5 años de datos (pintar la lista < 80 ms, < 4.000 nodos, hay «Mostrar más»); (4) cero errores de página.
+- Los presupuestos son holgados a propósito (atrapan volver a pintar 7.000 filas, no un 20 % de ruido); `--lento` los triplica. Comprobado que falla de verdad: sin paginación da 281 ms y 123.175 nodos; sin `role="dialog"` falla en las 56 hojas.
+- Nuevas dependencias de desarrollo: `playwright` y `axe-core`. El CI instala Chromium y corre la prueba; `subir.sh` no la corre (necesita el navegador de Playwright: `npx playwright install chromium`, una vez, si la quieres local).
+
 ## 2026-11-21 — Accesibilidad (H4): hojas como diálogos, foco y teclado
 - Medido con axe-core en Chromium real: 12 pantallas y 56 hojas (sin contraste de color, que se deja para la reforma de estilos). Salieron 4 problemas: botones de editar/eliminar tarjeta sin nombre, dos casillas «Es saldo inicial» sin etiqueta, el área con scroll sin acceso por teclado, y el texto de carga fuera de una región. Todos corregidos; el resultado final es 0 violaciones.
 - Hojas (`navegacion.js`): cada `.sheet` se declara `role="dialog"` + `aria-modal` y toma su nombre del `.sheet-title` (o de un `aria-label` propio, p. ej. el perfil de persona). Al abrir, el foco entra en la hoja si ningún campo lo tomó; al cerrar vuelve a quien lo tenía (no a un campo de texto, para no reabrir el teclado del celular). Se hace en código una vez, no en las ~150 hojas del HTML.

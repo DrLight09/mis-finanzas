@@ -478,7 +478,7 @@ import { waitFor } from './wait-for-module.js';
   window._pinSetNew = async function() {
     // Cambiar un PIN que ya existe exige escribir el actual (sin PIN activo, `_pinVerificar` responde true al instante).
     if(_getPin() && !(await window._pinVerificar('Para cambiar tu PIN'))) return;
-    _showPin('set-new','Elige un PIN de 4 dígitos','Este PIN protegerá el acceso a la app');
+    _showPin('set-new','Elige un PIN de 4 dígitos','Este PIN será el candado de pantalla de la app');
     window._pendingLaunch = false;
   };
   // Borrar todos los datos (configuracion.js → borrarTodo): el PIN y la huella son locales a este

@@ -35,6 +35,10 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-21 — El PIN se llama por lo que es: candado de pantalla (H5, opción A)
+- Configuración: «PIN de acceso» pasa a «Candado de pantalla» y el texto dice que sirve para que nadie curiosee si toma tu teléfono y que no cifra los datos. Al crear el PIN: «Este PIN será el candado de pantalla de la app» (antes «protegerá el acceso»). Los botones «Activar / Cambiar / Quitar PIN» no cambian.
+- `docs/configuracion.md` explica qué da y qué no da el PIN. Cifrado de extremo a extremo (opción B de la revisión) queda como decisión de producto pendiente: rompería las notificaciones del servidor.
+
 ## 2026-11-21 — Despliegue: redespliegue manual (`workflow_dispatch`)
 - Un despliegue falló con «Found 0 artifact(s)» (el artefacto `github-pages` no apareció a tiempo) y al pulsar «Re-run failed jobs» falló con «Multiple artifacts named "github-pages"… Artifact count is 2»: la repetición queda en la misma ejecución y sube un segundo artefacto con el mismo nombre.
 - Para reintentar sin ese problema: Actions → «CI y despliegue» → Run workflow (rama main), que crea una ejecución nueva, o un commit nuevo. El job `deploy` ahora también corre con `workflow_dispatch` (sigue exigiendo rama main y que `ci` pase).

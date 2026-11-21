@@ -21,7 +21,7 @@ import { waitFor } from './wait-for-module.js';
   const BIO_KEY  = 'mf_bio_enabled';   // 'true' si el usuario activó biometría
   const CRED_KEY = 'mf_bio_cred';      // credentialId (base64url) guardado
   const VER_KEY  = 'mf_bio_ver';       // versión de la credencial guardada (ver BIO_VERSION)
-  // Versión 2 (2026-10-29): credencial NO descubrible (ver _bioRegister). Las de la versión 1 eran passkeys (residentKey 'preferred'):
+  // Versión 2: credencial NO descubrible (ver _bioRegister). Las de la versión 1 eran passkeys (residentKey 'preferred'):
   // el gestor de contraseñas las guardaba y las mostraba al desbloquear. Una huella activada con la versión 1 se trata como
   // desactivada: Configuración vuelve a ofrecer «Activar huella» y la nueva credencial ya no pasa por el gestor.
   const BIO_VERSION = '2';

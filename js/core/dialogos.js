@@ -89,7 +89,7 @@ function avisarNoSePuede(titulo,motivo){
 // la izquierda en mes/día) en un Date válido a medianoche local, construido
 // por componentes numéricos en vez de confiar en el parser de strings de JS.
 //
-// Blindaje ante un bug real (2026-09-26): `new Date(fechaStr+'T00:00:00')` —
+// Blindaje ante un bug real: `new Date(fechaStr+'T00:00:00')` —
 // patrón usado en 14 sitios entre este archivo y cuentas.js — da `Invalid
 // Date` si mes o día no tienen 2 dígitos (ej. '2026-9-26' en vez de
 // '2026-09-26'). Sin el sufijo de hora el parser de JS es permisivo, pero

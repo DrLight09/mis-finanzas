@@ -863,7 +863,7 @@ const _spotify_miaEntra = crearSplitWidget('miaEntra', {
   onPreview: () => _movimientoEncargoMiaPreview()
 });
 
-// Monto que realmente puso el usuario de su bolsillo (2026-09-30): si el bloque
+// Monto que realmente puso el usuario de su bolsillo: si el bloque
 // "El valor real era diferente" está abierto y el real es válido (0 < real < monto),
 // "Yo puse la plata" trabaja con el REAL (lo que costó de verdad), no con el monto
 // cobrado. La diferencia (margen) la maneja el diferencial como ganancia tuya; si
@@ -1386,7 +1386,7 @@ function abrirMovimientoEncargo(tipo) {
   if (tipo === 'entrada') {
     // Entrada: mostrar fuentes reales (sin TC — no se puede guardar plata ajena en una TC)
     const fuentes = getFuentesSinTC();
-    // FIX (2026-08-15): f.val/f.label sin escapar — mismo patrón que ya se
+    // FIX: f.val/f.label sin escapar — mismo patrón que ya se
     // corrigió en opcionesCuenta() (js/core/cuentas-fuentes.js), pero esta es una
     // segunda implementación separada que nunca pasaba por escHtml(). Nombres
     // de cuenta personalizada son texto libre del usuario. Ver CHANGELOG.md.
@@ -1832,7 +1832,7 @@ function _movimientoEncargoConfirmarPrestarFaltante() {
   const fuentePrestamo = document.getElementById('movenc_faltante_cuenta').value;
   if (!fuentePrestamo) { toast('Selecciona de cuál cuenta tuya sale lo prestado', 'err'); return; }
 
-  // Fix (2026-08-13): antes se llamaba descontarFuente() sin chequear que la
+  // Fix: antes se llamaba descontarFuente() sin chequear que la
   // cuenta elegida realmente tuviera esa plata — descontarFuente no valida
   // saldo, así que el préstamo se registraba igual aunque Nequi no tuviera
   // los 20mil, dejando la cuenta en negativo en silencio. Mismo criterio que
@@ -1905,7 +1905,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   // con un id fijo ('__saldo_ini__', igual en todo encargo) solo para pintarlo
   // en el historial (ver renderEncargoDetalle()). Antes no tenía botón de
   // eliminar porque el flujo de abajo (que busca en enc.movimientos) nunca
-  // lo hubiera encontrado — ver changelog/encargos.md (2026-08-30).
+  // lo hubiera encontrado — ver changelog/encargos.md.
   if (movimientoId === '__saldo_ini__') {
     if (!(encargo.saldoInicial > 0)) return;
     // El saldo inicial es plata AJENA que ya estaba guardada en esa cuenta: nunca formó parte de `c.saldo` (el saldo propio),
@@ -1947,7 +1947,7 @@ async function deleteMovimientoEncargo(encargoId, movimientoId) {
   // "lo cubrí yo", "lo adelanté yo"), así que el aviso de nivel 'viejo' queda
   // genérico en vez de arriesgar un dato incorrecto.
   // Ops posteriores: se cuenta contra el ENCARGO completo, no solo contra
-  // mov.cuenta (2026-09-01, revisión de diseño — ver changelog/encargos.md).
+  // mov.cuenta.
   // Un encargo con plata repartida en varias cuentas (o sin cuenta asignada)
   // sigue siendo una sola bolsa de plata que se mezcla con cada movimiento
   // nuevo, toque o no la misma cuenta externa — filtrar por cuenta subestimaba
@@ -2878,7 +2878,7 @@ function abrirNuevoEncargo() {
   const btn_guardar_edit_encargo = document.getElementById('btn-guardar-editar-encargo');
   if (btn_guardar_edit_encargo) btn_guardar_edit_encargo.addEventListener('click', guardarEditarEncargo);
 
-  // GUARD (2026-08-13, encontrado en prueba real de navegador post-lazy):
+  // GUARD:
   // guardarEditarSpotify vive en spotify.js, no en este archivo. Sin guard,
   // si el usuario entra a Encargos antes de haber visitado Spotify (ambos
   // lazy), esto tira ReferenceError acá mismo — y como estaba antes del

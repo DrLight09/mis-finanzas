@@ -111,7 +111,7 @@ const TC_MOTIVOS_CARGO = {
 
 // ── Helpers básicos ─────────────────────────────────────────────
 // getTCById(), tcCupoUsadoPct() y tcCupoDisponible() se movieron a
-// js/core/calc-helpers.js (2026-08-04): Inicio las necesita para
+// js/core/calc-helpers.js: Inicio las necesita para
 // "Necesita atención" y este módulo ahora es lazy, así que esas 3
 // funciones puras viven en un archivo que carga de entrada. Acá se
 // siguen usando igual, como globales.
@@ -1102,7 +1102,7 @@ Events.registerAll('tarjetas', {
   verTodo:          () => { closeMas(); showScreen('tarjetas'); } // antes navTo('tarjetas') — ver changelog/infraestructura-seguridad.md (2026-09-10, retiro de nav.js)
 });
 // ── Conectar botones TC al formulario y selects ───────────────────
-// Nota (2026-08-02): antes esto esperaba 'DOMContentLoaded'. Si este
+// Nota: antes esto esperaba 'DOMContentLoaded'. Si este
 // módulo se vuelve lazy (carga bajo demanda, ver js/core/lazy-loader.js),
 // para cuando el archivo llega a existir ese evento ya disparó hace rato
 // y el listener nunca correría — mismo bug ya encontrado y corregido en

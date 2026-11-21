@@ -49,7 +49,7 @@ function _saldoPlataComprometidaAjeno(){
 // tarjeta, sin desglosar), así que no cuenta ni para un lado ni para el
 // otro mientras exista. Los pagos la drenan PRIMERO, antes de tocar lo
 // ajeno conocido o lo propio (ver calcDeudaAjenaDeTarjeta). Conversación
-// 2026-08-07: evita que el health score penalice una suposición que podría
+// evita que el health score penalice una suposición que podría
 // estar mal (ej. saldo inicial que en realidad era 100% un favor a otra
 // persona).
 function calcSaldoInicialPendiente(tc){
@@ -250,7 +250,7 @@ function _patrimonioDependenciasListas(){
 // Ajuste por destape de la alcancía, por fecha: sobrante (+) o faltante (−) entre el efectivo real y
 // lo que estaba registrado. Es plata que ya existía y no estaba anotada (o dinero que faltaba), no
 // crecimiento del día: se suma a `montoBase` para que ni la gráfica de Análisis ni la Proyección lo
-// tomen como ritmo normal de ahorro (2026-09-29). Sigue contando como ingreso/gasto del mes en Análisis.
+// tomen como ritmo normal de ahorro. Sigue contando como ingreso/gasto del mes en Análisis.
 // - Sobrante: S.movimientos, tipo 'entrada', _esAlcancia (sin _esAlcanciaIngreso, que son depósitos).
 // - Faltante: S.gastosVar con _esAlcanciaAjuste.
 function _ajusteAlcanciaPorFecha(){

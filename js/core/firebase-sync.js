@@ -31,7 +31,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   }
 
   // ── Guardar en Firestore con debounce ─────────────────────────────────────
-  // FIX (2026-08-17): el autosave de bootstrap.js (cada 60s) y el snapshot
+  // FIX: el autosave de bootstrap.js (cada 60s) y el snapshot
   // diario de patrimonio en _finishFirstLoad() llamaban a esto sin chequear
   // si algo había cambiado de verdad. Resultado real reportado por el
   // usuario: una pestaña olvidada abierta (en otro dispositivo, o una
@@ -44,7 +44,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   // aborta antes del `setDoc` — no se gasta escritura de Firestore ni se
   // dispara el toast en otras pestañas/dispositivos.
   let _saveTimer = null;
-  // _savePromise/_saveResolve: FIX (2026-09-05) — _firebaseSaveToCloud() era
+  // _savePromise/_saveResolve: FIX — _firebaseSaveToCloud() era
   // "fire and forget": no había forma de saber, desde afuera, si el
   // guardado con debounce realmente terminó en un setDoc() exitoso, en
   // un "no hacía falta escribir nada" (payload idéntico), o si nunca
@@ -333,7 +333,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
           resolve({ok:true, reason:'no-changes'});
           return;
         }
-        // Tope de tamaño (2026-10-13): todo el estado va en UN documento de Firestore (límite 1 MiB). Si se pasa, `setDoc`
+        // Tope de tamaño: todo el estado va en UN documento de Firestore (límite 1 MiB). Si se pasa, `setDoc`
         // falla y el catch de abajo diría "revisa conexión" mientras la nube se queda para siempre en el último guardado
         // bueno. Se mide antes de escribir: aviso a los 800 KB (una vez por sesión) y se detiene a 1.000.000 bytes con un
         // mensaje que dice la causa real.
@@ -410,7 +410,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     return _savePromise;
   };
 
-  // FIX (2026-09-19): guardado inmediato al salir de la app. Un cambio esperaba
+  // FIX: guardado inmediato al salir de la app. Un cambio esperaba
   // hasta ~0,8 s (debounceSave, js/core/utilidades-ui.js) + 1,5 s (el debounce de acá)
   // antes de empezar a escribir; el único guardado de emergencia era
   // `beforeunload` (el núcleo), que en celulares casi nunca se dispara al
@@ -453,7 +453,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     refresh(); if(window.applyModulos) applyModulos();
     poblarCatSelect('gv_cat',getCatsVar());
     poblarCatSelect('gf_c',getCatsFijo());
-    // FIX (2026-08-28): _initEventListeners vive en otro <script defer>
+    // FIX: _initEventListeners vive en otro <script defer>
     // (fuera de este archivo). firebase-sync.js carga como `type="module"
     // async` a propósito (ver index.html, comentario junto al <script> —
     // deja correr _firebaseLoadData/onSnapshot en paralelo con el parseo del
@@ -486,7 +486,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   function _runWhenEventListenersReady() {
     waitFor(() => typeof _initEventListeners === 'function', () => {
       _initEventListeners();
-      // FIX 2026-08-13: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
+      // FIX: verificarVencimientosCDT (cuentas.js, grupo lazy) sin
       // guard — mismo problema que _renderTasaHistorialTag arreglado antes:
       // corre en cada arranque de la app, no solo al visitar Cuentas.
       if(typeof verificarVencimientosCDT==='function') verificarVencimientosCDT();
@@ -740,7 +740,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
           // tcNormalizarTarjetas(), que se ejecuta en cada refresh() — no hace
           // falta un parche puntual aquí.
         }
-        // FIX (2026-08-17, ver window._firebaseSaveToCloud más arriba): fijar acá
+        // FIX: fijar acá
         // la base de comparación del chequeo "¿cambió algo de verdad?" — se
         // recalcula con JSON.stringify(window.S) (no con el payload crudo
         // de la nube) para que compare exactamente igual que el próximo
@@ -758,7 +758,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     }
   }
 
-  // FIX (2026-09-19) — la nube se pisaba con el estado por defecto tras
+  // FIX — la nube se pisaba con el estado por defecto tras
   // borrar el storage del navegador (DevTools > Application). Causa: con la
   // caché de Firestore vacía o inconsistente, el listener puede decir "no hay
   // documento" — y _finishFirstLoad() lo tomaba como una carga válida:
@@ -894,7 +894,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   }
 
   // ── Login con Google ──────────────────────────────────────────────────────
-  // Guard de doble ejecución (2026-09-27): el doble popup por doble clic/
+  // Guard de doble ejecución: el doble popup por doble clic/
   // doble tap mientras el primero seguía abierto ya lo cubre el bloqueo
   // genérico de Events.dispatch (js/core/events.js) — cualquier handler
   // async queda bloqueado en su propio elemento hasta que su promesa
@@ -932,7 +932,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   };
 
   // ── Cerrar sesión ─────────────────────────────────────────────────────────
-  // FIX (2026-09-27): entre confirmar y el location.reload() final había un
+  // FIX: entre confirmar y el location.reload() final había un
   // guardado a Firestore + el propio signOut(), todo async — nada bloqueaba
   // la app en esa ventana, así que se podía seguir navegando/editando datos
   // mientras tanto (efecto observado: "me puedo seguir moviendo unos
@@ -1000,7 +1000,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     setTimeout(() => input.focus(), 50);
   };
   window._cerrarEliminarCuenta = function() {
-    // FIX (2026-09-27): mientras _firebaseDeleteAccount está en curso, esta misma
+    // FIX: mientras _firebaseDeleteAccount está en curso, esta misma
     // función se dispara al tocar "Cancelar" o al hacer clic fuera del
     // overlay (ver _wireDeleteAccountOverlay) — cerraba el overlay y dejaba
     // seguir navegando mientras el borrado seguía en Firestore en segundo
@@ -1069,7 +1069,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     // Con PIN activo, se vuelve a pedir antes de borrar la cuenta (mejora 13). Si se cancela no se toca nada.
     if(typeof window.pedirPinAntesDe === 'function' && !(await window.pedirPinAntesDe('Para eliminar tu cuenta y todos tus datos'))) return;
 
-    // FIX (2026-09-27): antes se podía cancelar el overlay (botón "Cancelar"
+    // FIX: antes se podía cancelar el overlay (botón "Cancelar"
     // o clic afuera) mientras el borrado seguía en curso en segundo plano —
     // ver el guard equivalente en _cerrarEliminarCuenta más arriba.
     window._firebaseDeleteAccountEnCurso = true;

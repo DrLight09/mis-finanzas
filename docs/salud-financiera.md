@@ -149,7 +149,7 @@ Además del puntaje, la tarjeta muestra cuatro pilares (**Liquidez, Deuda, Flujo
 - **Estado:** crisis > presión > atención > creciendo > estable (reglas en el comentario de `Salud.estado`). Presión y crisis no celebran y proponen hasta 3 acciones con enlace. Patrimonio negativo nunca es «Creciendo».
 - Límites en `UMBRALES.salud.pilares`; pruebas en `tests/finanzas.test.js`.
 
-## Rediseño de la tarjeta y comportamiento sin historial (2026-11-06, SW v112)
+## Rediseño de la tarjeta y comportamiento sin historial (2026-11-06)
 
 - **Un solo estado.** La franja bajo el hero (`#inicio-franja-estado`) se eliminó: duplicaba el estado de la tarjeta, que además trae las acciones de presión/crisis. `calcEstadoSituacion()` sigue alimentando a Análisis y Wrapped.
 - **«Base» para evaluar (`Salud.tieneBase`).** Hay base con una tendencia de patrimonio (≥ 30 días), con 2 meses completos con datos o con 1 mes completo y ≥ 30 días de uso (`UMBRALES.salud.historial`; `_situacion()` aporta `mesesReferencia` y `diasDeUso`). Sin base (`m.sinBase`) no se concluye nada de ahorro, flujo ni tendencia: el estado es **Empezando** (neutro) salvo que haya patrimonio negativo, liquidez negativa o crisis (hechos que no necesitan historial); la tarjeta no muestra puntaje ni pilares sin datos; el puntaje ignora gasto típico, racha y «por ahora gastas más» (`puntaje({ sinBase })`); el aviso «Gastas más de lo que ingresas» del hero tampoco aparece.

@@ -856,7 +856,7 @@ Refresh.registrar('inicio-neto-tc', _renderDispNetoTC);
 // refresh() real.
 _renderDispNetoTC();
 
-// Nota (2026-08-04): "Necesita atención" depende de getMesadaData/
+// Nota: "Necesita atención" depende de getMesadaData/
 // _getCuotaAnio (mesada) y tcCupoUsadoPct (tarjetas de crédito), que
 // hasta acá vivían en mesada.js/tarjetas-credito.js — módulos lazy que
 // solo cargan cuando el usuario visita esas pantallas (ver

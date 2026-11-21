@@ -25,7 +25,7 @@
 | Medidor y «Mis Wrapped» | `js/modules/configuracion.js` (`renderTamanoDatos`, `renderMisWrapped`, `eliminarWrapped`) | Clases `cfg-tamano*` y `cfg-wrapped*` en `css/styles.css`. |
 | Datos sintéticos | `tests/support/datos-sinteticos.js` | `cargarApp(extra)`, `generar(ctx, {desde, dias, semilla})`, `HOY = '2026-10-30'`. Usa las funciones **reales** de la app. |
 | Pruebas | `tests/cierre-wrapped.test.js`, `tests/cierre-wrapped.test.js`, `tests/cierre-wrapped.test.js`, `tests/fixtures/wrapped-clases.json` | Más `scripts/smoke-wrapped.js` y `scripts/smoke-cierre.js` (jsdom). |
-| Versión | `sw.js` → `mis-finanzas-v84` | Esquema de datos 9; la app no tiene migraciones. |
+| Versión | La pone el despliegue en `sw.js` | Esquema de datos 12 (`S.schemaVersion`); `MIGRACIONES` está vacía. |
 
 `Cierre.analizar` devuelve: `corte, fechaCorte, completo, huella (digest), erroresHuella, advertencias, wrapped:{conWrapped, sinGuardar}, componentes:{total, maxRegistros, mayores}, total/candidatos/archivables:{registros, bytes, unidades}, bloqueados:{registros, porMotivo, detalle}, porFuente, entidades`. Motivos de bloqueo: `sin-fecha`, `entidad-abierta:{saldo-pendiente|registros-posteriores|sin-sonda}`, `enlazado-con-registro-bloqueado-o-posterior`. Advertencias: `componente-grande`, `wrapped-sin-guardar`.
 

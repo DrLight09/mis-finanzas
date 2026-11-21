@@ -70,7 +70,7 @@ function _refreshNucleo(){
   // NOTA: ya NO se resta plata de encargos guardada en las cuentas con saldo — mismo criterio y misma razón que en
   // calcPatrimonioTotal().
   const cuentasSaldo=saldoCuentas({soloActivas:true});
-  // FIX 2026-08-13: totalPrestadoPendiente (prestado.js, grupo lazy) sin
+  // FIX: totalPrestadoPendiente (prestado.js, grupo lazy) sin
   // guard — mismo patrón de fallback (0) que ya usa inicio.js línea ~253
   // (window.totalPrestadoPendiente?...:0) para el mismo caso.
   const prest=typeof Deudas!=='undefined'?Deudas.totalPendiente('favor'):0;
@@ -129,7 +129,7 @@ function _refreshNucleo(){
   const _pat=calcPatrimonioDesglose();
   const _alcanciaSaldo=_pat.alcancia;
   const _patrimonioVisible=_pat.visible;
-  // Red de seguridad (2026-09-26): fmt()/fmtNoCents() hacen `n||0`, así que un
+  // Red de seguridad: fmt()/fmtNoCents() hacen `n||0`, así que un
   // NaN acá se mostraría como "$0" silencioso, indistinguible de un patrimonio
   // real en cero — exactamente lo que pasó con el bug de fecha sin padear en
   // un CDT (ver _fechaSafe() más arriba). Esto no arregla la causa, pero deja
@@ -178,7 +178,7 @@ function _refreshNucleo(){
   // refresh() tras cargar el módulo bajo demanda). Mismo patrón defensivo
   // ya usado para renderMesada/_refreshCajitaDet/renderTCScreen — no cambia
   // el comportamiento actual (todo sigue cargando de entrada).
-  // FIX 2026-08-13: cuentaActual es una VARIABLE (no
+  // FIX: cuentaActual es una VARIABLE (no
   // función) que vive en cuentas.js, grupo lazy — a diferencia de las
   // llamadas de función de acá abajo (que sí tenían guard con
   // typeof fn==='function'), estas se referenciaban bare (if(cuentaActual)),
@@ -188,7 +188,7 @@ function _refreshNucleo(){
   if(typeof renderDetalleCuenta==='function' && typeof cuentaActual!=='undefined' && cuentaActual) renderDetalleCuenta(cuentaActual);
   // Siempre actualizar el detalle/sub-pantallas de cajita si hay una abierta
   if(typeof _refreshCajitaDet==='function') _refreshCajitaDet();
-  // FIX (2026-08-17, hallazgo nuevo al confirmar contra gastos.md):
+  // FIX:
   // renderGastosVar() se llamaba acá Y OTRA VEZ más abajo, indirecto, vía
   // renderMesFiltros() — gastos.md documenta que "renderMesFiltros() arma
   // los chips de filtro por mes y dispara renderGastosVar()". Resultado:
@@ -197,7 +197,7 @@ function _refreshNucleo(){
   // veces seguidas), sin ningún efecto visible distinto — trabajo tirado,
   // no un bug de datos. Se saca la llamada directa; sigue ejecutándose,
   // una sola vez, vía renderMesFiltros() más abajo.
-  // OPTIMIZACIÓN TBT (2026-08-15/17, ver auditoria-tecnica.md #12): estas
+  // OPTIMIZACIÓN TBT: estas
   // llamadas re-renderizaban su pantalla completa en CADA refresh() — sin
   // importar si el usuario la estaba viendo. Ya se re-renderizan al ENTRAR
   // a su pantalla (showScreen(), ver navegacion.js) — Cuentas y Gastos

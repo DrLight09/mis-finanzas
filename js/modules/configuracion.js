@@ -199,7 +199,7 @@ function _validarEstructuraJSON(data){
     errores.push('El archivo no parece ser un backup de Mis Finanzas (no se encontraron campos conocidos).');
   }
   // Verificar tipos básicos
-  // Un backup anterior a la unificación de cuentas (2026-10-01) trae nequiSaldo / efectivoSaldo /
+  // Un backup anterior a la unificación de cuentas trae nequiSaldo / efectivoSaldo /
   // cuentasPersonalizadas en vez de 'cuentas'. Ya no se convierte: importarlo dejaría Nequi,
   // Efectivo y las personalizadas en cero sin avisar, así que se rechaza con un mensaje claro.
   if(!('cuentas' in data)&&('nequiSaldo' in data||'efectivoSaldo' in data||'cuentasPersonalizadas' in data)){

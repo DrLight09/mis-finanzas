@@ -485,7 +485,7 @@ function _alcanciaMejorCiclo(historial){
   return historial.reduce((mejor, h) => (h.saldoRegistrado||0) > (mejor.saldoRegistrado||0) ? h : mejor, historial[0]);
 }
 
-// Expuestas en window (2026-09-07): el módulo Wrapped general (js/modules/
+// Expuestas en window: el módulo Wrapped general (js/modules/
 // wrapped.js) las reutiliza para no duplicar el cálculo de racha/mejor
 // ciclo — misma fuente de verdad que la tarjeta de Alcancía. Con guard
 // typeof en quien las llama, por si Alcancía todavía no cargó (es un grupo
@@ -1200,7 +1200,7 @@ function _sumarASaldo(fuente, monto){
   // Solo sube/baja el saldo (y deja la entrada en el libro). En cuentas personalizadas NO se escribe nada en
   // c.movimientos: las filas del destape ya viven en S.movimientos (transferencia y "Dinero extra…") y S.gastosVar
   // (faltante), y el historial de la cuenta las lee de ahí. Antes se duplicaban acá como 'ingreso'/'egreso'
-  // (2026-09-29), y ese 'ingreso' de "Alcancía destapada" (plata que ya era tuya) contaba como ingreso del mes.
+  //, y ese 'ingreso' de "Alcancía destapada" (plata que ya era tuya) contaba como ingreso del mes.
   const cuenta = Fuente.esCajita(fuente)
     ? (window.S.cajitas||[]).find(x=>x.id===fuente.split(':')[1])
     : getCuentaDeFuente(fuente);
@@ -1470,7 +1470,7 @@ if(window._dataLoaded){
   // así que puede usar waitFor() como global sin ningún riesgo de carrera
   // (a diferencia de pin-bio.js/firebase-sync.js).
   //
-  // onGiveUp (agregado 2026-09-08): antes, si los 40 intentos (~12s) se
+  // onGiveUp: antes, si los 40 intentos (~12s) se
   // agotaban sin que window.S/window._dataLoaded aparecieran, la falla era
   // 100% silenciosa — Alcancía simplemente nunca se inicializaba, sin nada
   // en consola. No cambia el camino exitoso, solo le da un rastro

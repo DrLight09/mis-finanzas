@@ -4809,27 +4809,7 @@
       </div>
     </div>
 
-    <!-- `defer` en TODO este bloque (docs/auditoria-tecnica.md #4, paso 3):
-         medido con Lighthouse en producción, el navegador no empezaba a
-         DESCARGAR cada uno de estos ~36 archivos hasta que el anterior
-         terminaba de ejecutar — no solo la ejecución estaba en serie, la
-         propia descarga también (ej. modules/inicio.js, el último del
-         bloque, no arrancaba su fetch hasta los 9.46s). Con `defer`, el
-         navegador descarga los 36 en paralelo apenas los descubre, sin
-         bloquear el parser, y los ejecuta en el mismo orden relativo que
-         hoy — recién al terminar de parsear el documento (misma garantía
-         de orden y de "DOM ya completo" que ya tenían al ser blocking,
-         porque físicamente están todos después de todo el markup real de
-         la app; no hay ningún elemento del HTML que dependa de que uno de
-         estos scripts corra a mitad de parseo). El orden entre ellos
-         importa (ver el comentario de navegacion.js sobre
-         addGastoVar/addGastoFijo y el de prestado.js sobre
-         openSheet) — `defer` preserva el orden del documento, así que no
-         se tocó el orden de los <script>, solo se agregó el atributo.
-         Los tres módulos de Firebase (firebase-init/sync, pin-bio) NO
-         están acá — ya pasaron a `async` en los pasos 1 y 2, con sus
-         propios guards. Ver CHANGELOG.md#arranque para el detalle y las
-         cifras del Lighthouse que motivaron este paso. -->
+    <!-- Scripts con `defer`: se descargan en paralelo y se ejecutan en el orden del documento. El orden importa (navegacion.js antes que los módulos que parchean addGastoVar/addGastoFijo; prestado.js sobre openSheet): no lo cambies. Los módulos de Firebase y pin-bio van con `async`. -->
     <!-- Sistema centralizado de eventos (Events.on/attr/registerAll) — cargado
          acá, antes que cualquier otro script, porque no depende de nada (ni de
          S ni de escHtml, los resuelve recién cuando se usan) y todos los
@@ -4838,10 +4818,6 @@
     <script src="js/core/events.js" defer></script>
     <script src="js/core/diferencial.js" defer></script>
     <script src="js/core/split.js" defer></script>
-<!--
-// js/core/ui.js — registro de ganchos de ciclo de vida (Ui.hoja / Ui.pantalla / Ui.en). Reemplaza a hookGlobal() y a los
-// `openSheet = function(){…}` de los módulos. No depende de nada: carga primero.
--->
 <script src="js/core/ui.js" defer></script>
 <script src="js/core/formulario.js" defer></script>
 <script src="js/core/sw-registro.js" defer></script>
@@ -4857,16 +4833,6 @@
 <script src="js/core/refresh.js" defer></script>
 <script src="js/core/cuenta-efectos.js" defer></script>
 <script src="js/core/cobros.js" defer></script>
-<!--
-// js/core/html-tag.js — primitivo html`` que escapa por defecto (ver
-// auditoria-tecnica.md, "Auditoría exhaustiva de .innerHTML" — solución de
-// fondo dada esta sesión, tras 14 rondas de fixes manuales módulo por
-// módulo). Depende de escHtml(), definida en js/core/estado.js — debe cargar
-// justo después. Núcleo, siempre eager: cualquier módulo lazy (incluido
-// analisis.js, primer piloto de migración) lo necesita ya disponible antes
-// de que el usuario dispare la primera llamada a html()/raw(), sin importar
-// cuándo termine de cargar ese módulo lazy en sí.
--->
 <script src="js/core/html-tag.js" defer></script>
 <script src="js/core/umbrales.js" defer></script>
 <script src="js/core/reglas.js" defer></script>
@@ -4875,193 +4841,30 @@
 <script src="js/core/periodo.js" defer></script>
 <script src="js/core/nu-calc.js" defer></script>
 <script src="js/core/calc-helpers.js" defer></script>
-<!--
-// js/core/fuentes-filtro.js — filtros de "de dónde sale la plata" (saldo
-// mínimo por flujo, TC solo con cupo). Usa getSaldoFuente/buildFuentesOptsHtml
-// (el núcleo) y tcCupoDisponible/getTCById (calc-helpers.js) solo al ser
-// llamado, no al cargar. Debe cargar antes de gastos.js (eager) y de los
-// módulos lazy (cuentas, spotify, prestado, tarjetas). Ver CHANGELOG.md.
--->
 <script src="js/core/fuentes-filtro.js" defer></script>
-<!--
-// js/core/reordenable.js — Reordenable.activar(): arrastrar y soltar para reordenar fichas/filas (hoy: cuentas). Núcleo eager y
-// genérico; no depende de nada de la app. Cuentas lo activa al cargar su módulo (lazy).
--->
 <script src="js/core/reordenable.js" defer></script>
-<!--
-// js/core/color-picker.js — marcarColorSeleccionado(): marca el círculo de color elegido en los
-// selectores de color (Cuentas, Tarjetas de crédito, Prestado). Núcleo eager: lo usan tres módulos
-// lazy, así que no puede depender de que uno de ellos haya cargado. Sin este <script>, selColorNuevaCuenta /
-// selIconoNuevaCuenta (cuentas.js) lanzaban ReferenceError y el ícono/color elegido nunca se marcaba.
--->
 <script src="js/core/color-picker.js" defer></script>
-<!--
-// js/core/wait-for.js — helper waitFor() para los <script defer> clásicos.
-// Consumidor directo: personas-init.js. (hook-global.js, que también lo usaba, se eliminó: los ganchos de hojas/pantallas
-// ahora pasan por js/core/ui.js, que no necesita esperar a nada.)
-// pin-bio.js/firebase-sync.js usan su propia copia vía `import` de
-// js/core/wait-for-module.js (no de este archivo) — ver el comentario en
-// ambos archivos y CHANGELOG.md#infraestructura--seguridad para el porqué
-// de la separación.
--->
 <script src="js/core/wait-for.js" defer></script>
-<!--
-// js/core/wrapped-gate.js — ventana de disponibilidad de Wrapped
-// (2026-09-15, resuelve wrapped.md §7decies). Núcleo eager, chico, a
-// propósito aparte de wrapped.js: decide si el grupo lazy 'wrapped' existe
-// para el usuario ESTE momento (muestra/oculta la tarjeta #wrapped-promo, arriba
-// en esta pantalla, y le avisa a Loader.ensureAll() en lazy-loader.js que
-// no lo precargue fuera de la ventana) sin tener que descargar las ~4000
-// líneas del módulo real solo para saber si mostrarlo. Depende de hoy()
-// (js/core/dialogos.js, ya cargado arriba) y de showScreen/toast (núcleo,
-// definidos más abajo pero solo se usan detrás de un click real, nunca al
-// cargar este archivo). Ver ese archivo para el detalle completo.
--->
 <script src="js/core/wrapped-gate.js" defer></script>
-<!--
-// Módulo Mesada — migrado a js/modules/mesada.js (ver docs/mesada.md).
-// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, quinto
-// grupo): no tiene dependencia real de orden de carga (no monkey-patchea
-// nada ajeno) y su único caller externo conocido (inicio.js) ya tiene
-// guard typeof desde la sesión anterior. #screen-mesada y #mas-mesada ya
-// eran HTML estático, no hubo que inyectar nada (mismo caso que
-// Configuración/Actividad Reciente). Se saca de acá el <script>; ahora lo
-// descarga js/core/lazy-loader.js (Loader.ensure('mesada')) la primera
-// vez que alguien entra a la pantalla.
--->
 <!-- mesada.js: ver js/core/lazy-loader.js (Loader.GROUPS.mesada) -->
-<!--
-// Módulo Spotify — migrado a js/modules/spotify.js (ver docs/spotify.md).
-// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, séptimo
-// grupo): auditado línea por línea, sin dependencia real de orden de
-// carga (solo monkey-patchea sus propias funciones y openSheet, del
-// núcleo). Apareció un bug real al auditar (openSheet envuelto en un
-// listener DOMContentLoaded que con carga lazy nunca dispara) — corregido
-// dentro del propio spotify.js. #screen-spotify y #nav-spotify ya eran
-// HTML estático, no hubo que inyectar nada. Se saca el <script> de acá;
-// ahora lo descarga js/core/lazy-loader.js (Loader.ensure('spotify')) la
-// primera vez que alguien entra a la pantalla.
--->
 <!-- spotify.js: ver js/core/lazy-loader.js (Loader.GROUPS.spotify) -->
 <script src="js/modules/gastos.js" defer></script>
-<!-- ═══════════════════════════════════════════════════════════════
-     js/modules/personas.js se movió acá (2026-08-03) — antes cargaba
-     mucho más abajo, cerca del final del documento. Motivo: el
-     archivo fusionado js/modules/prestado.js (ver más abajo, y
-     CHANGELOG.md#préstamos) tiene dependencia real de nivel superior
-     contra personas.js (PERSONA_COLORES, _guardarEditarPersonaGlobal),
-     a diferencia de lo que resultó ser Encargos/Spotify (esos dos NO
-     tenían dependencia real — se fusionaron sin mover nada, ver
-     CHANGELOG.md#encargos y #spotify). Se auditaron los 16 archivos
-     (hoy 14, ver notas) que hoy cargan entre esta posición y la
-     posición vieja de personas.js (navegacion.js, lazy-loader.js,
-     money-input.js, movimientos.js, cuentas.js, bootstrap.js,
-     mas-menu.js, sheet-behavior.js [fusión 2026-09-08 de
-     sheet-viewport.js + sheet-swipe.js — ver ese archivo],
-     gastos-fijos-progress.js, firebase-sync.js,
-     saldos-ocultos.js, arranque-ui.js, formularios-ui.js,
-     busqueda-global.js, pin-bio.js — nav.js retirado, 2026-09-10, ver
-     nota más abajo) — ninguno tiene
-     código de nivel superior que dependa de personas.js, ni
-     personas.js depende de nada de ellos a nivel superior. Detalle
-     completo en CHANGELOG.md#préstamos.
-     ═══════════════════════════════════════════════════════════════ -->
 <script src="js/modules/personas.js" defer></script>
-<!--
-// js/core/navegacion.js — último bloque núcleo inline, extraído esta
-// sesión (ver auditoria-tecnica.md, punto 1 de "Críticos", y el header del
-// propio archivo para el detalle de la restricción de orden de carga).
-// Se carga acá, en la misma posición relativa que tenían los dos bloques
-// inline que reemplaza: después de gastos.js/spotify.js (los overrides de
-// addGastoVar/addGastoFijo necesitan esos globales ya definidos).
--->
 <script src="js/core/navegacion.js" defer></script>
 <script src="js/core/modulos-activos.js" defer></script>
 <script src="js/core/eventos-base.js" defer></script>
 <script src="js/core/disposicion-pc.js" defer></script>
-<!-- Módulo Préstamos — js/modules/prestado.js (lazy, grupo 'prestamos'; sin <script> propio).
-     Depende de personas.js y navegacion.js, ambos de entrada, así que ya están cargados cuando
-     el usuario entra a Préstamos. #screen-prestamos y #nav-prestamos son HTML estático. -->
 <!-- prestado.js: ver js/core/lazy-loader.js (Loader.GROUPS.prestamos) -->
-<!--
-// js/core/lazy-loader.js — motor de carga bajo demanda (docs/auditoria-
-// tecnica.md #4, fase 1 de la modularización). Se carga acá, justo después
-// de navegacion.js, porque showScreen() lo referencia (con guard typeof,
-// así que el orden exacto entre estos dos no es estrictamente obligatorio,
-// pero mantenerlos juntos documenta la relación). Ver CHANGELOG.md#modularización-por-pantalla.
--->
 <script src="js/core/lazy-loader.js" defer></script>
 <script src="js/core/money-input.js" defer></script>
-<!--
-// Módulo Encargos — migrado a js/modules/encargos.js (ver docs/encargos.md).
-// Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4, noveno
-// grupo): auditado línea por línea, sin dependencia real de orden de
-// carga (monkey-patchea refresh() —núcleo, siempre eager— y sus propias
-// funciones, nada de otros dominios). Limpieza de paso: un listener vacío
-// en DOMContentLoaded que no hacía nada se sacó del archivo. #screen-
-// encargos y su entrada en "Más" ya eran HTML estático. Se saca el
-// <script> de acá; ahora lo descarga js/core/lazy-loader.js
-// (Loader.ensure('encargos')) la primera vez que alguien entra.
--->
 <!-- encargos.js: ver js/core/lazy-loader.js (Loader.GROUPS.encargos) -->
-<!--
-
-// Módulo Tarjetas de Crédito migrado a js/modules/tarjetas-credito.js —
-// ver docs/tarjetas-credito.md. Cuando se migró (antes de que
-// abrirDetalleMovimiento()/eliminarMovimiento() se extrajeran a
-// js/core/movimientos.js el 2026-07-26) no tenía dependencia real de
-// orden de carga. ESO YA NO ES CIERTO: tarjetas-credito.js referencia
-// abrirDetalleMovimiento directo en su Events.registerAll('tarjetas', {...}),
-// y ya no importa que cargue antes o después de js/core/movimientos.js
-// (línea de abajo) — el wrapper agregado el 2026-08-03 en
-// tarjetas-credito.js resuelve el nombre recién al hacer click, no al
-// cargar (mismo tipo de wrapper que tuvo leerArchivoImport en
-// configuracion.js hasta 2026-08-30, cuando se sacó al fusionar
-// import-validado.js — ver CHANGELOG.md#configuración; ya no sirve como
-// ejemplo vigente de ese patrón, solo como precedente histórico).
-
-// (2026-08-02, ronda de resolver de raíz el acoplamiento spotify↔
-// tarjetas-credito) Sexto grupo lazy: ver js/core/lazy-loader.js
-// (Loader.GROUPS.tarjetas). #screen-tarjetas y #mas-tarjetas ya eran
-// HTML estático, así que no hubo que copiar/inyectar nada. spotify.js
-// (_spotifyEnsureTC) y js/core/movimientos.js ya esperan Loader.ensure(
-// 'tarjetas') antes de usar getTCById/tcCupoDisponible/tcRecalcular/
-// tcEliminarCompraInterna/tcEliminarPagoInterna — ver auditoria-
-// tecnica.md. El <script> de acá abajo se saca; ahora lo descarga
-// js/core/lazy-loader.js la primera vez que alguien entra a Tarjetas
-// de Crédito.
--->
 <!-- tarjetas-credito.js: ver js/core/lazy-loader.js (Loader.GROUPS.tarjetas) -->
 <script src="js/core/movimientos.js" defer></script>
-<!--
-// abrirDetalleMovimiento()/eliminarMovimiento() y su registro Events.on('core:...')
-// se extrajeron a js/core/movimientos.js — ver cabecera de ese archivo para
-// el porqué de vivir en js/core/ y no en js/modules/.
-
-// Módulo Cuentas — js/modules/cuentas.js, ver docs/cuentas.md.
-//
-// LAZY (2026-08-13, segundo intento — reactivado): el primer intento
-// (docs/auditoria-tecnica.md #4) se revirtió por 3 ReferenceError
-// encadenados en el arranque — el núcleo/firebase-sync.js llamaban al
-// subsistema de Nu (nuTotal/getNuTasaGlobal,
-// definidas acá) sin guard. Se auditaron y corrigieron los 5 archivos
-// núcleo involucrados (el núcleo, firebase-sync.js, pin-bio.js,
-// gastos-fijos-progress.js, mejoras.js — este último fusionado con
-// saldos-ocultos/arranque-ui/formularios-ui) — todo guardado con `typeof`
-// ahora, confirmado contra el código real. #screen-cuentas y #nav-cuentas
-// ya eran HTML estático.
--->
 <!-- cuentas.js: ver js/core/lazy-loader.js (Loader.GROUPS.cuentas) -->
 <script src="js/core/bootstrap.js" defer></script>
 
     <!-- ===== MEJORAS UX MÓVIL JS ===== -->
 <script src="js/core/mas-menu.js" defer></script>
-<!--
-// sheet-swipe.js + sheet-viewport.js fusionados en sheet-behavior.js
-// (2026-09-08): eran mitades de la misma lista numerada de comentarios
-// original, no una separación real de responsabilidad. Ver el comentario
-// de encabezado de js/core/sheet-behavior.js para el detalle completo.
--->
 <script src="js/core/sheet-behavior.js" defer></script>
 <script src="js/core/gastos-fijos-progress.js" defer></script>
 
@@ -5077,12 +4880,6 @@
           data-close-sheet="presupuestos">Cerrar</button>
       </div>
     </div>
-    <!-- `async` (docs/auditoria-tecnica.md #4, paso 2, mismo criterio que
-         firebase-init.js): deja correr _firebaseLoadData/onSnapshot en paralelo
-         con el JS clásico en vez de esperar a que termine de parsear todo
-         el documento. El wiring de nivel superior que tocaba el DOM sin
-         guard (overlay de eliminar cuenta, registro de Events('authgate'))
-         ya se blindó — ver CHANGELOG.md#arranque. -->
     <script type="module" src="js/core/firebase-sync.js" async></script>
     <!-- Retoques de la interfaz (antes un solo archivo «mejoras-adicionales.js»): ocultar saldos, render tras refresh + fade-in + aria,
          validación de montos + foco automático de las hojas. -->
@@ -5091,11 +4888,6 @@
     <script src="js/core/formularios-ui.js" defer></script>
     <script src="js/core/busqueda-global.js" defer></script>
 
-    <!-- `async` (docs/auditoria-tecnica.md #4, paso 2, mismo criterio que
-         firebase-init.js/firebase-sync.js): el chequeo de
-         window._pendingPinGate y el registro de Events('pin') ya se
-         blindaron con guard de readyState y reintento — ver
-         CHANGELOG.md#arranque. -->
     <script type="module" src="js/core/pin-bio.js" async></script>
     <!-- NUEVA TARJETA DE CRÉDITO -->
     <div class="overlay" id="sheet-nueva-tc" data-sheet-id="nueva-tc">
@@ -5310,141 +5102,23 @@
       </div>
     </div>
 
-<!-- js/core/nav.js retirado (2026-09-10): su única función, navTo(),
-     tenía un solo caller real (tarjetas-credito.js, botón "Ver todo"),
-     que además duplicaba a mano parte de la lógica de showScreen()
-     (navegacion.js) sin la integración con lazy-loader.js/préstamos que
-     showScreen() sí tiene. Se cambió ese caller a
-     `closeMas(); showScreen('tarjetas');` — mismo patrón que ya usa
-     mas-menu.js — y con eso navTo()/nav.js quedaron sin ningún caller
-     conocido. Ver CHANGELOG.md#infraestructura--seguridad. -->
-<!-- ===== FEED "ACTIVIDAD RECIENTE" =====
-     Migrado a js/modules/actividad-reciente.js. Único acceso: el botón
-     dentro de Configuración (#cfg-historial-row) — no hay entrada en el
-     menú "Más" ni en el nav inferior.
-
-     CARGA BAJO DEMANDA (sesión posterior, auditoria-tecnica.md #4):
-     cuarto grupo lazy. #screen-historial y el botón que dispara la
-     carga ya eran HTML estático — no hubo que copiar nada. Requirió
-     un cambio real dentro del propio archivo (no solo sacar el
-     <script>): sus 3 triggers de auto-render (DOMContentLoaded,
-     appDataLoaded, clic en #cfg-historial-row) ya pasaron para cuando
-     este archivo llega a cargar tarde — se agregó un cuarto trigger
-     sin condición de evento al final del archivo. Ver
-     CHANGELOG.md#arranque. ===== -->
 <!-- actividad-reciente.js: ver js/core/lazy-loader.js (Loader.GROUPS.historial) -->
 
-    <!-- ══════════════════════════════════════════════════════════════════
-     MÓDULO: PLATA COMPROMETIDA — migrado a js/modules/plata-comprometida.js
-     (ver docs/plata-comprometida.md). Un solo archivo alcanzó: no depende
-     de nada definido más abajo en este documento (usa S.deudores directo
-     para "Me devuelven", no funciones de Personas) — mismo caso que
-     Tarjetas de Crédito.
-
-     Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4): no se
-     confirmó ningún otro archivo que llame a sus funciones (nadie
-     depende de que esté cargado de entrada), y sus propias dependencias
-     (prestado.js, tarjetas-credito.js, cuentas.js, inicio.js) ya están
-     forzadas a cargar de entrada de todos modos por el dashboard de
-     Inicio — ver la nota grande al respecto en CHANGELOG.md#arranque.
-     Se saca de acá el <script>; ahora lo descarga js/core/lazy-loader.js
-     (Loader.ensure('comprometida')) la primera vez que alguien entra a
-     la pantalla, disparado por el ítem estático #mas-comprometida
-     (ver index.html, sección del menú "Más", y #screen-comprometida,
-     ambos copiados 1:1 del HTML que este archivo generaba en tiempo de
-     ejecución vía _injectScreen()/_injectMasItem() — esas dos funciones
-     siguen en el archivo, sin cambios, pero ahora son no-op gracias a
-     sus propios guards por id).
-══════════════════════════════════════════════════════════════════ -->
 <!-- plata-comprometida.js: ver js/core/lazy-loader.js (Loader.GROUPS.comprometida) -->
 
     <!-- SISTEMA DE PERSONAS — libreta central vinculada: Encargos, Préstamos y Spotify comparten la
      misma identidad (js/modules/personas.js; su integración vive dentro de cada módulo). -->
 <script src="js/core/personas-init.js" defer></script>
 
-    <!-- Notificaciones push (FCM) — ver docs de la sesión de septiembre 2026.
-         SDK "compat" cargado aparte de firebase-init.js/firebase-sync.js
-         (que usan el SDK modular) a propósito: notificaciones-push.js
-         inicializa una segunda instancia de la app bajo el nombre
-         'messaging' para no interferir con la instancia modular ya en uso.
-         defer + este orden garantiza que firebase-app-compat.js y
-         firebase-messaging-compat.js ya corrieron antes que
-         notificaciones-push.js (los defer se ejecutan en orden de
-         documento). Requiere que Events (js/core/events.js, ya cargado
-         más arriba) exista al momento de correr. -->
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js" defer></script>
     <script src="js/core/notificaciones-push.js" defer></script>
 
-    <!-- ===== MÓDULO ALCANCÍA OCULTA =====
-         Migrado a js/modules/alcancia.js — ver auditoria-tecnica.md,
-         punto 3 (arquitectura monolítica) y punto 1 (migración de
-         onclick inline a Events/data-action).
 
-         PILOTO DE CARGA BAJO DEMANDA (sesión posterior, auditoria-tecnica.md
-         #4, fase 1 de la modularización): este <script> se sacó de la carga
-         de entrada. Ahora lo descarga js/core/lazy-loader.js (Loader.ensure)
-         la primera vez que el usuario entra a la pantalla Alcancía, en vez
-         de siempre, para todos, al arrancar la app. Elegido como piloto por
-         ser chico (~14 KiB) y ya estar completamente migrado, sin enredo
-         con Personas. Ver CHANGELOG.md#modularización-por-pantalla para el
-         detalle completo, incluido por qué Alcancía necesitó un tratamiento
-         distinto al resto (se auto-registra parchando showScreen() en vez
-         de depender de una rama if(name===X) en navegacion.js). ===== -->
-
-    <!-- ===== MÓDULO CONFIGURACIÓN =====
-         Migrado a js/modules/configuracion.js — ver auditoria-tecnica.md,
-         punto 3 (arquitectura monolítica) y punto 1 (migración de onclick
-         inline a Events/data-action). No depende de nada definido más abajo
-         en el documento, pero sí de ids que ya existen en screen-config
-         (cats-var-list, btn-exportar-json, etc.) y de getCatsVar()/
-         getCatsFijo() (compartidas con Gastos), ya definidos más arriba.
-
-         CARGA BAJO DEMANDA (sesión posterior, auditoria-tecnica.md #4):
-         tercer grupo lazy después de Alcancía y Plata Comprometida — el
-         más simple de los tres, porque #screen-config y #mas-config ya
-         eran HTML estático desde antes (a diferencia de Plata
-         Comprometida, no hubo que copiar nada), y su único caller externo
-         (renderCatsConfig, desde navegacion.js) ya tenía guard `typeof`
-         desde el piloto de Alcancía.
-
-         2026-08-30: import-validado.js (validación de estructura del JSON,
-         "MEJORA 5") se fusionó dentro de configuracion.js — ya no es un
-         archivo aparte ni un segundo `<script>` en este grupo. Ver
-         CHANGELOG.md#configuración. ===== -->
 <!-- configuracion.js: ver js/core/lazy-loader.js (Loader.GROUPS.config) -->
 
 
-    <!-- ===== MÓDULO ANÁLISIS =====
-         Migrado a js/modules/analisis.js — pantalla que nunca apareció en
-         auditoria-tecnica.md, descubierta al revisar los onclick restantes
-         tras cerrar Configuración. calcPatrimonioTotal()/snapshotPatrimonio()
-         son núcleo (viven en el núcleo (js/core/persistencia.js), los llama save()), no
-         parte de este módulo.
-
-         Carga LAZY desde esta sesión (docs/auditoria-tecnica.md #4,
-         undécimo y último grupo de esta ronda): auditado línea por línea,
-         sin dependencia real de orden de carga (solo Events.registerAll y
-         wiring propio a nivel superior); sus llamadas a getMesadaData()/
-         _getCuotaAnio() (mesada.js) ya tenían guard typeof desde la ronda
-         del 2026-08-02. Su entrada en "Más" ya era HTML estático. ===== -->
 <!-- analisis.js: ver js/core/lazy-loader.js (Loader.GROUPS.analisis) -->
 
-    <!-- ===== MÓDULO INICIO (Dashboard) =====
-         Migrado a js/modules/inicio.js — ver auditoria-tecnica.md, punto 3
-         (arquitectura monolítica). Se carga al final, después de todos los
-         demás módulos, porque renderAttencion() usa funciones definidas en
-         mesada.js, spotify.js, prestado.js y tarjetas-credito.js
-         (getMesadaData, spotifyNombreDe, spotifyPersonaPagadaVigente, tcCupoUsadoPct).
-         No define ningún data-action nuevo: screen-inicio no tiene onclick
-         inline propios, solo elementos de solo lectura (ver nota en el
-         propio archivo).
-
-         Nota (2026-08-02): las 6 llamadas de arriba ahora tienen guard
-         typeof === 'function' dentro de inicio.js (ver cabecera de ese
-         archivo) — "se carga al final" documenta el orden actual, ya no es
-         un requisito estricto para que la app no reviente. mesada.js pasó
-         a lazy esta misma sesión (Loader.GROUPS.mesada) y este orden
-         siguió sin tocarse a propósito. ===== -->
 <script src="js/modules/inicio.js" defer></script>
   </body></html>

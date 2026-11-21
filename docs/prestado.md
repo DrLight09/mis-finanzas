@@ -222,7 +222,7 @@ Dos constantes únicas, `Deudas.TOL` ($1: suma de partes contra total, saldo "�
 
 Tanto un deudor (Me deben) como una misDeuda (Yo debo) pueden estar vinculados a una persona del registro central `S.personas[]` vía `personaId` — así se comparte nombre/avatar/color con Encargos y Spotify en vez de tener texto libre repetido en cada módulo.
 
-> Hasta el 2026-08-03 esto vivía repartido en tres archivos (`prestado.js` + `prestado-personas.js` + `deudores-personas.js`) por razones de orden de carga. Los tres se fusionaron en un solo `js/modules/prestado.js` ese día — `prestado-personas.js` y `deudores-personas.js` ya no existen como archivos propios. Todo lo que describe esta sección vive hoy en `prestado.js`, en los bloques marcados `// fusionado acá el 2026-08-03`.
+> Todo lo que describe esta sección vive en `js/modules/prestado.js`.
 
 El módulo cubre:
 - **Me deben** (`_onSelPersonaMeDeben`): "Agregar persona" abre directamente el selector de personas en vez de un formulario de nombre libre. Si la persona elegida **ya tiene un deudor registrado**, no crea uno segundo — cierra el sheet, avisa con un toast y redirige al detalle del deudor existente (mismo patrón que el lado "Yo debo", ver abajo). Un préstamo nuevo con alguien que ya está en la lista se maneja como un **grupo aparte dentro del mismo deudor** (ver 2.4), no como una persona duplicada.

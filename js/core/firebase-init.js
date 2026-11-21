@@ -51,7 +51,7 @@
       });
       const db = initializeFirestore(app, {
         experimentalAutoDetectLongPolling: true,  // Evita ERR_QUIC_PROTOCOL_ERROR sin forzar long-polling siempre (ver auditoria-tecnica.md, punto de rendimiento #1)
-        // FIX (2026-08-17): persistentLocalCache() por defecto solo permite
+        // FIX: persistentLocalCache() por defecto solo permite
         // UNA pestaña a la vez tener acceso exclusivo al cache de IndexedDB
         // — una segunda pestaña (olvidada en otro dispositivo, o accidental
         // en el mismo) rompe con "Failed to obtain exclusive access to the
@@ -66,8 +66,8 @@
       const provider = new GoogleAuthProvider();
 
       // Exponer globalmente para que el código existente pueda usar.
-      // collection/getDocs (2026-11-09): solo los usa js/core/respaldos.js para borrar respaldos huérfanos al eliminar la cuenta.
-      // runTransaction (2026-09-19): lo usa firebase-sync.js para leer el
+      // collection/getDocs: solo los usa js/core/respaldos.js para borrar respaldos huérfanos al eliminar la cuenta.
+      // runTransaction: lo usa firebase-sync.js para leer el
       // documento DIRECTO del servidor, sin pasar por la caché local ni por
       // el listener (ver _leerDocEnServidor).
       window._firebase = { auth, db, provider, popupResolver: browserPopupRedirectResolver, signInWithPopup, signOut, doc, getDoc, getDocFromServer, setDoc, deleteDoc, deleteUser, reauthenticateWithPopup, onAuthStateChanged, onSnapshot, runTransaction, arrayUnion, collection, getDocs };

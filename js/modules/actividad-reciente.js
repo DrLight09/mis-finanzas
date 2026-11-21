@@ -180,7 +180,7 @@
     // Tipos: 'entrada' | 'salida_manual' | 'salida' | 'apertura' (apertura excluida)
     // Excluimos movimientos internos generados automáticamente por encargos (_encargoMovimientoId,
     // "Margen de encargo", "Margen encargo") para evitar duplicados con _normEncargos.
-    // EXCEPCIÓN (2026-09-29): las entradas que son ingreso REAL para Análisis/Salud sí se muestran
+    // EXCEPCIÓN: las entradas que son ingreso REAL para Análisis/Salud sí se muestran
     // (mismo criterio que _esEntradaEspejoNoIngreso en js/core/ingresos.js): margen/regalo de un encargo
     // (_esExtraIngreso / _esDiferencialEncargo) y el "Dinero extra encontrado en alcancía" del
     // destape. Antes el saldo subía sin ninguna fila en Actividad reciente. Ojo: _normEncargos

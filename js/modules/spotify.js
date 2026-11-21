@@ -133,7 +133,7 @@ function guardarFuenteSpotify(){
 }
 
 // spotifyNombreDe() y spotifyPersonaPagadaVigente() se movieron a js/core/calc-helpers.js
-// (2026-09-20): son cálculo puro sobre `p`/`getPersona`, y "Necesita atención"
+//: son cálculo puro sobre `p`/`getPersona`, y "Necesita atención"
 // (inicio.js) las necesita en el PRIMER render. Con este archivo lazy, esas
 // tarjetas aparecían recién al cargarlo y empujaban todo Inicio hacia abajo
 // (CLS). Siguen siendo globales: este archivo las usa igual que antes.

@@ -293,7 +293,7 @@ function descontarFuente(fuente,monto,opts){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c){
-      // FIX 2026-08-13: materializarIntereses (nu.js, grupo lazy) sin
+      // FIX: materializarIntereses (nu.js, grupo lazy) sin
       // guard acá — a diferencia del guard que ya existía en firebase-sync.js
       // (arranque), este vive en descontarFuente(), el motor de mover plata
       // usado desde CUALQUIER módulo (Gastos, Encargos, Préstamos) cuando la

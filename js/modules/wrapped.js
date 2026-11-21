@@ -500,7 +500,7 @@ function _wrappedCalcularPeriodo(S, tipo, mesK, anioK){
   // Alcancía del período: depósitos del ciclo activo dentro del rango +
   // ciclos ya destapados cuyo cierre (fechaFin) cae dentro del rango.
   //
-  // Verificado contra alcancia.js/alcancia.md (2026-09-12): al destapar,
+  // Verificado contra alcancia.js/alcancia.md: al destapar,
   // `a.saldoRegistrado` se resetea a 0 de inmediato y el ciclo cerrado
   // queda copiado en `a.historial[]` — pero `a.movimientos[]` NO se limpia
   // en ese momento. Solo se limpia cuando el usuario elige explícitamente
@@ -1216,7 +1216,7 @@ function _wrappedCopyCategoria(topCategoria){
   return base;
 }
 
-// `fmt2` (2026-09-15, ver §3 nota junto al slide "actividad"): se agrega
+// `fmt2`: se agrega
 // SOLO para poder narrar el desglose puntual de ESTE mes (ingresos y
 // gastos de un mes concreto ya era un highlight permitido vía `balance`;
 // esto simplemente lo hace explícito en vez de dejarlo implícito en la
@@ -1290,7 +1290,7 @@ function _wrappedCopyDesgloseMes(mesObj, fmt2){
    *en relación al propio gasto típico del usuario* (nunca contra un
    umbral fijo en pesos, que no tendría sentido entre personas con gastos
    de escalas muy distintas). */
-// `totalGastosAnio` (2026-09-15) se usa EXACTAMENTE como `catShare` en
+// `totalGastosAnio` se usa EXACTAMENTE como `catShare` en
 // `_wrappedCopyCategoria`: solo para derivar una proporción a mostrar
 // ("representó el X% de tus gastos"), nunca se pinta el total en crudo —
 // mismo criterio ya aceptado por §3, no una excepción nueva.
@@ -1330,7 +1330,7 @@ function _wrappedCopyGasto(gastoMasGrande, avgGasto, totalGastosAnio){
 }
 
 function _wrappedCopyAlcancia(alcanciaPeriodo, gastoMasGrande, ciclos){
-  // `ciclos` (2026-09-15): cuántas "alcancías" distintas aportaron a esta
+  // `ciclos`: cuántas "alcancías" distintas aportaron a esta
   // cifra (ciclo activo con depósitos + ciclos ya destapados este año,
   // ver el conteo en `_wrappedCalcularPeriodo`). Con 2+ se aclara antes
   // que nada — si no, el número se lee como si viniera de una sola
@@ -1507,7 +1507,7 @@ function _wrappedCopyMesada(m){
   ], partes[0]);
 }
 function _wrappedCopySpotify(s, fmt2){
-  // `fmt2` (2026-09-15, mismo criterio que `_wrappedCopyDesgloseMes`):
+  // `fmt2`:
   // solo para narrar el desglose cobrado/pagado del período — ambos ya
   // eran cifras permitidas por wrapped.md §7ter (el balance ya se
   // mostraba), esto solo las hace explícitas en vez de dejarlas
@@ -1636,7 +1636,7 @@ function _wrappedAnimarLinea(slideEl){
   let len;
   try { len = path.getTotalLength(); } catch(e){ return; }
   if(!len) return;
-  // (2026-09-15) Esta función no respetaba `prefers-reduced-motion` —
+  // Esta función no respetaba `prefers-reduced-motion` —
   // a diferencia de `_wrappedAnimarNumeros` y `_wrappedLanzarConfeti`,
   // que sí lo chequean. Con movimiento reducido, la línea se muestra
   // completa de una vez, sin la transición de 1.1s.
@@ -1903,7 +1903,7 @@ function _wrappedSlideBignum(eyebrow, headline, value, color, opts){
   // faltante en un registro viejo) el slide igual debe poder pintarse —
   // nunca con `NaN` visible en el atributo ni en el conteo animado.
   const valorSeguro = Number.isFinite(value) ? value : 0;
-  // `opts.ocultarValor` (2026-09-15): reusa la MISMA clase `.saldo-hidden`
+  // `opts.ocultarValor`: reusa la MISMA clase `.saldo-hidden`
   // que ya existe en `styles.css` para "Ocultar saldos" (blur + bloquea
   // selección/click) — no se inventa un mecanismo de ocultamiento nuevo.
   // Solo tapa visualmente el número; el valor real sigue en el DOM
@@ -2559,7 +2559,7 @@ function _wrappedPersonalidad(S, anioK){
   // real — nunca un segundo puesto inventado para rellenar el slide
   // (misma regla de "no forzar" que ya aplicaba al resultado único).
   const secundario = candidatos.length > 1 ? candidatos[1] : null;
-  // `_candidatos` (2026-09-15): la lista completa, en el mismo orden de
+  // `_candidatos`: la lista completa, en el mismo orden de
   // prioridad de siempre — agregada solo para que el panel de debug
   // visual (`_wrappedDebugPanelHtml`) pueda mostrar qué otros arquetipos
   // también aplicaron y no se usaron, sin recalcular nada. Prefijo `_`
@@ -3170,7 +3170,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   const mesadaAnio      = _wrappedCalcularMesada(S, 'anio', null, anioK);
   const spotifyAnio     = _wrappedCalcularSpotify(S, 'anio', null, anioK);
   const comprometidaAnio = _wrappedCalcularComprometida(S, 'anio', null, anioK);
-  // Tarjetas de Crédito (2026-09-15) — nuevo dominio, agregado después de
+  // Tarjetas de Crédito — nuevo dominio, agregado después de
   // revisar `tarjetas-credito.js` a pedido del usuario. Deliberadamente
   // acotado a los INTERESES cobrados en el período (`_esCargoEspecial &&
   // _motivoCargo==='interes'`), no a la deuda actual (`tc.deuda`, que
@@ -3181,19 +3181,19 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
   // que no se puede ver/reexportar). Los intereses sí son un dato
   // 100% puntual del período, igual que el resto de §7ter.
   const interesesTC = _wrappedCalcularInteresesTC(S, 'anio', null, anioK);
-  // Comisiones (2026-09-15, misma sesión): mismo dato de origen
+  // Comisiones: mismo dato de origen
   // (S.tarjetasCredito), motivo distinto — ver `_wrappedCalcularComisionesTC`
   // para el razonamiento completo de por qué es un candidato aparte y por
   // qué el tercer motivo ("otro cargo del banco") se dejó afuera.
   const comisionesTC = _wrappedCalcularComisionesTC(S, 'anio', null, anioK);
 
-  // Segunda tanda (2026-09-13): personalidad, gasto random, protagonistas.
+  // Segunda tanda: personalidad, gasto random, protagonistas.
   const personalidad   = _wrappedPersonalidad(S, anioK);
   const gastoRandom    = _wrappedGastoMasRandom(S, 'anio', null, anioK, s.gastoMasGrande);
   const protagonistas  = _wrappedProtagonistas(S, 'anio', null, anioK);
   const metaCajita     = _wrappedMetaCajita(S);
 
-  // Tercera tanda (2026-09-14) — ver comentario de cabecera de esa sección.
+  // Tercera tanda — ver comentario de cabecera de esa sección.
   const comparaciones   = _wrappedComparaciones(S, 'anio', null, anioK, s);
   const suscripciones   = _wrappedSuscripciones(S);
   const recuperacion    = _wrappedRecuperacionMasRapida(S, anioK);
@@ -3241,7 +3241,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
     </div>`
   });
 
-  // Slide "actividad" (2026-09-15): cuánta plata se movió en total y en
+  // Slide "actividad": cuánta plata se movió en total y en
   // cuántos registros — es la apertura tipo "escuchaste 40.000 minutos"
   // de Spotify Wrapped: una cifra de volumen/actividad, no de resultado.
   // OJO CON LA REGLA DE §3: esto suma ingresos + gastos reales del año en
@@ -3290,7 +3290,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
       sub: _wrappedCopyCategoria(s.topCategoria)
     }) });
 
-    // Slide nuevo (2026-09-15): ranking de TODAS las categorías, no solo
+    // Slide nuevo: ranking de TODAS las categorías, no solo
     // la ganadora — reusa `_wrappedItemsRealesPeriodo` (ya centralizado,
     // ver comentario ahí) para no recalcular el filtro de "gasto real",
     // y `_wrappedRankingCategorias` para no reimplementar el agrupado
@@ -3517,7 +3517,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
     });
   }
 
-  // Frecuencia vs. peso por movimiento (2026-09-15) — mismo espíritu que
+  // Frecuencia vs. peso por movimiento — mismo espíritu que
   // la cláusula que ya existía dentro de `_wrappedCopyCategoria`
   // (`topPorFrecuencia`), pero como slide propio porque el contraste con
   // "la categoría más concentrada" es un dato curioso completo por sí
@@ -3669,7 +3669,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
     });
   }
 
-  // `candidatosPuntuados` (2026-09-15): antes este cálculo vivía inline y
+  // `candidatosPuntuados`: antes este cálculo vivía inline y
   // se cortaba directo con `.slice`, descartando para siempre los
   // candidatos que no entraron. Separarlo en dos pasos no cambia qué
   // insights se eligen (`insightsElegidos` sigue siendo exactamente el
@@ -3681,7 +3681,7 @@ function _wrappedBuildSlides(S, fmt2, anioOpt){
     .sort((a,b) => b.score - a.score); // sort estable: empates conservan el orden en que se agregaron arriba
   const insightsElegidos = candidatosPuntuados.slice(0, WRAPPED_MAX_INSIGHTS_POOL);
 
-  // Puente narrativo (2026-09-14): una micro-pausa de texto, sin ningún
+  // Puente narrativo: una micro-pausa de texto, sin ningún
   // dato nuevo, entre el bloque de "datos ancla" (patrimonio, categoría,
   // mejor/peor mes, gasto más grande) y el pool de insights variables —
   // le da ritmo de "capítulo" a la historia en vez de saltar de golpe.
@@ -4092,7 +4092,7 @@ window.renderWrapped = function(anioOpt){
   const progresoHtml = slides.map(() => `<div class="wrapped-seg"><i></i></div>`).join('');
   const slidesHtml = slides.map(slide => `<div class="wrapped-slide" data-mood="${slide.mood || 'accent'}"${slide.confetti ? ' data-confetti="1"' : ''}>${slide.html}</div>`).join('');
 
-  // Panel de debug visual (2026-09-15) — solo se arma y se inyecta cuando
+  // Panel de debug visual — solo se arma y se inyecta cuando
   // la URL trae `?debug=1`/`#debug` (ver `_wrappedDebugPanelHtml`); en
   // cualquier otro caso `debugHtml` queda vacío y no se agrega nada al
   // DOM ni se paga el costo de armar las tablas.

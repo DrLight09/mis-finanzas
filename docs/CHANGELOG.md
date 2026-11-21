@@ -35,6 +35,11 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Limpieza de comentarios y docs que contaban historia (2026-11-21)
+- `index.html`: se quitaron los bloques de comentario que narraban migraciones ("migrado a…", "retirado", "fusionados") y los de código ya sacado; quedó una nota corta sobre el orden de los `<script defer>`. Los `<script>` son exactamente los mismos.
+- `js/`: se quitaron los comentarios sobre `import-validado.js` y otros archivos que ya no existen (`prestado-personas.js`, `deudores-personas.js`), la historia de Lighthouse en `lazy-loader.js` (queda la regla vigente) y las fechas entre paréntesis de unos 70 comentarios. El código no cambió.
+- Docs: se quitaron versiones que se desactualizan solas (`mis-finanzas-v84` en `cierre-de-periodos.md`, que además decía esquema 9: ahora 12; «SW v112», «SW v150») y la nota de archivos fusionados de `prestado.md`. La historia vive solo en este CHANGELOG y en `docs/changelog/`.
+
 ## 2026-11-21 — El PIN se llama por lo que es: candado de pantalla (H5, opción A)
 - Configuración: «PIN de acceso» pasa a «Candado de pantalla» y el texto dice que sirve para que nadie curiosee si toma tu teléfono y que no cifra los datos. Al crear el PIN: «Este PIN será el candado de pantalla de la app» (antes «protegerá el acceso»). Los botones «Activar / Cambiar / Quitar PIN» no cambian.
 - `docs/configuracion.md` explica qué da y qué no da el PIN. Cifrado de extremo a extremo (opción B de la revisión) queda como decisión de producto pendiente: rompería las notificaciones del servidor.

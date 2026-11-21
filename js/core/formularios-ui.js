@@ -50,7 +50,7 @@ function mostrarAlertaFuente(prefix){
   // visibility, no display: el hint siempre ocupa su espacio (mismo criterio
   // que .field-hint/min-height en los demás hints,)
   // para que elegir una cuenta no empuje de golpe los botones de más abajo.
-  // EXCEPCIÓN (2026-09-25): en "Registrar gasto" (prefix='gv') se prefirió lo
+  // EXCEPCIÓN: en "Registrar gasto" (prefix='gv') se prefirió lo
   // contrario — que #gv_fuente_hint/#gv_fuente_saldo no ocupen espacio estando
   // vacíos, aceptando el salto de layout al elegir cuenta. Resuelto solo con
   // CSS en styles.css (selector [style*="visibility: hidden"] por ID), sin

@@ -823,7 +823,7 @@ function getMovimientosCuenta(tipo) {
     });
   });
 
-  // NOTA (2026-08-30): no hay un bloque "Mesadas recibidas en esta cuenta": duplicaba cada pago de
+  // NOTA: no hay un bloque "Mesadas recibidas en esta cuenta": duplicaba cada pago de
   // mesada con un movimiento fantasma sin candado. mesada.js ya genera el espejo real vía
   // _registrarMovSecundarioMesada() (en S.movimientos con _secundario:true), que desdeMovimientos()
   // recorre. No volver a sintetizar el pago desde S.mesadas. Ver changelog/mesada.md.
@@ -1144,7 +1144,7 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota,ext
   // Aplica el monto a la fuente y registra el movimiento con el tipo correcto.
   // Devuelve la descripción final (por si el caller la necesita para toasts/log).
   // `nota` es opcional — ver auditoria-tecnica.md / guia-estilo-sheets.md
-  // (2026-08-22): el campo Nota de estos sheets existía en el HTML desde antes
+  //: el campo Nota de estos sheets existía en el HTML desde antes
   // pero nunca se leía ni se guardaba en el movimiento.
   if(!S.movimientos)S.movimientos=[];
   let movimiento;
@@ -1425,7 +1425,7 @@ function confirmarRestarDinero(){
   if(!desc){toast('Describe en qué se gastó o a dónde fue','err');return;}
   if(!v){toast('Ingresa un monto válido','err');return;}
   if(!rdFuente)return;
-  // Guarda de saldo (2026-10-05). descontarFuente() recorta el saldo en 0, pero registrarSalida()
+  // Guarda de saldo. descontarFuente() recorta el saldo en 0, pero registrarSalida()
   // guarda el movimiento con el monto COMPLETO: restar más de lo que hay dejaba el saldo en 0 y el
   // historial diciendo que salió más plata de la que había, y al borrar ese movimiento
   // (sumarFuente(monto)) la cuenta recibía de más. Misma regla que Transferir: se compara en centavos.
@@ -1546,10 +1546,10 @@ function _trDestinoCambio() {
 }
 
 // ── Validación de Transferir — UNA sola función, sin DOM ─────────────────────
-// Reglas (2026-09-28, "plata real"): solo entre cajitas de una cuenta de ahorro se pueden mover
+// Reglas: solo entre cajitas de una cuenta de ahorro se pueden mover
 // centavos. Si el origen o el destino es una cuenta normal, el monto tiene que ser un número entero
 // de pesos. Si una cuenta de EFECTIVO participa, el mínimo es $50 (la moneda más pequeña que existe).
-// 2026-10-04: pasó de validar solo el monto (_trValidarMonto) a validar TODA la
+// pasó de validar solo el monto (_trValidarMonto) a validar TODA la
 // transferencia, para que la vista previa y la confirmación digan lo mismo y
 // la regla se pueda probar sin abrir el sheet (tests/transferir.test.js).
 //

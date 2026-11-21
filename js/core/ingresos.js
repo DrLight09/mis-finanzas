@@ -27,7 +27,7 @@ function _esEntradaEspejoNoIngreso(m){
   return claseEfectivaMovimiento(m) !== 'ingreso';
 }
 
-// ── INGRESO REAL: UNA sola definición para Inicio, Análisis y Wrapped (2026-10-04) ──
+// ── INGRESO REAL: UNA sola definición para Inicio, Análisis y Wrapped ──
 // Antes cada pantalla armaba su propia lista: Inicio exigía además una cuenta (o
 // `_prestadoDirectamente`) y sumaba por separado los `ingreso` de c.movimientos de las
 // cuentas personalizadas; Análisis y Wrapped solo miraban S.movimientos. Esa condición
@@ -70,7 +70,7 @@ function _esGastoVarNoReal(g){
 }
 
 /* ---- TOAST ---- */
-// toast(msg, tipo, dur) — M6 (2026-11-10): el mensaje es TEXTO por defecto (se pinta con textContent: nada de lo que venga de datos del
+// toast(msg, tipo, dur) — M6: el mensaje es TEXTO por defecto (se pinta con textContent: nada de lo que venga de datos del
 // usuario puede inyectar marcado, no hay nada que "olvidar" escapar). Para marcado deliberado (un ícono, un <br>) se pasa un html`…`
 // o raw(…) (js/core/html-tag.js): ese objeto lleva `__raw` y SÍ se pinta como HTML, con los valores interpolados ya escapados por html``.
 //   toast(`Cuenta "${nombre}" creada`)                   ← texto: NO uses escHtml() aquí (se vería &amp;)

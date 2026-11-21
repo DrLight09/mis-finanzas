@@ -1371,7 +1371,7 @@ function confirmarNuMovimiento() {
   const cajita = (S.cajitas || []).find(x => x.id === cid);
   if (!cajita) { toast('Cajita no encontrada', 'err'); return; }
 
-  // Guarda de saldo (2026-10-05): misma razón que confirmarRestarDinero(). descontarFuente() recorta el
+  // Guarda de saldo: misma razón que confirmarRestarDinero(). descontarFuente() recorta el
   // saldo en 0 pero registrarSalida() guarda el monto completo; sacar más de lo que hay dejaba el
   // historial desfasado y borrar el movimiento devolvía de más. Se comprueba ANTES de materializar los
   // intereses para no dejar la cajita modificada a medias si se rechaza.

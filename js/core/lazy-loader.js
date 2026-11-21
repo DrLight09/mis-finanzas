@@ -48,13 +48,6 @@ const Loader = (function () {
     // propio archivo — haría lazy-loading imposible sin tocar antes ese
     // núcleo. Ver changelog/arranque.md.
     //
-    // 2026-08-30: era ['js/modules/configuracion.js', 'js/modules/import-validado.js']
-    // — import-validado.js (validación de estructura del JSON, MEJORA 5)
-    // parcheaba leerArchivoImport a nivel superior de su propio archivo,
-    // por eso necesitaba cargar DESPUÉS y el orden del array importaba. Se
-    // fusionó dentro de configuracion.js (una sola función real, sin
-    // depender del orden de carga entre dos archivos) — ver
-    // changelog/configuracion.md. import-validado.js ya no existe.
     config: ['js/modules/configuracion.js'],
     // Cuarto grupo lazy. Entrada única: el botón "Actividad reciente"
     // dentro de Configuración (#cfg-historial-row, data-action=
@@ -71,7 +64,7 @@ const Loader = (function () {
     // trigger sin condición de evento al final del archivo. Ver ese
     // archivo y changelog/arranque.md para el detalle.
     historial: ['js/modules/actividad-reciente.js'],
-    // Quinto grupo lazy (2026-08-02). #screen-mesada y #mas-mesada ya eran
+    // Quinto grupo lazy. #screen-mesada y #mas-mesada ya eran
     // HTML estático desde antes, así que no hubo que copiar/inyectar nada
     // (mismo caso que Configuración/Actividad Reciente, a diferencia de
     // Plata Comprometida). No requirió ningún cambio dentro de mesada.js:
@@ -138,7 +131,7 @@ const Loader = (function () {
     // corrían, solo que sobre un módulo cargado de entrada).
     spotify: ['js/modules/spotify.js'],
     prestamos: ['js/modules/prestado.js'],
-    // cuentas: REACTIVADO como lazy (2026-08-13, segundo intento). El primer
+    // cuentas: REACTIVADO como lazy. El primer
     // intento se revirtió por 3 ReferenceError encadenados al arrancar
     // (ahorroTotal/getTasaCuenta llamados sin guard
     // desdel núcleo y firebase-sync.js). Se recibieron y auditaron
@@ -154,7 +147,7 @@ const Loader = (function () {
     cuentas: ['js/modules/nu.js', 'js/modules/cuentas.js'],
     analisis: ['js/modules/analisis.js'],
     encargos: ['js/modules/encargos.js'],
-    // Duodécimo grupo lazy (2026-09-07, rediseñado a solo-anual 2026-09-08).
+    // Duodécimo grupo lazy.
     // "Wrapped" — revelación anual animada tipo Spotify Wrapped, pantalla
     // accesible desde "Más". A propósito solo anual, no mensual (ver
     // wrapped.md §7). Caso más simple que los anteriores: no
@@ -169,11 +162,11 @@ const Loader = (function () {
     // si Alcancía no cargó todavía, esa cifra puntual simplemente no se
     // muestra (ver wrapped.js).
     //
-    // 2026-09-15: pasa a tener ventana de disponibilidad (solo enero, año
+    // pasa a tener ventana de disponibilidad (solo enero, año
     // recién cerrado — ver js/core/wrapped-gate.js y wrapped.md §7decies).
     // ensureAll() más abajo ya no lo precarga fuera de esa ventana.
     wrapped: ['js/modules/wrapped.js'],
-    // Grupo SOLO bajo demanda (2026-10-31): huella de invariantes y cierre de períodos (~34 KB, ~12 KB comprimidos). Se usa al abrir
+    // Grupo SOLO bajo demanda: huella de invariantes y cierre de períodos (~34 KB, ~12 KB comprimidos). Se usa al abrir
     // Configuración (medidor «Tamaño de tus datos») y desde la consola. A diferencia del resto, ensureAll() NO lo precarga (ver
     // SOLO_BAJO_DEMANDA). Orden: huella.js antes que cierre.js. Las sondas de los módulos (tarjetas, encargos, alcancía, Wrapped) llegan
     // antes y esperan en cola (registrarSonda, js/core/persistencia.js); huella.js la vacía al cargarse.
@@ -284,36 +277,8 @@ const Loader = (function () {
     return Promise.all(grupos.map(g => ensure(g).catch(() => {})));
   }
 
-  // FIX (2026-08-17, confirmado con dos corridas reales de Lighthouse — ver
-  // changelog/infraestructura-seguridad.md): el disparo inmediato de acá
-  // abajo SÍ contaba dentro de la ventana que Lighthouse mide como Total
-  // Blocking Time. Prueba encontrada en los propios reportes: "Avoid long
-  // main-thread tasks" mostraba tareas de cuentas.js/plata-comprometida.js/
-  // alcancia.js/import-validado.js corriendo varios segundos después del
-  // primer pintado (una de 106ms a los 8.6s de carga), y "Reduce unused
-  // JavaScript" marcaba cuentas.js con 76% de su peso sin usar — confirma
-  // que ensureAll() se estaba disparando y ejecutando adentro de la ventana
-  // auditada, no "de verdad en segundo plano" como asumía el diseño
-  // original (comentario de abajo, sin tocar por valor histórico).
-  //
-  // Se reemplaza el disparo inmediato por requestIdleCallback: es la
-  // semántica correcta para "trabajo de fondo que no debe competir con
-  // nada" — el navegador lo corre solo cuando el hilo principal está
-  // realmente libre, cediendo el paso a cualquier interacción real del
-  // usuario que llegue primero (un tap en un nav-item, por ejemplo).
-  // timeout:5000 garantiza que igual corra si el hilo nunca queda idle por
-  // su cuenta — mismo patrón de "timeout de seguridad" que ya usa el resto
-  // de la app (window._pinGateTimeout, window._authgateReadyTimeout en
-  // firebase-init.js). Fallback a setTimeout para Safari (sin soporte de
-  // requestIdleCallback al momento de escribir esto).
-  //
-  // Nota honesta, no prometer de más: en la corrida de Lighthouse en sí
-  // (una pestaña sola, sin otra interacción real compitiendo) es posible
-  // que requestIdleCallback dispare casi enseguida igual, porque ahí no
-  // hay ningún otro trabajo esperando el hilo principal — así que el
-  // número de TBT podría no bajar mucho en ese entorno sintético
-  // específico. El beneficio real es para un usuario de verdad, que sí
-  // puede estar tocando algo justo en ese momento.
+  // La precarga de todos los grupos corre en requestIdleCallback (timeout 5000 para que igual ocurra si el hilo nunca queda libre; setTimeout
+  // en navegadores sin soporte), no al instante: así no compite con el primer pintado ni con la primera interacción.
   function _iniciarEnsureAll() {
     ensureAll().then(() => {
       // Bandera global: marca que la precarga terminó. inicio.js

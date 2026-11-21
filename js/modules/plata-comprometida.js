@@ -993,7 +993,7 @@ function _destinoNuevoConfirmar(){
     } catch(e){ toast('No se pudo descontar el saldo: '+e.message,'err'); }
   }
 
-  // FIX (2026-09-10, ver changelog/plata-comprometida.md): si ya pagó un
+  // FIX: si ya pagó un
   // Gasto (cajita o TC) al momento de crearlo, hay que moverle la plata YA
   // MISMO — igual que la reposición de arriba —, no solo guardar el flag
   // `yaPague:true`. Antes esta rama no existía acá: marcar "ya pagué" al

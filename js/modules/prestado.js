@@ -4,35 +4,13 @@
    Módulo Préstamos ("Prestado"): Me deben (S.deudores) + Yo debo
    (S.misDeudas) + Préstamo con tarjeta de crédito.
 
-   La integración con S.personas (crear/vincular persona automática,
-   refrescar detalle al editar desde el sheet global, "Editar mi
-   deuda", navegar desde el perfil de una persona) y el selector de
-   persona compartido por "Agregar persona" (Me deben) y "Nueva
-   deuda" (Yo debo) vivían en dos archivos aparte —
-   js/modules/prestado-personas.js y js/modules/deudores-personas.js
-   — que se fusionaron acá el 2026-08-03 (ver los bloques marcados
-   "fusionado acá" más abajo) para no tener tres archivos separados
-   dependiendo del mismo orden de carga. Ya no existen como archivos
-   propios; todo su contenido vive en este mismo módulo.
+   Integra con S.personas: crear/vincular persona al agregar un deudor o una deuda, refrescar el detalle al editar desde el sheet
+   global, y el selector de persona compartido.
 
    Ver docs/prestado.md (sección 6, integración con S.personas).
 
-   Todos los onclick="..." inline de este módulo (24 en total: 6 en
-   la plantilla de index.html, el resto generados dinámicamente en
-   los render de listas/historial) se migraron a data-action con el
-   sistema centralizado de js/core/events.js, siguiendo el mismo
-   patrón que Spotify, Mesada y Encargos:
-
-     `<button onclick="abrirDeudor('${d.id}')">`
-     →
-     `<button ${Events.attr('prestado:abrirDeudor', d.id)}>`
-
-   Los onclick="event.stopPropagation()" sueltos (sin acción propia,
-   solo para no burbujear el click) NO pasan por el registry de
-   Events — no son "acciones" de negocio con nombre. Se resuelven con
-   un addEventListener directo al final de la función que arma esas
-   filas (ver extRenderPartes) — sigue sin ser un atributo inline, así
-   que cumple el mismo objetivo de cara a la CSP.
+   Los eventos van por data-action (`Events.attr('prestado:abrirDeudor', d.id)`), nunca por onclick inline (CSP). Los
+   `stopPropagation` sueltos van con addEventListener directo al armar las filas (ver extRenderPartes).
 
    Depende de utilidades ya definidas en el núcleo de index.html:
    S, save, refresh, escHtml, fmt, fmtInput, parseMoney, uid, hoy,
@@ -162,7 +140,7 @@ function _updatePrestSplitResumen(){
 let deudorActualId = null;
 let movimientoTipo = 'prestamo'; // 'prestamo' | 'abono'
 
-// getDeudorSaldo() se movió a js/core/calc-helpers.js (2026-09-20): es un
+// getDeudorSaldo() se movió a js/core/calc-helpers.js: es un
 // reduce puro sobre d.movimientos y "Necesita atención" (inicio.js) lo necesita
 // en el PRIMER render — con este archivo lazy, las tarjetas "X te debe $…"
 // aparecían recién al cargarlo y empujaban todo Inicio hacia abajo (CLS).
@@ -2698,22 +2676,13 @@ if (movimientoFuente) movimientoFuente.addEventListener('change', () => mostrarA
 
 /* ═══════════════════════════════════════════════════════════════
    INTEGRACIÓN CON EL SISTEMA DE PERSONAS
-   (antes js/modules/prestado-personas.js — fusionado acá el 2026-08-03)
 
    Crear/vincular persona al agregar un deudor o una deuda, refrescar
    el detalle abierto cuando se edita desde el sheet global de
    Personas, navegación cruzada entre perfil y deudor/deuda, y el
    sheet "Editar mi deuda". Ver docs/prestado.md.
 
-   A diferencia de encargos-personas.js/spotify-personas.js, ESTE
-   archivo sí tenía una dependencia real de nivel superior contra
-   personas.js (PERSONA_COLORES, leído
-   al parsear, no dentro de una función) — confirmado, no una premisa
-   falsa. Por eso el archivo fusionado completo (prestado.js +
-   prestado-personas.js + deudores-personas.js) se movió a cargar
-   después de personas.js Y después de navegacion.js (que define
-   openSheet, necesario por deudores-personas.js más abajo) — ver el
-   nuevo comentario de posición en index.html y changelog/prestamos.md.
+   Este archivo lee PERSONA_COLORES (personas.js) al parsear, así que carga después de personas.js y de navegacion.js (openSheet).
    ═══════════════════════════════════════════════════════════════ */
 
 function _irADeudor(deudorId) {

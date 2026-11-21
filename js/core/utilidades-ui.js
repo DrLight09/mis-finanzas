@@ -166,7 +166,7 @@ function mostrarSi(el, visible) {
 // De paso se corrigió un caso más de .innerHTML sin escapar (spotifyNombreDe()
 // interpolado directo, mismo patrón ya visto 5 veces en otros módulos).
 
-// ── Guards de carga bajo demanda para cuentas.js (FIX 2026-08-13) ──────────
+// ── Guards de carga bajo demanda para cuentas.js (FIX:) ──────────
 
 /* ---- REFRESH: un registro en vez de una cadena de parches ----
    Antes `window.refresh` se envolvía a mano en inicio.js, encargos.js, actividad-reciente.js y (con hookGlobal) en otros cuatro

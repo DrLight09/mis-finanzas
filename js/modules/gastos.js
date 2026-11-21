@@ -552,7 +552,7 @@ async function deleteGastoVar(id) {
   // de una cuenta (rama 'gasto' de eliminarMovimiento() en movimientos.js,
   // que ya la tenía) — duplicado acá porque este botón (pantalla de Gastos)
   // es un segundo punto de entrada que no pasaba por esa función, dejando
-  // este camino sin ninguna protección. Ver changelog/gastos.md (2026-09-01).
+  // este camino sin ninguna protección. Ver changelog/gastos.md.
   // `confirmado` evita pedir dos confirmaciones seguidas cuando el nivel es
   // 'viejo' (mismo patrón que eliminarMovimiento() en movimientos.js).
   const prot = await Reversibles.proteger('gasto', g);

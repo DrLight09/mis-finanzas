@@ -35,6 +35,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## 2026-11-20 — Lista de movimientos de una cuenta: paginación «Mostrar más» (H3)
+- Medido en Chromium real con 5 años de datos sintéticos (3,1 MB, ~7.400 filas en una cuenta): pintar la lista tardaba ~300 ms en un PC y creaba ~123.000 nodos (≈ 17 por fila); en un celular serían varios segundos. Para comparar: serializar todo el estado al guardar cuesta ~8 ms y armar las filas (`getMovimientosCuenta`) ~10 ms: el costo estaba en el DOM, no en los datos.
+- Ahora el detalle de una cuenta pinta 100 filas y un botón «Mostrar más (N restantes)» agrega otras 100. Cualquier cambio de filtro (búsqueda, tipo, fechas, limpiar) vuelve a la primera página. Resultado en la misma medición: ~7 ms y ~1.700 nodos.
+- Solo aplica al detalle de una cuenta; la vista de cajitas de Nu sigue pintando todo (su refresco de filtros no repinta, y un botón así no funcionaría).
+- Tests: `tests/movimientos-paginacion.test.js` (5).
+
 ## 2026-11-20 — Limpieza: código muerto y detalles
 - Se borraron 4 funciones sin ningún llamador (el análisis estático y la búsqueda en js/, tests y index.html lo confirmaron): `spotifyCobradoDePersona`, `_misDeudasPickColor`, `renderMetaProgress` y `_rachaDeficitRelevante` (la regla vive en `Reglas.rachaDeficitRelevante`; la doc de Salud financiera se ajustó).
 - Se quitó el chip «Mesada» del filtro de movimientos de una cuenta: filtraba por `tipo === 'mesada'`, un tipo que ningún movimiento tiene (los de Mesada son entradas), así que nunca aparecía.

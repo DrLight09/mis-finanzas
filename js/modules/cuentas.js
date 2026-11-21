@@ -901,10 +901,13 @@ function getMovimientosCuenta(tipo) {
 /* ───────────────────────────────────────────────────────────────
    SECCIÓN: Motor de filtros de movimientos (búsqueda / tipo / fechas)
    ─────────────────────────────────────────────────────────────── */
-const _movimientosFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'' } }
+// `limite`: cuántas filas se pintan (paginación «Mostrar más»). Con 5 años de datos una cuenta llega a ~7.000 filas y pintarlas todas
+// (≈ 17 nodos por fila → 120.000 nodos) tardaba ~300 ms en un PC; en un celular, varios segundos. Cualquier cambio de filtro vuelve a la primera página.
+const MOVIMIENTOS_PAGINA = 100;
+const _movimientosFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'', limite: MOVIMIENTOS_PAGINA } }
 
 function _getMovimientosFilter(cuentaKey) {
-  if (!_movimientosFilters[cuentaKey]) _movimientosFilters[cuentaKey] = { q: '', tipo: 'todos', desde: '', hasta: '' };
+  if (!_movimientosFilters[cuentaKey]) _movimientosFilters[cuentaKey] = { q: '', tipo: 'todos', desde: '', hasta: '', limite: MOVIMIENTOS_PAGINA };
   return _movimientosFilters[cuentaKey];
 }
 
@@ -963,20 +966,25 @@ function renderMovimientosFiltros(elId, cuentaKey, movimientos, accentColor) {
 }
 
 function _movimientosOnSearch(input, cuentaKey) {
-  _getMovimientosFilter(cuentaKey).q = input.value;
+  const f = _getMovimientosFilter(cuentaKey); f.q = input.value; f.limite = MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
 function _movimientosOnTipo(tipo, cuentaKey) {
-  _getMovimientosFilter(cuentaKey).tipo = tipo;
+  const f = _getMovimientosFilter(cuentaKey); f.tipo = tipo; f.limite = MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
 function _movimientosOnFecha(campo, val, cuentaKey) {
-  _getMovimientosFilter(cuentaKey)[campo] = val;
+  const f = _getMovimientosFilter(cuentaKey); f[campo] = val; f.limite = MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
 function _movimientosLimpiarFechas(cuentaKey) {
   const f = _getMovimientosFilter(cuentaKey);
-  f.desde = ''; f.hasta = '';
+  f.desde = ''; f.hasta = ''; f.limite = MOVIMIENTOS_PAGINA;
+  _movimientosRefresh(cuentaKey);
+}
+function _movimientosMas(cuentaKey) {
+  const f = _getMovimientosFilter(cuentaKey);
+  f.limite = (f.limite || MOVIMIENTOS_PAGINA) + MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
 
@@ -1022,7 +1030,11 @@ function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filt
     return;
   }
 
-  el.innerHTML = html`${filtrados.map(m => {
+  // Paginación: solo en el detalle de una cuenta (su refresco repinta con el nuevo límite); las demás vistas pintan todo como antes.
+  const paginar = !!cuentaKey && esFuenteCuenta(cuentaKey);
+  const visibles = paginar ? filtrados.slice(0, _getMovimientosFilter(cuentaKey).limite || MOVIMIENTOS_PAGINA) : filtrados;
+  const faltan = filtrados.length - visibles.length;
+  el.innerHTML = html`${visibles.map(m => {
     const esSalida = m.tipo === 'salida_manual' || m.tipo === 'gasto';
     const esApertura = m.tipo === 'apertura';
     const esPositivo = esApertura ? true : esSalida ? false : m.monto > 0;
@@ -1067,7 +1079,7 @@ function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filt
         ${m.nota ? html`<span class="cuenta-mov-nota">${m.nota}</span>` : ''}
         ${m.tipo === 'transferencia' && m._fuenteDestino ? html`<span class="cuenta-transf-destino"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="cuenta-transf-ico"><path fill-rule="evenodd" d="M1 11.5a.5.5 0 0 0 .5.5h11.793l-3.147 3.146a.5.5 0 0 0 .708.708l4-4a.5.5 0 0 0 0-.708l-4-4a.5.5 0 0 0-.708.708L13.293 11H1.5a.5.5 0 0 0-.5.5zm14-7a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 1 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 1 1 .708.708L2.707 4H14.5a.5.5 0 0 1 .5.5z"/></svg> ${fuenteLabel(m._fuenteDestino||m._fuenteOrigen)}</span>` : ''}`
     });
-  })}`;
+  })}${faltan > 0 ? html`<button type="button" ${raw(Events.attr('cuentas:movimientosMas', cuentaKey))} class="cuenta-movs-limpiar">Mostrar más (${faltan} restantes)</button>` : ''}`;
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -1670,6 +1682,7 @@ Events.registerAll('cuentas', {
   // Motor de filtros de movimientos
   movimientosOnTipo: _movimientosOnTipo,
   movimientosLimpiarFechas: _movimientosLimpiarFechas,
+  movimientosMas: _movimientosMas,
   // Saldo inicial / apertura
   abrirEditarApertura,
   abrirRegistrarApertura,

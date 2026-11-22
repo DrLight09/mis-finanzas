@@ -22,7 +22,7 @@
 
    Quién lo lee: Periodo.ingresosFijosEntradas() (js/core/periodo.js) → Inicio, Salud, Análisis, cierre de mes y Wrapped.
    Si el ingreso fijo se elimina, sus cobros se van con él (el cobro que tocó una cuenta se revierte antes de eliminar,
-   ver cobroRevertirTodos).
+   ver eliminarIngresoFijo en analisis.js).
 
    Reglas (como Mesada):
      · Toda plata que entra a una cuenta rastreable deja un movimiento espejo (clase 'neutro': el ingreso se cuenta UNA
@@ -132,12 +132,6 @@ function cobroBorrar(id, cobroId) {
   cobroRevertir(c);
   ingreso.cobros = ingreso.cobros.filter(x => x.id !== cobroId);
   return true;
-}
-
-// Revierte todos los cobros de un ingreso fijo (antes de eliminarlo: ninguna plata queda sumada sin su registro).
-function cobroRevertirTodos(ingreso) {
-  cobrosDeIngresoFijo(ingreso).forEach(cobroRevertir);
-  if (ingreso) ingreso.cobros = [];
 }
 
 // La plata cuenta en el mes de la FECHA en que te pagaron, no en el mes que cubre. Si son distintos, este texto lo dice antes

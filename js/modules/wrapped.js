@@ -388,7 +388,7 @@ function _wrappedCategoriaMasConcentrada(items){
    mes" pudiera dar un balance más bajo (incluso negativo) que el que
    Análisis financiero ya muestra para ese mismo mes, con la misma plata
    real. Se lee `S.mesadas`/`S.ingresosFijos` directo, sin pasar por
-   `getMesadaData()`/`_getCuotaAnio()`/`getIngresosFijosMes()` (funciones
+   `getMesadaData()`/`_getCuotaAnio()` (funciones
    de otros módulos lazy que pueden no estar cargados) — no hace falta ni
    el guard `typeof` porque acá solo se lee la FORMA de `S`, ya
    documentada (mesada.md §4, analisis-financiero.md §3), igual que el

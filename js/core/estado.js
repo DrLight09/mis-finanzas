@@ -91,8 +91,6 @@ window.S = S;
 // Nosotros simulamos esto: el saldo mostrado = saldo_guardado * (1 + tasaDiaria)^diasTranscurridos
 // Cuando el usuario agrega/retira plata, se materializa el interés acumulado primero.
 
-let pagoIdx=null;
-let pagoDestino='';
 // mesFilter/gastoTab: migrados a js/modules/gastos.js
 
 /* ---- DINERO: el ÚNICO formateador de pesos ----

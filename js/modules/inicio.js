@@ -289,7 +289,6 @@ function _nivelRunway(meses){ return Reglas.nivelRunway(meses, UMBRALES); }
 // «3,4 meses» / «1 mes» / «menos de 1 mes» / «más de 24 meses».
 function _fmtMeses(meses){ return Reglas.fmtMeses(meses); }
 // Texto del runway («Cubres 3,4 meses de gastos»).
-function _textoRunway(meses){ return Reglas.textoRunway(meses); }
 
 // Impacto de un gasto grande ANTES de hacerlo: qué parte de tu plata disponible es y cuántos meses de gastos cubrirías después.
 // `grande` = sugerencia de marcarlo como compra grande (UMBRALES.compraGrande). Pagar con tarjeta pesa igual: la deuda propia resta de

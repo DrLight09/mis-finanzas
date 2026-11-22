@@ -2725,7 +2725,6 @@ function _irAMiDeuda(miDeudaId) {
 }
 
 /* ── Editar mi deuda ─────────────────────────────────────────────── */
-const PERSONA_COLORES_MIS_DEUDAS = PERSONA_COLORES; // misma paleta unificada
 window._miDeudaEditColor = null;
 
 function editarMiDeudaActual() {

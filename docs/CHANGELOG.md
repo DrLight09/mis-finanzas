@@ -35,6 +35,10 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Código sin uso (hallado al medir M6 fase 2) y por qué M6 se detiene en el piloto
+- Se midió el código para la fase 2 con un análisis estático: 1.143 nombres globales de nivel superior, 99 reasignados desde otros archivos (entre ellos `S`, que `persistencia.js` y `wrapped.js` reemplazan, y funciones parchadas como `html` y `nombreCuenta`). Pasar esos archivos a módulos ES cambia el significado de esas reasignaciones, y la ganancia principal (que una función inexistente falle al cargar) ya la da `npm run lint` en el CI. Por eso M6 se queda en el piloto (`fecha.js`) hasta que haya una razón concreta.
+- Quitado por no tener ningún uso en la app: `pagoIdx`, `pagoDestino`, `PERSONA_COLORES_MIS_DEUDAS`, `getIngresosFijosMes`, `_calcPrestadoMeta` (su aviso «prestado de esta cajita» ya no existía en pantalla), `_textoRunway` (los tests ahora llaman `Reglas.textoRunway`) y `cobroRevertirTodos` (`eliminarIngresoFijo` hace lo mismo en línea, con el historial). Docs ajustados. El lint pasó de 33 a 26 avisos.
+
 ## M6 fase 1 (piloto): `fecha.js` pasa a módulo ES
 - `js/core/fecha.js` exporta `Fecha` (`export const Fecha`) y se carga con `<script type="module">`; sigue en `window.Fecha` como «compat» para los scripts clásicos que lo leen por nombre (un módulo se ejecuta en el orden del documento junto con los `defer`, así que carga antes que `ingresos.js` igual que antes). Los módulos ES nuevos lo importan: `import { Fecha } from './fecha.js'`.
 - Herramientas: `tests/support/load-app.js` quita el `export` al evaluar archivos migrados; los humos de jsdom (`scripts/jsdom-modulos.js`) sirven los módulos sin `import` como scripts clásicos, porque jsdom no ejecuta `type="module"`. Prueba nueva que fija el formato; `npm run navegador` (Chromium real) pasa con el módulo.

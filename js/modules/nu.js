@@ -438,33 +438,6 @@ function calcMetaProgreso(c){
   return { saldo, obj, pct, falta, cuotaMensual, esperadoHoy, diferencia, mesesRestantes, totalMeses, mesesPasados };
 }
 
-function _calcPrestadoMeta(cajitaId){
-  // Suma todos los préstamos pendientes que incluyen esta cajita como fuente
-  let total = 0;
-  Deudas.lista('favor').forEach(d=>{
-    (d.movimientos||[]).forEach(m=>{
-      if(m.tipo==='prestamo'){
-        // fuente simple
-        if(m.fuente && m.fuente === 'cajita:'+cajitaId) total += m.monto;
-        // fuente dividida
-        if(m.fuentes && Array.isArray(m.fuentes)){
-          m.fuentes.forEach(f=>{ if(f.fuente==='cajita:'+cajitaId) total += (f.monto||0); });
-        }
-      }
-      // restar abonos que pueden haber regresado a la cajita
-      if(esAbonoDeDeuda(m.tipo)){
-        // destino simple
-        if(m.destino==='cajita:'+cajitaId) total -= m.monto;
-        // destino dividido
-        if(m.destinos && Array.isArray(m.destinos)){
-          m.destinos.forEach(r=>{ if(r.fuente==='cajita:'+cajitaId) total -= (r.monto||0); });
-        }
-      }
-    });
-  });
-  return Math.max(0, total);
-}
-
 function abrirMetaCajita(cajitaId){
   _metaCajitaId = cajitaId;
   const c = (S.cajitas||[]).find(x=>x.id===cajitaId);

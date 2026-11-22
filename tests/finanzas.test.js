@@ -175,9 +175,9 @@ test('runway: «cubres X meses» = liquidez ÷ gasto típico; 0 si no hay liquid
   assert.equal(score({ cuentas: cuentas(0), misDeudas: yoDebo(100000), ...gastosEn(1000000, ultimosN(3)) }).mesesCubiertos, 0);
   assert.equal(score({ cuentas: cuentas(3000000) }).mesesCubiertos, null);
   const ctx = app();
-  assert.equal(ctx._textoRunway(3.44), 'Cubres 3,4 meses de gastos');
-  assert.equal(ctx._textoRunway(0.5), 'Cubres menos de 1 mes de gastos');
-  assert.equal(ctx._textoRunway(0), 'Tu plata disponible no cubre tus gastos');
+  assert.equal(ctx.Reglas.textoRunway(3.44), 'Cubres 3,4 meses de gastos');
+  assert.equal(ctx.Reglas.textoRunway(0.5), 'Cubres menos de 1 mes de gastos');
+  assert.equal(ctx.Reglas.textoRunway(0), 'Tu plata disponible no cubre tus gastos');
   assert.equal(ctx._nivelRunway(0.5), 'critico');
   assert.equal(ctx._nivelRunway(2), 'atencion');
   assert.equal(ctx._nivelRunway(5), 'ok');
@@ -1758,17 +1758,6 @@ test('borrar un cobro revierte la cuenta exacta, quita el espejo y deja de conta
   assert.equal(ctx.S.movimientos.length, 0);
   assert.equal(ingresosDelMes(ctx, '2026-09').total, 0);
   assert.equal(ctx.cobroBorrar('if1', cobro.id), false, 'ya no existe');
-});
-
-test('cobroRevertirTodos (antes de eliminar un ingreso fijo) devuelve toda la plata que había entrado', () => {
-  const ctx = fresh({ nequi: 0, efectivo: 0 });
-  cobrar(ctx, { destino: 'cuenta:nequi', monto: 50 });
-  cobrar(ctx, { mesCubre: '2026-10', fecha: '2026-10-30', destino: 'cuenta:efectivo', monto: 70 });
-  cobrar(ctx, { mesCubre: '2026-11', fecha: '2026-11-30', monto: 99 });
-  ctx.cobroRevertirTodos(ctx.S.ingresosFijos[0]);
-  assert.deepEqual([saldo(ctx, 'nequi'), saldo(ctx, 'efectivo')], [0, 0]);
-  assert.equal(ctx.S.movimientos.length, 0);
-  assert.equal(ctx.cobrosDeIngresoFijo(ctx.S.ingresosFijos[0]).length, 0);
 });
 
 test('ingresoFijoEstadoMes: esperado según «desde» y cobrado según los cobros que cubren ese mes', () => {

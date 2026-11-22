@@ -51,7 +51,6 @@ Ambos lados afectan el saldo de una cuenta real (cajita, Nequi, efectivo o cuent
 - Destino dividido: `destinos` (array de `{fuente, monto, _movimientoId}`, un `_movimientoId` por fila)
 - Vía encargo: además de lo anterior, `_viaEncargo: true`, `_encargoId`, `_encargoNombre`, `_encargoMovimientoId` / `_encargoMovimientoIds`
 - **Vía Alcancía** (agregado 2026-08-09, ver alcancia.md §4/§5): cuando el cobro se guarda directo en la alcancía sin pasar por ninguna cuenta real — se origina desde Alcancía → Depositar → "Me pagaron una deuda", no desde este módulo. `destino: ''` (no hay cuenta real), `_viaAlcancia: true`, `_alcanciaMovimientoId` (id de la entrada espejo en `S.alcancia.movimientos[]`). No genera movimiento secundario en ninguna cuenta — mismo motivo que `'prestamo'` en 4.1: no hay cuenta destino tuya que registrar. Tampoco lo ve `_calcPrestadoMeta(cajitaId)` como "devuelto" a esa cajita (correctamente: la plata no volvió a la cajita, se quedó en la alcancía).
-- **`_calcPrestadoMeta(cajitaId)`** usa estos movimientos para calcular cuánta plata de una cajita sigue "prestada" — resta tanto `destino` como cada fila de `destinos` que apunte a esa cajita.
 
 ### 2.2b Registrar un movimiento: validar y luego aplicar
 
@@ -194,17 +193,6 @@ Un préstamo "Me deben" sin cuenta ni tarjeta de origen, un abono/pago recibido 
 ### 4.4 Clase de los movimientos (2026-10-09)
 
 Cada movimiento secundario lleva `clase`: los abonos recibidos, pagos de deuda y préstamos son espejos `neutro`; son `ingreso` el **extra/propina de un pago** (`extraIngreso`, `_esExtraIngreso`; también la parte «gastar», que entra sin cuenta —`fuente ''` + `_prestadoDirectamente`— y se registra además como gasto real, neto 0) y el **perdón recibido** de una deuda "Yo debo" (`_esPerdonRecibido`); son `gasto` el **perdón dado** de una deuda "Me deben" (`_esPerdonDeuda`) y el extra de una deuda gastado de inmediato (`_esExtraDeuda`); el extra de un préstamo que se gasta al instante (`_esExtraPrestamo`) es `neutro` (nunca se contó como ingreso). Un extra guardado en una **cajita de Nu** cuenta como ingreso del mes (ver `cuentas.md`).
-
-## 5. Meta de ahorro de cajita y "prestado"
-
-`_calcPrestadoMeta(cajitaId)` — usada en la tarjeta de la meta de una cajita — calcula cuánta plata de esa cajita sigue prestada:
-
-1. Suma todos los `'prestamo'` (simples y divididos) que salieron de esa cajita.
-2. Resta todos los `'abono'`/`'pago_completo'` (simples y divididos) que volvieron a esa cajita.
-
-El resultado, si es mayor a 0, se muestra como aviso en la tarjeta: `"$X prestado de esta cajita · Debería haber: $Y"`.
-
----
 
 ## 5a. Pantallas compartidas
 

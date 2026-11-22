@@ -27,11 +27,12 @@ Solo lo que falta. Lo que ya está hecho al 100 % se borra de aquí cuando se ha
 
 | # | Qué | Nota |
 |---|---|---|
-| M6 | Pasar de scripts globales a módulos ES nativos, por fases, sin bundler | **Fase 1 hecha como piloto solo con `fecha.js`** (la única hoja realmente pura). `umbrales.js`/`reglas.js` los usa también Node por `require` (notificaciones); `salud`, `periodo`, `nu-calc`, `html-tag` dependen de globales y esperan a la fase 2 (`estado`, `persistencia`, `cuentas-fuentes`…). Siguiente paso real: fase 2 (separar estado de cálculo, eliminar los `typeof`). Absorbe M13 |
+| M6 | Pasar de scripts globales a módulos ES nativos, por fases, sin bundler | **Solo el piloto (`fecha.js`).** Análisis: 1.143 globales, 99 reasignados entre archivos (`S` lo reemplazan `persistencia.js` y `wrapped.js`; `html` y `nombreCuenta` se parchean), y `umbrales`/`reglas` los usa Node por `require`. El beneficio principal (que un nombre inexistente falle) ya lo cubre `npm run lint` en el CI. Solo valdría la pena si se agrega gente al proyecto o se quiere detectar código muerto por imports; entonces: primero que `S` sea un objeto que se muta, no que se reasigne |
 | H5-B | Cifrado de extremo a extremo (clave derivada de una contraseña) | Rompería las notificaciones del servidor, que leen el payload en claro. Hoy el PIN es solo un candado de pantalla y así se dice en la app |
 | M15 | Minificar / bundler solo de desarrollo | El documento lo marca «no ahora» |
 | Tipos | JSDoc + `tsc --checkJs` (adenda 2, §2.1) | Opcional, sin urgencia |
 
 ## Observaciones sin resolver
 
+- `diffHtmlBloque` (`diferencial.js`) es una plantilla de referencia que nadie llama; se puede borrar si ya no sirve de guía.
 - **Prueba de Chromium en `subir.sh`:** si dice que no pudo instalarlo, se omite en tu PC y la corre el CI antes de desplegar. Para ver el motivo real: `npx playwright install chromium`.

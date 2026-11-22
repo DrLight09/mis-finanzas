@@ -24,7 +24,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/estado.js` | de entrada (defer) | 15 | 7 |
 | `js/core/eventos-base.js` | de entrada (defer) | 2 | 0 |
 | `js/core/events.js` | de entrada (defer) | 1 | 0 |
-| `js/core/fecha.js` | de entrada (defer) | 1 | 0 |
+| `js/core/fecha.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/firebase-init.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/firebase-sync.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/formulario.js` | de entrada (defer) | 1 | 0 |
@@ -192,9 +192,9 @@ Carga: de entrada (defer)
 
 ### `js/core/fecha.js`
 
-Carga: de entrada (defer)
+Carga: de entrada (módulo ES)
 
-**Funciones:** `Fecha`
+**Funciones:** —
 
 ### `js/core/firebase-init.js`
 
@@ -1429,7 +1429,6 @@ Ninguno.
 | `extSetMonto` | `js/modules/prestado.js` |
 | `extSetQuien` | `js/modules/prestado.js` |
 | `extSetTipo` | `js/modules/prestado.js` |
-| `Fecha` | `js/core/fecha.js` |
 | `filaMovimiento` | `js/core/utilidades-ui.js` |
 | `fmt` | `js/core/estado.js` |
 | `fmtInput` | `js/core/persistencia.js` |

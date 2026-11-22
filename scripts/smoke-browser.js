@@ -2,6 +2,7 @@
 // botón data-action presente. Informa (a) acciones sin handler registrado y (b) excepciones al tocar cada botón.
 // Uso: node scripts/smoke-browser.js [raiz-del-repo] [--verbose]   (por defecto, la raíz del repo; necesita `npm install`: jsdom ^27.4.0 está en devDependencies; atajo: `npm run smoke`)
 // Vive en scripts/ y NO en la carpeta de tests: `node --test` ejecuta todo .js que encuentra ahí y esto necesita jsdom.
+const { clasicos, sinExport } = require('./jsdom-modulos');
 const { JSDOM, ResourceLoader, VirtualConsole } = require('jsdom');
 const fs = require('fs'), path = require('path');
 const RAIZ = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) || path.join(__dirname, '..'));
@@ -14,7 +15,7 @@ class Local extends ResourceLoader {
     if (url === ORIGEN + '__espia.js') return Promise.resolve(Buffer.from(ESPIA_JS));
     if (url.startsWith(ORIGEN) || url.startsWith('file://')) {
       const f = url.startsWith(ORIGEN) ? path.join(RAIZ, decodeURIComponent(url.slice(ORIGEN.length).split('?')[0])) : decodeURIComponent(url.slice(7));
-      if (fs.existsSync(f)) return Promise.resolve(fs.readFileSync(f));
+      if (fs.existsSync(f)) return Promise.resolve(sinExport(fs.readFileSync(f), f));
       faltan.push(path.relative(RAIZ, f)); // css, imágenes, etc. que no están en la carpeta
       return Promise.resolve(Buffer.from(''));
     }
@@ -28,7 +29,7 @@ vc.on('jsdomError', e => uncaught.push(String(e.detail && e.detail.stack || e.me
 const esperar = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const ESPIA = '<script src="__espia.js" defer></script>'; // defer: corre justo después de events.js, en el orden del documento
-  let html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+  let html = clasicos(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'));
   const tagEv = html.match(/<script[^>]*src="js\/core\/events\.js"[^>]*><\/script>/);
   if (tagEv) html = html.replace(tagEv[0], tagEv[0] + ESPIA); else console.log('AVISO: index.html no carga js/core/events.js; no se puede mapear las acciones registradas');
   // matchMedia controlable: la FASE 5 lo pasa a «PC» (≥900 px) y de vuelta; el resto de las fases corre como celular (false).

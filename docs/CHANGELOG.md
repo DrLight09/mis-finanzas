@@ -35,6 +35,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## M6 fase 1 (piloto): `fecha.js` pasa a módulo ES
+- `js/core/fecha.js` exporta `Fecha` (`export const Fecha`) y se carga con `<script type="module">`; sigue en `window.Fecha` como «compat» para los scripts clásicos que lo leen por nombre (un módulo se ejecuta en el orden del documento junto con los `defer`, así que carga antes que `ingresos.js` igual que antes). Los módulos ES nuevos lo importan: `import { Fecha } from './fecha.js'`.
+- Herramientas: `tests/support/load-app.js` quita el `export` al evaluar archivos migrados; los humos de jsdom (`scripts/jsdom-modulos.js`) sirven los módulos sin `import` como scripts clásicos, porque jsdom no ejecuta `type="module"`. Prueba nueva que fija el formato; `npm run navegador` (Chromium real) pasa con el módulo.
+- Se midió qué más cabe en la fase 1: `umbrales.js` y `reglas.js` los lee también el script de notificaciones en Node con `require` (no se pueden pasar a ES sin tocar ese servidor), y `salud.js`, `periodo.js`, `nu-calc.js` y `html-tag.js` dependen de globales de otros archivos (`S`, `escHtml`, `mesKey`, `fuenteDeCuenta`…), así que migran con la fase 2 (estado), no antes.
+
+## Despliegue: reintento cuando GitHub no lista el artefacto
+- `deploy-pages` falló por tercera vez con «Found 0 artifact(s)» aunque el paso anterior sí subió `dist/`: es la demora de GitHub en listar el artefacto recién subido. Ahora el job espera 20 s antes de publicar y, si falla, espera 45 s y reintenta una vez en el mismo job (no vuelve a subir nada, así que no aparece el error de artefactos duplicados). Si fallan los dos intentos, el despliegue falla como antes.
+
 ## Avisos push con el evento nativo, sin el SDK de Firebase en el Service Worker (M4)
 - `sw.js` ya no hace `importScripts` de Firebase desde gstatic ni repite la config: recibe el aviso con `addEventListener('push')`, lee el JSON de FCM (`data.title/body/link/icon`; también acepta `notification`) y muestra la notificación. Si la app está abierta y visible no muestra nada, igual que antes con el SDK. Si el aviso llega sin datos o con texto plano, muestra uno genérico (el navegador exige mostrar siempre uno).
 - La CSP baja `worker-src` a `'self'`. La config de Firebase queda en dos archivos (`firebase-init.js`, `notificaciones-push.js`), vigilados por `tests/paridad.test.js`. El token FCM lo sigue pidiendo la página sobre este mismo service worker.

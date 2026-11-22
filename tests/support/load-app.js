@@ -94,7 +94,8 @@ function loadApp(appFiles, options = {}) {
   appFiles = appFiles.flatMap(f => /(^|[\\/])core-state\.js$/.test(f) ? require('./nucleo-estado').RUTAS : [f]);
 
   for (const file of appFiles) {
-    const code = fs.readFileSync(file, 'utf8');
+    // Un archivo ya migrado a módulo ES (M6): aquí se evalúa como script, así que se quita el `export` (el global queda igual).
+    const code = fs.readFileSync(file, 'utf8').replace(/^export\s+/gm, '');
     vm.runInContext(code, context, { filename: file });
   }
 

@@ -5,8 +5,10 @@
 // distinta a la de Colombia) el día se corre ±1 sin error ni aviso. Las fechas de calendario se construyen con componentes locales
 // (año, mes, día) y se restan contando días de calendario, no milisegundos (por eso un cambio de hora de verano no mueve el resultado).
 //
-// Puro y sin DOM: depende solo de `Date`. Carga como <script> clásico ANTES de js/core/ingresos.js (que delega aquí hoy(), mesActual(),
-// mesKey() y _fechaSafe()). Se expone también en `window.Fecha` para los módulos ES (firebase-sync.js, pin-bio.js).
+// Puro y sin DOM: depende solo de `Date`. Es un módulo ES (primer archivo migrado, M6 fase 1): un <script type="module"> se ejecuta en el orden
+// del documento junto con los `defer`, así que sigue cargando ANTES de js/core/ingresos.js (que delega aquí hoy(), mesActual(), mesKey() y
+// _fechaSafe()). Los scripts clásicos aún lo usan como global: por eso se deja también en `window.Fecha` (el «compat» de la migración; se
+// quita cuando ya no quede ningún clásico que lo lea por nombre). Los módulos ES nuevos deben importarlo: `import { Fecha } from './fecha.js'`.
 //
 //   Fecha.hoy()                  → '2026-11-10'
 //   Fecha.iso(date)              → 'YYYY-MM-DD' local de un Date
@@ -21,7 +23,7 @@
 //   Fecha.nombreMes(m1a12, {largo}) → 'Ene' | 'Enero'
 //   Fecha.ultimoDiaDelMes(anio, m1a12) → 28…31
 //   Fecha.MS_DIA                 → 86400000, para quien de verdad compare marcas de tiempo (timestamps), no fechas de calendario
-const Fecha = (() => {
+export const Fecha = (() => {
   const MS_DIA = 86400000;
   const p2 = n => String(n).padStart(2, '0');
   const CORTOS = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];

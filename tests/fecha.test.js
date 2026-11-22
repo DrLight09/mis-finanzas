@@ -106,7 +106,7 @@ describe('fecha-husos-horarios', () => {
   const guion = `
     const fs=require('fs'),vm=require('vm');
     const ctx={console,Date,Math,String,Number,isNaN};ctx.window=ctx;vm.createContext(ctx);
-    vm.runInContext(fs.readFileSync(${JSON.stringify(FECHA_JS)},'utf8')+';this.F=Fecha;',ctx);
+    vm.runInContext(fs.readFileSync(${JSON.stringify(FECHA_JS)},'utf8').replace(/^export\\s+/gm,'')+';this.F=Fecha;',ctx);
     const F=ctx.F;
     // Una Date a medianoche LOCAL: toISOString() la corre un día en husos al este de UTC (el bug de Spotify)
     const medianoche=new Date(2026,9,31,0,0);
@@ -190,6 +190,12 @@ describe('fecha-sin-formulas-sueltas', () => {
   });
   test('nextMonthFixed ya no existe (era spotifySumarDias(f, 30·k) con otro nombre)', () => {
     assert.ok(!fs.readFileSync(path.join(raiz, 'js/modules/spotify.js'), 'utf8').includes('function nextMonthFixed'));
+  });
+  test('fecha.js es un módulo ES (M6 fase 1): se carga con type=module, exporta Fecha y sigue en window.Fecha para los clásicos', () => {
+    const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
+    assert.ok(/<script type="module" src="js\/core\/fecha\.js"><\/script>/.test(html));
+    const src = fs.readFileSync(FECHA_JS, 'utf8');
+    assert.ok(/^export const Fecha\b/m.test(src) && /window\.Fecha = Fecha/.test(src));
   });
   test('index.html carga fecha.js ANTES del núcleo (estado.js)', () => {
     const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');

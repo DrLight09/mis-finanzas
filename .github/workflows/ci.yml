@@ -70,7 +70,7 @@ jobs:
       id-token: write   # verificar que el despliegue viene de este workflow
     environment:
       name: github-pages
-      url: ${{ steps.despliegue.outputs.page_url }}
+      url: ${{ steps.despliegue2.outputs.page_url || steps.despliegue.outputs.page_url }}
     steps:
       - name: Descargar el repo
         uses: actions/checkout@v6
@@ -92,6 +92,21 @@ jobs:
         with:
           path: dist
 
+      # GitHub a veces tarda en listar el artefacto recién subido y deploy-pages falla con «Found 0 artifact(s)». Se espera un poco y, si aun así
+      # falla, se reintenta UNA vez en este mismo job (sin volver a subir nada, así que no se duplica el artefacto «github-pages»).
+      - name: Esperar a que el artefacto esté listo
+        run: sleep 20
+
       - name: Publicar
         id: despliegue
+        continue-on-error: true
+        uses: actions/deploy-pages@v5
+
+      - name: Esperar antes de reintentar
+        if: steps.despliegue.outcome == 'failure'
+        run: sleep 45
+
+      - name: Publicar (segundo intento)
+        id: despliegue2
+        if: steps.despliegue.outcome == 'failure'
         uses: actions/deploy-pages@v5

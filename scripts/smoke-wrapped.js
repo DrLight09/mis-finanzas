@@ -5,6 +5,7 @@
 // cableado en la página.
 // Uso: node scripts/smoke-wrapped.js [raiz-del-repo]   (npm run smoke:wrapped; necesita `npm install`: jsdom está en devDependencies)
 // Vive en scripts/ y NO en tests/ por la misma razón que smoke-browser.js: necesita jsdom y levanta la página completa.
+const { clasicos, sinExport } = require('./jsdom-modulos');
 const { JSDOM, ResourceLoader, VirtualConsole } = require('jsdom');
 const fs = require('fs'), path = require('path');
 const RAIZ = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) || path.join(__dirname, '..'));
@@ -13,7 +14,7 @@ class Local extends ResourceLoader {
   fetch(url) {
     if (url.startsWith(ORIGEN)) {
       const f = path.join(RAIZ, decodeURIComponent(url.slice(ORIGEN.length).split('?')[0]));
-      return Promise.resolve(fs.existsSync(f) ? fs.readFileSync(f) : Buffer.from(''));
+      return Promise.resolve(fs.existsSync(f) ? sinExport(fs.readFileSync(f), f) : Buffer.from(''));
     }
     return Promise.resolve(Buffer.from('')); // sin red: fuentes, SDK de Firebase…
   }
@@ -24,7 +25,7 @@ const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { fallos
 
 (async () => {
   const vc = new VirtualConsole(); // se silencia: la página real avisa de recursos externos que aquí no existen
-  const dom = new JSDOM(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'), {
+  const dom = new JSDOM(clasicos(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8')), {
     runScripts: 'dangerously', resources: new Local(), pretendToBeVisual: true, virtualConsole: vc, url: ORIGEN + 'index.html',
     beforeParse(w) { w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder; w.HTMLCanvasElement.prototype.getContext = () => ({ font: '', measureText: () => ({ width: 0 }) }); },
   });

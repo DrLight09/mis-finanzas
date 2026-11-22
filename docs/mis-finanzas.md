@@ -19,7 +19,7 @@ Es un proyecto de un solo desarrollador, para uso personal, pensado para mantene
 
 Ver también "Estructura de archivos — `js/modules/`" y "Otros archivos" más abajo.
 
-Todos viven en `js/core/` salvo que se indique lo contrario. Desde M6 **todos son módulos ES**: `js/main.js` (un solo `<script type="module">` en `index.html`) los importa en el orden de siempre, y cada archivo importa de forma explícita lo que usa de los que cargan antes (solo hacia atrás: así el orden de evaluación es el de `main.js` y no hay ciclos). Lo que no se puede importar (los módulos lazy, que cargan con `import()`; o una función que carga después y solo se llama al ejecutar) se llama por nombre suelto a través del **puente global** (`js/core/puente.js`: cada módulo deja sus funciones, constantes y clases en `window`; las `let` que otro archivo lee, con accesor). Excepciones: `umbrales.js`, `reglas.js`, `salud.js` y `plan-deudas.js` siguen siendo `<script>` clásicos (lógica pura que también carga Node con `require`: notificaciones y tests). La columna «Tipo» conserva «clásico» solo para esos cuatro; «módulo» = módulo ES de la app; «módulo (fuera)» = módulo ES que no pasa por `main.js` (Firebase, PIN…).
+Todos viven en `js/core/` salvo que se indique lo contrario. Desde M6 **todos son módulos ES**: `js/main.js` (un solo `<script type="module">` en `index.html`) los importa en el orden de siempre, y cada archivo importa de forma explícita lo que usa de los que cargan antes (solo hacia atrás: así el orden de evaluación es el de `main.js` y no hay ciclos). Lo que no se puede importar (los módulos lazy, que cargan con `import()`; o una función que carga después y solo se llama al ejecutar) se llama por nombre suelto a través del **puente global** (`js/core/puente.js`: cada módulo deja sus funciones, constantes y clases en `window`; las `let` que otro archivo lee, con accesor). `umbrales.js`, `reglas.js`, `salud.js` y `plan-deudas.js` (lógica pura que también carga Node: notificaciones y tests) no importan el puente ni tocan `window`; `js/core/globales-logica.js` los deja en `window` dentro de la app. «módulo» = módulo ES de la app; «módulo (fuera)» = módulo ES que no pasa por `main.js` (Firebase, PIN…).
 
 **Arranque y sincronización con Firebase**
 
@@ -80,10 +80,10 @@ Todos viven en `js/core/` salvo que se indique lo contrario. Desde M6 **todos so
 
 ## Estructura de archivos — `js/modules/`
 
-A diferencia de `js/core/`, acá **"clásico"** siempre significa `<script defer>` — no hay ningún módulo `type="module"` en esta carpeta. Lo que sí varía es **cuándo** carga cada uno:
+Todos son módulos ES. Lo que varía es **cuándo** carga cada uno:
 
-- **Eager** (3 de 15): tienen su propio `<script src="js/modules/archivo.js" defer>` fijo en `index.html`, cargan siempre, desde el arranque.
-- **Lazy** (12 de 15): no tienen `<script>` propio en `index.html` — `js/core/lazy-loader.js` los descarga bajo demanda, recién cuando el usuario entra a esa pantalla (`Loader.GROUPS`).
+- **Eager** (3 de 15): tienen su `import` en `js/main.js`, cargan siempre, desde el arranque.
+- **Lazy** (12 de 15): no están en `js/main.js` — `js/core/lazy-loader.js` los carga con `import()` bajo demanda, recién cuando el usuario entra a esa pantalla (`Loader.GROUPS`).
 
 | Archivo | Carga | Qué hace |
 |---|---|---|

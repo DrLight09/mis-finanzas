@@ -4,10 +4,15 @@
 // (ese orden importa: p. ej. navegacion.js parchea funciones de gastos.js; ver docs/mis-finanzas.md). Cada archivo importa de forma explícita
 // lo que usa de los que cargan antes; lo demás se resuelve por el puente global (js/core/puente.js). Los módulos de pantallas lazy
 // (Loader.GROUPS en lazy-loader.js) NO van aquí: se cargan con import() la primera vez que se entra a su pantalla.
-// umbrales.js, reglas.js, salud.js y plan-deudas.js NO son módulos: son lógica pura que también carga Node con require (notificaciones y tests), así que siguen como <script> clásicos, antes de este.
+// umbrales.js, reglas.js, salud.js y plan-deudas.js son lógica pura que también carga Node (notificaciones y tests): no importan el puente; globales-logica.js los deja en `window`.
 
 import './core/puente.js';
 import './core/fecha.js';
+import './core/umbrales.js';
+import './core/reglas.js';
+import './core/salud.js';
+import './core/plan-deudas.js';
+import './core/globales-logica.js';
 import './core/async-css.js';
 import './core/events.js';
 import './core/diferencial.js';

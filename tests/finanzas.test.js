@@ -1201,7 +1201,7 @@ test('B5. un ingreso marcado extraordinario cuenta en el balance real pero no en
 });
 
 test('B6-2. Salud.mesesCayendo cuenta los meses completos seguidos con el patrimonio bajando, sin depósitos y sin ruido', () => {
-  const Salud = require('../js/core/salud.js');
+  const { Salud } = require('../js/core/salud.js');
   const cierres = { '2026-06': { valor: 1000000, base: 0 }, '2026-07': { valor: 900000, base: 0 }, '2026-08': { valor: 800000, base: 0 }, '2026-09': { valor: 700000, base: 0 }, '2026-10': { valor: 600000, base: 0 } };
   const r = Salud.mesesCayendo(cierres, '2026-11', { gastoTipico: 500000 });
   assert.deepEqual({ n: r.n, total: r.total, desde: r.desde }, { n: 4, total: -400000, desde: '2026-07' });
@@ -1326,8 +1326,8 @@ _describe('salud', () => {
 // tests/salud.test.js — js/core/salud.js: pilares con semáforo, estado de situación (5 niveles) y tendencia del patrimonio. Node puro.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const Salud = require('../js/core/salud.js');
-const U = require('../js/core/umbrales.js');
+const { Salud } = require('../js/core/salud.js');
+const { UMBRALES: U } = require('../js/core/umbrales.js');
 
 const base = (o = {}) => ({
   patrimonio: 10e6, liquidezNeta: 6e6, activosLiquidos: 6e6, tcPropia: 0, deudaPropia: 0, meDeben: 0, ingresoTipico: 3e6, ingresoRef: 3e6, gastoTipico: 2e6,
@@ -1476,8 +1476,8 @@ _describe('reglas', () => {
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const Reglas = require('../js/core/reglas.js');
-const UMBRALES = require('../js/core/umbrales.js');
+const { Reglas } = require('../js/core/reglas.js');
+const { UMBRALES } = require('../js/core/umbrales.js');
 
 const ev = (canal, ctx) => Reglas.evaluar(canal, { umbrales: UMBRALES, ...ctx });
 const textos = (canal, ctx) => ev(canal, ctx).map(i => i.texto);
@@ -1660,7 +1660,7 @@ _describe('plan-deudas', () => {
 // tests/plan-deudas.test.js — js/core/plan-deudas.js (P2 costo de la deuda: tasa mensual y costo). Node puro.
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const P = require('../js/core/plan-deudas.js');
+const { PlanDeudas: P } = require('../js/core/plan-deudas.js');
 
 test('tasaMensual: E.A. → mensual con (1+ea)^(1/12) − 1; sin tasa no hay costo', () => {
   assert.ok(Math.abs(P.tasaMensual(28) - 0.02078) < 0.00005, '28 % E.A. ≈ 2,08 % mensual');

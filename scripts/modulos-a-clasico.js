@@ -6,7 +6,14 @@
 'use strict';
 const RE_IMPORT = /^import\s[^\n]*;[ \t]*$/gm;
 const RE_EXPORT = /^export\s+(?=(?:async\s+)?(?:function|class|const|let|var)\b)/gm;
-const aClasico = codigo => String(codigo).replace(RE_IMPORT, '').replace(RE_EXPORT, '');
+// La lógica pura (umbrales, reglas, salud, plan-deudas) no toca `window` ni importa el puente (la expone js/core/globales-logica.js, solo
+// en la app): en el entorno clásico se le añade la asignación a `window` que hace ese módulo.
+const RE_LOGICA = /^export const (UMBRALES|Reglas|Salud|PlanDeudas) = /gm;
+const aClasico = codigo => {
+  const fuente = String(codigo);
+  const expuestas = [...fuente.matchAll(RE_LOGICA)].map(m => `window.${m[1]} = ${m[1]};`).join('\n');
+  return fuente.replace(RE_IMPORT, '').replace(RE_EXPORT, '') + (expuestas ? '\n' + expuestas + '\n' : '');
+};
 // Las dos funciones del puente (js/core/puente.js) no existen sin el import: en el entorno clásico no hacen nada (los nombres ya son globales).
 const PRELUDIO = 'function exponerGlobales() {}\nfunction exponerVariables() {}\n';
 module.exports = { aClasico, PRELUDIO, RE_IMPORT, RE_EXPORT };

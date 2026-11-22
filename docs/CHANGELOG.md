@@ -35,6 +35,13 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Los cuatro archivos de lógica pura pasan a módulos ES
+
+- `umbrales.js`, `reglas.js`, `salud.js` y `plan-deudas.js` ya no son `<script>` clásicos: son módulos ES (`export const …`), importados desde `js/main.js` antes que el resto. `reglas.js` y `salud.js` importan `UMBRALES` (y `Reglas`) en vez de buscarlos en el global o con `require`; se quitaron los `window.X = …` y los `module.exports` de cada uno.
+- Siguen sin tocar `window` ni el puente, a propósito, para que Node los cargue sin navegador: el script de notificaciones (`scripts/notificaciones/checks.js`) y las pruebas hacen `require` de un módulo ES (Node 20.19+ / 22.12+, el `.nvmrc` es 22) y leen `{ Reglas }`, `{ Salud }`, `{ UMBRALES }`, `{ PlanDeudas }`. El nuevo `js/core/globales-logica.js` los deja en `window` dentro de la app.
+- `index.html` ya no tiene ningún `<script>` clásico de la app (solo `main.js` y los módulos de Firebase/PIN). Prueba nueva en `tests/modulos-es.test.js`: esos cuatro no usan `window`/`require`/puente y `globales-logica.js` expone todos sus nombres después de ellos.
+- Se quitó de `index.html` un comentario suelto («Sistema centralizado de eventos») que ya no describía nada, y las notas de `docs/` que hablaban de scripts clásicos.
+
 ## Limpieza tras M6: `waitFor` en un solo archivo y comentarios al día
 - `wait-for-module.js` (la copia de `waitFor` para los módulos de Firebase y PIN, que existía mientras convivían scripts clásicos y módulos) se borró: `firebase-sync.js` y `pin-bio.js` importan de `wait-for.js`, que ahora sirve a todos.
 - Unos 50 archivos tenían comentarios de cabecera que decían «clásico (`<script defer>`)» o «sin `type="module"`»: ahora dicen módulo ES y `js/main.js`. El comentario repetido del puente global se acortó.

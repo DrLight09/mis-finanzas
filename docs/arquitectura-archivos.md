@@ -17,9 +17,9 @@ Aquí no va comportamiento de negocio (eso es de cada `modulo.md`) ni bugs corre
 
 ## 2. Cómo carga cada archivo
 
-Fuente de verdad: `js/main.js` (los `import` de carga inmediata, en orden), los `<script>` clásicos de `index.html` y `Loader.GROUPS` en `js/core/lazy-loader.js`. `mapa-codigo.md` §1 lo resume.
+Fuente de verdad: `js/main.js` (los `import` de carga inmediata, en orden), y `Loader.GROUPS` en `js/core/lazy-loader.js`. `mapa-codigo.md` §1 lo resume.
 
-- **De entrada:** un `import` en `js/main.js` (módulo ES). El orden de `main.js` es el orden de carga y de evaluación: un archivo solo puede importar de los que van ANTES (un test lo vigila). Para llamar algo de un archivo que carga después, o de un módulo lazy, se usa el nombre suelto con guardia `typeof` (puente global). Cuatro archivos de lógica pura (`umbrales`, `reglas`, `salud`, `plan-deudas`) siguen como `<script>` clásico en `index.html` porque Node también los carga con `require`.
+- **De entrada:** un `import` en `js/main.js` (módulo ES). El orden de `main.js` es el orden de carga y de evaluación: un archivo solo puede importar de los que van ANTES (un test lo vigila). Para llamar algo de un archivo que carga después, o de un módulo lazy, se usa el nombre suelto con guardia `typeof` (puente global). Cuatro archivos de lógica pura (`umbrales`, `reglas`, `salud`, `plan-deudas`) no importan el puente ni tocan `window`, para que Node también los cargue (`require` de un módulo ES, Node 20.19+/22.12+); `js/core/globales-logica.js` los expone en `window` dentro de la app.
 - **Archivo nuevo:** `export` en lo que otros usan, `import { … } from './x.js';` (UNA línea, solo de archivos que cargan antes), y `exponerGlobales({ … })` con sus funciones (al principio) y constantes (al final); luego su línea en `main.js` o su grupo en `Loader.GROUPS`. `npm run lint` y `tests/modulos-es.test.js` avisan de lo que falte.
 - **Lazy:** listado en `Loader.GROUPS`. Se descarga la primera vez que se entra a esa pantalla, o en segundo plano por `Loader.ensureAll()` tras `appDataLoaded`. `ensureAll()` **no** precarga:
   - `wrapped` fuera de su ventana de enero.

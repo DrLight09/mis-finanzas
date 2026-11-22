@@ -594,7 +594,7 @@ import { waitFor } from './wait-for.js';
 
   // Hook en refresh para re-renderizar botones cuando se abre Config. _renderBtn()/_renderBioBtn() son idempotentes (solo pintan según el
   // estado actual de PIN/biometría): se llama también una vez ya, sin esperar al próximo refresh() real.
-  // pin-bio.js es un módulo ES async y puede correr antes que js/core/refresh.js (clásico, defer): se espera a que exista Refresh.
+  // pin-bio.js es un módulo ES async y puede correr antes que js/core/refresh.js: se espera a que exista Refresh.
   waitFor(() => window.Refresh, () => window.Refresh.registrar('pin-bio-boton', _renderBtn));
   _renderBtn();
 })();

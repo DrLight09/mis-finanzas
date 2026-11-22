@@ -26,11 +26,11 @@
      sinDatos          true si no hay nada que evaluar todavía
    «Base» (tieneBase): hay con qué evaluar ahorro, flujo y tendencia. Sin base (usuario nuevo) se evalúa solo lo que no necesita historial
    —deudas, liquidez negativa, patrimonio negativo— y lo demás se dice «sin evaluar»: la falta de registros no es una situación negativa.
-   Los límites salen de UMBRALES (js/core/umbrales.js): se pasan como segundo argumento o se leen del global/CommonJS.
+   Los límites salen de UMBRALES (js/core/umbrales.js): se pasan como segundo argumento o se toman de UMBRALES por defecto.
    ================================================================ */
-const Salud = (() => {
-  const _R = () => (typeof Reglas !== 'undefined' ? Reglas : require('./reglas.js'));
-  const _U = () => (typeof UMBRALES !== 'undefined' ? UMBRALES : (typeof require === 'function' ? require('./umbrales.js') : null));
+import { UMBRALES } from './umbrales.js';
+import { Reglas } from './reglas.js';
+export const Salud = (() => {
   const NIVELES = ['verde', 'ambar', 'rojo']; // de menos a más grave: 'sin' (sin datos) queda fuera del orden
   const peor = (a, b) => NIVELES.indexOf(a) >= NIVELES.indexOf(b) ? a : b;
 
@@ -39,7 +39,7 @@ const Salud = (() => {
   // usar la app el 29) NO alcanza: su gasto típico sería ruido. Sin `mesesReferencia` (las pruebas y quien arma `m` a mano) se infiere de
   // si hay gasto típico o balances. `diasDeUso` null = no se sabe: no bloquea.
   function tieneBase(m, umbrales) {
-    const H = ((umbrales || _U()).salud || {}).historial || { mesesCompletos: 2, minDias: 30 };
+    const H = ((umbrales || UMBRALES).salud || {}).historial || { mesesCompletos: 2, minDias: 30 };
     if (m.tendencia) return true;
     const meses = typeof m.mesesReferencia === 'number' ? m.mesesReferencia : ((m.gastoTipico > 0 || (m.balances || []).length) ? 1 : 0);
     if (meses >= H.mesesCompletos) return true;
@@ -53,7 +53,7 @@ const Salud = (() => {
   // Variación del patrimonio visible en los últimos `dias` días del historial. `historial`: [{ fecha, valorVisible|valor, montoBase }].
   // → { dias, delta, pct (null si la base no es positiva), inicio, fin } o null si no hay al menos `minDias` de historial.
   function tendenciaPatrimonio(historial, hoy, opts) {
-    const U = ((opts && opts.umbrales) || _U()).salud.pilares.tendencia;
+    const U = ((opts && opts.umbrales) || UMBRALES).salud.pilares.tendencia;
     const dias = (opts && opts.dias) || U.dias;
     const val = p => (typeof p.valorVisible === 'number' ? p.valorVisible : (p.valor || 0));
     const h = (historial || []).filter(p => p && p.fecha).slice().sort((a, b) => _d(a.fecha) - _d(b.fecha)); // por fecha real, no por texto: '2026-8-10' > '2026-11-05' como string
@@ -76,7 +76,7 @@ const Salud = (() => {
   // (`ruidoGastoPct` % del gasto típico) no cuenta y corta la racha, igual que un mes sin cierre anterior para comparar.
   // → { n, total (suma de las variaciones, negativa), desde ('AAAA-MM' del primer mes de la racha) } con n = 0 si no hay racha.
   function mesesCayendo(cierres, mesActual, opts) {
-    const U = ((opts && opts.umbrales) || _U()).salud.patrimonioCayendo;
+    const U = ((opts && opts.umbrales) || UMBRALES).salud.patrimonioCayendo;
     const c = cierres || {};
     const val = x => (typeof x.valorVisible === 'number' ? x.valorVisible : (x.valor || 0));
     const ruido = Math.max(1, ((opts && opts.gastoTipico) || 0) * U.ruidoGastoPct / 100);
@@ -100,7 +100,7 @@ const Salud = (() => {
   }
 
   function pilares(m, umbrales) {
-    const U = umbrales || _U(), P = U.salud.pilares;
+    const U = umbrales || UMBRALES, P = U.salud.pilares;
     const sb = !tieneBase(m, U);
     const out = [];
 
@@ -114,7 +114,7 @@ const Salud = (() => {
       } else if (m.mesesCubiertos != null) {
         valor = m.mesesCubiertos;
         nivel = m.mesesCubiertos < U.runway.critico ? 'rojo' : m.mesesCubiertos < U.runway.atencion ? 'ambar' : 'verde';
-        texto = 'Cubres ' + _R().fmtMeses(m.mesesCubiertos) + ' de gastos';
+        texto = 'Cubres ' + Reglas.fmtMeses(m.mesesCubiertos) + ' de gastos';
       }
       out.push({ id: 'liquidez', titulo: 'Liquidez', nivel, valor, texto, ir: 'cuentas' });
     }
@@ -172,7 +172,7 @@ const Salud = (() => {
   //   creciendo patrimonio subiendo y balance ≥ 0 en 2 de los últimos 3 meses
   //   estable   patrimonio plano (±3 %) y reservas ≥ 3 meses; lo demás con datos, también
   function estado(m, umbrales) {
-    const U = umbrales || _U();
+    const U = umbrales || UMBRALES;
     if (m.sinDatos) return null;
     const dir = _direccion(m.tendencia, m, U.salud.pilares.tendencia);
     const sb = !tieneBase(m, U);
@@ -269,7 +269,7 @@ const Salud = (() => {
 
   // Puntaje 0–100 y consejos tipados. `e`: métricas ya calculadas por inicio.js (calcHealthScore), ver el cuerpo para los campos.
   function puntaje(e){
-  const R = _R(), U0 = _U();
+  const R = Reglas, U0 = UMBRALES;
   const fmt = e.fmt || (n => String(n));
   const { patrimonio, gastosMes, deudaTC, ingresoRef, liquidez } = e;
   // Sin base (usuario nuevo, ver tieneBase) no se concluye nada de ahorro, flujo ni tendencia: el «gasto típico» sería de tres días de uso y
@@ -479,5 +479,3 @@ const Salud = (() => {
 
   return { puntaje, simular, fraseTendencia, pilares, estado, tieneBase, tendenciaPatrimonio, mesesCayendo, fechaAgotamiento, accionesUrgentes, ESTADOS };
 })();
-if (typeof window !== 'undefined') window.Salud = Salud;
-if (typeof module !== 'undefined' && module.exports) module.exports = Salud;

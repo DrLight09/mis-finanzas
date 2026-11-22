@@ -7,7 +7,7 @@
    Qué hay aquí: LÍMITES (a partir de cuándo algo es alto, bajo o preocupante). Qué NO hay: los puntos que suma o resta cada
    criterio del puntaje de Salud (son política de ese cálculo y viven junto a él en calcHealthScore) ni textos.
 
-   Núcleo de carga de entrada, clásico y sin dependencias: debe cargar antes de inicio.js (que es quien lo lee). Es de solo lectura
+   Núcleo de carga de entrada y sin dependencias: debe cargar antes de inicio.js (que es quien lo lee). Es de solo lectura
    (congelado a fondo): cambiar un valor es editar este archivo, nunca asignarlo desde otro. Más adelante estos valores podrían
    salir de un ajuste del usuario (un estudiante con mesada no tiene el mismo «3 meses» que alguien con deudas) sin tocar a
    quien los lee.
@@ -15,7 +15,7 @@
    Fuera de aquí, a propósito: la ventana de meses «recientes» del ingreso y gasto típicos vive en periodo.js (VENTANA_REFERENCIA_MESES),
    porque periodo.js es cálculo puro que se carga solo en Node y en muchas pruebas, sin depender de otro archivo.
    ================================================================ */
-const UMBRALES = (() => {
+export const UMBRALES = (() => {
   const congelar = o => { Object.keys(o).forEach(k => { if (o[k] && typeof o[k] === 'object') congelar(o[k]); }); return Object.freeze(o); };
   return congelar({
     // Salud financiera (calcHealthScore, inicio.js)
@@ -83,7 +83,3 @@ const UMBRALES = (() => {
     },
   });
 })();
-// Visible también como window.UMBRALES (igual que Periodo en periodo.js): lo lee quien accede a los globales por window, p. ej. las pruebas.
-if (typeof window !== 'undefined') window.UMBRALES = UMBRALES;
-// Y como módulo CommonJS para quien corre en Node sin navegador (scripts/notificaciones, vía reglas.js).
-if (typeof module !== 'undefined' && module.exports) module.exports = UMBRALES;

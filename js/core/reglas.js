@@ -21,8 +21,9 @@
    Cada regla con su prueba en tests/reglas.test.js; toda regla financiera nueva lleva además su escenario en
    tests/escenarios-financieros.test.js.
    ================================================================ */
-const Reglas = (() => {
-  const _U = ctx => ctx.umbrales || (typeof UMBRALES !== 'undefined' ? UMBRALES : (typeof require === 'function' ? require('./umbrales.js') : null));
+import { UMBRALES } from './umbrales.js';
+export const Reglas = (() => {
+  const _U = ctx => ctx.umbrales || UMBRALES;
   // Pesos «$1.234.567» / «-$850.000». La app inyecta su Dinero.fmt (ctx.fmt); sin él (push en Node) este, que da el mismo formato.
   const fmtPesos = n => { const v = Math.round(n || 0); return (v < 0 ? '-' : '') + '$' + String(Math.abs(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); };
   const _fmt = ctx => ctx.fmt || fmtPesos;
@@ -237,5 +238,3 @@ const Reglas = (() => {
 
   return { registrar, evaluar, lista, dias, fmtPesos, fechaCorta, mesesCubiertos, nivelRunway, fmtMeses, textoRunway, rachaDeficitRelevante, spotifyPagadoVigente, nombrePersona };
 })();
-if (typeof window !== 'undefined') window.Reglas = Reglas;
-if (typeof module !== 'undefined' && module.exports) module.exports = Reglas;

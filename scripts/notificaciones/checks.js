@@ -5,7 +5,7 @@
 
    YA NO tiene su propia copia de las reglas (antes «portado 1:1 a mano» desde inicio.js, y ya había derivado una vez): las reglas viven
    en UN solo sitio, js/core/reglas.js, y las comparten la sección «Necesita atención» de la app y este push. Este archivo solo:
-     1. carga ese módulo (puro, sin DOM: corre igual en Node);
+     1. carga ese módulo (puro, sin DOM: corre igual en Node, con require de un módulo ES);
      2. llama a Reglas.evaluar('push', ctx) con el estado completo `S` (el JSON de usuarios/{uid}/data/finanzas ya decodificado) y la
         fecha de «hoy» (YYYY-MM-DD, zona America/Bogota, calculada en run.js).
    Devuelve una lista de items { tipo: 'amber'|'red', texto, ir }.
@@ -17,8 +17,8 @@
    Para sumar un aviso al push: escribe la regla en js/core/reglas.js con canales ['atencion','push'] (o solo ['push']). No hace falta
    tocar este archivo. Este script espera que el repo esté completo (GitHub Actions lo hace con actions/checkout): importa ../../js/core/.
    ================================================================ */
-const path = require('path');
-const Reglas = require(path.join(__dirname, '..', '..', 'js', 'core', 'reglas.js'));
+// reglas.js es un módulo ES (la app lo importa): Node 20.19+ y 22.12+ lo cargan con require.
+const { Reglas } = require('../../js/core/reglas.js');
 
 function ejecutarChecks(S, hoyStr) {
   try {

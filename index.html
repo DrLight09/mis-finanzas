@@ -4809,15 +4809,6 @@
     </div>
 
     <!-- Scripts con `defer`: se descargan en paralelo y se ejecutan en el orden del documento. El orden importa (navegacion.js antes que los módulos que parchean addGastoVar/addGastoFijo; prestado.js sobre openSheet): no lo cambies. Los módulos de Firebase y pin-bio van con `async`. -->
-    <!-- Sistema centralizado de eventos (Events.on/attr/registerAll) — cargado
-         acá, antes que cualquier otro script, porque no depende de nada (ni de
-         S ni de escHtml, los resuelve recién cuando se usan) y todos los
-         módulos futuros (mesada.js, spotify.js, ...) lo necesitan definido
-         desde el arranque. Ver js/core/events.js y auditoria-tecnica.md #1. -->
-<script src="js/core/umbrales.js" defer></script>
-<script src="js/core/reglas.js" defer></script>
-<script src="js/core/salud.js" defer></script>
-<script src="js/core/plan-deudas.js" defer></script>
 <!-- mesada.js: ver js/core/lazy-loader.js (Loader.GROUPS.mesada) -->
 <!-- spotify.js: ver js/core/lazy-loader.js (Loader.GROUPS.spotify) -->
 <!-- prestado.js: ver js/core/lazy-loader.js (Loader.GROUPS.prestamos) -->

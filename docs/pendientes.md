@@ -34,6 +34,6 @@ Solo lo que falta. Lo que ya está hecho al 100 % se borra de aquí cuando se ha
 
 ## Observaciones sin resolver
 
-- **M6 hecho; queda una mejora opcional:** `umbrales`, `reglas`, `salud` y `plan-deudas` siguen como `<script>` clásico porque Node los carga con `require`. Se podrían pasar a módulo si el script de notificaciones los importara con `import()` dinámico (Node 22 lo soporta). Y las ~150 llamadas por el puente global se podrían ir convirtiendo en imports a medida que se separen estado y cálculo.
+- **M6 hecho; queda una mejora opcional:** las ~150 llamadas por el puente global se podrían ir convirtiendo en imports a medida que se separen estado y cálculo.
 - `diffHtmlBloque` (`diferencial.js`) es una plantilla de referencia que nadie llama; se puede borrar si ya no sirve de guía.
 - **Prueba de Chromium en `subir.sh`:** si dice que no pudo instalarlo, se omite en tu PC y la corre el CI antes de desplegar. Para ver el motivo real: `npx playwright install chromium`.

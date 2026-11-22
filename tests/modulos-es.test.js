@@ -16,6 +16,7 @@ const html = leer('index.html').replace(/<!--[\s\S]*?-->/g, '');
 const clasicos = [...html.matchAll(/<script(?![^>]*type="module")[^>]*src="(js\/[^"]+)"/g)].map(m => m[1]);
 const lazy = (() => { const g = leer('js/core/lazy-loader.js').match(/const GROUPS = (\{[\s\S]*?\n  \});/)[1]; return [...new Set([...g.matchAll(/'(js\/[a-z/-]+\.js)'/g)].map(m => m[1]))]; })();
 const ES_DE_FUERA = ['js/core/firebase-init.js', 'js/core/firebase-sync.js', 'js/core/pin-bio.js', 'js/core/payload-codec.js', 'js/core/fusion.js', 'js/core/validar-estado.js', 'js/core/respaldos.js'];
+const LOGICA = ['js/core/umbrales.js', 'js/core/reglas.js', 'js/core/salud.js', 'js/core/plan-deudas.js'];
 const modulosApp = [...ordenMain, ...lazy.filter(f => !ordenMain.includes(f))];
 const exportados = f => new Set([...leer(f).matchAll(/^export\s+(?:async\s+)?(?:function\s*\*?|class|const|let|var)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]));
 const importsDe = f => [...leer(f).matchAll(/^import\s+\{([^}]*)\}\s+from\s+'([^']+)';/gm)].map(m => ({ nombres: m[1].split(',').map(x => x.trim()).filter(Boolean), de: path.posix.normalize(path.posix.join(path.posix.dirname(f), m[2])) }));
@@ -23,13 +24,21 @@ const importsDe = f => [...leer(f).matchAll(/^import\s+\{([^}]*)\}\s+from\s+'([^
 describe('módulos ES: js/main.js y el orden de carga', () => {
   test('index.html carga UN solo módulo de la app (js/main.js) y ya no lista los archivos uno por uno', () => {
     assert.equal([...html.matchAll(/<script type="module" src="js\/main\.js"><\/script>/g)].length, 1);
-    const sueltos = [...html.matchAll(/<script[^>]*src="(js\/[^"]+)"[^>]*>/g)].map(m => m[1]).filter(f => !clasicos.includes(f) && !ES_DE_FUERA.includes(f) && f !== 'js/main.js');
+    const sueltos = [...html.matchAll(/<script[^>]*src="(js\/[^"]+)"[^>]*>/g)].map(m => m[1]).filter(f => !ES_DE_FUERA.includes(f) && f !== 'js/main.js');
     assert.deepEqual(sueltos, []);
   });
-  test('los <script> clásicos que quedan son solo la lógica pura que también carga Node (require), y van antes de main.js', () => {
-    assert.deepEqual(clasicos, ['js/core/umbrales.js', 'js/core/reglas.js', 'js/core/salud.js', 'js/core/plan-deudas.js']);
-    assert.ok(html.indexOf('js/core/plan-deudas.js') < html.indexOf('js/main.js'));
-    for (const f of clasicos) assert.ok(/module\.exports/.test(leer(f)), f + ' ya no lo usa Node: puede ser un módulo');
+  test('ya no queda ningún <script> clásico de la app: todo entra por main.js', () => {
+    assert.deepEqual(clasicos, []);
+  });
+  test('la lógica pura que también carga Node (umbrales, reglas, salud, plan-deudas) es módulo ES sin tocar window ni puente: la expone globales-logica.js', () => {
+    for (const f of LOGICA) {
+      const t = sinComentarios(leer(f));
+      assert.ok(!/\bwindow\b|module\.exports|\brequire\(|puente\.js/.test(t), f + ' debe poder cargarse en Node sin navegador');
+    }
+    const g = sinComentarios(leer('js/core/globales-logica.js'));
+    for (const n of LOGICA.flatMap(f => [...exportados(f)])) assert.ok(new RegExp('exponerGlobales\\(\\{[^}]*\\b' + n + '\\b').test(g), n + ' no se expone en globales-logica.js');
+    const pos = f => ordenMain.indexOf(f);
+    assert.ok(pos('js/core/globales-logica.js') > Math.max(...LOGICA.map(pos)) && pos('js/core/globales-logica.js') < pos('js/core/async-css.js'));
   });
   test('main.js importa puente.js primero y fecha.js segundo; no importa módulos lazy ni los de Firebase', () => {
     assert.equal(ordenMain[0], 'js/core/puente.js');
@@ -37,8 +46,8 @@ describe('módulos ES: js/main.js y el orden de carga', () => {
     for (const f of ordenMain) { assert.ok(fs.existsSync(path.join(raiz, f)), f + ' no existe'); assert.ok(!lazy.includes(f), f + ' es lazy: no va en main.js'); assert.ok(!ES_DE_FUERA.includes(f), f); }
     assert.equal(new Set(ordenMain).size, ordenMain.length, 'archivo repetido en main.js');
   });
-  test('todo archivo de js/core y js/modules está en main.js, en un grupo lazy, es clásico o es un módulo de fuera de la app', () => {
-    const conocidos = new Set([...ordenMain, ...lazy, ...clasicos, ...ES_DE_FUERA]);
+  test('todo archivo de js/core y js/modules está en main.js, en un grupo lazy o es un módulo de fuera de la app', () => {
+    const conocidos = new Set([...ordenMain, ...lazy, ...ES_DE_FUERA]);
     for (const carpeta of ['js/core', 'js/modules']) for (const n of fs.readdirSync(path.join(raiz, carpeta)).filter(x => x.endsWith('.js'))) assert.ok(conocidos.has(carpeta + '/' + n), carpeta + '/' + n + ' no se carga desde ningún sitio');
   });
 });
@@ -76,7 +85,7 @@ describe('módulos ES: los imports', () => {
 
 describe('módulos ES: el puente global', () => {
   test('cada módulo deja en window todas sus funciones (al principio) y constantes/clases (al final)', () => {
-    for (const f of modulosApp.filter(x => x !== 'js/core/puente.js')) {
+    for (const f of modulosApp.filter(x => x !== 'js/core/puente.js' && !LOGICA.includes(x))) {
       const t = leer(f);
       const funciones = [...t.matchAll(/^export\s+(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
       const consts = [...t.matchAll(/^export\s+(?:const|class)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);

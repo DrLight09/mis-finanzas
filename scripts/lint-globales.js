@@ -24,10 +24,9 @@ const { aClasico, PRELUDIO } = require('./modulos-a-clasico');
 
 const html = leer('index.html');
 const lazy = leer('js/core/lazy-loader.js');
-const clasicos = [...html.matchAll(/<script(?![^>]*type="module")[^>]*src="(js\/[^"]+)"/g)].map(m => m[1]);
-// js/main.js importa, en orden, los módulos de carga inmediata (M6); los clásicos (lógica pura que también carga Node) van antes.
+// js/main.js importa, en orden, los módulos de carga inmediata (M6).
 const deMain = [...leer('js/main.js').matchAll(/^import '\.\/([^']+)';/gm)].map(m => 'js/' + m[1]);
-const eager = [...clasicos, ...deMain];
+const eager = deMain;
 const modulosApp = new Set([...deMain]);
 const lazyF = [...lazy.matchAll(/'(js\/(?:core|modules)\/[a-z0-9-]+\.js)'/g)].map(m => m[1]).filter(f => !eager.includes(f) && existe(f));
 const archivos = [...new Set([...eager, ...lazyF])].filter(f => existe(f) && (!esModulo(f) || modulosApp.has(f) || lazyF.includes(f)) && f !== 'js/core/puente.js');

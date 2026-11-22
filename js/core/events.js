@@ -94,7 +94,9 @@
    pisarse.
    ═══════════════════════════════════════════════════════════════ */
 
-const Events = (function () {
+import { exponerGlobales, exponerVariables } from './puente.js';
+
+export const Events = (function () {
   const registry = {};
   // Elementos con una acción async todavía en vuelo — clics sobre ellos
   // se ignoran hasta que la promesa se resuelva o falle.
@@ -172,3 +174,6 @@ const Events = (function () {
 
   return { on, attr, registerAll };
 })();
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Events });

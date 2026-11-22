@@ -4,7 +4,18 @@
 // y el enlace de los inputs marcados con data-s-bind (cuota de Mesada, costo de Spotify) hacia S.
 // Los listeners de cada módulo viven en su propio archivo (Events.registerAll / data-action).
 
-function _initEventListeners() {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { _sheetStack, closeSheet, openSheet, showScreen } from './navegacion.js';
+import { _closeDialog } from './dialogos.js';
+import { abrirNuevoGastoFijo, abrirNuevoGastoVar, switchGastoTab } from '../modules/gastos.js';
+import { S } from './estado.js';
+import { parseMoney } from './persistencia.js';
+import { _getCuotaAnio } from './calc-helpers.js';
+import { debounceSave } from './utilidades-ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _initEventListeners, _bindInputsAS });
+
+export function _initEventListeners() {
   // --- Categorías: eliminar — migrado a data-action="config:eliminarCat" (js/modules/configuracion.js), ya no necesita delegado propio ---
 
   // --- Navegación bottom nav ---
@@ -188,7 +199,7 @@ function _initEventListeners() {
 // Cuota de Mesada del año visible y costo de Spotify. Solo se graba una cuota explícita
 // si difiere de la heredada (_getCuotaAnio): si no, escribir el valor «congelaría» el
 // fallback de un año anterior y rompería la herencia hacia años futuros.
-function _bindInputsAS(){
+export function _bindInputsAS(){
   document.querySelectorAll('[data-s-bind]').forEach(el => {
     el.addEventListener('input', () => {
       const bind = el.getAttribute('data-s-bind');

@@ -9,13 +9,17 @@
 // no imports; por eso este archivo debe seguir cargando como <script> normal (sin type="module").
 // Ver auditoria-tecnica.md #2/#4 y changelog/infraestructura-seguridad.md.
 
-const _MONTO_MAX_ENTEROS = 12;
+import { exponerGlobales, exponerVariables } from './puente.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _montoFormatear, _montoCursor, _montoAlEscribir, parseMiles, _milesFormatear });
+
+export const _MONTO_MAX_ENTEROS = 12;
 
 // Deja el texto como se muestra: enteros con puntos de miles + (si decimales>0) coma y hasta N decimales.
 //   decimales: 0 = solo enteros; 2 = decimales opcionales.
 //   pegado:    el texto viene del portapapeles/arrastre: se interpreta "1.500.000,50" y "1500.50", se ignora el signo.
 // Devuelve { texto, prefijoCero }: prefijoCero=true si se antepuso un "0" (",5" → "0,5") para ubicar el cursor.
-function _montoFormatear(entrada, decimales, pegado){
+export function _montoFormatear(entrada, decimales, pegado){
   let t=String(entrada==null?'':entrada);
   if(pegado){
     // Decimal = una sola coma con 1-2 cifras al final ("1.500.000,50"), o un único punto con 1-2 cifras
@@ -38,13 +42,13 @@ function _montoFormatear(entrada, decimales, pegado){
 }
 
 // Cursor: se queda junto al mismo carácter significativo (dígito o coma) que tenía a su izquierda.
-function _montoCursor(texto,significativosIzq){
+export function _montoCursor(texto,significativosIzq){
   let n=0,p=0;
   while(p<texto.length&&n<significativosIzq){if(/[\d,]/.test(texto[p]))n++;p++;}
   return p;
 }
 
-function _montoAlEscribir(el,decimales,e){
+export function _montoAlEscribir(el,decimales,e){
   let antes=el.value;
   let pos=el.selectionStart==null?antes.length:el.selectionStart;
   // Un "." tecleado a mano (teclado numérico sin coma) hace de separador decimal: el formateador
@@ -81,10 +85,13 @@ document.addEventListener('focusout',function(e){
 });
 
 // Número entero a partir de un campo de miles (o de un número): "1.500.000" → 1500000.
-function parseMiles(v){
+export function parseMiles(v){
   if(typeof v==='number')return isFinite(v)?Math.round(v):0;
   return parseInt(String(v==null?'':v).replace(/\D/g,''),10)||0;
 }
 
 // Compat. con Presupuestos: formatea un entero ya numérico para mostrarlo (500000 → "500.000").
-function _milesFormatear(texto,pegado){return _montoFormatear(texto,0,pegado).texto;}
+export function _milesFormatear(texto,pegado){return _montoFormatear(texto,0,pegado).texto;}
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _MONTO_MAX_ENTEROS });

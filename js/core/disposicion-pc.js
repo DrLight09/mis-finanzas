@@ -11,6 +11,9 @@
 // Nada se vuelve a renderizar al cambiar de tamaño: la pantalla abierta, las hojas y los formularios siguen como estaban.
 // Los módulos que pintan estos bloques lo hacen por id (getElementById), así que no saben ni les importa en qué contenedor están.
 // Para sumar otra pantalla: una entrada más en DISPOSICIONES (ids de bloques, ya sean nodos únicos o envoltorios). Ver docs/version-pc.md.
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Ui } from './ui.js';
+
 (function () {
   'use strict';
 

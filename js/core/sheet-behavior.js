@@ -48,6 +48,9 @@
 //   window.focusSheetField(idOEl, opts)    — enfocar el primer campo de un sheet recién
 //                                            abierto (sin timers sueltos en cada módulo)
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { closeSheet } from './navegacion.js';
+
 (function(){
   'use strict';
 

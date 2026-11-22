@@ -5,8 +5,15 @@
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S, hoy, setEstado } from './estado.js';
+import { Libro, _cuentasArr } from './cuentas-fuentes.js';
+import { Personas } from './personas-core.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ fmtInput, setMoneyInput, claseEfectivaMovimiento, movimientosSinClase, aplicarMigraciones, _ensureSpotify, registrarSonda, conEstadoAislado, load, parseMoney, parsePct, save });
+
 /* ---- LOAD / SAVE ---- */
-function fmtInput(n){
+export function fmtInput(n){
   // Número → texto para un campo de plata (.money-input): enteros sin decimales ("500.000"), con decimales
   // siempre 2 ("1.234,50"). Es el mismo formato que deja el formateo al escribir (js/core/money-input.js).
   if(!n&&n!==0)return'';
@@ -22,7 +29,7 @@ function fmtInput(n){
 // cuando el usuario escribe ("80.000", no "80000"). Asignar `input.value = n` directo se ve sin separador de miles,
 // porque el formateo de money-input.js solo corre en el evento 'input'. Acepta el elemento o su id; n vacío/0/NaN limpia
 // el campo. { evento: true } además avisa 'input' para que se actualicen las vistas previas del sheet.
-function setMoneyInput(elOrId,n,opts){
+export function setMoneyInput(elOrId,n,opts){
   const el=typeof elOrId==='string'?document.getElementById(elOrId):elOrId;
   if(!el)return;
   el.value=fmtInput(n);
@@ -32,13 +39,13 @@ function setMoneyInput(elOrId,n,opts){
 // Clase guardada de un movimiento ('ingreso' | 'gasto' | 'neutro' | 'ajuste'), o null si no la tiene.
 // Es la ÚNICA fuente de verdad: no hay reglas de respaldo que la deduzcan de etiquetas o textos (se retiraron el 2026-10-13: la
 // app nace limpia y tests/nucleo.test.js, bloque `clase-cobertura`, exige que todo escritor la ponga al crear el movimiento).
-function claseEfectivaMovimiento(m){
+export function claseEfectivaMovimiento(m){
   return m && _claseValida(m.clase) ? m.clase : null;
 }
 
 // Movimientos y gastos que llegaron SIN clase válida (un módulo no la escribió). Las salidas de espejo no la necesitan:
 // ningún lector de ingreso o gasto las consulta. Lo usa save() para avisar, igual que Libro.verificar() con los saldos.
-function movimientosSinClase(estado){
+export function movimientosSinClase(estado){
   const estadoActual = estado || S, out = [];
   (estadoActual.movimientos || []).forEach(m => {
     if(m && typeof m === 'object' && m.tipo !== 'salida' && !_claseValida(m.clase)) out.push({ lista: 'movimientos', id: m.id, tipo: m.tipo, desc: m.desc });
@@ -61,12 +68,12 @@ function movimientosSinClase(estado){
    existente. Corren UNA vez, en orden, sobre el estado cargado de Firestore y, vía aplicarMigraciones(), sobre un backup JSON antes de
    importarlo. La versión guardada vive en S.schemaVersion. Si la migración solo renombra claves en todo el árbol, el recorrido que
    lo hacía (_renombrarClavesEnArbol) está en la historia de git (commit que plegó la v12): se recupera de ahí. */
-const SCHEMA_BASE = 12;    // primera versión compatible; la actual es la de la última migración de MIGRACIONES (si la hay) o esta misma
+export const SCHEMA_BASE = 12;    // primera versión compatible; la actual es la de la última migración de MIGRACIONES (si la hay) o esta misma
 
-const MIGRACIONES = [];
-const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
+export const MIGRACIONES = [];
+export const SCHEMA_VERSION_ACTUAL = MIGRACIONES.length ? MIGRACIONES[MIGRACIONES.length - 1].v : SCHEMA_BASE;
 
-function aplicarMigraciones(d) {
+export function aplicarMigraciones(d) {
   if (!d || typeof d !== 'object') return d;
   const actual = Number(d.schemaVersion) || 0;
   if (actual > SCHEMA_VERSION_ACTUAL) {
@@ -83,7 +90,7 @@ function aplicarMigraciones(d) {
 }
 
 // S.spotify siempre existe y trae sus cuatro campos (como _ensureMesadas con S.mesadas): el resto de la app lo lee sin guardas.
-function _ensureSpotify(){
+export function _ensureSpotify(){
   if(!S.spotify||typeof S.spotify!=='object'||Array.isArray(S.spotify))S.spotify={};
   if(!Array.isArray(S.spotify.integrantes))S.spotify.integrantes=[];
   if(!Array.isArray(S.spotify.historial))S.spotify.historial=[];
@@ -97,7 +104,7 @@ function _ensureSpotify(){
    (tarjetas, encargos, alcancía, Wrapped) se precargan al arrancar. Por eso no pueden llamar a Huella.registrar directamente: llegarían
    antes que ella. Llaman a esto: si Huella ya existe registra la sonda; si no, la deja en cola y huella.js la registra al cargarse.
    Así el orden de carga no importa. Una sonda nueva se registra siempre con registrarSonda, nunca con Huella.registrar. */
-function registrarSonda(nombre, fn){
+export function registrarSonda(nombre, fn){
   if(typeof Huella !== 'undefined' && typeof Huella.registrar === 'function') Huella.registrar(nombre, fn);
   else (window._sondasPendientes || (window._sondasPendientes = [])).push([nombre, fn]);
 }
@@ -108,20 +115,20 @@ function registrarSonda(nombre, fn){
    las mismas funciones de la app (calcPatrimonioDesglose, Deudas, calcC… leen el S global): así no hay una segunda versión de
    ninguna regla contable solo para comparar. Mientras dura, window._estadoAislado es true y save()/_firebaseSaveToCloud() no escriben
    nada: un estado de prueba nunca llega a la nube. Si `fn` devuelve una promesa lanza error (su continuación correría con el S real). */
-function conEstadoAislado(estado, fn){
+export function conEstadoAislado(estado, fn){
   if(!estado||typeof estado!=='object')throw new Error('conEstadoAislado: se necesita un estado (objeto)');
   if(typeof fn!=='function')throw new Error('conEstadoAislado: se necesita una función');
   if(estado===S)return fn();
   const prev=S,prevFlag=window._estadoAislado;
   let r;
-  S=estado;window.S=estado;window._estadoAislado=true;
+  setEstado(estado);window._estadoAislado=true;
   try{r=fn();}
-  finally{S=prev;window.S=prev;window._estadoAislado=prevFlag;}
+  finally{setEstado(prev);window._estadoAislado=prevFlag;}
   if(r&&typeof r.then==='function')throw new Error('conEstadoAislado: la función debe ser síncrona');
   return r;
 }
 
-function load(){
+export function load(){
   // Firebase version: datos ya cargados en S por _firebaseLoadData()
   // Solo inicializamos campos faltantes y sincronizamos el DOM
   aplicarMigraciones(S);
@@ -169,7 +176,7 @@ function load(){
   document.getElementById('mov_fecha').value=hoy();
 }
 
-function parseMoney(v){
+export function parseMoney(v){
   if(!v&&v!==0)return 0;
   if(typeof v==='number')return v;
   const s=String(v).trim();
@@ -178,7 +185,7 @@ function parseMoney(v){
   return parseFloat(s.replace(/\./g,'').replace(',','.'))||0;
 }
 
-function parsePct(v){
+export function parsePct(v){
   if(!v&&v!==0)return 0;
   if(typeof v==='number')return v;
   const s=String(v).trim();
@@ -189,7 +196,7 @@ function parsePct(v){
 
 // (window._firebaseSaveTimer lo gestiona el módulo Firebase — no declarar aquí)
 
-function save(){
+export function save(){
   // Estado aislado (conEstadoAislado): nunca se guarda un estado de prueba.
   if(window._estadoAislado)return;
   // PROTECCIÓN: no guardar si los datos aún no se han cargado desde Firebase.
@@ -244,3 +251,6 @@ function save(){
     window._firebaseSaveToCloud();
   }
 }
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ SCHEMA_BASE, MIGRACIONES, SCHEMA_VERSION_ACTUAL });

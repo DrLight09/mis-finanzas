@@ -25,6 +25,8 @@
 // decida correr este script en concreto. El fallback de abajo cubre el
 // caso (ahora más frecuente, al ejecutarse más tarde) en que el CSS ya
 // haya terminado de cargar antes de que este script llegue a correr.
+import { exponerGlobales, exponerVariables } from './puente.js';
+
 (function () {
   document.querySelectorAll('link[data-async-css]').forEach(function (link) {
     if (link.media === 'all') return; // ya se activó (poco probable en este punto)

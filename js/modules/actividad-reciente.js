@@ -64,6 +64,16 @@
    mesada.js. Sin verificar en navegador real.
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { Deudas } from '../core/calc-helpers.js';
+import { fuenteLabel } from '../core/cuentas-fuentes.js';
+import { Personas } from '../core/personas-core.js';
+import { hoy } from '../core/estado.js';
+import { Fecha } from '../core/fecha.js';
+import { emptyInline } from '../core/utilidades-ui.js';
+import { html, raw } from '../core/html-tag.js';
+import { Refresh } from '../core/refresh.js';
+
 (function(){
   'use strict';
 
@@ -534,4 +544,3 @@
   renderFeedActividad();
 
 })();
-

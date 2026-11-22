@@ -37,12 +37,20 @@
    registrarMovimientoEspejo() y borrarMovimientoEspejo().
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Libro, descontarFuente, sumarFuente } from './cuentas-fuentes.js';
+import { borrarMovimientoEspejo, registrarMovimientoEspejo } from './cuenta-efectos.js';
+import { S, hoy, uid } from './estado.js';
+import { mesActual } from './ingresos.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _cobroEntrar, _cobroSacar, ingresoFijoPorId, cobrosDeIngresoFijo, ingresoFijoEsperadoEn, ingresoFijoEstadoMes, cobroMesTexto, cobroFuentesDe, cobroRegistrar, cobroRevertir, cobroBorrar, cobroAvisoMes });
+
 // Libro (js/core/cuentas-fuentes.js): cada sumar/descontarFuente deja { modulo:'ingreso-fijo', ref:<id del espejo> }; rev=true es la reversión.
-const _origenLibroCobro = Libro.origen('ingreso-fijo');
+export const _origenLibroCobro = Libro.origen('ingreso-fijo');
 
-const COBRO_MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
+export const COBRO_MES_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 
-function _cobroEntrar(destino, monto, fecha, desc) {
+export function _cobroEntrar(destino, monto, fecha, desc) {
   if (!destino || !monto) return null;
   // El espejo se crea primero para que el libro apunte a su id (el orden no afecta al saldo).
   const movimientoId = registrarMovimientoEspejo({ cuenta: destino, flujo: 'entrada', monto, fecha, desc, origen: 'Ingreso fijo' });
@@ -50,47 +58,47 @@ function _cobroEntrar(destino, monto, fecha, desc) {
   return movimientoId;
 }
 
-function _cobroSacar(destino, monto, movimientoId) {
+export function _cobroSacar(destino, monto, movimientoId) {
   if (!destino) return;
   descontarFuente(destino, monto, _origenLibroCobro(movimientoId, true));
   borrarMovimientoEspejo(destino, movimientoId);
 }
 
-function ingresoFijoPorId(id, estado) {
+export function ingresoFijoPorId(id, estado) {
   return ((estado || S).ingresosFijos || []).find(x => x && x.id === id) || null;
 }
 
 // Cobros de un ingreso fijo (siempre un arreglo).
-function cobrosDeIngresoFijo(ingreso) {
+export function cobrosDeIngresoFijo(ingreso) {
   return ingreso && Array.isArray(ingreso.cobros) ? ingreso.cobros : [];
 }
 
 // ¿Ese ingreso fijo ya se espera en el mes `mes` ('YYYY-MM')? Sin `desde`, siempre.
-function ingresoFijoEsperadoEn(ingreso, mes) {
+export function ingresoFijoEsperadoEn(ingreso, mes) {
   return !!ingreso && (!ingreso.desde || ingreso.desde <= mes);
 }
 
 // Estado de un ingreso fijo respecto a un mes que CUBRE: { esperado, cobrado (suma), cobros:[...] }.
-function ingresoFijoEstadoMes(ingreso, mes) {
+export function ingresoFijoEstadoMes(ingreso, mes) {
   const cobros = cobrosDeIngresoFijo(ingreso).filter(c => c.mesCubre === mes);
   return { esperado: ingresoFijoEsperadoEn(ingreso, mes), cobrado: cobros.reduce((a, c) => a + (c.monto || 0), 0), cobros };
 }
 
 // 'YYYY-MM' → 'Oct 2026' (_mesNombreDeKey espera el índice de mes 0-11, como la clave de la Mesada).
-function cobroMesTexto(mes) {
+export function cobroMesTexto(mes) {
   const m = /^(\d{4})-(\d{2})$/.exec(String(mes || ''));
   return m ? _mesNombreDeKey(m[1] + '-' + (Number(m[2]) - 1)) : '';
 }
 
 // Cuentas realmente afectadas por un cobro (para la protección por antigüedad al borrar).
-function cobroFuentesDe(c) {
+export function cobroFuentesDe(c) {
   if (!c) return [];
   if (c.splits && c.splits.length) return c.splits.filter(s => s.fuente).map(s => s.fuente);
   return c.destino ? [c.destino] : [];
 }
 
 // p = { id (del ingreso fijo), mesCubre, monto, fecha, nota, destino, splitMode, splits }
-function cobroRegistrar(p) {
+export function cobroRegistrar(p) {
   const ingreso = ingresoFijoPorId(p && p.id);
   if (!ingreso) return { ok: false, motivo: 'ingreso-inexistente' };
   const monto = p.monto || 0;
@@ -118,14 +126,14 @@ function cobroRegistrar(p) {
 }
 
 // Revierte los efectos de UN cobro sobre las cuentas (no lo quita de la lista).
-function cobroRevertir(c) {
+export function cobroRevertir(c) {
   if (!c) return;
   if (c.splits && c.splits.length) { c.splits.forEach(s => { if (s.fuente) _cobroSacar(s.fuente, s.monto, s._movimientoSecId); }); return; }
   _cobroSacar(c.destino, c.monto, c._movimientoSecId);
 }
 
 // Borra un cobro: revierte la plata donde entró y lo quita del ingreso fijo.
-function cobroBorrar(id, cobroId) {
+export function cobroBorrar(id, cobroId) {
   const ingreso = ingresoFijoPorId(id);
   const c = ingreso && cobrosDeIngresoFijo(ingreso).find(x => x.id === cobroId);
   if (!c) return false;
@@ -136,7 +144,7 @@ function cobroBorrar(id, cobroId) {
 
 // La plata cuenta en el mes de la FECHA en que te pagaron, no en el mes que cubre. Si son distintos, este texto lo dice antes
 // de guardar (es solo informativo: cobrar con atraso es un caso legítimo). '' si coinciden o falta un dato.
-function cobroAvisoMes(mesCubre, fecha) {
+export function cobroAvisoMes(mesCubre, fecha) {
   const f = /^(\d{4})-(\d{2})-\d{2}/.exec(String(fecha || ''));
   if (!COBRO_MES_RE.test(String(mesCubre || '')) || !f) return '';
   const mesFecha = f[1] + '-' + f[2];
@@ -144,3 +152,6 @@ function cobroAvisoMes(mesCubre, fecha) {
   const donde = mesFecha === mesActual() ? 'este mes' : cobroMesTexto(mesFecha);
   return 'Cubre ' + cobroMesTexto(mesCubre) + ', pero cuenta como ingreso de ' + donde + ': el mes en que te pagaron.';
 }
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _origenLibroCobro, COBRO_MES_RE });

@@ -392,7 +392,6 @@
          este archivo no usa) — funciona igual siendo fonts.googleapis de
          origen cruzado (Font Awesome ya es mismo origen desde que se
          self-hosteó, ver comentario más arriba). -->
-    <script src="js/core/async-css.js" defer></script>
     <!-- Preconnect a los dominios de Firebase: adelanta el handshake DNS/TCP/TLS
          en paralelo, en vez de esperar a que el bloque de módulo de más abajo
          los descubra uno por uno (esta era la cadena de red detrás del LCP de
@@ -4815,58 +4814,18 @@
          S ni de escHtml, los resuelve recién cuando se usan) y todos los
          módulos futuros (mesada.js, spotify.js, ...) lo necesitan definido
          desde el arranque. Ver js/core/events.js y auditoria-tecnica.md #1. -->
-    <script src="js/core/events.js" defer></script>
-    <script src="js/core/diferencial.js" defer></script>
-    <script src="js/core/split.js" defer></script>
-<script src="js/core/ui.js" defer></script>
-<script src="js/core/formulario.js" defer></script>
-<script src="js/core/sw-registro.js" defer></script>
-<script type="module" src="js/core/fecha.js"></script>
-<script src="js/core/estado.js" defer></script>
-<script src="js/core/personas-core.js" defer></script>
-<script src="js/core/cuentas-fuentes.js" defer></script>
-<script src="js/core/persistencia.js" defer></script>
-<script src="js/core/patrimonio.js" defer></script>
-<script src="js/core/ingresos.js" defer></script>
-<script src="js/core/dialogos.js" defer></script>
-<script src="js/core/utilidades-ui.js" defer></script>
-<script src="js/core/refresh.js" defer></script>
-<script src="js/core/cuenta-efectos.js" defer></script>
-<script src="js/core/cobros.js" defer></script>
-<script src="js/core/html-tag.js" defer></script>
 <script src="js/core/umbrales.js" defer></script>
 <script src="js/core/reglas.js" defer></script>
 <script src="js/core/salud.js" defer></script>
 <script src="js/core/plan-deudas.js" defer></script>
-<script src="js/core/periodo.js" defer></script>
-<script src="js/core/nu-calc.js" defer></script>
-<script src="js/core/calc-helpers.js" defer></script>
-<script src="js/core/fuentes-filtro.js" defer></script>
-<script src="js/core/reordenable.js" defer></script>
-<script src="js/core/color-picker.js" defer></script>
-<script src="js/core/wait-for.js" defer></script>
-<script src="js/core/wrapped-gate.js" defer></script>
 <!-- mesada.js: ver js/core/lazy-loader.js (Loader.GROUPS.mesada) -->
 <!-- spotify.js: ver js/core/lazy-loader.js (Loader.GROUPS.spotify) -->
-<script src="js/modules/gastos.js" defer></script>
-<script src="js/modules/personas.js" defer></script>
-<script src="js/core/navegacion.js" defer></script>
-<script src="js/core/modulos-activos.js" defer></script>
-<script src="js/core/eventos-base.js" defer></script>
-<script src="js/core/disposicion-pc.js" defer></script>
 <!-- prestado.js: ver js/core/lazy-loader.js (Loader.GROUPS.prestamos) -->
-<script src="js/core/lazy-loader.js" defer></script>
-<script src="js/core/money-input.js" defer></script>
 <!-- encargos.js: ver js/core/lazy-loader.js (Loader.GROUPS.encargos) -->
 <!-- tarjetas-credito.js: ver js/core/lazy-loader.js (Loader.GROUPS.tarjetas) -->
-<script src="js/core/movimientos.js" defer></script>
 <!-- cuentas.js: ver js/core/lazy-loader.js (Loader.GROUPS.cuentas) -->
-<script src="js/core/bootstrap.js" defer></script>
 
     <!-- ===== MEJORAS UX MÓVIL JS ===== -->
-<script src="js/core/mas-menu.js" defer></script>
-<script src="js/core/sheet-behavior.js" defer></script>
-<script src="js/core/gastos-fijos-progress.js" defer></script>
 
     <!-- PRESUPUESTOS SHEET -->
     <div class="overlay" id="sheet-presupuestos" data-sheet-id="presupuestos">
@@ -4880,13 +4839,10 @@
           data-close-sheet="presupuestos">Cerrar</button>
       </div>
     </div>
+    <script type="module" src="js/main.js"></script>
     <script type="module" src="js/core/firebase-sync.js" async></script>
     <!-- Retoques de la interfaz (antes un solo archivo «mejoras-adicionales.js»): ocultar saldos, render tras refresh + fade-in + aria,
          validación de montos + foco automático de las hojas. -->
-    <script src="js/core/saldos-ocultos.js" defer></script>
-    <script src="js/core/arranque-ui.js" defer></script>
-    <script src="js/core/formularios-ui.js" defer></script>
-    <script src="js/core/busqueda-global.js" defer></script>
 
     <script type="module" src="js/core/pin-bio.js" async></script>
     <!-- NUEVA TARJETA DE CRÉDITO -->
@@ -5108,11 +5064,9 @@
 
     <!-- SISTEMA DE PERSONAS — libreta central vinculada: Encargos, Préstamos y Spotify comparten la
      misma identidad (js/modules/personas.js; su integración vive dentro de cada módulo). -->
-<script src="js/core/personas-init.js" defer></script>
 
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-app-compat.js" defer></script>
     <script src="https://www.gstatic.com/firebasejs/11.1.0/firebase-messaging-compat.js" defer></script>
-    <script src="js/core/notificaciones-push.js" defer></script>
 
 
 <!-- configuracion.js: ver js/core/lazy-loader.js (Loader.GROUPS.config) -->
@@ -5120,5 +5074,4 @@
 
 <!-- analisis.js: ver js/core/lazy-loader.js (Loader.GROUPS.analisis) -->
 
-<script src="js/modules/inicio.js" defer></script>
   </body></html>

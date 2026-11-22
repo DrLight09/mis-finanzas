@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 // M8 — Service Worker: precaché atómico por versión, base derivada del scope, un solo aviso, notificationclick enfoca.
 const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -74,7 +75,7 @@ describe('PRECACHE', () => {
     assert.ok(!enSw.includes('sw.js'));
   });
   test('todo <script src> de index.html está en el precaché (offline completo)', () => {
-    const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(raiz, 'index.html'), 'utf8'));
     const lista = new Set(listaPrecache(raiz));
     const faltan = [...html.matchAll(/<script[^>]+src="(js\/[^"]+)"/g)].map(m => m[1]).filter(f => !lista.has(f));
     assert.deepEqual(faltan, []);

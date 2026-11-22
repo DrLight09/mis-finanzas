@@ -5,6 +5,11 @@
 // y de showScreen/refresh (llamados en runtime, con guard typeof donde
 // corresponde). Ver auditoria-tecnica.md #2/#4.
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { showScreen } from './navegacion.js';
+import { refresh } from './refresh.js';
+import { Ui } from './ui.js';
+
 // ── 1. MÁS MENU ─────────────────────────────────────────────────────────────
 (function(){
   const masBtn = document.getElementById('nav-mas-btn');

@@ -28,7 +28,13 @@
    (ej. un botón en Configuración) llama a activarNotificaciones().
    ================================================================ */
 
-const _FCM_CONFIG = {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { toast } from './dialogos.js';
+import { Events } from './events.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _estadoPush, _pushYaActivo, _refrescarEstadoPush, _mensajePushError, _obtenerTokenPush, activarNotificaciones });
+
+export const _FCM_CONFIG = {
   apiKey: 'AIzaSyBNGhKxrd6nuUXamRytHEgrv3ggrafr4HU',
   authDomain: 'mis-finanzas-z.firebaseapp.com',
   projectId: 'mis-finanzas-z',
@@ -37,13 +43,13 @@ const _FCM_CONFIG = {
   appId: '1:469399538471:web:adaf95bc43b3355b087702',
 };
 
-const _FCM_VAPID_KEY = 'BHg62p-K530SMQ0Vx7EsZVpkG8NnXv_eD25AQz-w6gOL5MBdGGjCchPKnbuX2XFJXjoigwPWpxK39PtlvHRvsWw';
+export const _FCM_VAPID_KEY = 'BHg62p-K530SMQ0Vx7EsZVpkG8NnXv_eD25AQz-w6gOL5MBdGGjCchPKnbuX2XFJXjoigwPWpxK39PtlvHRvsWw';
 
 // ── Estado visible en la fila de Configuración (#cfg-notificaciones-sub) ────────────────────────────────────────────────────
 // El texto original de la fila se recuerda la primera vez para poder volver a él si falla. `mf_push_ok` (localStorage) = este
 // dispositivo ya dejó su token guardado; si el permiso se revoca en el navegador la marca se ignora y se limpia.
-let _textoOriginalPush = null;
-function _estadoPush(texto) {
+export let _textoOriginalPush = null;
+export function _estadoPush(texto) {
   const el = document.getElementById('cfg-notificaciones-sub');
   if (!el) return;
   if (_textoOriginalPush === null) _textoOriginalPush = el.textContent;
@@ -51,18 +57,18 @@ function _estadoPush(texto) {
 }
 // `uid`: si se pasa, solo cuenta como activo cuando la marca es de ESA cuenta (el token se guarda por cuenta, así que otra cuenta en
 // el mismo navegador sí debe registrarse). Sin `uid` (al abrir la app, aún sin sesión) basta con que haya marca.
-function _pushYaActivo(uid) {
+export function _pushYaActivo(uid) {
   try {
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') { localStorage.removeItem('mf_push_ok'); return false; }
     const marca = localStorage.getItem('mf_push_ok');
     return !!marca && (uid == null || marca === uid);
   } catch (_) { return false; }
 }
-function _refrescarEstadoPush() { if (_pushYaActivo()) _estadoPush('Activadas en este dispositivo'); }
+export function _refrescarEstadoPush() { if (_pushYaActivo()) _estadoPush('Activadas en este dispositivo'); }
 
 // Mensaje claro según la causa. «Registration failed - push service error» NO es un fallo de Firebase ni de la app: lo devuelve el
 // navegador cuando no logra suscribirse a SU servicio de notificaciones (Google en Chrome/Edge/Brave, Mozilla en Firefox).
-function _mensajePushError(e, ent) {
+export function _mensajePushError(e, ent) {
   ent = ent || {};
   const msg = String((e && e.message) || e || '');
   const cod = String((e && (e.code || e.name)) || '');
@@ -83,7 +89,7 @@ function _mensajePushError(e, ent) {
 
 // getToken con un reintento: un «push service error» muchas veces viene de una suscripción vieja del navegador (hecha con otra
 // clave o ya caducada). Se borra esa suscripción y el token anterior y se vuelve a pedir una sola vez.
-async function _obtenerTokenPush(messaging, swRegistration) {
+export async function _obtenerTokenPush(messaging, swRegistration) {
   const pedir = () => messaging.getToken({ vapidKey: _FCM_VAPID_KEY, serviceWorkerRegistration: swRegistration });
   try {
     return await pedir();
@@ -95,8 +101,8 @@ async function _obtenerTokenPush(messaging, swRegistration) {
   }
 }
 
-let _activandoPush = false;
-async function activarNotificaciones() {
+export let _activandoPush = false;
+export async function activarNotificaciones() {
   if (!('Notification' in window) || !('serviceWorker' in navigator)) {
     if (typeof toast === 'function') toast('Este navegador no soporta notificaciones', 'err');
     return;
@@ -170,3 +176,6 @@ _refrescarEstadoPush();
 if (typeof Events !== 'undefined' && typeof Events.registerAll === 'function') {
   Events.registerAll('notificaciones', { activar: activarNotificaciones });
 }
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _FCM_CONFIG, _FCM_VAPID_KEY });

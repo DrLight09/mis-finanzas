@@ -4,6 +4,11 @@
 //   · validación de montos (.money-input): sin negativos y sin cifras absurdas (> 1e12);
 //   · foco automático del primer campo al abrir cada hoja (un solo gancho comodín de Ui).
 // (La validación por campo con mensaje vive en Formulario, js/core/formulario.js.)
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Ui } from './ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ mostrarAlertaFuente });
+
 (function(){
   // ── Validación de montos ──
   document.addEventListener('change', e => {
@@ -44,7 +49,7 @@
 })();
 
 // Hint de saldo/destino bajo los selectores de cuenta («fuente»/«destino»): visible solo si hay una cuenta elegida.
-function mostrarAlertaFuente(prefix){
+export function mostrarAlertaFuente(prefix){
   // Un módulo puede encargarse del aviso (Tarjetas de crédito con fuentes «tc:…»): su gancho devuelve true.
   if(Ui.emitir('fuente-alerta',prefix).includes(true))return;
   // visibility, no display: el hint siempre ocupa su espacio (mismo criterio

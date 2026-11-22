@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 // M2 — PersonaPicker: un solo componente para los campos «¿Quién es?» (HTML estático en index.html, sin innerHTML en runtime).
 const { describe, test } = require('node:test');
 const assert = require('node:assert/strict');
@@ -9,7 +10,7 @@ const { loadApp } = require('./support/load-app');
 
 const raiz = path.join(__dirname, '..');
 const f = (...p) => path.join(raiz, ...p);
-const html = fs.readFileSync(f('index.html'), 'utf8');
+const html = htmlClasico(fs.readFileSync(f('index.html'), 'utf8'));
 
 const CAMPO = pref => `<div id="${pref}-btn" class="persona-btn" data-picker="${pref}"><div id="${pref}-avatar" style="display:none"></div><span id="${pref}-label">Seleccionar persona...</span><svg id="${pref}-chevron"></svg></div><div id="${pref}-hint" hidden></div><input type="hidden" id="x_n" value="">`;
 
@@ -112,8 +113,8 @@ describe('Encargos: la integración con Personas sigue dentro del módulo', () =
   test('renderEncargosList y abrirEncargoDetalle llaman a helpers que existen', () => {
     const src = fs.readFileSync(f('js/modules/encargos.js'), 'utf8');
     for (const fn of ['_pintarEncargosList', '_pintarEncargoDetalle', '_encargoDetallePartes', '_encargoDetallePersona']) {
-      assert.ok(new RegExp('^function ' + fn + '\\(', 'm').test(src), 'falta function ' + fn);
-      assert.ok(new RegExp('[^\\w]' + fn + '\\(').test(src.replace(new RegExp('^function ' + fn + '\\(', 'm'), '')), fn + ' no se llama desde ningún lado');
+      assert.ok(new RegExp('^(export )?function ' + fn + '\\(', 'm').test(src), 'falta function ' + fn);
+      assert.ok(new RegExp('[^\\w]' + fn + '\\(').test(src.replace(new RegExp('^(export )?function ' + fn + '\\(', 'm'), '')), fn + ' no se llama desde ningún lado');
     }
   });
 });

@@ -5,7 +5,17 @@
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
-const Refresh = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { asegurarEfectivo, cajitasDeCuenta, colorCuenta, cuentasActivas, cuentasAhorro, esCuentaAhorro, esCuentaFija, saldoCuentas } from './cuentas-fuentes.js';
+import { S, fmt, fmtNoCents } from './estado.js';
+import { Events } from './events.js';
+import { mesActual } from './ingresos.js';
+import { calcPatrimonioDesglose, patrimonioFormulaTexto } from './patrimonio.js';
+import { save } from './persistencia.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ refresh, _colorSeguro, renderCuentasInicio, _refreshNucleo, saveAndRefresh });
+
+export const Refresh = (() => {
   const partes = []; // { id, fn, pantallas, orden, n }
   let n = 0;
   const activa = nombre => { const el = typeof document !== 'undefined' && document.getElementById('screen-' + nombre); return !!(el && el.classList.contains('active')); };
@@ -30,7 +40,7 @@ const Refresh = (() => {
 })();
 if (typeof window !== 'undefined') window.Refresh = Refresh;
 
-function refresh(){
+export function refresh(){
   asegurarEfectivo(); // Efectivo siempre existe; se guarda con el próximo save()
   _refreshNucleo();
   Refresh.ejecutar();
@@ -38,8 +48,8 @@ function refresh(){
 
 /* Resumen de cuentas de Inicio: un recuadro por cada cuenta activa (con su color), más «Prestado» y los CDTs si hay una cuenta de
    ahorro. Se pinta desde S.cuentas, no desde HTML fijo: quien tiene dos cuentas ve dos recuadros, quien tiene seis ve seis. */
-function _colorSeguro(c){return /^#[0-9a-fA-F]{6}$/.test(String(c||''))?c:'var(--text2)';}
-function renderCuentasInicio(){
+export function _colorSeguro(c){return /^#[0-9a-fA-F]{6}$/.test(String(c||''))?c:'var(--text2)';}
+export function renderCuentasInicio(){
   const el=document.getElementById('inicio-cuentas');
   if(!el)return;
   // El contenedor ES la cuadrícula (con Disponible/Prestado/CDTs ya dentro): se quitan los recuadros de la vez anterior y se
@@ -62,7 +72,7 @@ function renderCuentasInicio(){
   el.querySelectorAll('[data-color]').forEach(n=>{n.style.color=n.dataset.color;}); // color calculado: se asigna por DOM
 }
 
-function _refreshNucleo(){
+export function _refreshNucleo(){
   // Auto-sanación de tarjetas de crédito: agrega campos nuevos, infiere el
   // saldo inicial de tarjetas migradas y recalcula la deuda de cada una a
   // partir de sus movimientos (regla de consistencia). Es idempotente.
@@ -281,7 +291,10 @@ function _refreshNucleo(){
 // exigente ya esté satisfecha.
 
 // Guarda y repinta: lo que casi todo handler de escritura termina llamando.
-function saveAndRefresh() {
+export function saveAndRefresh() {
   save();
   refresh();
 }
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Refresh });

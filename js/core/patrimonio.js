@@ -6,8 +6,15 @@
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S, TIPO_PAGO_COMPLETO, hoy } from './estado.js';
+import { saldoCuentas } from './cuentas-fuentes.js';
+import { Fecha } from './fecha.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _saldoPlataComprometidaAjeno, calcSaldoInicialPendiente, calcDeudaAjenaDeTarjeta, calcDeudaTcPropiaDeTarjeta, calcDeudaTcPropia, calcPatrimonioDesglose, calcPatrimonioTotal, calcPatrimonioVisible, calcValorBien, calcBienes, calcPatrimonioConBienes, patrimonioFormulaTexto, calcLiquidez, _patrimonioDependenciasListas, _ajusteAlcanciaPorFecha, recalcularMontoBaseHistorial, _movimientosDeudaSinCuenta, _ajusteDeudasSinCuentaPorFecha, _actualizarCierresPatrimonio, snapshotPatrimonio, medirPatrimonioParaHistorial, diaCreacionMovimiento, quitarDeHistorial, purgarEfectoEnHistorial, purgarAperturaDelHistorial, _saldoEncargosEnCuenta });
+
 /* ---- SNAPSHOT PATRIMONIO ---- */
-function _saldoPlataComprometidaAjeno(){
+export function _saldoPlataComprometidaAjeno(){
   // Calcula cuánta plata comprometida ajena está físicamente en cuentas propias.
   // Son destinos de ingresos ya recibidos donde el dinero es de otra persona
   // (gastos de cuentas y cajitas pendientes de pagar, y plata para TC aún en cajita).
@@ -52,7 +59,7 @@ function _saldoPlataComprometidaAjeno(){
 // evita que el health score penalice una suposición que podría
 // estar mal (ej. saldo inicial que en realidad era 100% un favor a otra
 // persona).
-function calcSaldoInicialPendiente(tc){
+export function calcSaldoInicialPendiente(tc){
   if(!tc || !tc.saldoInicial || tc.saldoInicial.eliminado) return 0;
   const totalPagos=(tc.pagos||[]).filter(p=>!p.eliminado).reduce((a,p)=>a+(p.monto||0),0);
   return Math.max(0, (tc.saldoInicial.monto||0) - totalPagos);
@@ -72,7 +79,7 @@ function calcSaldoInicialPendiente(tc){
 // favor), y lo que sobra cancela lo propio. Con esto la "ajena" nunca puede
 // superar la deuda actual, y calcDeudaTcPropiaDeTarjeta ya no necesita un
 // floor artificial en 0 para "resolver" el desbalance.
-function calcDeudaAjenaDeTarjeta(tc){
+export function calcDeudaAjenaDeTarjeta(tc){
   if(!tc) return 0;
   let ajenaBruta = 0;
   (S.tcMovimientos||[]).forEach(m => {
@@ -87,7 +94,7 @@ function calcDeudaAjenaDeTarjeta(tc){
   const pagosParaAjena = Math.max(0, totalPagos - saldoInicialBruto);
   return Math.max(0, ajenaBruta - pagosParaAjena);
 }
-function calcDeudaTcPropiaDeTarjeta(tc){
+export function calcDeudaTcPropiaDeTarjeta(tc){
   if(!tc) return 0;
   return Math.max(0, (tc.deuda||0) - calcDeudaAjenaDeTarjeta(tc) - calcSaldoInicialPendiente(tc));
 }
@@ -95,7 +102,7 @@ function calcDeudaTcPropiaDeTarjeta(tc){
 // Calcula la deuda TC que realmente es mía, sumando la parte propia de
 // cada tarjeta — una sola fuente de verdad (antes tenía su propio cálculo
 // bruto separado que se podía desincronizar de calcDeudaTcPropiaDeTarjeta).
-function calcDeudaTcPropia() {
+export function calcDeudaTcPropia() {
   return (S.tarjetasCredito||[]).reduce((a,tc)=>a+calcDeudaTcPropiaDeTarjeta(tc),0);
 }
 
@@ -121,7 +128,7 @@ function calcDeudaTcPropia() {
      no suma: CDTs sin vencer (bloqueados), «Me deben» (sin fecha cierta no es plata disponible) ni Alcancía (oculta).
      sí suma: un CDT ya VENCIDO (cdtVencido, nu-calc.js): la plata se puede retirar aunque sigas sin «liberarla» en la cajita.
    Es a propósito asimétrica y prudente: lo que te deben no cuenta hasta que llega, lo que debes cuenta completo. */
-function calcPatrimonioDesglose(){
+export function calcPatrimonioDesglose(){
   const cajitas=(S.cajitas||[]).reduce((a,c)=>a+calcC(c).val,0);
   const cdts=(S.cajitas||[]).reduce((a,c)=>a+(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0),0);
   // NOTA: ya NO se resta plata de encargos guardada en las cuentas con saldo.
@@ -160,10 +167,10 @@ function calcPatrimonioDesglose(){
 }
 
 // Patrimonio neto real (con Alcancía). Nombre histórico: delega en calcPatrimonioDesglose().
-function calcPatrimonioTotal(){ return calcPatrimonioDesglose().total; }
+export function calcPatrimonioTotal(){ return calcPatrimonioDesglose().total; }
 
 // Patrimonio visible (sin Alcancía): el número del hero, de la Proyección, de Salud y de `valorVisible` en el historial.
-function calcPatrimonioVisible(){ return calcPatrimonioDesglose().visible; }
+export function calcPatrimonioVisible(){ return calcPatrimonioDesglose().visible; }
 
 /* ================================================================
    BIENES (una moto, un computador) — activos NO líquidos, aparte del patrimonio financiero
@@ -175,7 +182,7 @@ function calcPatrimonioVisible(){ return calcPatrimonioDesglose().visible; }
    El valor es una ESTIMACIÓN del usuario: la app no sabe lo que vale tu moto. `valor` es lo que vale en `fecha`; con
    `depreciacionAnual` (% al año, compuesto) baja desde esa fecha. Para revaluarlo, el usuario edita el valor y la fecha.
    ================================================================ */
-function calcValorBien(b, hoyStr){
+export function calcValorBien(b, hoyStr){
   const v=Number(b&&b.valor)||0;
   const dep=Number(b&&b.depreciacionAnual)||0;
   if(!(dep>0)||!(b&&b.fecha))return v;
@@ -184,15 +191,15 @@ function calcValorBien(b, hoyStr){
   return Math.round(v*Math.pow(1-Math.min(dep,100)/100,Math.max(0,anios)));
 }
 // → { items:[{id,nombre,valor,fecha,depreciacionAnual,origenGastoId,valorEstimado}], total }
-function calcBienes(hoyStr){
+export function calcBienes(hoyStr){
   const items=(S.bienes||[]).map(b=>({id:b.id,nombre:b.nombre,valor:b.valor||0,fecha:b.fecha,depreciacionAnual:b.depreciacionAnual||0,origenGastoId:b.origenGastoId,valorEstimado:calcValorBien(b,hoyStr)}));
   return {items,total:items.reduce((a,x)=>a+x.valorEstimado,0)};
 }
 // Patrimonio financiero + bienes (valor estimado). Solo para mostrarlo APARTE (Análisis): no reemplaza al patrimonio del hero.
-function calcPatrimonioConBienes(hoyStr){ return calcPatrimonioVisible()+calcBienes(hoyStr).total; }
+export function calcPatrimonioConBienes(hoyStr){ return calcPatrimonioVisible()+calcBienes(hoyStr).total; }
 
 // Texto del hero con lo que de verdad entra en la cuenta: solo menciona los pasivos que existen hoy.
-function patrimonioFormulaTexto(d){
+export function patrimonioFormulaTexto(d){
   d=d||calcPatrimonioDesglose();
   // Solo lo que la persona tiene hoy: siempre «Cuentas»; los CDTs y lo prestado, únicamente si existen.
   const suma=['Cuentas'];
@@ -207,7 +214,7 @@ function patrimonioFormulaTexto(d){
 
 // Liquidez: lo que se puede usar ya (ver el bloque de arriba). La deuda de tarjeta es solo la PROPIA: la parte de la
 // tarjeta que es de un préstamo o un encargo se cubre con lo que te deben, que tampoco entra aquí.
-function calcLiquidez(){
+export function calcLiquidez(){
   const d=calcPatrimonioDesglose();
   const libre=d.cajitas+d.cuentas;
   // CDT ya vencidos: dejaron de estar bloqueados. Antes seguían fuera de la liquidez hasta «liberarlos», y con 20 M vencidos y nada en
@@ -241,7 +248,7 @@ function calcLiquidez(){
 // siempre se puede tomar. Se conserva la función como guard mínimo por si el
 // orden de <script> se rompiera (un snapshot sin estas piezas grabaría un valor
 // artificialmente bajo en S.patrimonioHistorial).
-function _patrimonioDependenciasListas(){
+export function _patrimonioDependenciasListas(){
   return typeof calcC==='function'
       && typeof calcCDT==='function'
       && typeof Deudas!=='undefined';
@@ -253,7 +260,7 @@ function _patrimonioDependenciasListas(){
 // tomen como ritmo normal de ahorro. Sigue contando como ingreso/gasto del mes en Análisis.
 // - Sobrante: S.movimientos, tipo 'entrada', _esAlcancia (sin _esAlcanciaIngreso, que son depósitos).
 // - Faltante: S.gastosVar con _esAlcanciaAjuste.
-function _ajusteAlcanciaPorFecha(){
+export function _ajusteAlcanciaPorFecha(){
   const r={};
   (S.movimientos||[]).forEach(m=>{
     if(m&&m.tipo==='entrada'&&m._esAlcancia&&!m._esAlcanciaIngreso&&m.fecha){ r[m.fecha]=(r[m.fecha]||0)+(m.monto||0); }
@@ -267,7 +274,7 @@ function _ajusteAlcanciaPorFecha(){
 // Recalcula `montoBase` de cada punto del historial de patrimonio a partir de los datos actuales (aperturas, ajustes de
 // saldo inicial, destapes de alcancía y deudas sin pata de caja). load() la llama en cada carga, así las correcciones
 // valen también hacia atrás sin migración; scripts/conciliacion.js la usa para medir lo mismo que ve la app.
-function recalcularMontoBaseHistorial(){
+export function recalcularMontoBaseHistorial(){
   // Eliminar un saldo inicial ya no deja ningún registro aparte (ver purgarAperturaDelHistorial): la base sale solo de
   // lo que existe. `_ajustesBaseLog` era ese registro y, con el movimiento ya borrado, quedaba como un ajuste negativo
   // sin respaldo que inflaba la gráfica; se retira de los datos que aún lo traen.
@@ -305,7 +312,7 @@ function recalcularMontoBaseHistorial(){
 // Quedan fuera: los perdones (ya cuentan como gasto/ingreso), lo pagado con TC (`_viaTC`: la tarjeta es la otra
 // pata) y los movimientos con `fuentes`/`destinos` repartidos (la diferencia puede ser un margen ya registrado).
 // Si el movimiento trae `clase:'ingreso'` es plata nueva (p. ej. un regalo): cuenta como ingreso del mes y NO como base.
-function _movimientosDeudaSinCuenta(estado){
+export function _movimientosDeudaSinCuenta(estado){
   const estadoActual=estado||S, out=[];
   const veces=(lista,abre,reduce)=>(lista||[]).forEach(d=>(d.movimientos||[]).forEach(m=>{
     if(!m||!m.fecha||!(m.monto>0)||m._perdon||m._viaTC) return;
@@ -319,8 +326,8 @@ function _movimientosDeudaSinCuenta(estado){
   veces(estadoActual.misDeudas,YO_DEBO_ABRE,['pago','abono',TIPO_PAGO_COMPLETO]);
   return out;
 }
-const ME_DEBEN_ABRE=['prestamo'], YO_DEBO_ABRE=['recibido'];
-function _ajusteDeudasSinCuentaPorFecha(){
+export const ME_DEBEN_ABRE=['prestamo'], YO_DEBO_ABRE=['recibido'];
+export function _ajusteDeudasSinCuentaPorFecha(){
   const r={};
   _movimientosDeudaSinCuenta().forEach(x=>{ if(x.clase!=='ingreso') r[x.fecha]=(r[x.fecha]||0)+x.monto; });
   return r;
@@ -330,7 +337,7 @@ function _ajusteDeudasSinCuentaPorFecha(){
 // del año anterior, así que el Wrapped no podía medir el año completo. Cada mes guarda su último valor y la suma de los montos de apertura
 // (`base`, lo que no es crecimiento real). Se rellena desde la serie diaria (también los meses anteriores a esta versión) y se vuelve a
 // calcular en cada snapshot solo con lo que la serie aún conserva; un mes cuyos días ya se podaron conserva su cierre.
-function _actualizarCierresPatrimonio(){
+export function _actualizarCierresPatrimonio(){
   if(!S.patrimonioCierres||typeof S.patrimonioCierres!=='object')S.patrimonioCierres={};
   const porMes={};
   (S.patrimonioHistorial||[]).forEach(h=>{
@@ -350,7 +357,7 @@ function _actualizarCierresPatrimonio(){
   });
 }
 
-function snapshotPatrimonio(){
+export function snapshotPatrimonio(){
   if(!_patrimonioDependenciasListas()) return;
   const hoyStr=hoy();
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
@@ -411,7 +418,7 @@ function snapshotPatrimonio(){
 // generado sobre ese dinero entre medias entra en el cálculo como si hubiera estado desde el primer día.
 
 // Patrimonio total y el «visible» (sin Alcancía, el que guarda valorVisible), o null si no se puede medir.
-function medirPatrimonioParaHistorial(){
+export function medirPatrimonioParaHistorial(){
   if(!_patrimonioDependenciasListas()) return null;
   const d=calcPatrimonioDesglose();
   if(d.total==null||isNaN(d.total)) return null;
@@ -420,7 +427,7 @@ function medirPatrimonioParaHistorial(){
 
 // Día (YYYY-MM-DD) en que el movimiento entró al patrimonio: el de su creación (ts, o la hora que lleva su id de uid()),
 // no la fecha que el usuario le puso, que puede ser pasada. Sin ninguno de los dos, su fecha.
-function diaCreacionMovimiento(item){
+export function diaCreacionMovimiento(item){
   if(!item) return '';
   let ms=Number(item.ts);
   if(!Number.isFinite(ms)||ms<=0){
@@ -434,7 +441,7 @@ function diaCreacionMovimiento(item){
 }
 
 // Suma `delta` (y `deltaVisible`, por defecto igual) a las instantáneas con fecha >= dia.
-function quitarDeHistorial(dia, delta, deltaVisible){
+export function quitarDeHistorial(dia, delta, deltaVisible){
   if(!dia||!S.patrimonioHistorial) return;
   const dv=deltaVisible===undefined?delta:deltaVisible;
   const r=n=>Math.round(n*1e6)/1e6;
@@ -455,7 +462,7 @@ function quitarDeHistorial(dia, delta, deltaVisible){
 }
 
 // `antes` viene de medirPatrimonioParaHistorial() justo antes de revertir; `item` es lo que se eliminó.
-function purgarEfectoEnHistorial(antes, item){
+export function purgarEfectoEnHistorial(antes, item){
   const despues=medirPatrimonioParaHistorial();
   if(!antes||!despues) return;
   const d=despues.val-antes.val, dv=despues.vis-antes.vis;
@@ -465,7 +472,7 @@ function purgarEfectoEnHistorial(antes, item){
 
 // Un saldo inicial entró por partes: el monto original el día que se creó la cuenta y cada corrección (`_ajustes`, que
 // confirmarEditarApertura deja con su fecha) el día en que se hizo. `m.monto` ya incluye las correcciones.
-function purgarAperturaDelHistorial(m){
+export function purgarAperturaDelHistorial(m){
   if(!m) return;
   const ajustes=m._ajustes||[];
   const original=(m.monto||0)-ajustes.reduce((a,x)=>a+(x.monto||0),0);
@@ -477,7 +484,7 @@ function purgarAperturaDelHistorial(m){
 // "No es tuyo") está guardada físicamente en una cuenta cualquiera — cajita de Nu,
 // Nequi, Efectivo o una cuenta personalizada. cuentaKey usa el mismo formato que
 // getFuentesSinTC(): 'cajita:ID', 'cuenta:ID'.
-function _saldoEncargosEnCuenta(cuentaKey){
+export function _saldoEncargosEnCuenta(cuentaKey){
   if(!S||!S.encargos||!cuentaKey)return 0;
   let total=0;
   (S.encargos||[]).forEach(encargo=>{
@@ -500,3 +507,6 @@ function _saldoEncargosEnCuenta(cuentaKey){
 // la cajita (propio + encargos), y esos intereses son del dueño de la cajita.
 // Se mantiene esta función con nombre propio porque calcC() ya la usa así.
 // Nu: tasa EA (historial por tramos) y cálculo de CDTs migrados a js/modules/nu.js (el cálculo puro, a nu-calc.js).
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ ME_DEBEN_ABRE, YO_DEBO_ABRE });

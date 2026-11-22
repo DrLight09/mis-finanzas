@@ -6,19 +6,25 @@
 //   · Ui.pantalla(nombre, fn)     cuando showScreen(nombre) terminó (re-pintar la lista, resetear un detalle…).
 // Ver js/core/ui.js. Carga como <script> clásico, después del núcleo y antes de los módulos que llaman openSheet/showScreen.
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Ui } from './ui.js';
+import { toast } from './dialogos.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _sheetAccesible, openSheet, closeSheet, showScreen, _showScreenLoading, _hideScreenLoading });
+
 /* ── Sheet stack manager ────────────────────────────────────────────────────
    Permite apilar sheets: cuando se abre uno sobre otro, el anterior se
    "empuja" hacia atrás con escala+opacidad reducida. Al cerrar el superior,
    el anterior recupera el foco automáticamente.
    ─────────────────────────────────────────────────────────────────────── */
-const _sheetStack = [];
+export const _sheetStack = [];
 
 // Accesibilidad de las hojas (sheets). Se hace aquí, una vez por hoja, en vez de repetirlo en las ~150 hojas del HTML:
 //  · la hoja es un diálogo modal con nombre (el de su .sheet-title) para los lectores de pantalla;
 //  · al abrir, el foco entra a la hoja (si ningún campo lo tomó ya) y al cerrar vuelve a lo que lo tenía, para que quien navega con teclado
 //    no pierda el lugar. No se devuelve a un campo de texto: en el celular eso volvería a abrir el teclado.
-const _sheetOrigenFoco = {};
-function _sheetAccesible(overlay, id){
+export const _sheetOrigenFoco = {};
+export function _sheetAccesible(overlay, id){
   const hoja = overlay.querySelector('.sheet');
   if(!hoja) return null;
   if(!hoja.hasAttribute('role')){
@@ -34,7 +40,7 @@ function _sheetAccesible(overlay, id){
   return hoja;
 }
 
-function openSheet(id){
+export function openSheet(id){
   // Ganchos registrados por los módulos (Ui.hoja, fase 'antes'). Si alguno devuelve false, la hoja no se abre.
   if(Ui.antesDeAbrirHoja(id)===false) return;
   // Si ya estaba en la pila, sacarlo para reposicionarlo al tope
@@ -58,7 +64,7 @@ function openSheet(id){
   if(_ssHoja && !_ssHoja.contains(document.activeElement)) { try { _ssHoja.focus({ preventScroll: true }); } catch(_) {} }
 }
 
-function closeSheet(id){
+export function closeSheet(id){
   const _csEl = document.getElementById('sheet-' + id);
   if(_csEl){
     // Si el foco (y con él el teclado) está dentro del sheet que se cierra, soltarlo
@@ -82,7 +88,7 @@ function closeSheet(id){
   }
 }
 
-function showScreen(name){
+export function showScreen(name){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.getElementById('screen-'+name).classList.add('active');
@@ -124,7 +130,7 @@ function showScreen(name){
 // solo grupo en el piloto (Alcancía, ~14 KiB) la descarga es rápida en la
 // enorme mayoría de las conexiones; si el piloto se extiende a módulos más
 // pesados (Cuentas, Encargos) vale la pena revisar si esto sigue alcanzando.
-function _showScreenLoading(name) {
+export function _showScreenLoading(name) {
   const scr = document.getElementById('screen-' + name);
   if (!scr || scr.querySelector('.screen-loading')) return;
   const el = document.createElement('div');
@@ -133,8 +139,11 @@ function _showScreenLoading(name) {
   el.textContent = 'Cargando…';
   scr.appendChild(el);
 }
-function _hideScreenLoading(name) {
+export function _hideScreenLoading(name) {
   const scr = document.getElementById('screen-' + name);
   const el = scr && scr.querySelector('.screen-loading');
   if (el) el.remove();
 }
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _sheetStack, _sheetOrigenFoco });

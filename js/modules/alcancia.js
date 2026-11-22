@@ -16,6 +16,22 @@
    inline pasan a ser `data-action="alcancia:..."` despachados por
    Events, y el archivo deja de vivir dentro de index.html.
    ═══════════════════════════════════════════════════════════════ */
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { Fuente, Libro, Plata, ajustarSaldoCuenta, descontarFuente, esFuenteCuenta, fuenteLabel, getCuentaDeFuente, getSaldoFuente, opcionesCuenta, sumarFuente } from '../core/cuentas-fuentes.js';
+import { TIPO_ALCANCIA, escHtml, fmt, hoy, uid } from '../core/estado.js';
+import { Fecha } from '../core/fecha.js';
+import { Deudas, getDeudorSaldo } from '../core/calc-helpers.js';
+import { crearSplitWidget, splitAgregarRow, splitGetData, splitToggle } from '../core/split.js';
+import { fmtInput, parseMoney, registrarSonda, save, setMoneyInput } from '../core/persistencia.js';
+import { Events } from '../core/events.js';
+import { closeSheet, openSheet, showScreen } from '../core/navegacion.js';
+import { Ui } from '../core/ui.js';
+import { Personas } from '../core/personas-core.js';
+import { emptyInline } from '../core/utilidades-ui.js';
+import { avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, confirmarEliminar, nivelAntiguedadMovimiento, toast } from '../core/dialogos.js';
+import { refresh } from '../core/refresh.js';
+import { waitFor } from '../core/wait-for.js';
+
 (function(){
 'use strict';
 

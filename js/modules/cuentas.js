@@ -31,26 +31,46 @@
    se registran como 'core:…' en movimientos.js).
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { CuentaPantallas, Fuente, Libro, Plata, TIPOS_CUENTA, _cuentasArr, _libroPata, cajitasDeCuenta, colorCuenta, colorLegible, cuentasTodas, descontarFuente, esCuentaAhorro, esCuentaFija, esFuenteCuenta, fuenteDeCuenta, fuenteLabel, getCuenta, getCuentaDeFuente, getFuentesSinTC, getSaldoFuente, nombreCuenta, poblarFuente, sumarFuente } from '../core/cuentas-fuentes.js';
+import { html, raw } from '../core/html-tag.js';
+import { ICONO_VACIO_CUENTAS, emptyInline, emptyState, filaMovimiento } from '../core/utilidades-ui.js';
+import { Events } from '../core/events.js';
+import { S, crearMovimientoApertura, escHtml, fmt, fmtSaldoSelector, hoy, uid } from '../core/estado.js';
+import { marcarColorSeleccionado } from '../core/color-picker.js';
+import { parseMoney, save } from '../core/persistencia.js';
+import { refresh } from '../core/refresh.js';
+import { closeSheet, openSheet } from '../core/navegacion.js';
+import { avisarNoSePuede, confirmarEliminar, dialogo, toast } from '../core/dialogos.js';
+import { ahorroTotal, getCajitaNombre } from '../core/nu-calc.js';
+import { Personas } from '../core/personas-core.js';
+import { Deudas } from '../core/calc-helpers.js';
+import { FuentesFiltro } from '../core/fuentes-filtro.js';
+import { Reordenable } from '../core/reordenable.js';
+import { Ui } from '../core/ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _reiniciarPantallasCuenta, abrirCuenta, volverSelector, renderArchivadas, abrirArchivadas, renderDetalleCuenta, _tituloCuentaHtml, _pintarAdministrarCuenta, _accionAdministrarCuenta, _renderDetalleSimple, getIconoData, renderIconoCustom, selColorNuevaCuenta, selIconoNuevaCuenta, selTipoNuevaCuenta, _mostrarTipoNuevaCuenta, ocultarInvitacionCuentas, alternarAhorroNuevaCuenta, _renderTiposNuevaCuenta, renderIconGrid, abrirNuevaCuenta, abrirOnboarding, crearCuenta, _descriptorDeCuenta, _descriptorCuenta, _cuentasSelector, _cuentaSelectorHtml, _activasEnOrden, moverCuenta, ordenarCuentas, _aplicarOrdenArrastre, alternarOrdenCuentas, moverCuentaUI, _cuentaOrdenHtml, renderSelectorCuentas, hexToRgb, _encargosConSaldoEn, _fuentesDeCuenta, cuentaSePuedeEliminar, _motivoNoArchivar, archivarCuenta, reactivarCuenta, eliminarCuenta, editarCuenta, _resetSheetNuevaCuenta, _showCuentasPanel, _abrirCuentaPorDefecto, _marcarCuentaActivaEnSelector, getMovimientosCuenta, _getMovimientosFilter, renderMovimientosFiltros, _movimientosOnSearch, _movimientosOnTipo, _movimientosOnFecha, _movimientosLimpiarFechas, _movimientosMas, _movimientosRefresh, _movimientosAplicarFiltro, renderMovimientosCuenta, abrirAgregarDinero, _aperturaToggleUI, registrarEntradaConApertura, registrarSalida, toggleAgregarDineroApertura, confirmarAgregarDinero, openSheet_agregarDineroMenu, actualizarAgregarDineroMenuSaldo, actualizarAgregarDineroMenuPreview, confirmarAgregarDineroMenu, getAperturaMovimiento, renderBannerApertura, abrirRegistrarApertura, abrirEditarApertura, confirmarEditarApertura, abrirRestarDinero, confirmarRestarDinero, _setBtnEstado, _setBtnTransferir, _motivoSinRetiro, actualizarBotonRetirar, actualizarBotonesTransferir, abrirTransferir, _trPodarSelect, _trOrigenCambio, _trDestinoCambio, validarTransferencia, actualizarTransfPreview, confirmarTransferir });
+
 /* ───────────────────────────────────────────────────────────────
    SECCIÓN: Selector de cuentas (Nequi / Nu / Efectivo / personalizada)
    ─────────────────────────────────────────────────────────────── */
 /* ---- CUENTAS SELECTOR ---- */
 // Fuente de la cuenta abierta en el detalle: 'cuenta:ID' ('' si no hay ninguna). Una sola variable para todas las
 // cuentas; la leen el núcleo, navegacion.js, movimientos.js y encargos.js (siempre con guard typeof: este archivo es lazy).
-let cuentaActual = '';
+export let cuentaActual = '';
 
 // Abre el detalle de una cuenta. `fuente` es 'cuenta:ID'. Las cuentas de ahorro tienen su propia pantalla (cajitas, tasa, CDTs:
 // nu.js la registra en CuentaPantallas.ahorro); todas las demás comparten #cuentas-detalle-simple.
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
 // _origenLibroCta(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'cuentas', ref:<id del movimiento o de la transferencia> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _origenLibroCta = Libro.origen('cuentas');
+export const _origenLibroCta = Libro.origen('cuentas');
 
 // Al cambiar de cuenta o volver al selector, cada cuenta con pantalla propia (Nu) deja en blanco su estado interno.
-function _reiniciarPantallasCuenta() {
+export function _reiniciarPantallasCuenta() {
   Object.values(CuentaPantallas).forEach(p => { if (p.reiniciar) p.reiniciar(); });
 }
 
-function abrirCuenta(fuente) {
+export function abrirCuenta(fuente) {
   const d = _descriptorCuenta(fuente);
   if (!d) return; // cuenta ya borrada
   const pantalla = CuentaPantallas[d.tipo]; // clase de cuenta con pantalla propia (ahorro): su archivo la registra
@@ -63,8 +83,8 @@ function abrirCuenta(fuente) {
   document.getElementById('scrollArea').scrollTop = 0;
 }
 // Desde dónde se abrió el detalle: una cuenta archivada se abre desde la pantalla «Cuentas archivadas» y «volver» regresa allí.
-let _volverA = 'selector';
-function volverSelector() {
+export let _volverA = 'selector';
+export function volverSelector() {
   const aArchivadas = _volverA === 'archivadas' && _cuentasSelector({ archivadas: true }).length > 0;
   _volverA = 'selector';
   cuentaActual = '';
@@ -76,7 +96,7 @@ function volverSelector() {
 }
 
 // Pantalla aparte con las cuentas archivadas (el selector solo muestra un botón con su cantidad, para no ver siempre lo que ya no se usa).
-function renderArchivadas() {
+export function renderArchivadas() {
   const el = document.getElementById('archivadas-lista');
   if (!el) return;
   const arch = _cuentasSelector({ archivadas: true });
@@ -84,7 +104,7 @@ function renderArchivadas() {
     ? html`<div class="cuentas-selector-grid">${arch.map(d => _cuentaSelectorHtml({ ...d, archivada: true }))}</div>`
     : emptyState(ICONO_VACIO_CUENTAS,'Sin cuentas archivadas','Las cuentas que dejes de usar y archives aparecerán aquí.');
 }
-function abrirArchivadas() {
+export function abrirArchivadas() {
   _volverA = 'selector';
   cuentaActual = '';
   renderArchivadas();
@@ -92,7 +112,7 @@ function abrirArchivadas() {
   const sa = document.getElementById('scrollArea'); if (sa) sa.scrollTop = 0;
 }
 
-function renderDetalleCuenta(fuente) {
+export function renderDetalleCuenta(fuente) {
   // Una clase de cuenta con pantalla propia (ahorro) se pinta a sí misma; las demás comparten el detalle simple.
   const d = _descriptorCuenta(fuente);
   if (!d) return;
@@ -103,14 +123,14 @@ function renderDetalleCuenta(fuente) {
 }
 // Título del header de cualquier detalle de cuenta: ícono + nombre, siempre desde el descriptor.
 // Lo usan el detalle simple (Nequi/Efectivo/personalizadas) y el de Nu (nu.js).
-function _tituloCuentaHtml(d) {
+export function _tituloCuentaHtml(d) {
   return html`<div class="cuenta-flex-8">${d.iconoHtml(28)}<span>${d.nombre}</span></div>`;
 }
 
 
 // Administración de la cuenta abierta (editar / archivar o reactivar / eliminar): la MISMA para todo tipo de cuenta. `ids` son los
 // ids de los botones de cada detalle (el simple y el de ahorro tienen los suyos).
-function _pintarAdministrarCuenta(d, ids) {
+export function _pintarAdministrarCuenta(d, ids) {
   const contenedor = document.getElementById(ids.contenedor);
   if (contenedor) contenedor.style.display = 'flex';
   const btnArch = document.getElementById(ids.archivar);
@@ -127,7 +147,7 @@ function _pintarAdministrarCuenta(d, ids) {
     ? html`<div class="cuenta-archivada-banner"><span>Cuenta archivada: no aparece al elegir cuentas, pero su historial se conserva.</span><button type="button" class="btn btn-ghost" ${raw(Events.attr('cuentas:reactivarCuenta', d.id))}>Reactivar</button></div>`
     : '';
 }
-function _accionAdministrarCuenta(btnId) {
+export function _accionAdministrarCuenta(btnId) {
   const d = cuentaActual ? _descriptorCuenta(cuentaActual) : null;
   if (!d) return false;
   if (/^btn-editar-cuenta/.test(btnId)) editarCuenta(d.id);
@@ -139,7 +159,7 @@ function _accionAdministrarCuenta(btnId) {
 
 // Detalle de Nequi, Efectivo y cuentas personalizadas: misma pantalla, el descriptor de la
 // cuenta aporta nombre, color, etiqueta y saldo.
-function _renderDetalleSimple(fuente) {
+export function _renderDetalleSimple(fuente) {
   const d = _descriptorCuenta(fuente);
   if (!d) return;
   const contenedor = document.getElementById('cuentas-detalle-simple');
@@ -171,7 +191,7 @@ function _renderDetalleSimple(fuente) {
 // CATÁLOGO DE CUENTAS: cada entrada es a la vez el ícono y el PRESET de una cuenta (nombre, color y `tipo` sugeridos: ver TIPOS_CUENTA
 // en el núcleo). Elegir «Nu» crea una cuenta de ahorro; «Nequi» una billetera; «Efectivo» una de efectivo. Un banco nuevo se
 // agrega acá con una línea; «Otra» deja todo libre. Ninguna cuenta viene creada: el usuario parte de este catálogo.
-const ICONOS_CUENTA = [
+export const ICONOS_CUENTA = [
   { id:'nequi',    label:'Nequi',       color:'#ff4da6', tipo:'billetera', svg:`<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20.5 23.3" width="20" height="13"><path d="M19.7 0h-3.4c-.5 0-.8.4-.8.8v13.5c0 .3-.4.4-.5.1L7.1.4C7 .2 6.7 0 6.5 0H.8C.4 0 0 .4 0 .8v21.7c0 .5.4.8.8.8h3.4c.5 0 .8-.4.8-.8v-14c0-.3.4-.4.5-.1L13.6 23c.1.2.4.4.6.4h5.4c.5 0 .8-.4.8-.8V.8c0-.5-.4-.8-.8-.8Z" fill="currentColor"/></svg>` },
   { id:'nu',       label:'Nu',          color:'#c060f0', tipo:'ahorro', svg:`<svg aria-hidden="true" viewBox="0 -0.5 1366 750.5" xmlns="http://www.w3.org/2000/svg" width="22" height="12"><g fill="currentColor"><path d="M235.8 70.7C105.6 70.7 0 176.3 0 306.5v421.2h180.9V235.3c0-63.9 25.4-121.9 66.7-164.3-3.9-.2-7.8-.3-11.8-.3zM416.8-.5C350.5-.5 290.5 26.9 247.7 71c124.7 6.2 224 109.3 224 235.5v421.2h180.9V235.3C652.6 105.1 547-.5 416.8-.5zM1130.2 678.8c130.2 0 235.8-105.6 235.8-235.8V21.8h-180.9v492.4c0 63.9-25.4 121.9-66.7 164.3 3.9.2 7.8.3 11.8.3zM949.2 750c66.3 0 126.3-27.4 169.1-71.5-124.7-6.2-224-109.3-224-235.5V21.8H713.4v492.4C713.4 644.4 819 750 949.2 750z"/></g></svg>` },
   { id:'bancolombia', label:'Bancolombia', color:'#FDDA24', tipo:'banco', svg:`<svg aria-hidden="true" viewBox="0 0 1587 1591" width="20" height="20" xmlns="http://www.w3.org/2000/svg"><path d="M229.5 275.5c-9.9-38.6 14.1-82.1 52.9-94.3C580.8 94.7 878.6 38.6 1186.8.6c33.7-3.6 66.5 18.2 78.7 51.6 28.6 78.5 42.7 117.9 70.7 196.8 13.4 37.5-6.4 74.9-42.6 79.7-315.3 46.7-621 110.9-925.9 204.7-37.2 12.4-73.8-6.4-83.2-42.9-22.2-86.2-33.2-129.2-55-215m1353.4 448.6c11.9 36.9-4 72.5-35.1 77.6-490.6 78.8-968.9 210.6-1421.4 417.9-36.4 17.7-73.2-.5-80.9-39.9-17.8-92.4-26.6-138.3-44.1-230.5-6.8-36.1 12.8-77 45.2-92.4C492.2 659.7 962 540.5 1444.5 479c31.8-4.2 63.9 19.4 75.7 54.7 25.5 75.9 38 114 62.7 190.4m-4 516.1c10.7 34.9-3.5 68.9-32.4 75.9-301 73-595.5 164.3-887.1 268.7-41.7 15.8-86.9-4.8-97.9-45.1-23.5-85.8-35.2-128.6-58.3-214.2-9.7-35.9 11.1-74.9 48.1-88.5 291.7-100.2 586.2-178.9 887.4-244.3 33.3-7 68.2 17.6 80.2 55.4 24.4 76.7 36.3 115.1 60 192.1" fill="currentColor"/></svg>` },
@@ -184,11 +204,11 @@ const ICONOS_CUENTA = [
   { id:'otro',     label:'Otra',        color:'#888880', tipo:'banco', svg:`<svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="currentColor" stroke="none"/><path d="M12 15h5"/></svg>` },
 ];
 
-function getIconoData(iconoId){
+export function getIconoData(iconoId){
   return ICONOS_CUENTA.find(x=>x.id===iconoId)||ICONOS_CUENTA[ICONOS_CUENTA.length-1];
 }
 
-function renderIconoCustom(c, size=30){
+export function renderIconoCustom(c, size=30){
   const icono=getIconoData(c.icono);
   const hex=colorLegible(c.color||icono.color||'#60b0f0');
   const hexRgb=hexToRgb(hex);
@@ -202,15 +222,15 @@ function renderIconoCustom(c, size=30){
   return html`<div class="cuenta-ico-box cuenta-ico-box-ini" style="width:${size}px;height:${size}px;border-radius:${Math.round(size*.28)}px;background:rgba(${hexRgb},.18);font-size:${Math.round(size*.38)}px;color:${hex};">${iniciales}</div>`;
 }
 
-let _nuevaCuentaColorSel='#60b0f0';
-let _nuevaCuentaIconoSel='otro';
+export let _nuevaCuentaColorSel='#60b0f0';
+export let _nuevaCuentaIconoSel='otro';
 
-function selColorNuevaCuenta(color){
+export function selColorNuevaCuenta(color){
   _nuevaCuentaColorSel=color;
   marcarColorSeleccionado('.nc-color-opt', color); // js/core/color-picker.js
 }
 
-function selIconoNuevaCuenta(iconoId){
+export function selIconoNuevaCuenta(iconoId){
   // Elegir un banco/app del catálogo es elegir un PRESET: fija su color, su clase de cuenta y, si el nombre está vacío o todavía es el
   // sugerido por el preset anterior, su nombre. Todo se puede cambiar después antes de crear.
   _nuevaCuentaIconoSel=iconoId;
@@ -226,9 +246,9 @@ function selIconoNuevaCuenta(iconoId){
 }
 
 // Clase de cuenta que se está creando (ver TIPOS_CUENTA). La de ahorro no pide saldo inicial: su plata va en cajitas.
-let _nuevaCuentaTipoSel='banco';
-let _nuevaCuentaModoEdicion=false;
-function selTipoNuevaCuenta(tipo){
+export let _nuevaCuentaTipoSel='banco';
+export let _nuevaCuentaModoEdicion=false;
+export function selTipoNuevaCuenta(tipo){
   if(!TIPOS_CUENTA[tipo])tipo='banco';
   _nuevaCuentaTipoSel=tipo;
   document.querySelectorAll('.nc-tipo-opt').forEach(el=>{
@@ -247,23 +267,23 @@ function selTipoNuevaCuenta(tipo){
 
 // El interruptor de ahorro solo se muestra cuando el preset no define ya cómo se comporta la cuenta: con «Otra» o con un banco genérico
 // (p. ej. Bancolombia, que puede ser corriente o de ahorros). Nu (ahorro), Nequi (billetera) y Efectivo ya traen su tipo.
-function _mostrarTipoNuevaCuenta(){
+export function _mostrarTipoNuevaCuenta(){
   const tipos=document.getElementById('nc-tipos');
   const bloque=tipos&&tipos.closest?tipos.closest('.ig'):null;
   if(!bloque||!bloque.style)return;
   const ic=getIconoData(_nuevaCuentaIconoSel);
   bloque.style.display=(_nuevaCuentaModoEdicion||!(_nuevaCuentaIconoSel==='otro'||(ic&&ic.tipo==='banco')))?'none':'';
 }
-function ocultarInvitacionCuentas(){S.invitacionCuentasOculta=true;save();refresh();}
-function alternarAhorroNuevaCuenta(){selTipoNuevaCuenta(_nuevaCuentaTipoSel==='ahorro'?'banco':'ahorro');}
-function _renderTiposNuevaCuenta(){
+export function ocultarInvitacionCuentas(){S.invitacionCuentasOculta=true;save();refresh();}
+export function alternarAhorroNuevaCuenta(){selTipoNuevaCuenta(_nuevaCuentaTipoSel==='ahorro'?'banco':'ahorro');}
+export function _renderTiposNuevaCuenta(){
   const wrap=document.getElementById('nc-tipos');
   if(!wrap)return;
   // Un solo interruptor: la ÚNICA diferencia real entre cuentas es si guardan su plata en cajitas con tasa EA (ahorro). Banco y billetera
   // se comportan igual, así que no se le pide eso a la persona; el preset del catálogo ya trae el tipo correcto.
   wrap.innerHTML=html`<button type="button" class="nc-tipo-opt cuenta-tipo-opt" data-tipo="ahorro" aria-pressed="false" ${raw(Events.attr('cuentas:alternarAhorroNuevaCuenta'))}>Es una cuenta de ahorro (cajitas con tasa EA)</button>`;
 }
-function renderIconGrid(){
+export function renderIconGrid(){
   const grid=document.getElementById('nc-icon-grid');
   if(!grid)return;
   grid.innerHTML=html`${ICONOS_CUENTA.filter(ic=>_nuevaCuentaModoEdicion||ic.tipo!=='efectivo').map(ic=>{
@@ -276,7 +296,7 @@ function renderIconGrid(){
     </div>`;
   })}`;
 }
-function abrirNuevaCuenta(){
+export function abrirNuevaCuenta(){
   // El sheet también sirve para editar una cuenta (editarCuenta). Cerrarlo tocando el fondo no pasa por "Cancelar" (único que lo
   // reiniciaba), así que se reinicia acá: si no, "Nueva cuenta" podía quedar en modo edición y guardar renombrando la cuenta anterior.
   _resetSheetNuevaCuenta();
@@ -298,8 +318,8 @@ function abrirNuevaCuenta(){
 }
 
 // Primer uso: la app no trae cuentas. Desde Inicio (o donde falte una cuenta) se abre este mismo sheet.
-function abrirOnboarding(){ abrirNuevaCuenta(); }
-async function crearCuenta(){
+export function abrirOnboarding(){ abrirNuevaCuenta(); }
+export async function crearCuenta(){
   const nombre=(document.getElementById('nc_nombre').value||'').trim();
   if(!nombre){toast('Escribe un nombre para la cuenta','err');return;}
   if(cuentasTodas().some(c=>(c.nombre||'').trim().toLowerCase()===nombre.toLowerCase())){
@@ -334,7 +354,7 @@ async function crearCuenta(){
    Agregar una clase de cuenta nueva es agregarla a TIPOS_CUENTA (js/core/cuentas-fuentes.js) y, si necesita pantalla propia, registrarla en
    CuentaPantallas. El formato del saldo del selector vive en fmtSaldoSelector() (el núcleo) y el estilo en .cuenta-card /
    .cuenta-hero (styles.css). */
-function _descriptorDeCuenta(c){
+export function _descriptorDeCuenta(c){
   const hex=colorCuenta(c);
   const info=TIPOS_CUENTA[c.tipo]||TIPOS_CUENTA.banco;
   const ahorro=esCuentaAhorro(c);
@@ -345,18 +365,18 @@ function _descriptorDeCuenta(c){
 }
 
 // Descriptor de una cuenta por su fuente; null si no existe (p. ej. ya eliminada).
-function _descriptorCuenta(fuente){
+export function _descriptorCuenta(fuente){
   const c=getCuentaDeFuente(fuente);
   return c?_descriptorDeCuenta(c):null;
 }
 
 // Cuentas del selector: activas por defecto; con archivadas:true, las archivadas.
-function _cuentasSelector(opts){
+export function _cuentasSelector(opts){
   const arch=!!(opts&&opts.archivadas);
   return cuentasTodas().filter(c=>!!c.archivada===arch).map(_descriptorDeCuenta);
 }
 
-function _cuentaSelectorHtml(d){
+export function _cuentaSelectorHtml(d){
   const vars='--cuenta:'+d.color+';--cuenta-rgb:'+d.rgb;
   const flecha=(cls,pts)=>html`<svg aria-hidden="true" class="${cls}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><polyline points="${pts}"/></svg>`;
   if(d.estilo==='tarjeta'){
@@ -376,10 +396,10 @@ function _cuentaSelectorHtml(d){
    El orden es el del arreglo S.cuentas (nada está «fijado» arriba: Efectivo solo aparece primero porque se crea primero). Lo siguen el
    selector, las fichas de Inicio y las listas de cuentas. «Ordenar» deja mover cada cuenta una posición con ‹ ›; las archivadas
    conservan su sitio y se saltan. */
-let _ordenandoCuentas=false;
-function _activasEnOrden(){return cuentasTodas().filter(c=>!c.archivada);}
+export let _ordenandoCuentas=false;
+export function _activasEnOrden(){return cuentasTodas().filter(c=>!c.archivada);}
 // Mueve la cuenta `id` una posición (dir −1 = antes, +1 = después) entre las activas. Devuelve true si cambió algo.
-function moverCuenta(id,dir){
+export function moverCuenta(id,dir){
   const arr=cuentasTodas();
   const idx=arr.map((c,i)=>c.archivada?-1:i).filter(i=>i>=0);
   const p=idx.findIndex(i=>arr[i].id===id);
@@ -393,7 +413,7 @@ function moverCuenta(id,dir){
 // Aplica un orden completo de las cuentas ACTIVAS (ids en el orden nuevo): ocupan los mismos sitios del arreglo que tenían las activas, de
 // modo que las archivadas no se mueven. Devuelve true si algo cambió. Ids desconocidos o repetidos se ignoran; las activas que falten en
 // la lista conservan su orden relativo al final.
-function ordenarCuentas(ids){
+export function ordenarCuentas(ids){
   const arr=cuentasTodas();
   const activas=arr.filter(c=>!c.archivada);
   const vistos=new Set();
@@ -406,15 +426,15 @@ function ordenarCuentas(ids){
   save();
   return true;
 }
-function _aplicarOrdenArrastre(ids){
+export function _aplicarOrdenArrastre(ids){
   if(ordenarCuentas(ids))refresh();
 }
-function alternarOrdenCuentas(){
+export function alternarOrdenCuentas(){
   _ordenandoCuentas=!_ordenandoCuentas;
   renderSelectorCuentas();
 }
 // Mueve y repinta con animación (las fichas se deslizan a su sitio nuevo) dejando el foco en el mismo botón para seguir moviendo.
-function moverCuentaUI(id,dir){
+export function moverCuentaUI(id,dir){
   const lista=document.getElementById('selector-cuentas-lista');
   const antes=new Map();
   if(lista)lista.querySelectorAll('[data-cuenta-id]').forEach(n=>antes.set(n.dataset.cuentaId,n.getBoundingClientRect()));
@@ -435,7 +455,7 @@ function moverCuentaUI(id,dir){
   if(btn&&btn.focus)btn.focus({preventScroll:true});
 }
 
-function _cuentaOrdenHtml(d,pos,total){
+export function _cuentaOrdenHtml(d,pos,total){
   const vars='--cuenta:'+d.color+';--cuenta-rgb:'+d.rgb;
   return html`<div class="cuenta-card cuenta-card-ord" data-cuenta-id="${d.id}" style="${vars}">
     <button type="button" class="cuenta-ord-grip" aria-label="Reordenar ${d.nombre}: posición ${pos} de ${total}. Arrastra, o usa las flechas del teclado." title="Arrastra para mover">
@@ -450,7 +470,7 @@ function _cuentaOrdenHtml(d,pos,total){
   </div>`;
 }
 
-function renderSelectorCuentas(){
+export function renderSelectorCuentas(){
   const el=document.getElementById('selector-cuentas-lista');
   if(!el)return;
   const cuentas=_cuentasSelector();
@@ -471,7 +491,7 @@ function renderSelectorCuentas(){
   const tarjetas=cuentas;
   el.innerHTML=html`${tarjetas.length?html`<div class="cuentas-selector-grid">${tarjetas.map(d=>_cuentaSelectorHtml(d))}</div>`:''}${archivadas.length?html`<button type="button" class="btn-cuentas-archivadas" ${raw(Events.attr('cuentas:abrirArchivadas'))}>Cuentas archivadas (${archivadas.length})<svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg></button>`:''}`;
 }
-function hexToRgb(hex){
+export function hexToRgb(hex){
   if(!hex||hex.length<7)return'96,176,240';
   const r=parseInt(hex.slice(1,3),16);
   const g=parseInt(hex.slice(3,5),16);
@@ -489,7 +509,7 @@ function hexToRgb(hex){
 // sobre leerArchivoImport/validación del archivo).
 
 // Plata de encargos guardada en una fuente (o en varias): [{nombre, saldo}] de los encargos con saldo positivo ahí.
-function _encargosConSaldoEn(fuentes){
+export function _encargosConSaldoEn(fuentes){
   const claves=new Set(fuentes);
   const out=[];
   (S.encargos||[]).forEach(encargo=>{
@@ -507,13 +527,13 @@ function _encargosConSaldoEn(fuentes){
 }
 
 // Fuentes que guardan plata de esta cuenta: ella misma o, si es de ahorro, sus cajitas.
-function _fuentesDeCuenta(c){
+export function _fuentesDeCuenta(c){
   return esCuentaAhorro(c)?cajitasDeCuenta(c.id).map(x=>'cajita:'+x.id):[fuenteDeCuenta(c.id)];
 }
 
 // ¿Se puede BORRAR del todo? Solo una cuenta que nunca se usó (creada por error): sin entradas en el libro y, si es de ahorro, sin
 // cajitas. Cualquier otra se archiva: así el historial de gastos, préstamos y encargos que la mencionan nunca queda apuntando a nada.
-function cuentaSePuedeEliminar(id){
+export function cuentaSePuedeEliminar(id){
   const c=getCuenta(id);
   if(!c||esCuentaFija(c))return false;
   const fuentes=new Set(_fuentesDeCuenta(c));
@@ -533,7 +553,7 @@ function cuentaSePuedeEliminar(id){
 }
 
 // Por qué no se puede archivar (texto para el usuario), o '' si se puede.
-function _motivoNoArchivar(c){
+export function _motivoNoArchivar(c){
   if(esCuentaFija(c))return 'Efectivo es una cuenta permanente: no se archiva ni se elimina (sí puedes renombrarla).';
   if(cuentaSePuedeEliminar(c.id))return 'La cuenta "'+c.nombre+'" no tiene movimientos: no hace falta archivarla, puedes eliminarla.';
   const total=esCuentaAhorro(c)?ahorroTotal(c.id):(c.saldo||0);
@@ -545,7 +565,7 @@ function _motivoNoArchivar(c){
   return '';
 }
 
-async function archivarCuenta(id){
+export async function archivarCuenta(id){
   const c=getCuenta(id);
   if(!c||c.archivada)return;
   const motivo=_motivoNoArchivar(c);
@@ -559,7 +579,7 @@ async function archivarCuenta(id){
   if(window.logCambio)logCambio('Archivaste cuenta "'+c.nombre+'"','',0,'editar');
 }
 
-function reactivarCuenta(id){
+export function reactivarCuenta(id){
   const c=getCuenta(id);
   if(!c||!c.archivada)return;
   delete c.archivada;
@@ -569,7 +589,7 @@ function reactivarCuenta(id){
   toast(`Cuenta "${c.nombre}" reactivada`,'ok');
 }
 
-async function eliminarCuenta(id){
+export async function eliminarCuenta(id){
   const c=getCuenta(id);
   if(!c)return;
   if(!cuentaSePuedeEliminar(id)){
@@ -584,7 +604,7 @@ async function eliminarCuenta(id){
   toast(`Cuenta "${c.nombre}" eliminada`,'ok');
 }
 /* ---- Editar cuenta personalizada ---- */
-function editarCuenta(id){
+export function editarCuenta(id){
   const c=getCuenta(id);
   if(!c)return;
   // Rellenar el sheet reutilizando el mismo form de nueva cuenta
@@ -637,7 +657,7 @@ function editarCuenta(id){
   }
   openSheet('nueva-cuenta');
 }
-function _resetSheetNuevaCuenta(){
+export function _resetSheetNuevaCuenta(){
   _nuevaCuentaModoEdicion=false;
   const titulo=document.querySelector('#sheet-nueva-cuenta .sheet-title');
   if(titulo) titulo.textContent='Nueva cuenta';
@@ -656,7 +676,7 @@ function _resetSheetNuevaCuenta(){
 }
 /* ---- FIN CUENTAS PERSONALIZADAS ---- */
 
-function _showCuentasPanel(panelId){
+export function _showCuentasPanel(panelId){
   // Los paneles de cada cuenta con pantalla propia (Nu) los aporta su registro en CuentaPantallas.
   const panels=['cuentas-selector','cuentas-archivadas','cuentas-detalle-simple'].concat(...Object.values(CuentaPantallas).map(p=>p.paneles||[]));
   panels.forEach(id=>{
@@ -674,9 +694,9 @@ function _showCuentasPanel(panelId){
 // Al entrar a Cuentas (o al volver al «selector») se abre la primera cuenta activa. Esa apertura es automática: si la ventana se
 // achica a celular sin que la persona haya elegido otra cosa, se vuelve al selector en vez de dejar un detalle que no abrió.
 // Todo cambio de panel hecho por la persona (otra cuenta, una cajita, archivadas…) borra la marca (_showCuentasPanel).
-const _consultaPcCuentas = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
-let _seleccionAutomatica = false;
-function _abrirCuentaPorDefecto() {
+export const _consultaPcCuentas = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
+export let _seleccionAutomatica = false;
+export function _abrirCuentaPorDefecto() {
   if (!_consultaPcCuentas || !_consultaPcCuentas.matches) return;
   const pantalla = document.getElementById('screen-cuentas');
   if (!pantalla || pantalla.dataset.panelActivo !== 'cuentas-selector') return;
@@ -686,7 +706,7 @@ function _abrirCuentaPorDefecto() {
   if (pantalla.dataset.panelActivo !== 'cuentas-selector') _seleccionAutomatica = true; // abrirCuenta no abre si su pantalla propia aún no cargó
 }
 // Resalta en la lista la cuenta abierta (la lista se vuelve a pintar a menudo: también lo hace _cuentaSelectorHtml).
-function _marcarCuentaActivaEnSelector() {
+export function _marcarCuentaActivaEnSelector() {
   document.querySelectorAll('#selector-cuentas-lista [data-fuente]').forEach(el => el.classList.toggle('cuenta-card-activa', !!cuentaActual && el.dataset.fuente === cuentaActual));
 }
 if (_consultaPcCuentas) {
@@ -717,7 +737,7 @@ if (_consultaPcCuentas) {
 // tipo 'egreso' de las personalizadas: su borrado hacía lo mismo que el de 'salida_manual') y, sin descripción,
 // los textos son 'Ingreso' / 'Retiro'.
 // Cada fila lleva `_movimientoId` (id del registro de origen); ordenado por fecha desc y luego por id desc.
-function getMovimientosCuenta(tipo) {
+export function getMovimientosCuenta(tipo) {
   const cuentaDeLaPantalla = getCuentaDeFuente(tipo);
   const cajitasDeLaCuenta = esCuentaAhorro(cuentaDeLaPantalla) ? new Set(cajitasDeCuenta(cuentaDeLaPantalla.id).map(c => 'cajita:' + c.id)) : null;
   const coincide = cajitasDeLaCuenta ? (f => !!f && cajitasDeLaCuenta.has(f)) : (f => f === tipo);
@@ -903,15 +923,15 @@ function getMovimientosCuenta(tipo) {
    ─────────────────────────────────────────────────────────────── */
 // `limite`: cuántas filas se pintan (paginación «Mostrar más»). Con 5 años de datos una cuenta llega a ~7.000 filas y pintarlas todas
 // (≈ 17 nodos por fila → 120.000 nodos) tardaba ~300 ms en un PC; en un celular, varios segundos. Cualquier cambio de filtro vuelve a la primera página.
-const MOVIMIENTOS_PAGINA = 100;
-const _movimientosFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'', limite: MOVIMIENTOS_PAGINA } }
+export const MOVIMIENTOS_PAGINA = 100;
+export const _movimientosFilters = {}; // { cuentaKey: { q:'', tipo:'todos', desde:'', hasta:'', limite: MOVIMIENTOS_PAGINA } }
 
-function _getMovimientosFilter(cuentaKey) {
+export function _getMovimientosFilter(cuentaKey) {
   if (!_movimientosFilters[cuentaKey]) _movimientosFilters[cuentaKey] = { q: '', tipo: 'todos', desde: '', hasta: '', limite: MOVIMIENTOS_PAGINA };
   return _movimientosFilters[cuentaKey];
 }
 
-function renderMovimientosFiltros(elId, cuentaKey, movimientos, accentColor) {
+export function renderMovimientosFiltros(elId, cuentaKey, movimientos, accentColor) {
   const wrap = document.getElementById(elId);
   if (!wrap) return;
   const f = _getMovimientosFilter(cuentaKey);
@@ -965,35 +985,35 @@ function renderMovimientosFiltros(elId, cuentaKey, movimientos, accentColor) {
   }
 }
 
-function _movimientosOnSearch(input, cuentaKey) {
+export function _movimientosOnSearch(input, cuentaKey) {
   const f = _getMovimientosFilter(cuentaKey); f.q = input.value; f.limite = MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
-function _movimientosOnTipo(tipo, cuentaKey) {
+export function _movimientosOnTipo(tipo, cuentaKey) {
   const f = _getMovimientosFilter(cuentaKey); f.tipo = tipo; f.limite = MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
-function _movimientosOnFecha(campo, val, cuentaKey) {
+export function _movimientosOnFecha(campo, val, cuentaKey) {
   const f = _getMovimientosFilter(cuentaKey); f[campo] = val; f.limite = MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
-function _movimientosLimpiarFechas(cuentaKey) {
+export function _movimientosLimpiarFechas(cuentaKey) {
   const f = _getMovimientosFilter(cuentaKey);
   f.desde = ''; f.hasta = ''; f.limite = MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
-function _movimientosMas(cuentaKey) {
+export function _movimientosMas(cuentaKey) {
   const f = _getMovimientosFilter(cuentaKey);
   f.limite = (f.limite || MOVIMIENTOS_PAGINA) + MOVIMIENTOS_PAGINA;
   _movimientosRefresh(cuentaKey);
 }
 
-function _movimientosRefresh(cuentaKey) {
+export function _movimientosRefresh(cuentaKey) {
   // La clave de los filtros es la fuente de la cuenta ('cuenta:ID'): se vuelve a pintar su detalle.
   if (esFuenteCuenta(cuentaKey)) renderDetalleCuenta(cuentaKey);
 }
 
-function _movimientosAplicarFiltro(movimientos, cuentaKey) {
+export function _movimientosAplicarFiltro(movimientos, cuentaKey) {
   const f = _getMovimientosFilter(cuentaKey);
   let res = movimientos;
   if (f.tipo && f.tipo !== 'todos') res = res.filter(m => m.tipo === f.tipo);
@@ -1006,7 +1026,7 @@ function _movimientosAplicarFiltro(movimientos, cuentaKey) {
   return res;
 }
 
-function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filtrosElIdExplicito) {
+export function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filtrosElIdExplicito) {
   const el = document.getElementById(elId);
   if (!el) return;
 
@@ -1087,9 +1107,9 @@ function renderMovimientosCuenta(elId, movimientos, accentColor, cuentaKey, filt
    entró-salió plata en Nu / transferir entre cuentas
    ─────────────────────────────────────────────────────────────── */
 /* ---- AGREGAR DINERO ---- */
-let agregarDineroFuente='';
+export let agregarDineroFuente='';
 
-function abrirAgregarDinero(fuente,nombre){
+export function abrirAgregarDinero(fuente,nombre){
   save();
   agregarDineroFuente=fuente;
   const label=nombre||fuenteLabel(fuente);
@@ -1123,7 +1143,7 @@ function abrirAgregarDinero(fuente,nombre){
    Así, agregar un nuevo sheet con este patrón es solo: poner el wrap HTML
    (copiando el de agregarDineroAperturaWrap), darle ids propios, y llamar estas 2 funciones. */
 
-function _aperturaToggleUI(ids){
+export function _aperturaToggleUI(ids){
   // ids = {checkbox, lbl, inp, notaPlaceholder, descPlaceholder}
   const checkbox=document.getElementById(ids.checkbox);
   if(!checkbox)return;
@@ -1140,7 +1160,7 @@ function _aperturaToggleUI(ids){
   }
 }
 
-function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota,extraordinario){
+export function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota,extraordinario){
   // Aplica el monto a la fuente y registra el movimiento con el tipo correcto.
   // Devuelve la descripción final (por si el caller la necesita para toasts/log).
   // `nota` es opcional — ver auditoria-tecnica.md / guia-estilo-sheets.md
@@ -1161,7 +1181,7 @@ function registrarEntradaConApertura(fuente,monto,fecha,desc,esApertura,nota,ext
   return movimiento.desc;
 }
 
-function registrarSalida(fuente,monto,fecha,desc,nota){
+export function registrarSalida(fuente,monto,fecha,desc,nota){
   // Simétrico a registrarEntradaConApertura: descuenta de la fuente y registra
   // el movimiento de salida manual. Cualquier sheet que reste dinero de una
   // fuente (cuenta, cajita, etc.) debe usar esto en vez de reimplementar
@@ -1177,7 +1197,7 @@ function registrarSalida(fuente,monto,fecha,desc,nota){
   return movimiento.desc;
 }
 
-function toggleAgregarDineroApertura(){
+export function toggleAgregarDineroApertura(){
   _aperturaToggleUI({checkbox:'agregarDineroEsApertura',lbl:'agregarDineroDescLabel',inp:'agregarDineroDesc'});
 }
 
@@ -1191,7 +1211,7 @@ document.addEventListener('input',function(e){
   }
 });
 
-function confirmarAgregarDinero(){
+export function confirmarAgregarDinero(){
   const v=parseMoney(document.getElementById('agregarDineroMonto').value)||0;
   const desc=document.getElementById('agregarDineroDesc').value.trim();
   const fecha=document.getElementById('agregarDineroFecha').value||hoy();
@@ -1210,7 +1230,7 @@ function confirmarAgregarDinero(){
 toast(fmt(v) + (esApertura?' registrado como saldo inicial':' agregado — ' + descFinal), 'ok');
 }
 
-function openSheet_agregarDineroMenu(){
+export function openSheet_agregarDineroMenu(){
   poblarFuente('agregarDineroMenuDestino');
   // Replace options with all accounts including all cajitas (sin tarjetas de crédito — no son destino válido)
   const sel=document.getElementById('agregarDineroMenuDestino');
@@ -1226,14 +1246,14 @@ function openSheet_agregarDineroMenu(){
   document.getElementById('agregarDineroMenuPreview').textContent='';
 }
 
-function actualizarAgregarDineroMenuSaldo(){
+export function actualizarAgregarDineroMenuSaldo(){
   const fuente=document.getElementById('agregarDineroMenuDestino').value;
   const actual=getSaldoFuente(fuente);
   document.getElementById('agregarDineroMenuSaldo').textContent='Saldo actual: '+fmt(actual);
   actualizarAgregarDineroMenuPreview();
 }
 
-function actualizarAgregarDineroMenuPreview(){
+export function actualizarAgregarDineroMenuPreview(){
   const fuente=document.getElementById('agregarDineroMenuDestino').value;
   const v=parseMoney(document.getElementById('agregarDineroMenuMonto').value)||0;
   const actual=getSaldoFuente(fuente);
@@ -1242,7 +1262,7 @@ function actualizarAgregarDineroMenuPreview(){
   else{prev.textContent='';}
 }
 
-function confirmarAgregarDineroMenu(){
+export function confirmarAgregarDineroMenu(){
   const fuente=document.getElementById('agregarDineroMenuDestino').value;
   const v=parseMoney(document.getElementById('agregarDineroMenuMonto').value)||0;
   const desc=document.getElementById('agregarDineroMenuDesc').value.trim();
@@ -1266,16 +1286,16 @@ function confirmarAgregarDineroMenu(){
 
 
 /* ---- SALDO INICIAL / APERTURA ---- */
-let _eaFuente=''; // fuente de la cuenta cuyo saldo inicial se corrige
+export let _eaFuente=''; // fuente de la cuenta cuyo saldo inicial se corrige
 
-function getAperturaMovimiento(fuente){
+export function getAperturaMovimiento(fuente){
   // Busca el movimiento de apertura de S.movimientos de la cuenta
   // (registrado desde el banner "Registrar saldo inicial" o desde el toggle
   // del sheet "Agregar dinero").
   return (S.movimientos||[]).find(m=>m.fuente===fuente&&m.tipo==='apertura');
 }
 
-function renderBannerApertura(fuente,opts){
+export function renderBannerApertura(fuente,opts){
   // opts.elId: id explícito del contenedor. Necesario para 'cuenta:ID' — el
   // default 'banner-apertura-'+fuente le metería el ':' del id de la cuenta
   // al id del elemento, y de todas formas la pantalla de cuenta es una sola
@@ -1310,7 +1330,7 @@ function renderBannerApertura(fuente,opts){
   }
 }
 
-function abrirRegistrarApertura(fuente){
+export function abrirRegistrarApertura(fuente){
   // Abre el sheet normal de agregar dinero con el toggle de apertura ya marcado.
   const nombre=typeof fuenteLabel==='function'?fuenteLabel(fuente):fuente;
   abrirAgregarDinero(fuente, nombre);
@@ -1324,7 +1344,7 @@ function abrirRegistrarApertura(fuente){
   },120);
 }
 
-function abrirEditarApertura(fuente){
+export function abrirEditarApertura(fuente){
   _eaFuente=fuente;
   const movimiento=getAperturaMovimiento(fuente);
   const actual=movimiento?movimiento.monto:0;
@@ -1337,7 +1357,7 @@ function abrirEditarApertura(fuente){
   focusSheetField('eaMonto');
 }
 
-function confirmarEditarApertura(){
+export function confirmarEditarApertura(){
   const nuevo=parseMoney(document.getElementById('eaMonto').value)||0;
   if(!nuevo){toast('Ingresa el nuevo saldo inicial','err');return;}
   const movimiento=getAperturaMovimiento(_eaFuente);
@@ -1383,9 +1403,9 @@ document.addEventListener('input',function(e){
 });
 
 /* ---- RESTAR DINERO ---- */
-let rdFuente='';
+export let rdFuente='';
 
-function abrirRestarDinero(fuente,nombre){
+export function abrirRestarDinero(fuente,nombre){
   const motivo=_motivoSinRetiro(fuente);
   if(motivo){toast(motivo,'err',3500);return;}
   save();
@@ -1417,7 +1437,7 @@ document.addEventListener('input',function(e){
   }
 });
 
-function confirmarRestarDinero(){
+export function confirmarRestarDinero(){
   const v=parseMoney(document.getElementById('rdMonto').value)||0;
   const desc=document.getElementById('rdDesc').value.trim();
   const fecha=document.getElementById('rdFecha').value||hoy();
@@ -1446,7 +1466,7 @@ function confirmarRestarDinero(){
    la cuenta (renderDetalleCuenta / detalle de cuenta personalizada / de
    cajita), que es también lo que corre tras cada save()+refresh(). */
 // Estado de cualquier botón de acción: deshabilitado (y con el motivo como título) o activo.
-function _setBtnEstado(btn, ok, motivo) {
+export function _setBtnEstado(btn, ok, motivo) {
   if (!btn) return;
   btn.disabled = !ok;
   btn.setAttribute('aria-disabled', ok ? 'false' : 'true');
@@ -1455,25 +1475,25 @@ function _setBtnEstado(btn, ok, motivo) {
   btn.title = ok ? '' : (motivo || '');
 }
 
-function _setBtnTransferir(btn, ok) {
+export function _setBtnTransferir(btn, ok) {
   _setBtnEstado(btn, ok, 'Necesitas al menos ' + fmt(FuentesFiltro.MIN.GENERAL) + ' en esta cuenta para moverla');
 }
 
 /* ---- Retirar dinero: solo con saldo ----
    Nequi, Efectivo, cuentas personalizadas (y cajitas) no pueden retirar con saldo 0: el botón sale deshabilitado y
    abrirRestarDinero() lo vuelve a comprobar. confirmarRestarDinero() sigue validando el monto contra el saldo. */
-const _MIN_RETIRO = 0.01; // cualquier saldo positivo (se compara en centavos, como el resto de FuentesFiltro)
+export const _MIN_RETIRO = 0.01; // cualquier saldo positivo (se compara en centavos, como el resto de FuentesFiltro)
 
-function _motivoSinRetiro(fuente) {
+export function _motivoSinRetiro(fuente) {
   return FuentesFiltro.puedeMover(fuente, _MIN_RETIRO) ? '' : 'No hay saldo para retirar en esta cuenta.';
 }
 
-function actualizarBotonRetirar(btn, fuente) {
+export function actualizarBotonRetirar(btn, fuente) {
   const motivo = _motivoSinRetiro(fuente);
   _setBtnEstado(btn, !motivo, motivo);
 }
 
-function actualizarBotonesTransferir() {
+export function actualizarBotonesTransferir() {
   // Cuenta simple abierta (todas menos las de ahorro, que tienen pantalla propia): un solo botón compartido
   const fuenteSimple = cuentaActual;
   if (fuenteSimple && !esCuentaAhorro(getCuentaDeFuente(fuenteSimple))) _setBtnTransferir(document.getElementById('btn-transferir-cuenta-det'), FuentesFiltro.puedeMover(fuenteSimple));
@@ -1482,7 +1502,7 @@ function actualizarBotonesTransferir() {
 }
 
 /* ---- TRANSFERIR ENTRE CUENTAS ---- */
-function abrirTransferir(origenSugerido) {
+export function abrirTransferir(origenSugerido) {
   // Populate both selects (sin tarjetas de crédito — no son cuentas líquidas)
   const fuentes = getFuentesSinTC();
   // El origen solo lista cuentas con saldo >= $1,00 (FuentesFiltro, js/core/fuentes-filtro.js):
@@ -1522,7 +1542,7 @@ function abrirTransferir(origenSugerido) {
 // excluir, cae a la primera opción que quede. Mismo patrón que
 // splitActualizarOpciones() (js/core/split.js) para las filas de Dividir,
 // aplicado acá a los dos selects fijos de Transferir en vez de N filas.
-function _trPodarSelect(selId, fuentes, valExcluir) {
+export function _trPodarSelect(selId, fuentes, valExcluir) {
   const sel = document.getElementById(selId);
   if (!sel) return;
   const valorActual = sel.value;
@@ -1533,13 +1553,13 @@ function _trPodarSelect(selId, fuentes, valExcluir) {
 }
 
 // Al cambiar el origen, el destino no puede seguir ofreciendo esa cuenta.
-function _trOrigenCambio() {
+export function _trOrigenCambio() {
   _trPodarSelect('tr_destino', getFuentesSinTC(), document.getElementById('tr_origen').value);
   actualizarTransfPreview();
 }
 // Al cambiar el destino, el origen (ya limitado a cuentas con saldo, ver
 // FuentesFiltro.PRESET.SALIDA) tampoco puede seguir ofreciendo esa cuenta.
-function _trDestinoCambio() {
+export function _trDestinoCambio() {
   const fuentesOrigen = FuentesFiltro.filtrar(getFuentesSinTC(), FuentesFiltro.PRESET.SALIDA);
   _trPodarSelect('tr_origen', fuentesOrigen, document.getElementById('tr_destino').value);
   actualizarTransfPreview();
@@ -1564,8 +1584,8 @@ function _trDestinoCambio() {
 //     vista previa puede validar la forma antes de leer saldos).
 // El orden de las comprobaciones es parte del contrato: lo que se avisa primero
 // es lo que el usuario debe corregir primero.
-const TR_MIN_EFECTIVO = 50;
-function validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOrigen } = {}) {
+export const TR_MIN_EFECTIVO = 50;
+export function validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOrigen } = {}) {
   const fallo = (codigo, mensaje) => ({ ok: false, codigo, mensaje });
   if (!origen || !destino) return fallo('falta_cuenta', 'Elige origen y destino');
   if (origen === destino) return fallo('mismo', 'El origen y destino deben ser diferentes');
@@ -1595,7 +1615,7 @@ function validarTransferencia({ origen, destino, monto, saldoOrigen, etiquetaOri
   return { ok: true };
 }
 
-function actualizarTransfPreview() {
+export function actualizarTransfPreview() {
   const origen = document.getElementById('tr_origen').value;
   const destino = document.getElementById('tr_destino').value;
   const monto = parseMoney(document.getElementById('tr_monto').value) || 0;
@@ -1629,7 +1649,7 @@ function actualizarTransfPreview() {
   }
 }
 
-function confirmarTransferir() {
+export function confirmarTransferir() {
   const origen = document.getElementById('tr_origen').value;
   const destino = document.getElementById('tr_destino').value;
   const monto = parseMoney(document.getElementById('tr_monto').value) || 0;
@@ -1703,32 +1723,32 @@ Events.registerAll('cuentas', {
    ─────────────────────────────────────────────────────────────── */
 
 // --- Crear / editar cuentas ---
-const btnAgregarCuentaCustom = document.getElementById('btn-agregar-cuenta-custom');
+export const btnAgregarCuentaCustom = document.getElementById('btn-agregar-cuenta-custom');
 if (btnAgregarCuentaCustom) btnAgregarCuentaCustom.addEventListener('click', abrirNuevaCuenta);
 // Si el usuario escribe su propio nombre, el preset deja de sobrescribirlo al cambiar de banco.
-const _nuevaCuentaNombreInput = document.getElementById('nc_nombre');
+export const _nuevaCuentaNombreInput = document.getElementById('nc_nombre');
 if (_nuevaCuentaNombreInput) _nuevaCuentaNombreInput.addEventListener('input', () => { _nuevaCuentaNombreInput.dataset.auto = '0'; });
-const btnCrearCuentaCustom = document.getElementById('btn-crear-cuenta-custom');
+export const btnCrearCuentaCustom = document.getElementById('btn-crear-cuenta-custom');
 if (btnCrearCuentaCustom) btnCrearCuentaCustom.onclick = crearCuenta;
 
 // --- Agregar / restar dinero, editar apertura, transferir (confirmación) ---
-const btnAgregarDineroConf = document.getElementById('btn-confirmar-agregar-dinero');
+export const btnAgregarDineroConf = document.getElementById('btn-confirmar-agregar-dinero');
 if (btnAgregarDineroConf) btnAgregarDineroConf.addEventListener('click', confirmarAgregarDinero);
-const btnAgregarDineroMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
+export const btnAgregarDineroMenuConf = document.getElementById('btn-confirmar-agregar-dinero-menu');
 if (btnAgregarDineroMenuConf) btnAgregarDineroMenuConf.addEventListener('click', confirmarAgregarDineroMenu);
-const btnRdConf = document.getElementById('btn-confirmar-restar');
+export const btnRdConf = document.getElementById('btn-confirmar-restar');
 if (btnRdConf) btnRdConf.addEventListener('click', confirmarRestarDinero);
-const btnEaConf = document.getElementById('btn-confirmar-editar-apertura');
+export const btnEaConf = document.getElementById('btn-confirmar-editar-apertura');
 if (btnEaConf) btnEaConf.addEventListener('click', confirmarEditarApertura);
-const btnTrConf = document.getElementById('btn-confirmar-transferir');
+export const btnTrConf = document.getElementById('btn-confirmar-transferir');
 if (btnTrConf) btnTrConf.addEventListener('click', confirmarTransferir);
-const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
+export const btnSwitchTr = document.getElementById('btn-switch-to-transferir');
 if (btnSwitchTr) btnSwitchTr.addEventListener('click', () => { closeSheet('agregar-dinero-menu'); abrirTransferir(); });
 
 // --- Selector de cuentas (tarjetas de screen-cuentas + botón "volver") ---
 // Un solo listener delegado para todas las cuentas del selector (el contenido se
 // reescribe en cada renderSelectorCuentas(), el contenedor no).
-const _selectorCuentasLista = document.getElementById('selector-cuentas-lista');
+export const _selectorCuentasLista = document.getElementById('selector-cuentas-lista');
 if (_selectorCuentasLista) _selectorCuentasLista.addEventListener('click', e => {
   const item = e.target.closest('[data-fuente]');
   if (item) abrirCuenta(item.dataset.fuente);
@@ -1742,12 +1762,12 @@ if (_selectorCuentasLista && typeof Reordenable !== 'undefined' && typeof Reorde
   onOrden: _aplicarOrdenArrastre,
   onTeclado: moverCuentaUI,
 });
-const _archivadasLista = document.getElementById('archivadas-lista');
+export const _archivadasLista = document.getElementById('archivadas-lista');
 if (_archivadasLista) _archivadasLista.addEventListener('click', e => {
   const item = e.target.closest('[data-fuente]');
   if (item) abrirCuenta(item.dataset.fuente);
 });
-const _volverDeArchivadas = document.getElementById('btn-volver-archivadas');
+export const _volverDeArchivadas = document.getElementById('btn-volver-archivadas');
 if (_volverDeArchivadas) _volverDeArchivadas.addEventListener('click', () => { _volverA = 'selector'; volverSelector(); });
 document.querySelectorAll('.btn-volver-selector').forEach(btn => {
   btn.addEventListener('click', volverSelector);
@@ -1755,8 +1775,8 @@ document.querySelectorAll('.btn-volver-selector').forEach(btn => {
 
 // --- Cuenta simple (Nequi / Efectivo / personalizada): un listener delegado para todos los
 // botones del detalle; la cuenta es la que esté abierta (cuentaActual) ---
-const _detalleSimple = document.getElementById('cuentas-detalle-simple');
-const _detalleAhorro = document.getElementById('cuentas-detalle-nu');
+export const _detalleSimple = document.getElementById('cuentas-detalle-simple');
+export const _detalleAhorro = document.getElementById('cuentas-detalle-nu');
 if (_detalleAhorro) _detalleAhorro.addEventListener('click', e => {
   const btn = e.target.closest('button[id]');
   if (btn) _accionAdministrarCuenta(btn.id);
@@ -1773,17 +1793,17 @@ if (_detalleSimple) _detalleSimple.addEventListener('click', e => {
 });
 
 // --- Agregar dinero (menú combinado, selector de cuenta destino) ---
-const agregarDineroMenuDestino = document.getElementById('agregarDineroMenuDestino');
+export const agregarDineroMenuDestino = document.getElementById('agregarDineroMenuDestino');
 if (agregarDineroMenuDestino) agregarDineroMenuDestino.addEventListener('change', actualizarAgregarDineroMenuSaldo);
-const agregarDineroMenuMonto = document.getElementById('agregarDineroMenuMonto');
+export const agregarDineroMenuMonto = document.getElementById('agregarDineroMenuMonto');
 if (agregarDineroMenuMonto) agregarDineroMenuMonto.addEventListener('input', actualizarAgregarDineroMenuPreview);
 
 // --- Transferir: selects y monto (preview en vivo + exclusión mutua origen/destino) ---
-const trOrigen = document.getElementById('tr_origen');
+export const trOrigen = document.getElementById('tr_origen');
 if (trOrigen) trOrigen.addEventListener('change', _trOrigenCambio);
-const trDestino = document.getElementById('tr_destino');
+export const trDestino = document.getElementById('tr_destino');
 if (trDestino) trDestino.addEventListener('change', _trDestinoCambio);
-const trMonto = document.getElementById('tr_monto');
+export const trMonto = document.getElementById('tr_monto');
 if (trMonto) trMonto.addEventListener('input', actualizarTransfPreview);
 
 /* ---- WIRING de controles que no son data-action simples ----
@@ -1822,3 +1842,7 @@ Ui.pantalla('cuentas', () => {
   if (typeof renderSelectorCuentas === 'function') renderSelectorCuentas();
   if (typeof _abrirCuentaPorDefecto === 'function') _abrirCuentaPorDefecto();
 }, { key: 'cuentas-render' });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _origenLibroCta, ICONOS_CUENTA, _consultaPcCuentas, MOVIMIENTOS_PAGINA, _movimientosFilters, _MIN_RETIRO, TR_MIN_EFECTIVO, btnAgregarCuentaCustom, _nuevaCuentaNombreInput, btnCrearCuentaCustom, btnAgregarDineroConf, btnAgregarDineroMenuConf, btnRdConf, btnEaConf, btnTrConf, btnSwitchTr, _selectorCuentasLista, _archivadasLista, _volverDeArchivadas, _detalleSimple, _detalleAhorro, agregarDineroMenuDestino, agregarDineroMenuMonto, trOrigen, trDestino, trMonto });
+exponerVariables({ cuentaActual: [() => cuentaActual, v => { cuentaActual = v; }] });

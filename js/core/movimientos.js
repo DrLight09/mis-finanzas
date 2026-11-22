@@ -71,15 +71,34 @@
    — todos ya cargados antes de este archivo en index.html.
    ========================================================================== */
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Libro, Plata, descontarFuente, esFuenteCuenta, fuenteBadgeClass, fuenteDeCuenta, fuenteHtml, fuenteLabel, getSaldoFuente, poblarFuente, sumarFuente } from './cuentas-fuentes.js';
+import { S, escHtml, fmt, mesKey } from './estado.js';
+import { Deudas } from './calc-helpers.js';
+import { Personas } from './personas-core.js';
+import { entradasIngresoReal } from './ingresos.js';
+import { raw } from './html-tag.js';
+import { Events } from './events.js';
+import { closeSheet, openSheet } from './navegacion.js';
+import { avisarNoSePuede, confirmarEliminar, dialogo, toast } from './dialogos.js';
+import { Loader } from './lazy-loader.js';
+import { Reversibles } from './utilidades-ui.js';
+import { medirPatrimonioParaHistorial, purgarAperturaDelHistorial, purgarEfectoEnHistorial } from './patrimonio.js';
+import { save } from './persistencia.js';
+import { refresh } from './refresh.js';
+import { Ui } from './ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ abrirDetalleMovimiento, _cuentaOperacionesPosteriores, _movimientoExiste, eliminarMovimiento, _eliminarMovimientoImpl, _rerenderCuentaActiva, toggleExtraordinario });
+
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
 // _origenLibroMovimiento(ref, rev): al borrar un movimiento desde el feed o el historial de una cuenta, todo lo que se devuelve queda en el libro como reversión de ese movimiento (ref = id borrado). Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _origenLibroMovimiento = Libro.origen('movimientos');
+export const _origenLibroMovimiento = Libro.origen('movimientos');
 
 /* ---- DETALLE DE MOVIMIENTO (sheet) ---- */
 // Abre un sheet con el detalle de un movimiento y el saldo de la cuenta
 // (de la fuente involucrada) antes y después de ese movimiento.
 // `el` es el .gasto-item / .card clickeado, con data-mov-* attributes.
-function abrirDetalleMovimiento(el){
+export function abrirDetalleMovimiento(el){
   if(!el) return;
   const movimientoId = el.dataset.movimientoId;
   const movimientoTipo = el.dataset.movimientoTipo || '';
@@ -460,7 +479,7 @@ function abrirDetalleMovimiento(el){
 // docs/proteccion-antiguedad-movimientos.md §4). No cuenta movimientos de
 // módulos con su propio historial (Mesada, Spotify, etc.) ni de Alcancía/
 // CDT/Plata Comprometida, que llevan su propio registro aparte.
-function _cuentaOperacionesPosteriores(cuenta, fecha, excludeId) {
+export function _cuentaOperacionesPosteriores(cuenta, fecha, excludeId) {
   if (!cuenta || !fecha) return 0;
   let count = 0;
   (S.movimientos || []).forEach(m => {
@@ -475,7 +494,7 @@ function _cuentaOperacionesPosteriores(cuenta, fecha, excludeId) {
 }
 
 // ¿Existe todavía el registro que borra eliminarMovimiento()? true / false, o null si el tipo no se puede comprobar aquí.
-function _movimientoExiste(tipo, id) {
+export function _movimientoExiste(tipo, id) {
   switch (tipo) {
     case 'transferencia': return (S.transferencias || []).some(t => t.id === id);
     case 'salida_manual': case 'ingreso': case 'apertura': case 'entrada':
@@ -487,8 +506,8 @@ function _movimientoExiste(tipo, id) {
 
 // Movimientos que se están eliminando ahora mismo: un segundo disparo del mismo clic (o un doble clic) no abre otro diálogo ni
 // revierte otra vez. Se libera siempre al terminar, cancele o no el usuario.
-const _movimientoEliminando = new Set();
-async function eliminarMovimiento(btn) {
+export const _movimientoEliminando = new Set();
+export async function eliminarMovimiento(btn) {
   const item = btn && btn.closest && btn.closest('.gasto-item');
   const id = item && item.dataset && item.dataset.movimientoId;
   if (!id) return;
@@ -498,7 +517,7 @@ async function eliminarMovimiento(btn) {
   finally { _movimientoEliminando.delete(id); }
 }
 
-async function _eliminarMovimientoImpl(btn) {
+export async function _eliminarMovimientoImpl(btn) {
   const item = btn.closest('.gasto-item');
   if (!item) return;
   const movimientoId = item.dataset.movimientoId;
@@ -669,7 +688,7 @@ async function _eliminarMovimientoImpl(btn) {
 // Vuelve a pintar la cuenta que está abierta (saldo + movimientos) después de
 // borrar un movimiento. Compartido por el final de eliminarMovimiento() y por la
 // delegación en eliminarMovimientoDeudor() (préstamo/abono).
-function _rerenderCuentaActiva() {
+export function _rerenderCuentaActiva() {
   // cuentaActual vive en cuentas.js (grupo lazy): guard typeof, igual que refresh() en
   // el núcleo. Vale para cualquier cuenta abierta ('cuenta:ID').
   if (typeof renderDetalleCuenta !== 'function') return;
@@ -680,7 +699,7 @@ function _rerenderCuentaActiva() {
 Events.on('core:abrirDetalleMovimiento', abrirDetalleMovimiento);
 Events.on('core:eliminarMovimiento', eliminarMovimiento);
 // Marca o quita «extraordinario» en una entrada ya registrada (S.movimientos). No mueve plata: solo cambia cómo cuenta en el ingreso típico.
-function toggleExtraordinario(id) {
+export function toggleExtraordinario(id) {
   const m = (S.movimientos || []).find(x => x.id === id);
   if (!m || m.tipo !== 'entrada') return;
   if (m.extraordinario) delete m.extraordinario; else m.extraordinario = true;
@@ -727,3 +746,6 @@ Reversibles.registrar({ tipo: 'gasto', proteccion(g) {
 } });
 
 Ui.hoja('registrar-movimiento', () => { poblarFuente('mov_fuente'); poblarFuente('mov_destino'); }, { key: 'movimientos-fuentes' });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _origenLibroMovimiento, _movimientoEliminando });

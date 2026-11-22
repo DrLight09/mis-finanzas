@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 // tests/prestamos.test.js — Préstamos: Me deben / Yo debo, saldos de deudas, deudas sin cuenta y margen de "El valor era diferente".
 // Un archivo por sección de la app. Cada bloque `describe` es lo que antes era un archivo suelto.
 // Corre con:  node --test tests/prestamos.test.js   (o todo: npm test)
@@ -833,7 +834,7 @@ describe('prestamos-formularios-comunes', () => {
   });
 
   test('nombres de botones: «Nuevo préstamo» (Me deben) y «Nueva deuda» (Yo debo); ya no existe «Me prestó más»', () => {
-    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'));
     assert.ok(/Nuevo préstamo\s*<\/span>/.test(html));
     assert.ok(/Nueva deuda\s*<\/span>/.test(html));
     assert.ok(html.includes('id="mdMovSheetTitle">Nueva deuda</div>'));

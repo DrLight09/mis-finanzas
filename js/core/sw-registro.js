@@ -8,6 +8,10 @@
 // mezclan dos versiones en una pestaña ni se pierde lo que se esté escribiendo sin querer.
 //
 // Rutas relativas a la página (sw.js, scope './'): no depende del nombre del repositorio ni del dominio.
+import { exponerGlobales, exponerVariables } from './puente.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ mostrarAvisoNuevaVersion });
+
 if ('serviceWorker' in navigator) {
   let _actualizando = false;
   const _teniaControlador = !!navigator.serviceWorker.controller;
@@ -43,7 +47,7 @@ if ('serviceWorker' in navigator) {
   };
 }
 
-function mostrarAvisoNuevaVersion(worker) {
+export function mostrarAvisoNuevaVersion(worker) {
   if (document.getElementById('sw-aviso')) return; // ya está visible: varios cambios seguidos no apilan avisos
   const barra = document.createElement('div');
   barra.id = 'sw-aviso';

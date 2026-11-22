@@ -23,6 +23,15 @@
    showScreen, cambiarTabPrestamos, window.fmt, window.calcC,
    window.getDeudorSaldo, window.getMiDeudaSaldo.
    ================================================================ */
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { showScreen } from './navegacion.js';
+import { abrirPerfilPersona } from '../modules/personas.js';
+import { colorCuenta, cuentasTodas, esCuentaAhorro, esFuenteCuenta, fuenteDeCuenta, fuenteTexto } from './cuentas-fuentes.js';
+import { ahorroTotal } from './nu-calc.js';
+import { Personas } from './personas-core.js';
+import { Deudas, encargoSaldo } from './calc-helpers.js';
+import { escHtml } from './estado.js';
+
 (function(){
   /* ====================================================
      2. BÚSQUEDA GLOBAL

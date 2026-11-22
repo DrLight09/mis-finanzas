@@ -63,6 +63,23 @@
    no se activa hasta que el módulo ya cargó — no hay carrera ahí.
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { Events } from '../core/events.js';
+import { closeSheet, openSheet, showScreen } from '../core/navegacion.js';
+import { Fuente, Libro, Plata, descontarFuente, fuenteTexto, opcionesCuenta, sumarFuente } from '../core/cuentas-fuentes.js';
+import { S, fmt, hoy, uid } from '../core/estado.js';
+import { Deudas, getDeudorSaldo } from '../core/calc-helpers.js';
+import { Personas } from '../core/personas-core.js';
+import { SIN_DATO, emptyInline, emptyState } from '../core/utilidades-ui.js';
+import { html, raw } from '../core/html-tag.js';
+import { Fecha } from '../core/fecha.js';
+import { fmtInput, parseMoney, save } from '../core/persistencia.js';
+import { avisarMovimientoBloqueado, confirmarEliminar, nivelAntiguedadMovimiento, toast } from '../core/dialogos.js';
+import { renderAttencion } from './inicio.js';
+import { Refresh, refresh } from '../core/refresh.js';
+import { _cuentaOperacionesPosteriores } from '../core/movimientos.js';
+import { Ui } from '../core/ui.js';
+
 (function(){
 'use strict';
 

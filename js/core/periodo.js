@@ -48,7 +48,13 @@
    Sin DOM. Carga de entrada (<script defer>) justo después del núcleo; solo
    usa mesKey/_esGastoVarNoReal/entradasIngresoReal (el núcleo) al ser llamado.
    ═══════════════════════════════════════════════════════════════ */
-const Periodo = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S, mesKey } from './estado.js';
+import { Fecha } from './fecha.js';
+import { _esGastoVarNoReal, entradasIngresoReal, ingresosRealesDelMes, mesActual } from './ingresos.js';
+import { claseEfectivaMovimiento } from './persistencia.js';
+
+export const Periodo = (() => {
   const _estadoActual = e => e || S;
 
   // Cuota de Mesada de un año: la del año, o la del año más cercano hacia atrás,
@@ -568,3 +574,5 @@ const Periodo = (() => {
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.
 if (typeof window !== 'undefined') window.Periodo = Periodo;
 
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Periodo });

@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
 
 // M5 — Fecha: una sola forma de trabajar con fechas. Las pruebas de huso horario corren en procesos hijos con TZ distinta
@@ -106,7 +107,7 @@ describe('fecha-husos-horarios', () => {
   const guion = `
     const fs=require('fs'),vm=require('vm');
     const ctx={console,Date,Math,String,Number,isNaN};ctx.window=ctx;vm.createContext(ctx);
-    vm.runInContext(fs.readFileSync(${JSON.stringify(FECHA_JS)},'utf8').replace(/^export\\s+/gm,'')+';this.F=Fecha;',ctx);
+    vm.runInContext(require(${JSON.stringify(path.join(raiz, 'scripts', 'modulos-a-clasico.js'))}).PRELUDIO+require(${JSON.stringify(path.join(raiz, 'scripts', 'modulos-a-clasico.js'))}).aClasico(fs.readFileSync(${JSON.stringify(FECHA_JS)},'utf8'))+';this.F=Fecha;',ctx);
     const F=ctx.F;
     // Una Date a medianoche LOCAL: toISOString() la corre un día en husos al este de UTC (el bug de Spotify)
     const medianoche=new Date(2026,9,31,0,0);
@@ -191,14 +192,13 @@ describe('fecha-sin-formulas-sueltas', () => {
   test('nextMonthFixed ya no existe (era spotifySumarDias(f, 30·k) con otro nombre)', () => {
     assert.ok(!fs.readFileSync(path.join(raiz, 'js/modules/spotify.js'), 'utf8').includes('function nextMonthFixed'));
   });
-  test('fecha.js es un módulo ES (M6 fase 1): se carga con type=module, exporta Fecha y sigue en window.Fecha para los clásicos', () => {
-    const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
-    assert.ok(/<script type="module" src="js\/core\/fecha\.js"><\/script>/.test(html));
+  test('fecha.js es un módulo ES: exporta Fecha, sigue en window.Fecha y js/main.js lo importa', () => {
     const src = fs.readFileSync(FECHA_JS, 'utf8');
     assert.ok(/^export const Fecha\b/m.test(src) && /window\.Fecha = Fecha/.test(src));
+    assert.ok(/^import '\.\/core\/fecha\.js';/m.test(fs.readFileSync(path.join(raiz, 'js', 'main.js'), 'utf8')));
   });
   test('index.html carga fecha.js ANTES del núcleo (estado.js)', () => {
-    const html = fs.readFileSync(path.join(raiz, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(raiz, 'index.html'), 'utf8'));
     const a = html.indexOf('js/core/fecha.js'), b = html.indexOf('js/core/estado.js" defer');
     assert.ok(a > 0 && b > 0 && a < b);
   });

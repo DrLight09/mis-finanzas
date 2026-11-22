@@ -1,4 +1,6 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
+const { aClasico, PRELUDIO } = require('../scripts/modulos-a-clasico');
 const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
 
 // M10 — Formulario: validación inline única (campo con borde rojo + mensaje bajo el campo), llamada desde cada módulo.
@@ -17,7 +19,7 @@ function entorno(htmlBody) {
   const ctx = { document: dom.window.document, setTimeout, clearTimeout, console, parseMoney: v => parseFloat(String(v).replace(',', '.')) || 0 };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext(leer('js/core/formulario.js') + '\nthis.Formulario = Formulario;', ctx);
+  vm.runInContext(PRELUDIO + aClasico(leer('js/core/formulario.js')) + '\nthis.Formulario = Formulario;', ctx);
   return { F: ctx.Formulario, doc: dom.window.document, dom };
 }
 const CAMPOS = '<div class="ig"><input id="a" value=""></div><div class="ig"><input id="b" value="0"></div><div class="ig"><input id="c" value="ok"></div>';
@@ -88,6 +90,6 @@ describe('guardas M10', () => {
     }
   });
   test('index.html carga formulario.js', () => {
-    assert.ok(/js\/core\/formulario\.js/.test(leer('index.html')));
+    assert.ok(/js\/core\/formulario\.js/.test(htmlClasico(leer('index.html'))));
   });
 });

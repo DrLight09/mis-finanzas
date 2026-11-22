@@ -2,7 +2,14 @@
 //
 // applyModulos(): refleja S.modulos (Spotify, Mesada, «saldo inicial») en la interfaz: pestaña de Spotify, interruptores de
 // Configuración, banners de saldo inicial. Al final emite Ui 'modulos' para que otros módulos (menú Más…) se ajusten.
-function applyModulos(){
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S } from './estado.js';
+import { showScreen } from './navegacion.js';
+import { Ui } from './ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ applyModulos });
+
+export function applyModulos(){
   const mod=S.modulos||{mesada:true,spotify:true,corregirSaldo:true};
   // Spotify nav tab
   const navSpotify=document.getElementById('nav-spotify');

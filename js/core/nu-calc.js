@@ -22,25 +22,34 @@
    sigue en cuentas.js: acá solo se calcula.
    ═══════════════════════════════════════════════════════════════ */
 
-function _saldoEncargosEnCajita(cajitaId){
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { _saldoEncargosEnCuenta } from './patrimonio.js';
+import { Fuente, cajitasDeCuenta, cuentasAhorro, getCuenta } from './cuentas-fuentes.js';
+import { S, hoy } from './estado.js';
+import { Fecha } from './fecha.js';
+import { _fechaSafe } from './dialogos.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _saldoEncargosEnCajita, ahorroTasaConfigurada, getTasaCuenta, tasaSanear, tasaDesdeTexto, tasaATexto, ahorroAplicarTasaEscrita, _historialTasas, _tasaVigenteEnFecha, _diasEntreFechas, _segmentosTasa, _saldoEncargosEnCajitaEnFecha, _fechasCambioEncargoEnCajita, calcC, rendimientoCajitaPorMes, _tasaCDT, cdtVencido, calcCDT, _rendimientoCDTaDias, calcRendimientoCDTMes, calcRendimientoCDTsMes, ahorroTotal, ahorroTotalGeneral, ahorroValorEsperadoCajita, cajitaGeneraIntereses, cajitaChequeable, cajitasChequeables, getCajitaNombre });
+
+export function _saldoEncargosEnCajita(cajitaId){
   if(!cajitaId)return 0;
   return _saldoEncargosEnCuenta('cajita:'+cajitaId);
 }
 
 // ── Tasa EA de una cuenta de ahorro: cuenta.tasaEA (null = sin configurar), con su historial por tramos en cuenta.historialTasas ──
 // Todas las cajitas de la cuenta usan esa tasa. Los CDT son la excepción: cada uno guarda su propia tasa (cdt.tasa).
-function ahorroTasaConfigurada(cuentaId){
+export function ahorroTasaConfigurada(cuentaId){
   const c=getCuenta(cuentaId);
   return !!c&&Number.isFinite(c.tasaEA)&&c.tasaEA>0;
 }
 // Tasa EA vigente de la cuenta (0 si todavía no se configuró: sin tasa no hay intereses, en vez de inventar una).
-function getTasaCuenta(cuentaId){
+export function getTasaCuenta(cuentaId){
   return ahorroTasaConfigurada(cuentaId)?getCuenta(cuentaId).tasaEA:0;
 }
 
 // Campo de tasa EA: solo dígitos y UN separador decimal (coma o punto), hasta 3 enteros y 4 decimales. Quita lo demás
 // mientras se escribe (letras, signos, un segundo separador); no valida el valor, eso es tasaDesdeTexto().
-function tasaSanear(texto){
+export function tasaSanear(texto){
   const solo=String(texto==null?'':texto).replace(/[^0-9.,]/g,'');
   const i=solo.search(/[.,]/);
   if(i<0)return solo.slice(0,3);
@@ -49,7 +58,7 @@ function tasaSanear(texto){
 
 // Lo que el usuario escribió en el campo de tasa → número, o null si no sirve: vacío, con letras o símbolos ("9abc"), con
 // separador sin decimales ("9,"), 0 o más de 100 (una tasa EA no llega ahí: es un error de digitación).
-function tasaDesdeTexto(texto){
+export function tasaDesdeTexto(texto){
   const t=String(texto==null?'':texto).trim();
   if(!/^\d{1,3}([.,]\d{1,4})?$/.test(t))return null;
   const v=parseFloat(t.replace(',','.'));
@@ -57,7 +66,7 @@ function tasaDesdeTexto(texto){
 }
 
 // Una tasa lista para mostrarse en un campo (coma decimal, como se escribe en Colombia).
-function tasaATexto(n){
+export function tasaATexto(n){
   return String(n).replace('.',',');
 }
 
@@ -66,7 +75,7 @@ function tasaATexto(n){
 //   'igual'    → ya es la tasa vigente hoy: no hay cambio que anotar (no se crean entradas repetidas en el historial)
 //   'cambio'   → cuenta.tasaEA = tasa nueva y queda anotada en cuenta.historialTasas desde hoy (registrarTasaHistorial)
 // No toca saldos, movimientos, rendimientos ya sellados ni CDTs (cada CDT guarda su tasa); el que llama guarda y refresca.
-function ahorroAplicarTasaEscrita(cuentaId,texto){
+export function ahorroAplicarTasaEscrita(cuentaId,texto){
   const c=getCuenta(cuentaId);
   const v=tasaDesdeTexto(texto);
   if(!c||v==null)return'invalida';
@@ -77,14 +86,14 @@ function ahorroAplicarTasaEscrita(cuentaId,texto){
 }
 
 // Historial de tasas de una cuenta, ordenado por fecha ([] si no tiene).
-function _historialTasas(cuentaId){
+export function _historialTasas(cuentaId){
   const c=getCuenta(cuentaId);
   return ((c&&c.historialTasas)||[]).slice().sort((a,b)=>a.fecha<b.fecha?-1:(a.fecha>b.fecha?1:0));
 }
 
 // Devuelve la tasa EA vigente de la cuenta en una fecha dada, según su historial.
 // Si la fecha es anterior a cualquier cambio registrado, usa la primera tasa del historial (o la base si no hay).
-function _tasaVigenteEnFecha(fechaStr,cuentaId){
+export function _tasaVigenteEnFecha(fechaStr,cuentaId){
   const historial=_historialTasas(cuentaId);
   let tasa=getTasaCuenta(cuentaId);
   let encontrada=null;
@@ -96,13 +105,13 @@ function _tasaVigenteEnFecha(fechaStr,cuentaId){
   return tasa;
 }
 
-function _diasEntreFechas(a,b){
+export function _diasEntreFechas(a,b){
   // Ver _fechaSafe() en js/core/dialogos.js: new Date(str+'T00:00:00') da Invalid
   // Date si a/b no tienen mes/día de 2 dígitos, propagando NaN en silencio
   // a calcC() y todo lo que dependa de esta función.
   return Fecha.diasEntre(a,b);
 }
-function _segmentosTasa(cuentaId,desdeStr,hastaStr){
+export function _segmentosTasa(cuentaId,desdeStr,hastaStr){
   const cambios=_historialTasas(cuentaId)
     .filter(h=>h.fecha>desdeStr&&h.fecha<hastaStr);
   const puntos=[desdeStr,...cambios.map(h=>h.fecha),hastaStr];
@@ -120,7 +129,7 @@ function _segmentosTasa(cuentaId,desdeStr,hastaStr){
 // _saldoEncargosEnCajita()/_saldoEncargosEnCuenta(), que siempre da el saldo de HOY.
 // Se usa en calcC() para no darle intereses retroactivos a plata de un encargo que
 // todavía no había entrado en tramos anteriores del periodo (ver changelog/cuentas.md).
-function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
+export function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
   const cuentaKey='cajita:'+cajitaId;
   let total=0;
   (S.encargos||[]).forEach(encargo=>{
@@ -143,7 +152,7 @@ function _saldoEncargosEnCajitaEnFecha(cajitaId,fechaStr){
 
 // Fechas (dentro de (desde, hasta]) en que algún movimiento de encargo tocó esta cajita —
 // puntos donde el saldo de encargos "vigente" cambia, para partir el cálculo de interés ahí.
-function _fechasCambioEncargoEnCajita(cajitaId,desdeStr,hastaStr){
+export function _fechasCambioEncargoEnCajita(cajitaId,desdeStr,hastaStr){
   const cuentaKey='cajita:'+cajitaId;
   const fechas=new Set();
   (S.encargos||[]).forEach(encargo=>{
@@ -154,7 +163,7 @@ function _fechasCambioEncargoEnCajita(cajitaId,desdeStr,hastaStr){
   return fechas;
 }
 
-function calcC(c,hastaStr){
+export function calcC(c,hastaStr){
   // hastaStr (opcional, 'YYYY-MM-DD'): calcula el valor a esa fecha en vez de hoy; se usa para repartir el
   // interés por mes (ver rendimientoCajitaPorMes). Sin argumento todo funciona exactamente como siempre.
   // Interés diario compuesto sobre el saldo total físico en la cajita (propio + lo que haya
@@ -208,7 +217,7 @@ function calcC(c,hastaStr){
 // Reparte por mes el interés que una cajita lleva acumulado SIN materializar (desde c.fecha hasta hoy):
 // { 'YYYY-MM': pesos }. Es la misma cuenta de calcC() cortada en cada fin de mes (la suma de los meses da
 // calcC(c).ganado). Sirve para saber cuánto rindió la cajita EN un mes, no solo en total.
-function rendimientoCajitaPorMes(c){
+export function rendimientoCajitaPorMes(c){
   const out={};
   if(!c||!c.fecha)return out;
   const hasta=hoy();
@@ -239,8 +248,8 @@ function rendimientoCajitaPorMes(c){
 // Tasa E.A. (en %) de un CDT. Un CDT sin tasa (dato editado a mano, importado o corrupto) hacía NaN en calcCDT → NaN en el
 // patrimonio → snapshotPatrimonio dejaba de grabar el historial en silencio (mismo fallo que el de la fecha sin cero, otra puerta).
 // Sin tasa válida se toma 0 %: el capital se conserva, no hay rendimiento, y queda UNA advertencia por CDT en consola.
-const _cdtSinTasaAvisados=new Set();
-function _tasaCDT(cdt){
+export const _cdtSinTasaAvisados=new Set();
+export function _tasaCDT(cdt){
   const t=Number(cdt&&cdt.tasa);
   if(cdt&&cdt.tasa!==''&&cdt.tasa!=null&&isFinite(t)&&t>=0)return t;
   const id=cdt&&cdt.id;
@@ -250,14 +259,14 @@ function _tasaCDT(cdt){
 
 // ¿El CDT ya venció? Misma regla que el aviso «venció — ¡libera tu plata!» de Inicio: desde el día SIGUIENTE al de vencimiento.
 // Un CDT vencido ya no está bloqueado (la plata se puede retirar), aunque siga registrado en la cajita hasta que lo liberes.
-function cdtVencido(cdt,ahora){
+export function cdtVencido(cdt,ahora){
   if(!cdt||!cdt.vence)return false;
   const v=_fechaSafe(cdt.vence);
   if(isNaN(v))return false;
   return Math.ceil((v-(ahora||new Date()))/Fecha.MS_DIA)<0;
 }
 
-function calcCDT(cdt){
+export function calcCDT(cdt){
   if(!cdt||!cdt.monto||!cdt.inicio)return{val:cdt?cdt.monto:0,ganado:0,ganado_bruto:0,retencion:0,dias:0};
   const rate=_tasaCDT(cdt)/100;
   const tasaRetencion=(cdt.tasaRetencion!=null?cdt.tasaRetencion:4)/100; // retención en fuente (default 4%)
@@ -278,7 +287,7 @@ function calcCDT(cdt){
 }
 
 // Rendimiento neto acumulado de un CDT después de N días (misma fórmula que calcCDT, sin fechas).
-function _rendimientoCDTaDias(cdt,dias){
+export function _rendimientoCDTaDias(cdt,dias){
   if(dias<=0)return 0;
   const rate=_tasaCDT(cdt)/100;
   const tasaRetencion=(cdt.tasaRetencion!=null?cdt.tasaRetencion:4)/100;
@@ -292,7 +301,7 @@ function _rendimientoCDTaDias(cdt,dias){
 // No es flujo de caja disponible (el dinero sigue bloqueado en el CDT), pero sí es
 // "rendimiento generado" ese mes — patrimonio que aumenta día a día aunque el efectivo
 // disponible no cambie (Opción 2: patrimonio real, sin movimiento visible).
-function calcRendimientoCDTMes(cdt,mesK){
+export function calcRendimientoCDTMes(cdt,mesK){
   if(!cdt||!cdt.monto||!cdt.inicio||!mesK)return 0;
   const inicio=_fechaSafe(cdt.inicio);
   const [anioM,mesM]=mesK.split('-').map(Number);
@@ -314,7 +323,7 @@ function calcRendimientoCDTMes(cdt,mesK){
 // Suma el rendimiento de TODOS los CDTs (en todas las cajitas) generado durante un mes dado.
 // Esto es "rendimiento acumulado/patrimonio" — el patrimonio total aumenta, pero NO es
 // efectivo disponible (el dinero sigue bloqueado hasta que el CDT venza/se cobre).
-function calcRendimientoCDTsMes(mesK){
+export function calcRendimientoCDTsMes(mesK){
   let total=0;
   (S.cajitas||[]).forEach(c=>{
     (c.cdts||[]).forEach(cdt=>{
@@ -325,7 +334,7 @@ function calcRendimientoCDTsMes(mesK){
 }
 
 // Total de una cuenta de ahorro: sus cajitas con intereses + sus CDTs.
-function ahorroTotal(cuentaId){
+export function ahorroTotal(cuentaId){
   return cajitasDeCuenta(cuentaId).reduce((a,c)=>{
     const k=calcC(c);
     const cdtVal=(c.cdts||[]).reduce((b,cdt)=>b+calcCDT(cdt).val,0);
@@ -333,14 +342,14 @@ function ahorroTotal(cuentaId){
   },0);
 }
 // Total de todas las cuentas de ahorro (activas o archivadas).
-function ahorroTotalGeneral(){
+export function ahorroTotalGeneral(){
   return cuentasAhorro().reduce((a,c)=>a+ahorroTotal(c.id),0);
 }
 
 // Lo que el banco debería mostrar HOY en esta cajita: el saldo propio con sus intereses MÁS el dinero de encargos guardado ahí
 // (físicamente está en la cajita y Nu no distingue de quién es; los intereses de esa plata son del dueño de la cajita,
 // ver calcC). `propio` es lo que la app cuenta como suyo; `total` es lo que se compara con la app del banco.
-function ahorroValorEsperadoCajita(c){
+export function ahorroValorEsperadoCajita(c){
   const k=calcC(c);
   const encargos=k.saldoEncargos||0;
   return{propio:k.val,encargos,total:k.val+encargos,ganado:k.ganado};
@@ -350,27 +359,29 @@ function ahorroValorEsperadoCajita(c){
 // intereses, el mismo de calcC() (c.fecha: último sellado de intereses o primer depósito), no con la
 // fecha de creación: una cajita creada hace una semana pero vacía hasta hoy no ha generado nada.
 // calcC().dias solo cuenta días con plata adentro (propia o de encargos) y con tasa configurada.
-function cajitaGeneraIntereses(c){
+export function cajitaGeneraIntereses(c){
   return !!c&&ahorroTasaConfigurada(c.cuentaId)&&calcC(c).dias>=1;
 }
 
 // ¿Entra esta cajita en el Chequeo rápido? Cuando ya generó intereses un día completo, o cuando ya se chequeó HOY: el
 // chequeo reinicia el reloj de la cajita (c.fecha = hoy), y sin esta segunda condición no se podría corregir una lectura
 // mal anotada hasta el día siguiente. Sale de S.chequeosAhorro, que ya existe: no hay estado nuevo.
-function cajitaChequeable(c){
+export function cajitaChequeable(c){
   if(!c||!ahorroTasaConfigurada(c.cuentaId))return false;
   return cajitaGeneraIntereses(c)||(S.chequeosAhorro||[]).some(x=>x.cajitaId===c.id&&x.fecha===hoy());
 }
 
 // Las cajitas del Chequeo rápido, cada una evaluada por su cuenta (una nueva no afecta a las demás).
-function cajitasChequeables(cuentaId){
+export function cajitasChequeables(cuentaId){
   return (S.cajitas||[]).filter(c => (!cuentaId || c.cuentaId === cuentaId) && cajitaChequeable(c));
 }
 
-function getCajitaNombre(fuente) {
+export function getCajitaNombre(fuente) {
   if (!fuente || !Fuente.esCajita(fuente)) return null;
   const id = fuente.split(':')[1];
   const c = (S.cajitas || []).find(x => x.id === id);
   return c ? (c.nombre || 'Cajita') : null;
 }
 
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _cdtSinTasaAvisados });

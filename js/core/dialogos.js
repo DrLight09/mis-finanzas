@@ -5,11 +5,17 @@
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
-function _toastTexto(v){
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Fecha } from './fecha.js';
+import { S, fmt, hoy } from './estado.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _toastTexto, toast, _closeDialog, dialogo, confirmarEliminar, avisarNoSePuede, _fechaSafe, nivelAntiguedadMovimiento, confirmarBorrarMovimientoViejo, avisarMovimientoBloqueado });
+
+export function _toastTexto(v){
   if(v==null)return'';
   return String(v).replace(/&(amp|lt|gt|quot|#39);/g,(_,e)=>({amp:'&',lt:'<',gt:'>',quot:'"','#39':"'"}[e]));
 }
-function toast(msg, tipo='ok', dur=2800){
+export function toast(msg, tipo='ok', dur=2800){
   // El color indica el RESULTADO de la acción, no el tipo de dato: 'ok' (se hizo: registrar, guardar, eliminar; verde) · 'salida'
   //       (se hizo y es plata que sale: verde con flecha, para distinguirla de una entrada sin confundirla con un error) · 'warn' (se
   //       hizo, pero con algo que revisar; ámbar) · 'err' (no se hizo o falló; rojo con X) · 'info' (neutro, nada cambió; azul).
@@ -37,7 +43,7 @@ function toast(msg, tipo='ok', dur=2800){
 
 /* ---- DIALOG (reemplaza confirm) ---- */
 window._dialogResolve=null;
-function _closeDialog(val){
+export function _closeDialog(val){
   if(window._dialogResolve){
     const fn=window._dialogResolve;
     window._dialogResolve=null;
@@ -45,7 +51,7 @@ function _closeDialog(val){
     fn(val);
   }
 }
-function dialogo(titulo, msg, btnOk='Confirmar', peligro=false){
+export function dialogo(titulo, msg, btnOk='Confirmar', peligro=false){
   return new Promise(res=>{
     // Un solo diálogo a la vez: si ya hay uno abierto se cancela (resuelve en false) en vez de perder su resolvedor, que dejaba
     // la función que lo esperaba colgada para siempre y, con un doble disparo, una acción pendiente que nunca se cancelaba.
@@ -75,13 +81,13 @@ document.getElementById('dialog-overlay').addEventListener('click',function(e){
        etiqueta    texto del botón rojo («Eliminar», «Borrar», «Sí, eliminar y revertir»). verbo: el de la pregunta (por defecto «Eliminar»).
      avisarNoSePuede(titulo, motivo) → Promise: un solo botón «Entendido» (la acción está bloqueada y se explica por qué).
    dialogo() pinta con textContent: aquí NUNCA se escapa con escHtml() (saldría «&amp;» en pantalla); se pasa el texto tal cual. */
-function confirmarEliminar({titulo,objeto,detalle='',irreversible=true,etiqueta='Eliminar',verbo='Eliminar'}={}){
+export function confirmarEliminar({titulo,objeto,detalle='',irreversible=true,etiqueta='Eliminar',verbo='Eliminar'}={}){
   const partes=['¿'+verbo+' '+objeto+'?'];
   if(detalle)partes.push(String(detalle).trim());
   if(irreversible&&!/no se puede deshacer/i.test(detalle))partes.push('Esta acción no se puede deshacer.');
   return dialogo(titulo||('Eliminar '+objeto),partes.join(' '),etiqueta,true);
 }
-function avisarNoSePuede(titulo,motivo){
+export function avisarNoSePuede(titulo,motivo){
   return dialogo(titulo||'No se puede',motivo,'Entendido',false);
 }
 
@@ -109,7 +115,7 @@ function avisarNoSePuede(titulo,motivo){
 // `hora` (opcional, 0 por defecto) fija la hora local: _fechaSafe(f, 12) reemplaza a new Date(f+'T12:00:00') en las lecturas de
 // visualización o de diferencia de días (el mediodía evita que un cambio de hora o una zona horaria lleve el día a otro al formatear).
 // Acepta también 'AAAA-MM-DDTHH:MM…' (toma solo la parte de la fecha), porque algunos registros guardan la hora.
-function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora); }   // alias: la lógica vive en js/core/fecha.js
+export function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora); }   // alias: la lógica vive en js/core/fecha.js
 
 /* ---- PROTECCIÓN POR ANTIGÜEDAD DE MOVIMIENTOS ---- */
 // Ver docs/proteccion-antiguedad-movimientos.md para el detalle completo.
@@ -134,7 +140,7 @@ function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora); }   /
 //                                 no tiene esos umbrales definidos, el nivel
 //                                 se decide solo por tiempo.
 // @returns {'reciente'|'viejo'|'bloqueado'}
-function nivelAntiguedadMovimiento(fecha, operacionesPosteriores, modulo){
+export function nivelAntiguedadMovimiento(fecha, operacionesPosteriores, modulo){
   const cfg=S.config.proteccionAntiguedad;
   const modCfg=cfg[modulo]||{};
   const dias=Fecha.diasEntre(fecha,hoy());
@@ -154,7 +160,7 @@ function nivelAntiguedadMovimiento(fecha, operacionesPosteriores, modulo){
 // @param {'sube'|'baja'} direccion  Si el campo de esa cuenta sube o baja al revertir.
 // @param {'saldo'|'deuda'} [campo='saldo']  Qué campo cambia (ej: 'deuda' para
 //                                            revertir un cargo hecho a una TC).
-function confirmarBorrarMovimientoViejo(nombreCuenta, montoRevertido, direccion, campo='saldo'){
+export function confirmarBorrarMovimientoViejo(nombreCuenta, montoRevertido, direccion, campo='saldo'){
   const verbo=direccion==='sube'?'sube':'baja';
   return dialogo(
     'Movimiento antiguo',
@@ -166,7 +172,7 @@ function confirmarBorrarMovimientoViejo(nombreCuenta, montoRevertido, direccion,
 // Aviso para nivel 'bloqueado': solo informa, no ofrece la opción de
 // continuar (coherente con dialogo(), que ya soporta este patrón de un solo
 // botón — ver el uso existente para movimientos secundarios en movimientos.js).
-function avisarMovimientoBloqueado(){
+export function avisarMovimientoBloqueado(){
   return avisarNoSePuede(
     'No se puede eliminar',
     'Este movimiento es demasiado antiguo o ya está muy mezclado con operaciones posteriores de esa cuenta. Eliminarlo ahora dejaría un descuadre imposible de corregir a mano. Si hay un error real, corrígelo editando el dato (nota o fecha) sin borrar el movimiento.'

@@ -18,7 +18,12 @@
    primero). Se cargan uno por vez, en el orden declarado en GROUPS.
    ═══════════════════════════════════════════════════════════════ */
 
-const Loader = (function () {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S } from './estado.js';
+import { refresh } from './refresh.js';
+import { applyModulos } from './modulos-activos.js';
+
+export const Loader = (function () {
   // false hasta que ensureAll() (precarga en segundo plano de todos los
   // grupos lazy) termine — ver _iniciarEnsureAll() más abajo. La lee
   // inicio.js (renderAttencion) para no comparar un fingerprint parcial.
@@ -176,14 +181,13 @@ const Loader = (function () {
   const loaded = new Set();   // grupos ya cargados (no se vuelven a pedir)
   const loading = new Map();  // grupo → Promise en curso (evita pedidos duplicados)
 
+  // Los módulos lazy se cargan con import() la primera vez que se entra a su pantalla; al cargar dejan sus nombres en `window` (puente global,
+  // js/core/puente.js) para que el núcleo, que no puede importarlos de forma estática, los siga llamando por nombre.
+  // `window.__cargarModulo` es un gancho solo para los humos de jsdom (que no soporta import()): ahí cada archivo se inyecta como script clásico.
   function _loadScript(src) {
-    return new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = src;
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('No se pudo cargar ' + src));
-      document.body.appendChild(s);
-    });
+    const url = new URL(src, document.baseURI).href;
+    const cargar = window.__cargarModulo || (u => import(u));
+    return Promise.resolve(cargar(url)).catch(() => { throw new Error('No se pudo cargar ' + src); });
   }
 
   function ensure(group) {
@@ -321,3 +325,6 @@ const Loader = (function () {
 
   return { ensure, ensureAll, isLoaded, GROUPS };
 })();
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Loader });

@@ -60,6 +60,11 @@
    usado en el resto de la app (`mf_lastSavedAt`, `mf-saldos-ocultos`), no
    un dato financiero nuevo.
    ═══════════════════════════════════════════════════════════════ */
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S, hoy } from './estado.js';
+import { Periodo } from './periodo.js';
+import { entradasIngresoReal } from './ingresos.js';
+
 (function(){
 'use strict';
 

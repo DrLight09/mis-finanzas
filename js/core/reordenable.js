@@ -28,7 +28,9 @@
    `touch-action:none` y las fichas `user-select:none`. Las clases que pone (reord-activo, reord-arrastrando, reord-mueve) las pinta
    css/styles.css.
    ═══════════════════════════════════════════════════════════════ */
-const Reordenable = (function () {
+import { exponerGlobales, exponerVariables } from './puente.js';
+
+export const Reordenable = (function () {
   const UMBRAL_RATON = 4;      // px de movimiento para empezar con el ratón
   const UMBRAL_CANCELA = 9;    // px que cancelan una pulsación larga (el usuario estaba desplazando la página)
   const ESPERA_TOQUE = 220;    // ms de pulsación larga con el dedo fuera del agarre
@@ -286,3 +288,6 @@ const Reordenable = (function () {
 
   return { activar };
 })();
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Reordenable });

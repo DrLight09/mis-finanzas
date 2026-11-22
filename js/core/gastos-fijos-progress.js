@@ -4,6 +4,11 @@
 // Se engancha a refresh() con Refresh.registrar() (js/core/refresh.js), no envolviendo la global.
 // Ver auditoria-tecnica.md #2/#4.
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S } from './estado.js';
+import { Fecha } from './fecha.js';
+import { Refresh } from './refresh.js';
+
 // ── 4. GASTOS FIJOS PROGRESS BAR ─────────────────────────────────────────────
 (function(){
   // Inject progress card into panel-fijo if not already there

@@ -30,6 +30,25 @@
    en la nube se confirmó.
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { html, raw } from '../core/html-tag.js';
+import { Events } from '../core/events.js';
+import { CATS_FIJO_DEFAULT, CATS_VAR_DEFAULT, S, getCatsFijo, getCatsVar, hoy } from '../core/estado.js';
+import { _fechaSafe, confirmarEliminar, dialogo, toast } from '../core/dialogos.js';
+import { botonEliminarFila, pedirPinAntesDe } from '../core/utilidades-ui.js';
+import { SCHEMA_BASE, SCHEMA_VERSION_ACTUAL, aplicarMigraciones, save } from '../core/persistencia.js';
+import { Loader } from '../core/lazy-loader.js';
+import { refresh } from '../core/refresh.js';
+import { _esGastoVarNoReal } from '../core/ingresos.js';
+import { fuenteLabel } from '../core/cuentas-fuentes.js';
+import { Periodo } from '../core/periodo.js';
+import { Fecha } from '../core/fecha.js';
+import { applyModulos } from '../core/modulos-activos.js';
+import { showScreen } from '../core/navegacion.js';
+import { Ui } from '../core/ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
+
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
 // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
 // exhaustiva de .innerHTML"): `c` (nombre de categoría, texto libre creado por
@@ -39,7 +58,7 @@
 // escapado (serializa los argumentos a JSON y los pasa por escHtml() dentro de
 // events.js), así que un nombre de categoría con comillas o HTML no rompe el
 // atributo `data-action`.
-function renderCatsConfig(){
+export function renderCatsConfig(){
   // Render lista de categorías variables
   const elVar=document.getElementById('cats-var-list');
   const elFijo=document.getElementById('cats-fijo-list');
@@ -64,7 +83,7 @@ function renderCatsConfig(){
 
 // «Mis Wrapped»: los años que el usuario guardó con el botón «Guardar este Wrapped» (S.wrappedAnios, ver wrapped.js). Solo lee datos: se ve
 // aunque el módulo de Wrapped no haya cargado y se puede abrir un año en cualquier momento del año. Cada año se puede eliminar.
-function renderMisWrapped(){
+export function renderMisWrapped(){
   const el=document.getElementById('cfg-mis-wrapped');
   if(!el)return;
   const guardados=S.wrappedAnios||{};
@@ -85,7 +104,7 @@ function renderMisWrapped(){
 
 // Eliminar un Wrapped guardado: confirmación y PIN (como «Borrar todos los datos»). Si el año sigue siendo el que se puede generar —enero—
 // se puede volver a generar y guardar; fuera de la ventana, no: por eso el aviso es distinto.
-async function eliminarWrapped(anio){
+export async function eliminarWrapped(anio){
   const info=typeof window._wrappedVentanaInfo==='function'?window._wrappedVentanaInfo():null;
   const regenerable=!!(info&&info.disponible&&String(info.anioObjetivo)===String(anio));
   const aviso=regenerable
@@ -104,8 +123,8 @@ async function eliminarWrapped(anio){
 // muestra cuánto del límite de la nube se usa y, con la historia que hay, cuándo se llegaría al aviso. No archiva ni borra nada:
 // cerrar períodos antiguos es la etapa siguiente (docs/cierre-de-periodos.md) y solo se plantea al pasar del disparador. El aviso no ofrece
 // ningún botón porque esa función aún no existe: solo dice que ya toca revisarla.
-let _tamanoSeq=0;
-async function renderTamanoDatos(){
+export let _tamanoSeq=0;
+export async function renderTamanoDatos(){
   const el=document.getElementById('cfg-tamano');
   if(!el)return;
   const mi=++_tamanoSeq; // si se reabre la pantalla mientras mide, solo pinta la última medición
@@ -135,7 +154,7 @@ async function renderTamanoDatos(){
   }
 }
 
-function agregarCat(tipo){
+export function agregarCat(tipo){
   const inputId=tipo==='var'?'nueva-cat-var':'nueva-cat-fijo';
   const val=document.getElementById(inputId).value.trim();
   if(!val){toast('Escribe el nombre de la categoría','err');return;}
@@ -150,7 +169,7 @@ function agregarCat(tipo){
   toast(`Categoría "${val}" agregada`,'ok');
 }
 
-function eliminarCat(tipo,cat){
+export function eliminarCat(tipo,cat){
   const defaults=tipo==='var'?CATS_VAR_DEFAULT:CATS_FIJO_DEFAULT;
   if(defaults.includes(cat)){toast('Las categorías predeterminadas no se pueden eliminar','err');return;}
   // Verificar si está en uso
@@ -167,7 +186,7 @@ function eliminarCat(tipo,cat){
 }
 
 /* ---- COPIA DE SEGURIDAD: EXPORTAR / IMPORTAR JSON ---- */
-function exportarJSON(){
+export function exportarJSON(){
   save();
   const data=JSON.stringify(S,null,2);
   const blob=new Blob([data],{type:'application/json'});
@@ -179,14 +198,14 @@ function exportarJSON(){
   toast('Copia de seguridad exportada','ok');
 }
 
-function importarJSON(){
+export function importarJSON(){
   document.getElementById('importFileInput').click();
 }
 
 // Validación de estructura al importar un backup JSON. Devuelve la lista de
 // errores (vacía = válido). Deliberadamente laxa: exige al menos un campo
 // conocido y el tipo correcto de los que estén presentes.
-function _validarEstructuraJSON(data){
+export function _validarEstructuraJSON(data){
   const errores=[];
   if(typeof data!=='object'||Array.isArray(data)){
     return ['El archivo no tiene el formato esperado (debe ser un objeto JSON).'];
@@ -253,7 +272,7 @@ function _validarEstructuraJSON(data){
 // Reemplaza TODOS los datos por `data` (ya validado) y lo sube a la nube. Lo comparten «Importar JSON» y «Restaurar respaldo».
 // Antes de pisar la nube, el guardado forzado conserva un respaldo 'previo' de lo que había (js/core/firebase-sync.js), así que
 // importar o restaurar por error también se puede deshacer. Devuelve false si la persona canceló en el PIN.
-async function _reemplazarDatos(data,motivoPin,msgOk){
+export async function _reemplazarDatos(data,motivoPin,msgOk){
   if(!await pedirPinAntesDe(motivoPin))return false;
   // Llevar el backup al modelo de datos actual (si falla, el catch del llamador avisa y NO se reemplaza nada).
   aplicarMigraciones(data);
@@ -296,7 +315,7 @@ async function _reemplazarDatos(data,motivoPin,msgOk){
   }
 }
 
-function leerArchivoImport(e){
+export function leerArchivoImport(e){
   const file=e.target.files[0];
   if(!file)return;
   const reader=new FileReader();
@@ -332,9 +351,9 @@ function leerArchivoImport(e){
 /* ---- RESPALDOS AUTOMÁTICOS (js/core/respaldos.js, docs/respaldos-automaticos.md) ---- */
 // La app conserva sola una copia del estado de cada día (30 en la nube, 7 en este dispositivo) y una copia «previa» antes de importar o
 // restaurar. Acá solo se listan y se restauran; crearlos es cosa del guardado (js/core/firebase-sync.js).
-let _respaldosFilas=[];
-const _MESES_RESP=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-function _respFechaLarga(fila){
+export let _respaldosFilas=[];
+export const _MESES_RESP=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+export function _respFechaLarga(fila){
   const [a,m,d]=String(fila.fecha||'').split('-').map(Number);
   if(!a||!m||!d)return 'Fecha desconocida';
   const base=d+' de '+_MESES_RESP[m-1]+' de '+a;
@@ -342,12 +361,12 @@ function _respFechaLarga(fila){
   const h=new Date(fila.creadoEn||0);
   return base+', '+String(h.getHours()).padStart(2,'0')+':'+String(h.getMinutes()).padStart(2,'0');
 }
-function _respDescripcion(fila){
+export function _respDescripcion(fila){
   const donde=fila.fuentes.length===2?'nube y este dispositivo':(fila.fuentes[0]==='nube'?'nube':'este dispositivo');
   const que=fila.tipo==='previo'?'Antes de importar o restaurar':fila.tipo==='conflicto'?'Lo que habías cambiado aquí cuando otro dispositivo guardó antes':'Así quedó todo al empezar el día';
   return que+' · '+Math.max(1,Math.round((fila.bytes||0)/1000))+' KB · '+donde;
 }
-function renderRespaldos(){
+export function renderRespaldos(){
   const el=document.getElementById('cfg-respaldos');
   if(!el)return;
   const api=window._firebaseRespaldos;
@@ -365,15 +384,15 @@ function renderRespaldos(){
   _respaldosVisibles=false; // el render deja la lista vacía y cerrada
 }
 // El mismo botón abre y cierra la lista: «Ver respaldos» ⇄ «Ocultar respaldos».
-let _respaldosVisibles=false;
-function _respBotonVer(abierto){
+export let _respaldosVisibles=false;
+export function _respBotonVer(abierto){
   _respaldosVisibles=abierto;
   const b=document.getElementById('cfg-resp-ver-btn');
   if(!b)return;
   b.textContent=abierto?'Ocultar respaldos':'Ver respaldos';
   b.setAttribute('aria-expanded',abierto?'true':'false');
 }
-async function verRespaldos(){
+export async function verRespaldos(){
   const api=window._firebaseRespaldos, contenedor=document.getElementById('cfg-respaldos-lista');
   if(!api||!contenedor)return;
   if(_respaldosVisibles){contenedor.innerHTML='';_respBotonVer(false);return;}
@@ -392,7 +411,7 @@ async function verRespaldos(){
       <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:restaurarRespaldo',f.id))}>Restaurar</button>
     </div>`)}</div>`;
 }
-async function restaurarRespaldo(id){
+export async function restaurarRespaldo(id){
   const api=window._firebaseRespaldos;
   const fila=_respaldosFilas.find(f=>f.id===id);
   if(!api||!fila){toast('No se encontró ese respaldo. Vuelve a abrir la lista.','err');return;}
@@ -413,7 +432,7 @@ async function restaurarRespaldo(id){
 }
 
 /* ---- EXPORTAR CSV (gastos) ---- */
-function exportarCSV(){
+export function exportarCSV(){
   const rows = [['Fecha','Descripción','Categoría','Monto','Tipo','Cuenta']];
   // Mismo criterio de "gasto real" que el resto de la app (el núcleo + periodo.js): los pagos
   // de gasto fijo salen como filas "Fijo" (con el monto realmente pagado), no también como variables.
@@ -433,7 +452,7 @@ function exportarCSV(){
 }
 
 /* ---- MÓDULOS ACTIVOS ---- */
-function toggleModulo(nombre){
+export function toggleModulo(nombre){
   if(!S.modulos)S.modulos={mesada:true,spotify:true,corregirSaldo:true};
   const el=document.getElementById('cfg-'+nombre);
   S.modulos[nombre]=el?el.checked:!S.modulos[nombre];
@@ -447,7 +466,7 @@ function toggleModulo(nombre){
 // ventana se pudiera tocar "Cerrar sesión", el guardado final de _firebaseSignOut() volvería
 // a subir el S viejo y pisaría el borrado. Mismo criterio en _firebaseSignOut/_firebaseDeleteAccount
 // (firebase-sync.js).
-async function borrarTodo(){
+export async function borrarTodo(){
   const ok=await confirmarEliminar({titulo:'Borrar todos los datos',verbo:'Borrar',etiqueta:'Borrar todo',objeto:'TODOS tus datos',detalle:'Perderás toda tu información financiera, incluidos los respaldos automáticos.'});
   if(!ok)return;
   if(!await pedirPinAntesDe('Para borrar todos los datos'))return;
@@ -510,15 +529,15 @@ document.querySelectorAll('[data-modulo]').forEach(el => {
 
 // Backup: botones con id fijo, sin argumentos variables — addEventListener
 // directo es más simple que envolverlos en data-action para este caso.
-const _btnExportarJSON = document.getElementById('btn-exportar-json');
+export const _btnExportarJSON = document.getElementById('btn-exportar-json');
 if (_btnExportarJSON) _btnExportarJSON.addEventListener('click', exportarJSON);
-const _btnImportarJSON = document.getElementById('btn-importar-json');
+export const _btnImportarJSON = document.getElementById('btn-importar-json');
 if (_btnImportarJSON) _btnImportarJSON.addEventListener('click', importarJSON);
-const _btnExportarCSV = document.getElementById('btn-exportar-csv');
+export const _btnExportarCSV = document.getElementById('btn-exportar-csv');
 if (_btnExportarCSV) _btnExportarCSV.addEventListener('click', exportarCSV);
-const _btnBorrarTodo = document.getElementById('btn-borrar-todo');
+export const _btnBorrarTodo = document.getElementById('btn-borrar-todo');
 if (_btnBorrarTodo) _btnBorrarTodo.addEventListener('click', borrarTodo);
-const _importFileInput = document.getElementById('importFileInput');
+export const _importFileInput = document.getElementById('importFileInput');
 if (_importFileInput) _importFileInput.addEventListener('change', leerArchivoImport);
 
 // Enter en los inputs de nueva categoría
@@ -531,3 +550,6 @@ Ui.pantalla('config', () => {
   if (typeof renderCatsConfig === 'function') renderCatsConfig();
   if (typeof window._pinRenderBtn === 'function') window._pinRenderBtn();
 }, { key: 'config-render' });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _MESES_RESP, _btnExportarJSON, _btnImportarJSON, _btnExportarCSV, _btnBorrarTodo, _importFileInput });

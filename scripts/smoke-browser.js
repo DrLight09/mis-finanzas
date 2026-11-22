@@ -2,7 +2,7 @@
 // botón data-action presente. Informa (a) acciones sin handler registrado y (b) excepciones al tocar cada botón.
 // Uso: node scripts/smoke-browser.js [raiz-del-repo] [--verbose]   (por defecto, la raíz del repo; necesita `npm install`: jsdom ^27.4.0 está en devDependencies; atajo: `npm run smoke`)
 // Vive en scripts/ y NO en la carpeta de tests: `node --test` ejecuta todo .js que encuentra ahí y esto necesita jsdom.
-const { clasicos, sinExport } = require('./jsdom-modulos');
+const { clasicos, sinExport, prepararVentana } = require('./jsdom-modulos');
 const { JSDOM, ResourceLoader, VirtualConsole } = require('jsdom');
 const fs = require('fs'), path = require('path');
 const RAIZ = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) || path.join(__dirname, '..'));
@@ -37,7 +37,7 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
   const matchMediaFalso = q => ({ media: q, get matches() { return /min-width:\s*900px/.test(q) ? modoPc.pc : false; },
     addEventListener: (_, f) => { if (/min-width:\s*900px/.test(q)) modoPc.oyentes.push(f); }, removeEventListener() {}, addListener: f => { if (/min-width:\s*900px/.test(q)) modoPc.oyentes.push(f); }, removeListener() {} });
   const dom = new JSDOM(html, { runScripts: 'dangerously', resources: new Local(), pretendToBeVisual: true, virtualConsole: vc, url: ORIGEN + 'index.html',
-    beforeParse(win) { win.matchMedia = matchMediaFalso; win.TextEncoder = TextEncoder; win.TextDecoder = TextDecoder; win.HTMLCanvasElement.prototype.getContext = () => ({ font: '', measureText: () => ({ width: 0 }) }); } });
+    beforeParse(win) { prepararVentana(win); win.matchMedia = matchMediaFalso; win.TextEncoder = TextEncoder; win.TextDecoder = TextDecoder; win.HTMLCanvasElement.prototype.getContext = () => ({ font: '', measureText: () => ({ width: 0 }) }); } });
   const w = dom.window;
   w.addEventListener('error', e => uncaught.push('window.error: ' + e.message));
   w.addEventListener('unhandledrejection', e => uncaught.push('rechazo: ' + (e.reason && e.reason.message || e.reason)));

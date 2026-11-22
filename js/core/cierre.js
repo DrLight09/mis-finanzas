@@ -25,7 +25,12 @@
    Todo es síncrono salvo lo que comprime. Sin DOM. Se carga BAJO DEMANDA (Loader, grupo 'cierre': huella.js y luego este archivo), solo al abrir
    Configuración; desde la consola, `await Loader.ensure('cierre')` antes de usar `Cierre` o `Huella`.
    ═══════════════════════════════════════════════════════════════ */
-const Cierre = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S, hoy } from './estado.js';
+import { conEstadoAislado } from './persistencia.js';
+import { Fecha } from './fecha.js';
+
+export const Cierre = (() => {
   const VERSION = 1;
   // Política acordada (docs/cierre-de-periodos.md §4): el corte es un mes terminado con al menos 24 meses de antigüedad.
   // analizar() acepta cualquier mes terminado (hace falta para explorar y para probar con datos sintéticos); quien EJECUTE un
@@ -291,3 +296,6 @@ const Cierre = (() => {
   return { VERSION, POLITICA, LIMITES, DISPARADOR_BYTES, CLASIFICACION, registrarFuente, fuentes: () => Array.from(_fuentes.values()), corteMasReciente, analizar, analizarCompleto, tamano, disparador };
 })();
 if (typeof window !== 'undefined') window.Cierre = Cierre; // un `const` de nivel superior no cuelga de window: los tests lo leen como ctx.Cierre
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Cierre });

@@ -23,7 +23,9 @@
 // Los nombres de evento de hoja/pantalla son 'hoja:antes:<id>', 'hoja:despues:<id>' y 'pantalla:<nombre>'.
 //
 // Este archivo no depende de nada de la app (ni de document): carga antes que navegacion.js y que cualquier módulo.
-const Ui = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+
+export const Ui = (() => {
   const eventos = new Map(); // evento -> [{ key, fn, orden, n }]
   let n = 0;
   let anonimas = 0;
@@ -93,3 +95,6 @@ const Ui = (() => {
   return { en, emitir, quitar, registrados, hoja, pantalla, antesDeAbrirHoja, despuesDeAbrirHoja, alMostrarPantalla };
 })();
 if (typeof window !== 'undefined') window.Ui = Ui;
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Ui });

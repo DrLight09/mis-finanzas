@@ -39,7 +39,11 @@
 //          resultado), waitFor solo lo LLAMA repetidamente — no lo envuelve
 //          ni lo modifica.
 // callback: se llama UNA sola vez, apenas checkFn() da true. No recibe argumentos.
-function waitFor(checkFn, callback, opts) {
+import { exponerGlobales, exponerVariables } from './puente.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ waitFor });
+
+export function waitFor(checkFn, callback, opts) {
   opts = opts || {};
   const intervalMs = opts.intervalMs != null ? opts.intervalMs : 200;
   const maxAttempts = opts.maxAttempts != null ? opts.maxAttempts : Infinity;

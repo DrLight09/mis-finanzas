@@ -32,7 +32,16 @@
    Sin DOM. Se carga BAJO DEMANDA (Loader, grupo 'cierre', junto con cierre.js): solo al abrir Configuración o al usarla. Los módulos registran
    sus sondas con registrarSonda (js/core/persistencia.js), que las deja en cola si este archivo aún no existe; al cargarse, aquí se vacía la cola.
    ═══════════════════════════════════════════════════════════════ */
-const Huella = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S } from './estado.js';
+import { conEstadoAislado } from './persistencia.js';
+import { Loader } from './lazy-loader.js';
+import { Libro } from './cuentas-fuentes.js';
+import { Periodo } from './periodo.js';
+import { Deudas } from './calc-helpers.js';
+import { calcPatrimonioDesglose } from './patrimonio.js';
+
+export const Huella = (() => {
   const VERSION = 1;
   const TOL = 0.01; // diferencia máxima entre dos montos para darlos por iguales
   const SONDAS_BASE = ['saldos', 'periodos', 'deudas', 'patrimonio', 'tarjetas', 'encargos', 'alcancia', 'wrapped'];
@@ -172,3 +181,6 @@ const Huella = (() => {
   return { VERSION, TOL, SONDAS_BASE, GRUPOS_CON_SONDA, registrar, registradas, calcular, comparar, verificarTransformacion, completa, digest };
 })();
 if (typeof window !== 'undefined') window.Huella = Huella; // un `const` de nivel superior no cuelga de window: los tests lo leen como ctx.Huella
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Huella });

@@ -13,13 +13,13 @@ Es un proyecto de un solo desarrollador, para uso personal, pensado para mantene
 - **Desplegada en GitHub Pages.**
 - **Estado global (`S`)**: un objeto central que se sincroniza bidireccionalmente con Firestore y contiene todos los datos de la app — cuentas, movimientos, préstamos, encargos, tarjetas, mesadas, Spotify, personas, etc. Todo el HTML se re-renderiza a partir de `S`.
 - **Sin backend propio**: toda la lógica de negocio (cálculos, validaciones, reversión de movimientos) vive en el cliente.
-- **Un archivo por dominio, con carga lazy:** cada pantalla tiene su propio archivo en `js/modules/` (mismo scope global, `<script>` clásicos — todavía no ES modules), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Los 11 módulos de pantalla son grupos lazy (`js/core/lazy-loader.js`, `Loader.GROUPS`) que cargan bajo demanda al entrar a cada pantalla, con `Loader.ensureAll()` precargando los 11 en paralelo en segundo plano tras el primer dato real. `js/core/calc-helpers.js` expone un puñado de funciones puras de Mesada/TC/Préstamos/Spotify para que Inicio ("Necesita atención") no tenga que cargar esos módulos completos. Ver "Estructura de archivos" más abajo para el archivo de cada uno, y [`changelog/infraestructura-seguridad.md`](./changelog/infraestructura-seguridad.md) para el detalle de esa modularización; [`auditoria-tecnica.md`](./auditoria-tecnica.md) solo lista lo que sigue pendiente.
+- **Un archivo por dominio, con carga lazy:** cada pantalla tiene su propio archivo en `js/modules/` (módulos ES nativos, sin bundler; el puente global de `js/core/puente.js` deja sus nombres en `window` para lo que no se puede importar), con un despachador de eventos centralizado en `js/core/events.js` que reemplaza los `onclick` inline. Los 11 módulos de pantalla son grupos lazy (`js/core/lazy-loader.js`, `Loader.GROUPS`) que cargan bajo demanda al entrar a cada pantalla, con `Loader.ensureAll()` precargando los 11 en paralelo en segundo plano tras el primer dato real. `js/core/calc-helpers.js` expone un puñado de funciones puras de Mesada/TC/Préstamos/Spotify para que Inicio ("Necesita atención") no tenga que cargar esos módulos completos. Ver "Estructura de archivos" más abajo para el archivo de cada uno, y [`changelog/infraestructura-seguridad.md`](./changelog/infraestructura-seguridad.md) para el detalle de esa modularización; [`auditoria-tecnica.md`](./auditoria-tecnica.md) solo lista lo que sigue pendiente.
 
 ## Estructura de archivos — `js/core/`
 
 Ver también "Estructura de archivos — `js/modules/`" y "Otros archivos" más abajo.
 
-Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<script defer>` (variables globales compartidas por scope léxico); "módulo" = `<script type="module" async>` (usa `import`, sin garantía de orden frente a los clásicos).
+Todos viven en `js/core/` salvo que se indique lo contrario. Desde M6 **todos son módulos ES**: `js/main.js` (un solo `<script type="module">` en `index.html`) los importa en el orden de siempre, y cada archivo importa de forma explícita lo que usa de los que cargan antes (solo hacia atrás: así el orden de evaluación es el de `main.js` y no hay ciclos). Lo que no se puede importar (los módulos lazy, que cargan con `import()`; o una función que carga después y solo se llama al ejecutar) se llama por nombre suelto a través del **puente global** (`js/core/puente.js`: cada módulo deja sus funciones, constantes y clases en `window`; las `let` que otro archivo lee, con accesor). Excepciones: `umbrales.js`, `reglas.js`, `salud.js` y `plan-deudas.js` siguen siendo `<script>` clásicos (lógica pura que también carga Node con `require`: notificaciones y tests). La columna «Tipo» conserva «clásico» solo para esos cuatro; «módulo» = módulo ES de la app; «módulo (fuera)» = módulo ES que no pasa por `main.js` (Firebase, PIN…).
 
 **Arranque y sincronización con Firebase**
 
@@ -31,52 +31,52 @@ Todos viven en `js/core/` salvo que se indique lo contrario. "Clásico" = `<scri
 | `fusion.js` | módulo | Fusión de tres vías del estado (base, local, remoto), pura. La importa `firebase-sync.js` para unir los cambios de dos dispositivos que tocaron cosas distintas. Ver CHANGELOG 2026-11-20. |
 | `respaldos.js` | módulo | Respaldos automáticos (sin `<script>` propio: lo importa `firebase-sync.js`). Ids, poda, copia del documento a la nube antes de pisarlo, almacén IndexedDB, fusión nube+dispositivo y lectura; todo lo externo entra por parámetros. Ver `respaldos-automaticos.md`. |
 | `pin-bio.js` | módulo | Bloqueo con PIN de 4 dígitos (también con el teclado del PC) + biometría opcional local, sin passkey (WebAuthn/Face ID/huella) entre el login y la carga real de datos; además confirma con el PIN las acciones destructivas (`window._pinVerificar`, vía `pedirPinAntesDe()` de `js/core/utilidades-ui.js`). |
-| `bootstrap.js` | clásico | Arranque mínimo: `iniciales()`, fecha del header, autosave silencioso cada 60s. |
-| `async-css.js` | clásico | Activa el CSS de Font Awesome/Google Fonts (cargado con `media="print"` para no bloquear el render) una vez que termina de descargar. |
+| `bootstrap.js` | módulo | Arranque mínimo: `iniciales()`, fecha del header, autosave silencioso cada 60s. |
+| `async-css.js` | módulo | Activa el CSS de Font Awesome/Google Fonts (cargado con `media="print"` para no bloquear el render) una vez que termina de descargar. |
 
 **Núcleo de estado y utilidades transversales**
 
 | Archivo | Tipo | Qué hace |
 |---|---|---|
-| `el núcleo` | clásico | El corazón de la app: objeto de estado global `S`, `save()`, `refresh()` base, `escHtml()`, formateo de dinero (`fmtInput`, `parseMoney`), **el libro de movimientos** (`Libro`, la puerta única de saldos `sumarFuente`/`descontarFuente`/`ajustarSaldoCuenta`; ver `libro-de-movimientos.md`), la versión del esquema (`aplicarMigraciones`) y el resto de helpers puros que usa toda la app. |
-| `events.js` | clásico | Despachador centralizado de clicks (`Events.on`/`attr`/`registerAll`) — reemplaza los `onclick` inline bloqueados por la CSP; un solo listener delegado en `document` para toda la app. |
-| `html-tag.js` | clásico | Primitivo `` html`` `` que escapa por defecto cualquier valor interpolado — migración gradual, módulo por módulo, para cerrar de raíz el bug recurrente de `.innerHTML` sin escapar. |
-| `calc-helpers.js` | clásico | Funciones de cálculo puras de Mesada, Tarjetas de Crédito, Préstamos (`getDeudorSaldo`) y Spotify (`spotifyPersonaPagadaVigente`) que Inicio necesita (para "Necesita atención"/salud financiera) en el primer render, sin tener que cargar esos módulos lazy completos. Los módulos de origen ya no las definen y las usan como globales: **todo test que cargue uno de ellos y las use tiene que cargar también `calc-helpers.js`** (ver `tests/README.md`). |
-| `fuentes-filtro.js` | clásico | `FuentesFiltro`: decide qué cuentas se ofrecen cuando la plata SALE (saldo mínimo por flujo: $1 general, $50 Spotify, > $0 pagar TC con efectivo ≥ $1.000; TC solo con cupo disponible), `hayUtilizable` (¿hay de dónde sacar plata?) y `esTC` / `puedeRecibir` / `receptoras` (destinos que nunca pueden ser una TC). Carga después de `calc-helpers.js`. |
-| `color-picker.js` | clásico | Un solo helper (`marcarColorSeleccionado`) para los selectores de color circulares, compartido por Cuentas, TC y Prestado. |
-| `split.js` | clásico | Motor genérico de "split de fuentes": Mesada, MovEnc y Usar Parte comparten la misma lógica para dividir un monto entre varias cuentas. En todos los sheets que lo usan, ÷ solo se activa si el sheet ofrece al menos dos cuentas y no admite más filas que cuentas ofrecidas (`splitCuentasValidas`); la misma cuenta no se repite entre filas. |
-| `diferencial.js` | clásico | Motor genérico de "margen dijo vs. real" (diferencia entre lo que correspondía y lo que realmente costó/se recibió), usado por 5 sheets distintos de varios módulos. |
-| `wait-for.js` / `wait-for-module.js` | clásico / módulo | `waitFor(checkFn, callback, opts)`: reintenta hasta que una condición se cumpla, en vez de que cada consumidor reimplemente su propio `setInterval` + contador. Duplicado a propósito en dos archivos (uno por tipo de script) — un intento de unificarlos rompió en producción. |
-| `ui.js` | clásico | `Ui`: registro único de ganchos del ciclo de vida de la interfaz. `Ui.hoja(id, fn, {fase})` (al abrir una hoja; `antes` puede devolver `false` para cancelarla), `Ui.pantalla(nombre, fn)`, `Ui.en(evento, fn)` / `Ui.emitir(evento)` para eventos libres (`modulos`, `atencion`, `persona-editada`, `fuente-alerta`). Misma key = reemplaza; cada gancho en su try/catch. Reemplaza a `hookGlobal()` y a los `openSheet = function(){…}`. Ver «Ganchos de hojas y pantallas» en arquitectura-archivos.md. |
-| `cuenta-efectos.js` | clásico | `registrarMovimientoEspejo()`/`borrarMovimientoEspejo()`: el movimiento espejo en el historial de una cuenta (siempre en `S.movimientos`, con `fuente`). No toca saldos. |
-| `periodo.js` | clásico | Definición única de "cuánto entró y salió en un mes" (`Periodo`): ingresos, gastos, rendimientos y balance, para Inicio, Análisis, Wrapped y el cierre de mes. |
-| `nu-calc.js` | clásico | Cálculo puro de Nu: intereses de cajitas por tramos de tasa EA y CDTs (`calcC`, `calcCDT`, `nuTotal`). Sin DOM. |
-| `movimientos.js` | clásico | `abrirDetalleMovimiento()`/`eliminarMovimiento()` — detalle y borrado de cualquier movimiento desde el feed general o el historial de una cuenta; transversal, no pertenece a un solo dominio. |
-| `busqueda-global.js` | clásico | Buscador global sobre gastos, cajitas, cuentas, notas de encargos, movimientos y personas (una sola entrada por persona; deudores, «yo debo» e integrantes de Spotify se encuentran por el nombre de la persona) — transversal por naturaleza, no pertenece a un módulo. |
-| `lazy-loader.js` | clásico | Motor de carga bajo demanda por pantalla (`Loader.ensure()`): descarga el JS de una pantalla recién cuando el usuario entra a ella, en vez de cargar todo de entrada. |
+| `el núcleo` | módulo | El corazón de la app: objeto de estado global `S`, `save()`, `refresh()` base, `escHtml()`, formateo de dinero (`fmtInput`, `parseMoney`), **el libro de movimientos** (`Libro`, la puerta única de saldos `sumarFuente`/`descontarFuente`/`ajustarSaldoCuenta`; ver `libro-de-movimientos.md`), la versión del esquema (`aplicarMigraciones`) y el resto de helpers puros que usa toda la app. |
+| `events.js` | módulo | Despachador centralizado de clicks (`Events.on`/`attr`/`registerAll`) — reemplaza los `onclick` inline bloqueados por la CSP; un solo listener delegado en `document` para toda la app. |
+| `html-tag.js` | módulo | Primitivo `` html`` `` que escapa por defecto cualquier valor interpolado — migración gradual, módulo por módulo, para cerrar de raíz el bug recurrente de `.innerHTML` sin escapar. |
+| `calc-helpers.js` | módulo | Funciones de cálculo puras de Mesada, Tarjetas de Crédito, Préstamos (`getDeudorSaldo`) y Spotify (`spotifyPersonaPagadaVigente`) que Inicio necesita (para "Necesita atención"/salud financiera) en el primer render, sin tener que cargar esos módulos lazy completos. Los módulos de origen ya no las definen y las usan como globales: **todo test que cargue uno de ellos y las use tiene que cargar también `calc-helpers.js`** (ver `tests/README.md`). |
+| `fuentes-filtro.js` | módulo | `FuentesFiltro`: decide qué cuentas se ofrecen cuando la plata SALE (saldo mínimo por flujo: $1 general, $50 Spotify, > $0 pagar TC con efectivo ≥ $1.000; TC solo con cupo disponible), `hayUtilizable` (¿hay de dónde sacar plata?) y `esTC` / `puedeRecibir` / `receptoras` (destinos que nunca pueden ser una TC). Carga después de `calc-helpers.js`. |
+| `color-picker.js` | módulo | Un solo helper (`marcarColorSeleccionado`) para los selectores de color circulares, compartido por Cuentas, TC y Prestado. |
+| `split.js` | módulo | Motor genérico de "split de fuentes": Mesada, MovEnc y Usar Parte comparten la misma lógica para dividir un monto entre varias cuentas. En todos los sheets que lo usan, ÷ solo se activa si el sheet ofrece al menos dos cuentas y no admite más filas que cuentas ofrecidas (`splitCuentasValidas`); la misma cuenta no se repite entre filas. |
+| `diferencial.js` | módulo | Motor genérico de "margen dijo vs. real" (diferencia entre lo que correspondía y lo que realmente costó/se recibió), usado por 5 sheets distintos de varios módulos. |
+| `wait-for.js` / `wait-for-module.js` | módulo / módulo (fuera) | `waitFor(checkFn, callback, opts)`: reintenta hasta que una condición se cumpla, en vez de que cada consumidor reimplemente su propio `setInterval` + contador. Duplicado a propósito en dos archivos (uno por tipo de script) — un intento de unificarlos rompió en producción. |
+| `ui.js` | módulo | `Ui`: registro único de ganchos del ciclo de vida de la interfaz. `Ui.hoja(id, fn, {fase})` (al abrir una hoja; `antes` puede devolver `false` para cancelarla), `Ui.pantalla(nombre, fn)`, `Ui.en(evento, fn)` / `Ui.emitir(evento)` para eventos libres (`modulos`, `atencion`, `persona-editada`, `fuente-alerta`). Misma key = reemplaza; cada gancho en su try/catch. Reemplaza a `hookGlobal()` y a los `openSheet = function(){…}`. Ver «Ganchos de hojas y pantallas» en arquitectura-archivos.md. |
+| `cuenta-efectos.js` | módulo | `registrarMovimientoEspejo()`/`borrarMovimientoEspejo()`: el movimiento espejo en el historial de una cuenta (siempre en `S.movimientos`, con `fuente`). No toca saldos. |
+| `periodo.js` | módulo | Definición única de "cuánto entró y salió en un mes" (`Periodo`): ingresos, gastos, rendimientos y balance, para Inicio, Análisis, Wrapped y el cierre de mes. |
+| `nu-calc.js` | módulo | Cálculo puro de Nu: intereses de cajitas por tramos de tasa EA y CDTs (`calcC`, `calcCDT`, `nuTotal`). Sin DOM. |
+| `movimientos.js` | módulo | `abrirDetalleMovimiento()`/`eliminarMovimiento()` — detalle y borrado de cualquier movimiento desde el feed general o el historial de una cuenta; transversal, no pertenece a un solo dominio. |
+| `busqueda-global.js` | módulo | Buscador global sobre gastos, cajitas, cuentas, notas de encargos, movimientos y personas (una sola entrada por persona; deudores, «yo debo» e integrantes de Spotify se encuentran por el nombre de la persona) — transversal por naturaleza, no pertenece a un módulo. |
+| `lazy-loader.js` | módulo | Motor de carga bajo demanda por pantalla (`Loader.ensure()`): descarga el JS de una pantalla recién cuando el usuario entra a ella, en vez de cargar todo de entrada. |
 
 **Sheets, navegación y UI genérica**
 
 | Archivo | Tipo | Qué hace |
 |---|---|---|
-| `navegacion.js` | clásico | Pila de hojas (`openSheet`/`closeSheet`) y `showScreen()` con carga lazy; lo que cada hoja/pantalla hace al abrirse lo registran los módulos con `Ui.hoja`/`Ui.pantalla`. |
-| `modulos-activos.js` | clásico | `applyModulos()`: refleja `S.modulos` (Spotify, Mesada, saldo inicial) en la UI y emite `Ui 'modulos'`. |
-| `eventos-base.js` | clásico | Eventos del esqueleto (nav inferior, botón +, diálogos) y enlace `data-s-bind` → `S`. |
-| `sheet-behavior.js` | clásico | Comportamiento de un sheet ya abierto: swipe-to-close, reposicionamiento con el teclado en Android (Visual Viewport) y mantener visible el campo enfocado. Los ajustes automáticos esperan a que no haya toques en curso, para no mover botones bajo el dedo. |
-| `wrapped-gate.js` | clásico | Decide si Wrapped está disponible en este momento (solo durante la ventana de enero, ver `wrapped.md`): muestra/oculta la tarjeta `#wrapped-promo` y le avisa a `Loader.ensureAll()` que no precargue el grupo lazy `wrapped` fuera de esa ventana, sin descargar el módulo real solo para saber si mostrarlo. |
-| `mas-menu.js` | clásico | Abrir/cerrar el menú "Más", navegación desde sus ítems, y mostrar/ocultar Spotify/Mesada en ese menú según los módulos activos. |
-| `gastos-fijos-progress.js` | clásico | Barra de progreso de "gastos fijos pagados este mes" en el panel de Gastos. |
-| `sw-registro.js` | clásico | Registra `sw.js` (scope `./`), muestra el aviso «Actualizar» cuando hay una versión esperando y recarga una sola vez tras `SKIP_WAITING`. |
-| `saldos-ocultos.js` | clásico | Ocultar/mostrar saldos (blur) con el botón del ojo; recuerda la elección en localStorage. |
-| `arranque-ui.js` | clásico | Render de salud financiera/proyección/presupuestos tras cada `refresh()`, fade-in de la app, role/aria-label de las pantallas. |
-| `formularios-ui.js` | clásico | Validación de montos grandes/negativos y foco automático del primer campo al abrir una hoja. |
-| `personas-init.js` | clásico | Inicializa `_inyectarPersonaSheets()` una vez que los datos cargan. |
+| `navegacion.js` | módulo | Pila de hojas (`openSheet`/`closeSheet`) y `showScreen()` con carga lazy; lo que cada hoja/pantalla hace al abrirse lo registran los módulos con `Ui.hoja`/`Ui.pantalla`. |
+| `modulos-activos.js` | módulo | `applyModulos()`: refleja `S.modulos` (Spotify, Mesada, saldo inicial) en la UI y emite `Ui 'modulos'`. |
+| `eventos-base.js` | módulo | Eventos del esqueleto (nav inferior, botón +, diálogos) y enlace `data-s-bind` → `S`. |
+| `sheet-behavior.js` | módulo | Comportamiento de un sheet ya abierto: swipe-to-close, reposicionamiento con el teclado en Android (Visual Viewport) y mantener visible el campo enfocado. Los ajustes automáticos esperan a que no haya toques en curso, para no mover botones bajo el dedo. |
+| `wrapped-gate.js` | módulo | Decide si Wrapped está disponible en este momento (solo durante la ventana de enero, ver `wrapped.md`): muestra/oculta la tarjeta `#wrapped-promo` y le avisa a `Loader.ensureAll()` que no precargue el grupo lazy `wrapped` fuera de esa ventana, sin descargar el módulo real solo para saber si mostrarlo. |
+| `mas-menu.js` | módulo | Abrir/cerrar el menú "Más", navegación desde sus ítems, y mostrar/ocultar Spotify/Mesada en ese menú según los módulos activos. |
+| `gastos-fijos-progress.js` | módulo | Barra de progreso de "gastos fijos pagados este mes" en el panel de Gastos. |
+| `sw-registro.js` | módulo | Registra `sw.js` (scope `./`), muestra el aviso «Actualizar» cuando hay una versión esperando y recarga una sola vez tras `SKIP_WAITING`. |
+| `saldos-ocultos.js` | módulo | Ocultar/mostrar saldos (blur) con el botón del ojo; recuerda la elección en localStorage. |
+| `arranque-ui.js` | módulo | Render de salud financiera/proyección/presupuestos tras cada `refresh()`, fade-in de la app, role/aria-label de las pantallas. |
+| `formularios-ui.js` | módulo | Validación de montos grandes/negativos y foco automático del primer campo al abrir una hoja. |
+| `personas-init.js` | módulo | Inicializa `_inyectarPersonaSheets()` una vez que los datos cargan. |
 
 **Inputs y validación**
 
 | Archivo | Tipo | Qué hace |
 |---|---|---|
-| `money-input.js` | clásico | Auto-formateo al escribir de los inputs de plata: `.money-input` (miles con puntos y decimales opcionales tras la coma) y `.miles-input` (enteros). Motor único `_montoFormatear`; el texto del campo es el valor, el cursor se mueve libre. |
+| `money-input.js` | módulo | Auto-formateo al escribir de los inputs de plata: `.money-input` (miles con puntos y decimales opcionales tras la coma) y `.miles-input` (enteros). Motor único `_montoFormatear`; el texto del campo es el valor, el cursor se mueve libre. |
 
 ## Estructura de archivos — `js/modules/`
 

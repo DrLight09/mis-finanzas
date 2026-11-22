@@ -11,7 +11,11 @@
    acá alcanza con esto, montar un widget parametrizado sería
    sobre-ingeniería para algo de una línea.
    ═══════════════════════════════════════════════════════════════ */
-function marcarColorSeleccionado(claseCirculos, color){
+import { exponerGlobales, exponerVariables } from './puente.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ marcarColorSeleccionado });
+
+export function marcarColorSeleccionado(claseCirculos, color){
   document.querySelectorAll(claseCirculos).forEach(el=>{
     el.style.border = (color && el.dataset.color === color) ? '2px solid var(--accent)' : '2px solid transparent';
   });

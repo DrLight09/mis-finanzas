@@ -4,7 +4,7 @@
 // pantalla no se rompe.
 // Uso: node scripts/smoke-cierre.js [raiz-del-repo]   (npm run smoke:cierre; necesita `npm install`: jsdom está en devDependencies)
 // Vive en scripts/ y NO en tests/ por la misma razón que smoke-browser.js: necesita jsdom y levanta la página completa.
-const { clasicos, sinExport } = require('./jsdom-modulos');
+const { clasicos, sinExport, prepararVentana } = require('./jsdom-modulos');
 const { JSDOM, ResourceLoader, VirtualConsole } = require('jsdom');
 const fs = require('fs'), path = require('path');
 const RAIZ = path.resolve(process.argv.slice(2).find(a => !a.startsWith('--')) || path.join(__dirname, '..'));
@@ -26,7 +26,7 @@ const ok = (cond, msg) => { if (cond) console.log('  ✓ ' + msg); else { fallos
   const vc = new VirtualConsole(); // se silencia: la página real avisa de recursos externos que aquí no existen
   const dom = new JSDOM(clasicos(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8')), {
     runScripts: 'dangerously', resources: new Local(), pretendToBeVisual: true, virtualConsole: vc, url: ORIGEN + 'index.html',
-    beforeParse(w) { w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder; w.HTMLCanvasElement.prototype.getContext = () => ({ font: '', measureText: () => ({ width: 0 }) }); },
+    beforeParse(w) { prepararVentana(w); w.TextEncoder = TextEncoder; w.TextDecoder = TextDecoder; w.HTMLCanvasElement.prototype.getContext = () => ({ font: '', measureText: () => ({ width: 0 }) }); },
   });
   const w = dom.window, d = w.document;
   await esperar(1500);

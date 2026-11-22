@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
 
 // tests/cuentas.test.js — Cuentas y Nu: historial de cada cuenta, interés de cajitas y CDT, chequeo rápido, Restar dinero.
@@ -1296,7 +1297,7 @@ describe('spotify-cajita', () => {
     const primer = t.slice(t.indexOf("Events.registerAll('spotify', {"));
     const hasta = primer.indexOf('\n});');
     assert.ok(primer.slice(0, hasta).includes('abrirElegirFuente') && primer.slice(0, hasta).includes('guardarFuente'));
-    const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8'));
     for (const a of ['spotify:abrirElegirFuente', 'spotify:guardarFuente']) assert.ok(html.includes('data-action="' + a + '"'), a);
   });
 
@@ -1530,7 +1531,7 @@ describe('cuenta-iconos-colores', () => {
   }
 
   test('index.html carga color-picker.js (sin ese <script>, selColorNuevaCuenta no existía en la página)', () => {
-    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'));
     assert.match(html, /<script src="js\/core\/color-picker\.js" defer><\/script>/);
   });
 
@@ -2033,7 +2034,7 @@ describe('cuentas-textos', () => {
   const path = require('node:path');
   const RAIZ = path.join(__dirname, '..');
   const leer = f => fs.readFileSync(path.join(RAIZ, f), 'utf8');
-  const index = leer('index.html');
+  const index = htmlClasico(leer('index.html'));
   const etiquetaDe = id => { const i = index.indexOf('id="' + id + '"'); return /cuenta-action-btn-label">([^<]+)</.exec(index.slice(i))[1].trim(); };
 
   test('Nu usa los mismos botones que las demás cuentas', () => {
@@ -2115,7 +2116,7 @@ describe('cuentas-nu-archivos', () => {
   });
 
   test('cada función vive en UN solo archivo: nada declarado a nivel superior en los dos', () => {
-    const nombres = f => [...leer(f).matchAll(/^(?:async function |function |let |const |var )([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
+    const nombres = f => [...leer(f).matchAll(/^(?:export )?(?:async function |function |let |const |var )([A-Za-z_$][\w$]*)/gm)].map(m => m[1]);
     const enNu = new Set(nombres('js/modules/nu.js'));
     const repetidas = nombres('js/modules/cuentas.js').filter(n => enNu.has(n));
     assert.deepEqual(repetidas, []);
@@ -2123,7 +2124,7 @@ describe('cuentas-nu-archivos', () => {
 
   // Frontera entre las dos capas. Se lee el código SIN comentarios ni cadenas de documentación, porque lo que cuenta es qué usa de verdad.
   const sinComentarios = t => t.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`\\])\/\/.*$/gm, '$1');
-  const declaradas = t => new Set([...t.matchAll(/^(?:async function |function |let |const |var )([A-Za-z_$][\w$]*)/gm)].map(m => m[1]));
+  const declaradas = t => new Set([...t.matchAll(/^(?:export )?(?:async function |function |let |const |var )([A-Za-z_$][\w$]*)/gm)].map(m => m[1]));
   const usadasDe = (codigo, nombres) => [...nombres].filter(n => new RegExp('(?<![\\w$.])' + n.replace(/\$/g, '\\$') + '(?![\\w$])').test(codigo)).sort();
 
   test('la dependencia va en UN solo sentido: cuentas.js no usa nada de nu.js (Nu se le presenta registrándose en CuentaPantallas)', () => {
@@ -2270,7 +2271,7 @@ describe('nu-cambio-de-tasa', () => {
 
   test('el mensaje del historial de tasas ya no existe en la pantalla ni en el código', () => {
     const fs = require('node:fs');
-    assert.ok(!fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8').includes('nuTasaHistorialTag'));
+    assert.ok(!htmlClasico(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8')).includes('nuTasaHistorialTag'));
     assert.ok(!fs.readFileSync(path.join(RAIZ, 'js', 'modules', 'nu.js'), 'utf8').includes('_renderTasaHistorialTag'));
   });
 });
@@ -2520,7 +2521,7 @@ describe('cuentas-efectivo-permanente-y-administracion', () => {
     assert.equal(app._motivoNoArchivar(app.getCuenta('nu')), '');
     await app.archivarCuenta('nu');
     assert.equal(app.getCuenta('nu').archivada, true);
-    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'));
     const i = html.indexOf('id="cuentas-detalle-nu"');
     const bloque = html.slice(i, i + 4000);
     for (const id of ['btn-archivar-cuenta-ah', 'btn-editar-cuenta-ah', 'btn-eliminar-cuenta-ah', 'banner-archivada-ah']) assert.ok(bloque.includes('id="' + id + '"'), id);
@@ -2802,7 +2803,7 @@ describe('cuentas-orden-personalizable', () => {
   });
 
   test('la interfaz está cableada: botón Ordenar, acciones registradas y estilos', () => {
-    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'));
     assert.ok(html.includes('id="btn-ordenar-cuentas"') && html.includes('data-action="cuentas:alternarOrdenCuentas"'));
     const js = fs.readFileSync(modulo('cuentas.js'), 'utf8');
     assert.match(js, /alternarOrdenCuentas,/);

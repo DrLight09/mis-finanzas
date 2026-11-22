@@ -24,9 +24,31 @@
 
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { calcBienes, calcPatrimonioConBienes, medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/patrimonio.js';
+import { html, raw } from '../core/html-tag.js';
+import { S, escHtml, fmt, hoy, medirAnchoTexto, uid } from '../core/estado.js';
+import { Events } from '../core/events.js';
+import { mesActual } from '../core/ingresos.js';
+import { Fecha } from '../core/fecha.js';
+import { Periodo } from '../core/periodo.js';
+import { _deudasPropias, _situacion, calcEstadoSituacion, calcSinBase } from './inicio.js';
+import { SIN_DATO, emptyInline, mostrarSi } from '../core/utilidades-ui.js';
+import { _fechaSafe, avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, confirmarEliminar, nivelAntiguedadMovimiento, toast } from '../core/dialogos.js';
+import { cobroAvisoMes, cobroBorrar, cobroFuentesDe, cobroMesTexto, cobroRegistrar, cobroRevertir, cobrosDeIngresoFijo, ingresoFijoEstadoMes } from '../core/cobros.js';
+import { fuenteLabel, getSaldoFuente, opcionesCuenta } from '../core/cuentas-fuentes.js';
+import { fmtInput, parseMoney, save, setMoneyInput } from '../core/persistencia.js';
+import { closeSheet, openSheet } from '../core/navegacion.js';
+import { refresh } from '../core/refresh.js';
+import { crearSplitWidget, splitAgregarRow, splitGetData, splitReset, splitToggle } from '../core/split.js';
+import { _milesFormatear, parseMiles } from '../core/money-input.js';
+import { Ui } from '../core/ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ renderBienes, renderAnalisis, renderSimulador, renderConciliacion, renderIngresosFijos, abrirSheetIngresoFijo, editarIngresoFijo, eliminarIngresoFijo, guardarIngresoFijo, actualizarCbAvisoMes, actualizarCbPreview, abrirCobroIngresoFijo, confirmarCobroIngresoFijo, eliminarCobroIngresoFijo, abrirPresupuestos, renderPresupuestos });
+
 /* ---- ANÁLISIS FINANCIERO ---- */
 // Bienes (una moto, un computador): activos no líquidos, APARTE del patrimonio financiero. Solo aparece si hay bienes registrados.
-function renderBienes(){
+export function renderBienes(){
   const el=document.getElementById('an-bienes');
   if(!el)return;
   const b=calcBienes();
@@ -46,8 +68,8 @@ function renderBienes(){
     </div>`;
 }
 
-let _anPatDias=30; // ventana de la gráfica de patrimonio (solo vista; no se guarda)
-function renderAnalisis(){
+export let _anPatDias=30; // ventana de la gráfica de patrimonio (solo vista; no se guarda)
+export function renderAnalisis(){
   const mes=mesActual();
   const MESES_NOMBRE=Fecha.MESES_CORTOS;
 
@@ -509,8 +531,8 @@ function renderAnalisis(){
 // Del último mes completo con dos fotos del patrimonio. Lo que no se explica con ingresos y gastos se muestra aparte, sin alarmismo: puede ser
 // un préstamo sin cuenta o un ajuste sin clasificar. Por debajo de UMBRALES.conciliacion.minimo (ruido de redondeo, intereses) no se muestra.
 // P8 — «¿Y si…?»: tres deslizadores que recalculan el balance, los meses de reservas y el tiempo para salir de deuda. No guarda nada.
-let _anSim={gastoPct:0,ingresoExtra:0,pagoDeuda:0};
-function renderSimulador(){
+export let _anSim={gastoPct:0,ingresoExtra:0,pagoDeuda:0};
+export function renderSimulador(){
   const el=document.getElementById('an-simulador');
   if(!el) return;
   if(typeof _situacion!=='function'||typeof Salud==='undefined'||!Salud.simular){ el.innerHTML=''; return; }
@@ -550,7 +572,7 @@ function renderSimulador(){
   pintar();
 }
 
-function renderConciliacion(){
+export function renderConciliacion(){
   const el=document.getElementById('an-conciliacion');
   if(!el)return;
   const c=Periodo.conciliar(Periodo.mesAnterior(mesActual()));
@@ -570,9 +592,9 @@ function renderConciliacion(){
 }
 
 /* ---- INGRESOS FIJOS ---- */
-let _ifEditId=null;
+export let _ifEditId=null;
 
-function renderIngresosFijos(){
+export function renderIngresosFijos(){
   const el=document.getElementById('an-ingresos-fijos-list');
   if(!el)return;
   const lista=S.ingresosFijos||[];
@@ -633,7 +655,7 @@ function renderIngresosFijos(){
   }).join('<div class="divider"></div>');
 }
 
-function abrirSheetIngresoFijo(id){
+export function abrirSheetIngresoFijo(id){
   _ifEditId=id||null;
   const titleEl=document.getElementById('ingreso-fijo-sheet-title');
   const nEl=document.getElementById('if_n');
@@ -660,9 +682,9 @@ function abrirSheetIngresoFijo(id){
   openSheet('ingreso-fijo');
 }
 
-function editarIngresoFijo(id){ abrirSheetIngresoFijo(id); }
+export function editarIngresoFijo(id){ abrirSheetIngresoFijo(id); }
 
-async function eliminarIngresoFijo(id){
+export async function eliminarIngresoFijo(id){
   const ingreso=(S.ingresosFijos||[]).find(x=>x.id===id);
   if(!ingreso)return;
   const cobros=cobrosDeIngresoFijo(ingreso);
@@ -676,7 +698,7 @@ async function eliminarIngresoFijo(id){
   save();refresh();renderAnalisis();
 }
 
-function guardarIngresoFijo(){
+export function guardarIngresoFijo(){
   const n=(document.getElementById('if_n').value||'').trim();
   const m=parseMoney(document.getElementById('if_m').value);
   const d=(document.getElementById('if_d').value||'').trim();
@@ -703,8 +725,8 @@ function guardarIngresoFijo(){
 /* ---- COBRO DE UN INGRESO FIJO ----
    Reglas de negocio en js/core/cobros.js (cobroRegistrar / cobroBorrar). Acá solo la pantalla: leer el sheet, llamar a esas
    reglas y repintar. Mismo molde que «Registrar pago» de Mesada: monto, fecha en que te pagaron, destino (o dividir). */
-let _cbId=null;
-let cbSplitMode=false;
+export let _cbId=null;
+export let cbSplitMode=false;
 
 crearSplitWidget('cb',{
   simpleId:'cbModoSimple',splitId:'cbModoDividido',toggleId:'cbSplitToggle',rowsId:'cbSplitRows',
@@ -713,12 +735,12 @@ crearSplitWidget('cb',{
   onPreview:()=>actualizarCbPreview(),
 });
 
-function actualizarCbAvisoMes(){
+export function actualizarCbAvisoMes(){
   const el=document.getElementById('cbAvisoMes');
   if(el)el.textContent=cobroAvisoMes(document.getElementById('cbMes').value,document.getElementById('cbFecha').value);
 }
 
-function actualizarCbPreview(){
+export function actualizarCbPreview(){
   const prev=document.getElementById('cbPreview');
   if(!prev)return;
   const v=parseMoney(document.getElementById('cbMonto').value)||0;
@@ -744,7 +766,7 @@ function actualizarCbPreview(){
   }
 }
 
-function abrirCobroIngresoFijo(id){
+export function abrirCobroIngresoFijo(id){
   const ingreso=(S.ingresosFijos||[]).find(x=>x.id===id);
   if(!ingreso)return;
   _cbId=id;
@@ -762,7 +784,7 @@ function abrirCobroIngresoFijo(id){
   openSheet('cobro-ingreso');
 }
 
-function confirmarCobroIngresoFijo(){
+export function confirmarCobroIngresoFijo(){
   const r=cobroRegistrar({
     id:_cbId,
     mesCubre:document.getElementById('cbMes').value,
@@ -784,7 +806,7 @@ function confirmarCobroIngresoFijo(){
   toast('Cobro registrado');
 }
 
-async function eliminarCobroIngresoFijo(id,cobroId){
+export async function eliminarCobroIngresoFijo(id,cobroId){
   const ingreso=(S.ingresosFijos||[]).find(x=>x.id===id);
   const c=ingreso&&cobrosDeIngresoFijo(ingreso).find(x=>x.id===cobroId);
   if(!c)return;
@@ -810,7 +832,7 @@ async function eliminarCobroIngresoFijo(id,cobroId){
    window.abrirPresupuestos=... que tenía ahí ya no hace falta: acá es
    un <script src> clásico, así que la declaración de función ya cuelga
    de window por sí sola. */
-function abrirPresupuestos(){
+export function abrirPresupuestos(){
   if(!S.presupuestos) S.presupuestos = {};
   const cats = window.getCatsVar ? window.getCatsVar() : ['Alimentación','Transporte','Salud','Entretenimiento','Otro'];
   const lista = document.getElementById('presupuestos-lista');
@@ -862,7 +884,7 @@ function abrirPresupuestos(){
   if(window.openSheet) window.openSheet('presupuestos');
 }
 
-function renderPresupuestos(){
+export function renderPresupuestos(){
   const el = document.getElementById('an-presupuestos');
   if(!el) return;
   // Registro persistente de avisos ya mostrados (cat+mes), NO se resetea en
@@ -944,7 +966,7 @@ Events.registerAll('analisis', {
 });
 
 /* ---- WIRING de controles que no son data-action simples ---- */
-const _btnGuardarIngresoFijo = document.getElementById('btn-guardar-ingreso-fijo');
+export const _btnGuardarIngresoFijo = document.getElementById('btn-guardar-ingreso-fijo');
 if (_btnGuardarIngresoFijo) _btnGuardarIngresoFijo.addEventListener('click', guardarIngresoFijo);
 
 // Controles estáticos del sheet «Registrar cobro» (los ids ya existen en index.html).
@@ -961,3 +983,6 @@ if (_btnGuardarIngresoFijo) _btnGuardarIngresoFijo.addEventListener('click', gua
 ].forEach(([id,evt,fn])=>{const el=document.getElementById(id);if(el)el.addEventListener(evt,fn);});
 
 Ui.pantalla('analisis', () => { if (typeof renderAnalisis === 'function') renderAnalisis(); }, { key: 'analisis-render' });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _btnGuardarIngresoFijo });

@@ -8,6 +8,7 @@ Solo lo que falta. Lo que ya está hecho al 100 % se borra de aquí cuando se ha
 
 | # | Qué | Para qué |
 |---|---|---|
+| 0 | **Tras subir M6: abrir la app desplegada en tu navegador y en el celular, recargar hasta que salga «Actualizar» y probar un recorrido normal** (agregar un gasto, abrir cuentas, Configuración, un préstamo) | La prueba en Chromium real y la comparación con la versión anterior dieron idénticas, pero no se pudo probar el despliegue real, Firebase ni un teléfono |
 | 1 | Subir el último zip y hacer un despliegue NUEVO (commit nuevo o Actions → «Run workflow»), sin «Re-run» | `deploy-pages` falló 3 veces con «Found 0 artifact(s)»; el flujo ya espera y reintenta |
 | 2 | Probar `firestore.rules` en el simulador de Firebase antes de publicarlas | No se pudo probar con el emulador desde aquí |
 | 3 | Probar la fusión con dos pestañas en un navegador real (recargar todas antes) | Solo está probada con tests y un navegador sin Firebase |
@@ -27,12 +28,12 @@ Solo lo que falta. Lo que ya está hecho al 100 % se borra de aquí cuando se ha
 
 | # | Qué | Nota |
 |---|---|---|
-| M6 | Pasar de scripts globales a módulos ES nativos, por fases, sin bundler | **Solo el piloto (`fecha.js`).** Análisis: 1.143 globales, 99 reasignados entre archivos (`S` lo reemplazan `persistencia.js` y `wrapped.js`; `html` y `nombreCuenta` se parchean), y `umbrales`/`reglas` los usa Node por `require`. El beneficio principal (que un nombre inexistente falle) ya lo cubre `npm run lint` en el CI. Solo valdría la pena si se agrega gente al proyecto o se quiere detectar código muerto por imports; entonces: primero que `S` sea un objeto que se muta, no que se reasigne |
 | H5-B | Cifrado de extremo a extremo (clave derivada de una contraseña) | Rompería las notificaciones del servidor, que leen el payload en claro. Hoy el PIN es solo un candado de pantalla y así se dice en la app |
 | M15 | Minificar / bundler solo de desarrollo | El documento lo marca «no ahora» |
 | Tipos | JSDoc + `tsc --checkJs` (adenda 2, §2.1) | Opcional, sin urgencia |
 
 ## Observaciones sin resolver
 
+- **M6 hecho; queda una mejora opcional:** `umbrales`, `reglas`, `salud` y `plan-deudas` siguen como `<script>` clásico porque Node los carga con `require`. Se podrían pasar a módulo si el script de notificaciones los importara con `import()` dinámico (Node 22 lo soporta). Y las ~150 llamadas por el puente global se podrían ir convirtiendo en imports a medida que se separen estado y cálculo.
 - `diffHtmlBloque` (`diferencial.js`) es una plantilla de referencia que nadie llama; se puede borrar si ya no sirve de guía.
 - **Prueba de Chromium en `subir.sh`:** si dice que no pudo instalarlo, se omite en tu PC y la corre el CI antes de desplegar. Para ver el motivo real: `npx playwright install chromium`.

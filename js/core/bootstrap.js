@@ -2,7 +2,12 @@
 // index.html (bloque inline post-Cuentas). Ver docs/auditoria-tecnica.md #2.
 
 
-function iniciales(nombre) {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { save } from './persistencia.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ iniciales });
+
+export function iniciales(nombre) {
   return nombre.trim().split(/\s+/).map(w=>w[0]||'').slice(0,2).join('').toUpperCase()||'?';
 }
 

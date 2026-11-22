@@ -36,9 +36,16 @@
    (prestado, mesada, alcancia, encargos) sin depender del orden de carga.
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Fuente, esFuenteCuenta, getCuentaDeFuente } from './cuentas-fuentes.js';
+import { S, uid } from './estado.js';
+import { _claseValida } from './ingresos.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _espejoLista, registrarMovimientoEspejo, borrarMovimientoEspejo });
+
 // Resuelve dónde vive el espejo de esa cuenta (siempre S.movimientos) y el 'tipo' que corresponde al flujo.
 // crear=true crea la lista si no existe. Devuelve null si la cuenta no es rastreable (vacía, tipo desconocido o ya no existe).
-function _espejoLista(cuenta, flujo, crear) {
+export function _espejoLista(cuenta, flujo, crear) {
   if (!cuenta || typeof cuenta !== 'string') return null;
   const entra = flujo !== 'salida';
   const existe = (esFuenteCuenta(cuenta) && !!getCuentaDeFuente(cuenta))
@@ -48,7 +55,7 @@ function _espejoLista(cuenta, flujo, crear) {
   return { lista: S.movimientos, tipo: entra ? 'entrada' : 'salida', campoTexto: 'desc', conFuente: true };
 }
 
-function registrarMovimientoEspejo(o) {
+export function registrarMovimientoEspejo(o) {
   if (!o || !o.cuenta || !o.monto) return null;
   const destino = _espejoLista(o.cuenta, o.flujo, true);
   if (!destino) return null;
@@ -72,7 +79,7 @@ function registrarMovimientoEspejo(o) {
   return id;
 }
 
-function borrarMovimientoEspejo(cuenta, id) {
+export function borrarMovimientoEspejo(cuenta, id) {
   if (!cuenta || !id) return false;
   const destino = _espejoLista(cuenta, 'entrada', false);
   if (!destino) return false;

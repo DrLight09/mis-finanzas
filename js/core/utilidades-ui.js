@@ -5,7 +5,14 @@
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
-var Reversibles = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, nivelAntiguedadMovimiento, toast } from './dialogos.js';
+import { Events } from './events.js';
+import { escHtml } from './estado.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ debounceSave, emptyState, emptyInline, botonEliminarFila, filaMovimiento, pedirPinAntesDe, mostrarSi });
+
+export var Reversibles = (() => {
   const _registro = new Map();
   return {
     registrar(def) { [].concat(def.tipo).forEach(t => _registro.set(t, def)); },
@@ -26,11 +33,11 @@ var Reversibles = (() => {
 })();
 
 /* ---- DEBOUNCE SAVE ---- */
-var _saveTimer=null;
+export var _saveTimer=null;
 // Flag: true solo si este dispositivo hizo cambios reales en esta sesión.
 // Evita que un dispositivo que solo abrió y leyó datos pise Firestore al cerrar.
 window._locallyModified = false;
-function debounceSave(delay=800){
+export function debounceSave(delay=800){
   window._locallyModified = true; // El usuario tocó algo en este dispositivo
   clearTimeout(_saveTimer);
   _saveTimer=setTimeout(()=>saveAndRefresh(),delay);
@@ -84,7 +91,7 @@ window.addEventListener('beforeunload', function() {
 // nadie lo actualizara. Se saca la rama entera (no solo el comentario) para
 // que ningún módulo futuro pueda reintroducir un onclick inline acá por
 // costumbre. Ver auditoria-tecnica.md #1 y changelog/infraestructura-seguridad.md.
-const ICONO_VACIO_CUENTAS = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16" cy="14" r="1.2"/></svg>';
+export const ICONO_VACIO_CUENTAS = '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h13v4"/><path d="M3 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-9a1 1 0 0 0-1-1H5a2 2 0 0 1-2-2"/><circle cx="16" cy="14" r="1.2"/></svg>';
 // ÚNICO estado vacío de la app. Dos formas, según el sitio:
 //   emptyState(icon, title, sub, btnLabel, btnFn, opts)  bloque con icono, título, texto y botón opcional (listas y pantallas
 //       completas: «Sin tarjetas», «Nadie te debe por ahora»). `icon`, `title` y `sub` se insertan como HTML (iconos SVG y entidades);
@@ -93,7 +100,7 @@ const ICONO_VACIO_CUENTAS = '<svg aria-hidden="true" width="20" height="20" view
 //   emptyInline(texto, opts)  una línea de aviso dentro de una tarjeta o historial («Sin movimientos aún»). El texto se ESCAPA aquí.
 //       opts: centro (centrado), grande (feeds de pantalla: más aire), clase (extra, p. ej. 'card card-sm').
 // Ningún módulo debe armar su propio <div class="...-vacio">: los tests lo vigilan (tests/estados-vacios.test.js).
-function emptyState(icon, title, sub, btnLabel, btnFn, opts){
+export function emptyState(icon, title, sub, btnLabel, btnFn, opts){
   const o = opts || {};
   let btnHtml = '';
   if (btnLabel && btnFn && btnFn.action) {
@@ -106,7 +113,7 @@ function emptyState(icon, title, sub, btnLabel, btnFn, opts){
     ${btnHtml}
   </div>`;
 }
-function emptyInline(texto, opts){
+export function emptyInline(texto, opts){
   const o = opts || {};
   const cls = 'empty-inline' + (o.centro ? ' empty-inline-centro' : '') + (o.grande ? ' empty-inline-grande' : '') + (o.clase ? ' ' + o.clase : '');
   return `<div class="${cls}">${escHtml(texto)}</div>`;
@@ -121,11 +128,11 @@ function emptyInline(texto, opts){
    sub, subClase, monto + montoClase (o montoHtml para un monto propio), acciones (html), antesMeta (html),
    meta (contenido de .gasto-item-meta; sin él no se dibuja), metaClase, despues (html). Va en el núcleo,
    igual que emptyState(): html/raw se resuelven al llamar. */
-function botonEliminarFila(accion, args, titulo) {
+export function botonEliminarFila(accion, args, titulo) {
   return html`<button type="button" class="btn-delete-hover" data-stop-propagation="true" ${raw(Events.attr(accion, ...(args || [])))} title="${titulo || 'Eliminar'}"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>`;
 }
 
-function filaMovimiento(o) {
+export function filaMovimiento(o) {
   const nombreClase = o.nombreClase || 'row-name row-name-13';
   const monto = o.montoHtml !== undefined ? o.montoHtml : html`<span class="row-amount ${o.montoClase || ''}">${o.monto}</span>`;
   return html`<div class="gasto-item${o.clase ? ' ' + o.clase : ''}" ${raw(o.attrs || '')}>
@@ -145,7 +152,7 @@ function filaMovimiento(o) {
 // activo no se pudo verificar (módulo del PIN sin cargar): en ese caso no se ejecuta nada. Se llama justo después de la
 // confirmación propia de cada acción: `if (!await pedirPinAntesDe('Para borrar todos los datos')) return;`
 // Acciones que lo piden: borrarTodo, importar un backup, eliminar la cuenta, quitar el PIN y quitar la huella.
-async function pedirPinAntesDe(motivo) {
+export async function pedirPinAntesDe(motivo) {
   let hayPin = false;
   try { hayPin = !!localStorage.getItem('mf_pin'); } catch (e) { /* sin acceso a localStorage: no hay PIN que pedir */ }
   if (!hayPin) return true;
@@ -158,7 +165,7 @@ async function pedirPinAntesDe(motivo) {
 // Muestra u oculta un elemento según el estado de la pantalla (JS, no CSS):
 // lo usan los botones de pie de lista que sobran cuando el estado vacío ya
 // trae su propio botón de acción (un solo botón por estado vacío).
-function mostrarSi(el, visible) {
+export function mostrarSi(el, visible) {
   if (el) el.style.display = visible ? '' : 'none';
 }
 
@@ -182,4 +189,7 @@ function mostrarSi(el, visible) {
 // «Sin dato» (reemplaza el guion largo «—» que se mostraba como texto copiable en tarjetas y estadísticas). Es un ícono SVG: no se
 // selecciona ni se copia, hereda el color de la tarjeta y lleva aria-label para lectores de pantalla.
 // En html`` va como raw(SIN_DATO); en una plantilla normal o en innerHTML, directo.
-const SIN_DATO = '<svg class="sin-dato" role="img" aria-label="Sin datos" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="7" y1="12" x2="17" y2="12"/></svg>';
+export const SIN_DATO = '<svg class="sin-dato" role="img" aria-label="Sin datos" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="7" y1="12" x2="17" y2="12"/></svg>';
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ ICONO_VACIO_CUENTAS, SIN_DATO });

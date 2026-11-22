@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
 
 // tests/nucleo.test.js — Núcleo y cálculos: patrimonio, salud financiera, Periodo (ingresos/gastos del mes), migraciones, ingreso real y clase de los movimientos.
@@ -782,7 +783,7 @@ describe('archivos-cargados', () => {
   const listar = d => fs.existsSync(path.join(RAIZ, d)) ? fs.readdirSync(path.join(RAIZ, d)).filter(f => f.endsWith('.js')).map(f => d + '/' + f) : [];
 
   test('todo js/core y js/modules se carga desde index.html, el cargador lazy o un import', () => {
-    const index = leer('index.html');
+    const index = htmlClasico(leer('index.html'));
     const lazy = fs.existsSync(path.join(RAIZ, 'js/core/lazy-loader.js')) ? leer('js/core/lazy-loader.js') : '';
     const archivos = [...listar('js/core'), ...listar('js/modules')];
     const importados = new Set();
@@ -827,7 +828,7 @@ describe('toast', () => {
   test('todo toast() de la app usa un tipo válido y cada tipo tiene su estilo (un tipo mal escrito salía sin color)', () => {
     const fs = require('node:fs');
     const validos = ['ok', 'salida', 'warn', 'err', 'info'];
-    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'));
     for (const t of validos) assert.ok(html.includes('.toast.toast-' + t + '{'), 'CSS crítico de toast-' + t);
     const archivos = [];
     for (const d of ['core', 'modules']) for (const f of fs.readdirSync(path.join(RAIZ, 'js', d))) if (f.endsWith('.js')) archivos.push(path.join(RAIZ, 'js', d, f));
@@ -1739,7 +1740,7 @@ describe('money-input (formateo al escribir en los campos de plata)', () => {
   const assert = require('node:assert/strict');
   const fs = require('node:fs'), path = require('node:path');
   const { JSDOM } = require('jsdom');
-  const codigo = fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'money-input.js'), 'utf8');
+  const codigo = require('../scripts/modulos-a-clasico').PRELUDIO + require('../scripts/modulos-a-clasico').aClasico(fs.readFileSync(path.join(__dirname, '..', 'js', 'core', 'money-input.js'), 'utf8'));
   function entorno(clase = 'money-input') {
     const dom = new JSDOM(`<!doctype html><input id="i" class="${clase}"><input id="o" class="otro">`, { runScripts: 'outside-only' });
     const w = dom.window;
@@ -1861,7 +1862,7 @@ describe('pin-confirmar-acciones-destructivas', () => {
   const pedir = leerEstado().match(/async function pedirPinAntesDe[\s\S]*?\n}\n/)[0];
 
   function entorno({ pin = '1234', dialogoOk = true } = {}) {
-    const dom = new JSDOM(leer('index.html'), { runScripts: 'outside-only', url: 'http://localhost/' });
+    const dom = new JSDOM(htmlClasico(leer('index.html')), { runScripts: 'outside-only', url: 'http://localhost/' });
     const w = dom.window;
     if (pin) w.localStorage.setItem('mf_pin', pin);
     w.toast = () => {};

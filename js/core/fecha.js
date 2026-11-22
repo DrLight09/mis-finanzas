@@ -23,6 +23,8 @@
 //   Fecha.nombreMes(m1a12, {largo}) → 'Ene' | 'Enero'
 //   Fecha.ultimoDiaDelMes(anio, m1a12) → 28…31
 //   Fecha.MS_DIA                 → 86400000, para quien de verdad compare marcas de tiempo (timestamps), no fechas de calendario
+import { exponerGlobales, exponerVariables } from './puente.js';
+
 export const Fecha = (() => {
   const MS_DIA = 86400000;
   const p2 = n => String(n).padStart(2, '0');
@@ -86,3 +88,6 @@ export const Fecha = (() => {
   return { MS_DIA, iso, hoy, mes, mesKey, parsear, esValida, sumarDias, sumarMeses, diasEntre, diasHasta, nombreMes, ultimoDiaDelMes, MESES_CORTOS: CORTOS, MESES_LARGOS: LARGOS };
 })();
 if (typeof window !== 'undefined') window.Fecha = Fecha;
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Fecha });

@@ -5,9 +5,17 @@
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
-function mesActual(){return Fecha.mes();}   // alias de Fecha.mes()
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Fecha } from './fecha.js';
+import { S, mesKey } from './estado.js';
+import { claseEfectivaMovimiento } from './persistencia.js';
+import { _movimientosDeudaSinCuenta } from './patrimonio.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ mesActual, gastosMes, _esEntradaEspejoNoIngreso, entradasIngresoReal, ingresosRealesDelMes, _esGastoVarNoReal });
 
-function gastosMes(mesK){
+export function mesActual(){return Fecha.mes();}   // alias de Fecha.mes()
+
+export function gastosMes(mesK){
   return(S.gastosVar||[]).filter(g=>mesKey(g.fecha)===mesK);
 }
 
@@ -17,11 +25,11 @@ function gastosMes(mesK){
 // Cada movimiento nace con `clase`: 'ingreso' (sube el patrimonio), 'gasto' (lo baja), 'neutro' (mueve plata sin cambiar el
 // patrimonio: el "espejo" de Mesada, Préstamos, Encargos, plata comprometida…) o 'ajuste' (corrección de datos, ej. la apertura
 // de una cuenta). Todo lector pasa por claseEfectivaMovimiento(): no hay otro camino que mire etiquetas ni textos.
-const CLASES_MOVIMIENTO = ['ingreso', 'gasto', 'neutro', 'ajuste'];
-const _claseValida = c => CLASES_MOVIMIENTO.indexOf(c) !== -1;
+export const CLASES_MOVIMIENTO = ['ingreso', 'gasto', 'neutro', 'ajuste'];
+export const _claseValida = c => CLASES_MOVIMIENTO.indexOf(c) !== -1;
 
 // ¿Esta entrada NO cuenta como ingreso real? Solo cuenta la que tiene `clase: 'ingreso'`; una sin clase no cuenta (y save() avisa).
-function _esEntradaEspejoNoIngreso(m){
+export function _esEntradaEspejoNoIngreso(m){
   if(!m) return false;
   return claseEfectivaMovimiento(m) !== 'ingreso';
 }
@@ -40,7 +48,7 @@ function _esEntradaEspejoNoIngreso(m){
 //     (extra de Spotify, extra de un pago de deuda, perdón recibido) es plata NUEVA aunque entre directo a una cajita.
 //   · Deudas sin pata de caja marcadas `clase:'ingreso'` (p. ej. un regalo registrado como "Me deben").
 // `estado` es opcional (por defecto S): Wrapped recibe el estado como parámetro.
-function entradasIngresoReal(estado){
+export function entradasIngresoReal(estado){
   const estadoActual = estado || S;
   const lista = [];
   (estadoActual.movimientos||[]).forEach(m => {
@@ -54,7 +62,7 @@ function entradasIngresoReal(estado){
 
 // Suma de ingresos reales de un mes 'YYYY-MM' (no incluye mesada ni ingresos fijos:
 // esos los suma cada pantalla aparte).
-function ingresosRealesDelMes(mes, estado){
+export function ingresosRealesDelMes(mes, estado){
   return entradasIngresoReal(estado).reduce((a,m) => mesKey(m.fecha)===mes ? a+(m.monto||0) : a, 0);
 }
 
@@ -62,7 +70,7 @@ function ingresosRealesDelMes(mes, estado){
 // mes)? Sí cuando su `clase` no es 'gasto': 'neutro' (pago de gasto fijo, que ya cuenta aparte; pago de TC, que cancela una deuda
 // ya contada; alcancía, que solo cambió de lugar; extra de un préstamo gastado de inmediato). Un gasto sin clase cuenta como gasto,
 // que es lo que es por estar en esta lista, y save() avisa del módulo que no la puso.
-function _esGastoVarNoReal(g){
+export function _esGastoVarNoReal(g){
   if(!g) return false;
   const c = claseEfectivaMovimiento(g);
   return c ? c !== 'gasto' : false;
@@ -78,3 +86,6 @@ function _esGastoVarNoReal(g){
 // interpolación y salía `&amp;amp;`. Esta vez se migraron todas en el mismo cambio (tests/interfaz.test.js vigila que no vuelva
 // escHtml() dentro de toast()) y, como red para cualquier texto que aún llegue pre-escapado desde un validador, `_toastTexto()` decodifica
 // SOLO las cinco entidades que produce escHtml() — compatibilidad transitoria, no contrato: ya no hay llamadas que dependan de ella.
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ CLASES_MOVIMIENTO, _claseValida });

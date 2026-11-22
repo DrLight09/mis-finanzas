@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 // Núcleo de Personas (js/core/personas-core.js): una sola tabla, relaciones declaradas en el núcleo, invariantes I1–I4.
 // Diseño y plan: docs/personas-modelo-unico.md.
 const { describe, test } = require('node:test');
@@ -401,7 +402,7 @@ describe('Búsqueda global: una entrada por persona', () => {
     const app = loadApp([path.join(RAIZ, 'js/core/core-state.js'), path.join(RAIZ, 'js/core/calc-helpers.js')]);
     const ventana = new JSDOM('<!doctype html><body><div id="busqueda-overlay"></div><input id="busqueda-input"><div id="busqueda-resultados"></div><button id="btn-buscar-global"></button><button id="btn-cerrar-busqueda"></button></body>').window;
     app.document = ventana.document;
-    require('node:vm').runInContext(require('node:fs').readFileSync(path.join(RAIZ, 'js/core/busqueda-global.js'), 'utf8'), app);
+    require('node:vm').runInContext(require('../scripts/modulos-a-clasico').aClasico(require('node:fs').readFileSync(path.join(RAIZ, 'js/core/busqueda-global.js'), 'utf8')), app);
     Object.assign(app.S, plano(estado));
     const input = ventana.document.getElementById('busqueda-input');
     input.value = texto;
@@ -451,7 +452,7 @@ describe('Personas: cableado en la app', () => {
   const fs = require('node:fs');
   const leer = f => fs.readFileSync(path.join(RAIZ, f), 'utf8');
   test('index.html carga personas-core.js justo después de estado.js y antes de persistencia.js', () => {
-    const h = leer('index.html');
+    const h = htmlClasico(leer('index.html'));
     const i = h.indexOf('js/core/estado.js'), j = h.indexOf('js/core/personas-core.js'), k = h.indexOf('js/core/persistencia.js');
     assert.ok(i > 0 && j > i && k > j);
   });
@@ -563,7 +564,7 @@ describe('Mesada: Papá y Mamá se pueden vincular (opcional) a una persona', ()
     assert.ok(plano(entorno(f).Personas.verificar()).some(v => v.relacion === 'mesada'));
   });
   test('la pantalla ofrece vincular y quitar por cada padre, con acciones registradas', () => {
-    const html = fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8');
+    const html = htmlClasico(fs.readFileSync(path.join(RAIZ, 'index.html'), 'utf8'));
     ['vincularPersona', 'desvincularPersona'].forEach(a => assert.equal((html.match(new RegExp('data-action="mesada:' + a + '"', 'g')) || []).length, 2));
     const js = fs.readFileSync(path.join(RAIZ, 'js/modules/mesada.js'), 'utf8');
     assert.match(js, /vincularPersona: vincularMesadaPersona/);

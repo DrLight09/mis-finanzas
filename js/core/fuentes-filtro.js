@@ -34,7 +34,12 @@
    poblarFuente(id) seguido de FuentesFiltro.podar(id, ...), ver openSheet
    en navegacion.js).
    ═══════════════════════════════════════════════════════════════ */
-const FuentesFiltro = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Fuente, esFuenteCuenta, getCuentaDeFuente, getSaldoFuente, opcionesCuenta } from './cuentas-fuentes.js';
+import { getTCById, tcCupoDisponible } from './calc-helpers.js';
+import { S } from './estado.js';
+
+export const FuentesFiltro = (() => {
   // Mínimos por flujo. Se comparan en centavos (los saldos son floats).
   const MIN = Object.freeze({
     GENERAL: 1,          // gastos, préstamos, transferencias, pagos varios
@@ -163,3 +168,6 @@ const FuentesFiltro = (() => {
 
   return { MIN, PRESET, MSG_SIN_SALDO, esCuenta, esTC, tcConCupo, hayTCConCupo, hayUtilizable, utilizable, filtrar, optsHtml, podar, puedeMover, puedeRecibir, receptoras };
 })();
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ FuentesFiltro });

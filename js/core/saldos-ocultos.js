@@ -3,6 +3,8 @@
 // «Ocultar saldos»: botón del ojo (#btn-toggle-saldos) que difumina los montos de la app y recuerda la elección en
 // localStorage ('mf-saldos-ocultos', '1'/'0'; wrapped.js lee esa misma llave). Cubre los elementos fijos (MONEY_SELECTORS) y las
 // áreas que se repintan con innerHTML (SALDO_DINAMICO_IDS: se re-aplica tras cada render de esas áreas).
+import { exponerGlobales, exponerVariables } from './puente.js';
+
 (function(){
   const SALDOS_OCULTOS_KEY = 'mf-saldos-ocultos';
   let _saldosOcultos = localStorage.getItem(SALDOS_OCULTOS_KEY) === '1';

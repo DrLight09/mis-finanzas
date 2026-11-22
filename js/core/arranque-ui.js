@@ -4,6 +4,9 @@
 //   · render de salud financiera, proyección y presupuestos tras cada refresh() y al terminar de cargar los datos;
 //   · fade-in de la app cuando se oculta la pantalla de carga;
 //   · role/aria-label de la zona principal y de cada pantalla.
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Refresh } from './refresh.js';
+
 (function(){
   // Renderizar salud y proyección directamente (sin depender del hook de refresh)
   function _renderMejoras() {

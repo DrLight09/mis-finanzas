@@ -108,7 +108,29 @@ const estadoSintetico = (desde, dias) => { const ctx = cargarApp(); generar(ctx,
     if (med.msArmar > PRESUPUESTO.armarFilasMs) falla(`armar las filas tardó ${med.msArmar.toFixed(0)} ms (presupuesto ${PRESUPUESTO.armarFilasMs})`);
     if (!med.botonMas) falla('con miles de filas debe haber botón «Mostrar más»');
 
-    // ── 4) Errores de página ──
+    // ── 1b) Cableado real de los módulos ES: tocar de verdad cada botón de cada pantalla ──
+    // En jsdom los módulos no se ejecutan; aquí sí. Un import que falta, una variable `let` leída por nombre desde otro archivo o un grupo lazy
+    // que no deja sus nombres en `window` aparece como error de página o como «No hay handler» al tocar el botón.
+    const estadoBase = estadoSintetico('2026-01-01', 300);
+    const consola = []; p.on('console', m => { if (/^(error|warning)$/.test(m.type())) consola.push(m.type() + ': ' + m.text()); });
+    let botones = 0;
+    for (const n of PANTALLAS) {
+      await p.evaluate(([n, est]) => { for (const k of Object.keys(S)) delete S[k]; Object.assign(S, JSON.parse(JSON.stringify(est))); showScreen(n); }, [n, estadoBase]);
+      await p.waitForTimeout(150);
+      const acciones = await p.evaluate(n => [...new Set([...document.querySelectorAll('#screen-' + n + ' [data-action]')].map(e => e.dataset.action))], n);
+      for (const a of acciones) {
+        const antes = erroresPagina.length, c0 = consola.length;
+        await p.evaluate(([n, a]) => { try { closeAllSheets(); } catch (e) { /* */ } const el = document.querySelector('#screen-' + n + ' [data-action="' + a + '"]'); if (el) el.click(); }, [n, a]);
+        await p.waitForTimeout(25);
+        erroresPagina.slice(antes).forEach(m => falla('al tocar «' + a + '» en «' + n + '»: ' + m.slice(0, 140)));
+        consola.slice(c0).filter(m => /No hay handler|is not defined|is not a function/.test(m)).forEach(m => falla('al tocar «' + a + '» en «' + n + '»: ' + m.slice(0, 140)));
+        botones++;
+        await p.evaluate(n => { try { closeAllSheets(); showScreen(n); } catch (e) { /* */ } }, n);
+      }
+    }
+    info.push(`${botones} botones tocados de verdad`);
+
+    // ── 5) Errores de página ──
     erroresPagina.forEach(e => falla('error de página: ' + e.slice(0, 160)));
   } finally { await navegador.close(); srv.close(); }
 

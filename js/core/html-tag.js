@@ -42,7 +42,12 @@
 // clásicos del documento. Depende de escHtml(), definida en js/core/estado.js
 // — debe cargar después de ese archivo.
 
-function raw(value) {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { escHtml } from './estado.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ raw, _htmlEscapeValue, html });
+
+export function raw(value) {
   return {
     __raw: true,
     value: value == null ? '' : String(value),
@@ -50,14 +55,14 @@ function raw(value) {
   };
 }
 
-function _htmlEscapeValue(v) {
+export function _htmlEscapeValue(v) {
   if (v == null) return '';
   if (v && v.__raw === true) return v.value;
   if (Array.isArray(v)) return v.map(_htmlEscapeValue).join('');
   return escHtml(String(v));
 }
 
-function html(strings, ...values) {
+export function html(strings, ...values) {
   let out = strings[0];
   for (let i = 0; i < values.length; i++) {
     out += _htmlEscapeValue(values[i]);

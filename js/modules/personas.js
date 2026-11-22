@@ -22,8 +22,23 @@
    Ver docs/personas.md para el resto de la documentación funcional.
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { Personas } from '../core/personas-core.js';
+import { Deudas, encargoSaldo, getDeudorSaldo, getMiDeudaSaldo } from '../core/calc-helpers.js';
+import { Events } from '../core/events.js';
+import { S, TIPO_PAGO_COMPLETO, esAbonoDeDeuda, fmt, fmtNoCents, hoy, pintarAvatarPersona } from '../core/estado.js';
+import { html, raw } from '../core/html-tag.js';
+import { emptyInline } from '../core/utilidades-ui.js';
+import { avisarNoSePuede, confirmarEliminar, dialogo, toast } from '../core/dialogos.js';
+import { save } from '../core/persistencia.js';
+import { refresh } from '../core/refresh.js';
+import { Ui } from '../core/ui.js';
+import { Fecha } from '../core/fecha.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _datosPersona, _inyectarPersonaSheets, _relacionPersonaPc, _pieTarjetaPersona, _abrirListaPersonas, _renderListaPersonas, _actualizarMasPersonasSub, abrirSelPersona, _selPersonaFiltrar, _selPersonaElegir, _selPersonaCrearDirecto, _abrirCrearPersonaGlobal, _volverASelPersona, _crearPersonaGlobal, abrirEditarPersonaGlobal, _guardarEditarPersonaGlobal, _esPcPersonas, _mostrarFichaPersona, _sincronizarFichaPersonas, _cerrarFichaPersonas, _alternarPerfilPersona, _pintarResumenPersonas, _perfilSeccionPrestamos, _perfilSeccionEncargos, _perfilSeccionSpotify, _perfilSeccionLeDebo, _perfilSeccionGenerica, _perfilBalanceNeto, _perfilAcciones, abrirPerfilPersona, _editarPersonaDesdePerfilSheet, _trasCambioDePersonas, _archivarPersona, _restaurarPersona, _eliminarPersona, _alternarArchivadas, _irASpotify, _renderColorPicker, _seleccionarColorPersona });
+
 /* ── COLORES DE AVATAR ─────────────────────────────────────────── */
-const PERSONA_COLORES = [
+export const PERSONA_COLORES = [
   '#60b0f0', // azul cielo
   '#4090d8', // azul medio
   '#60d8f4', // cyan
@@ -51,7 +66,7 @@ const PERSONA_COLORES = [
 /* ── HELPERS ───────────────────────────────────────────────────── */
 // Datos vinculados a una persona, con la forma que usan las secciones del perfil y los badges del selector. La fuente es
 // Personas.registros (js/core/personas-core.js): ninguna colección se recorre a mano aquí.
-function _datosPersona(personaId) {
+export function _datosPersona(personaId) {
   const encargos = Personas.registros(personaId, 'encargos');
   const deudores = Personas.registros(personaId, 'me-deben');
   const misDeudas = Personas.registros(personaId, 'yo-debo');
@@ -67,7 +82,7 @@ function _datosPersona(personaId) {
 
 /* ── SHEET SELECTOR DE PERSONA ─────────────────────────────────── */
 // Inyectar HTML del sheet selector y del sheet crear-persona-global
-function _inyectarPersonaSheets() {
+export function _inyectarPersonaSheets() {
   if (document.getElementById('sheet-sel-persona')) return;
 
   // Sheet: seleccionar persona (para nuevo encargo)
@@ -176,16 +191,16 @@ function _inyectarPersonaSheets() {
    están ocultos (css/styles.css) y la fila es la de siempre. Saldo neto = lo que me debe (préstamos) menos lo que yo le debo (Yo debo): el
    mismo criterio de Préstamos e Inicio. El saldo de un encargo NO entra: es plata suya que solo administras, no una deuda a tu favor.
    Todo sale de Personas.relaciones(id) (js/core/personas-core.js): la lista no sabe qué módulos existen. */
-const _TONO_CLASE = { ambar: 'pe-c-amber', rojo: 'pe-c-red', ok: 'pe-c-accent' };
+export const _TONO_CLASE = { ambar: 'pe-c-amber', rojo: 'pe-c-red', ok: 'pe-c-accent' };
 // Texto de PC bajo el nombre: lo que dice cada relación (resumen.pc), o «Al día» / «Solo en Spotify» / «Sin actividad».
-function _relacionPersonaPc(rels) {
+export function _relacionPersonaPc(rels) {
   const partes = rels.map(r => r.resumen && r.resumen.pc).filter(Boolean);
   const conDeudas = rels.some(r => r.tieneSaldo);
   if (partes.length === 1 && partes[0] === 'Spotify' && !conDeudas) return 'Solo en Spotify';
   if (partes.length) return partes.join(' · ');
   return conDeudas ? 'Al día' : 'Sin actividad';
 }
-function _pieTarjetaPersona(neto, tags) {
+export function _pieTarjetaPersona(neto, tags) {
   const cls = neto > 0 ? 'pe-c-accent' : neto < 0 ? 'pe-c-red' : 'pe-c-text3';
   const monto = neto > 0 ? '+' + fmt(neto) : neto < 0 ? '\u2212' + fmt(-neto) : 'Al día';
   return html`<div class="personas-pie">
@@ -194,7 +209,7 @@ function _pieTarjetaPersona(neto, tags) {
   </div>`;
 }
 
-function _abrirListaPersonas() {
+export function _abrirListaPersonas() {
   _inyectarPersonaSheets();
   _renderListaPersonas();
   showScreen('personas');
@@ -203,7 +218,7 @@ function _abrirListaPersonas() {
   if (masOverlay) masOverlay.classList.remove('open');
 }
 
-function _renderListaPersonas() {
+export function _renderListaPersonas() {
   const body = document.getElementById('lista-personas-body');
   const empty = document.getElementById('lista-personas-empty');
   if (!body) return;
@@ -281,23 +296,23 @@ function _renderListaPersonas() {
 }
 
 // Actualizar el sub-texto del ítem Personas (ahora en Configuración)
-function _actualizarMasPersonasSub() {
+export function _actualizarMasPersonasSub() {
   const total = Personas.activas().length;
   const txt = total ? total + ' persona' + (total !== 1 ? 's' : '') + ' registrada' + (total !== 1 ? 's' : '') : 'Perfiles y actividad financiera';
   // Actualizar en Config
   const cfgSub = document.getElementById('cfg-personas-sub');
   if (cfgSub) cfgSub.textContent = txt;
 }
-let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
-let _selPersonaTitulo = '¿De quién es la plata?'; // título del sheet, según quién lo abrió
-let _selPersonaExcluir = null; // fn(persona) → true si NO se debe ofrecer (ej. ya está en la lista donde se agrega)
+export let _selPersonaCallback = null; // fn(personaId) llamada al seleccionar
+export let _selPersonaTitulo = '¿De quién es la plata?'; // título del sheet, según quién lo abrió
+export let _selPersonaExcluir = null; // fn(persona) → true si NO se debe ofrecer (ej. ya está en la lista donde se agrega)
 
 // abrirSelPersona(callback, titulo, opts)
 //   callback(personaId)  se llama al elegir (o al crear una persona nueva desde el selector).
 //   titulo               texto del sheet; sin él queda el de Encargos ("¿De quién es la plata?").
 //   opts.excluir         fn(persona) → true para ocultar a esa persona (ej. quien ya tiene una deuda
 //                        en la lista donde se está agregando: no se puede agregar dos veces).
-function abrirSelPersona(callback, titulo, opts) {
+export function abrirSelPersona(callback, titulo, opts) {
   _selPersonaCallback = callback;
   _selPersonaTitulo = titulo || '¿De quién es la plata?';
   _selPersonaExcluir = (opts && typeof opts.excluir === 'function') ? opts.excluir : null;
@@ -311,7 +326,7 @@ function abrirSelPersona(callback, titulo, opts) {
   focusSheetField(buscarEl);
 }
 
-function _selPersonaFiltrar() {
+export function _selPersonaFiltrar() {
   const q = (document.getElementById('sel-persona-buscar')?.value || '').toLowerCase().trim();
   const lista = document.getElementById('sel-persona-lista');
   if (!lista) return;
@@ -376,7 +391,7 @@ function _selPersonaFiltrar() {
   });
 }
 
-function _selPersonaElegir(personaId) {
+export function _selPersonaElegir(personaId) {
   document.getElementById('sheet-sel-persona').classList.remove('open');
   if (typeof _selPersonaCallback === 'function') {
     setTimeout(() => { _selPersonaCallback(personaId); }, 180);
@@ -385,7 +400,7 @@ function _selPersonaElegir(personaId) {
 
 // Un solo tap desde "No se encontró": precarga el nombre ya escrito y abre
 // directamente "Nueva persona", en vez de obligar a escribirlo de nuevo.
-function _selPersonaCrearDirecto() {
+export function _selPersonaCrearDirecto() {
   const q = document.getElementById('sel-persona-buscar')?.value.trim() || '';
   _abrirCrearPersonaGlobal();
   setTimeout(() => {
@@ -395,11 +410,11 @@ function _selPersonaCrearDirecto() {
 }
 
 /* ── CREAR PERSONA GLOBAL ──────────────────────────────────────── */
-var _cpgColorSel = '#60b0f0';
+export var _cpgColorSel = '#60b0f0';
 
-let _cpgDesdeListaPersonas = false;
+export let _cpgDesdeListaPersonas = false;
 
-function _abrirCrearPersonaGlobal(desdeListaPersonas) {
+export function _abrirCrearPersonaGlobal(desdeListaPersonas) {
   _cpgDesdeListaPersonas = !!desdeListaPersonas;
   _inyectarPersonaSheets();
   _cpgColorSel = PERSONA_COLORES[0];
@@ -413,7 +428,7 @@ function _abrirCrearPersonaGlobal(desdeListaPersonas) {
   focusSheetField('cpg_nombre');
 }
 
-function _volverASelPersona() {
+export function _volverASelPersona() {
   if (_cpgDesdeListaPersonas) {
     _abrirListaPersonas();
   } else {
@@ -422,7 +437,7 @@ function _volverASelPersona() {
   document.getElementById('sheet-crear-persona-global').classList.remove('open');
 }
 
-function _crearPersonaGlobal() {
+export function _crearPersonaGlobal() {
   const nombre = document.getElementById('cpg_nombre').value.trim();
   if (!nombre) { toast('Escribe el nombre', 'err'); return; }
   // Personas.crear no duplica: si ya hay una con ese nombre (sin mirar mayúsculas ni tildes) devuelve la existente.
@@ -451,10 +466,10 @@ function _crearPersonaGlobal() {
 }
 
 /* ── EDITAR PERSONA GLOBAL ─────────────────────────────────────── */
-let _editPersonaGlobalId = null;
-var _epgColorSel = '#60b0f0';
+export let _editPersonaGlobalId = null;
+export var _epgColorSel = '#60b0f0';
 
-function abrirEditarPersonaGlobal(personaId) {
+export function abrirEditarPersonaGlobal(personaId) {
   const p = Personas.obtener(personaId);
   if (!p) return;
   _editPersonaGlobalId = personaId;
@@ -468,7 +483,7 @@ function abrirEditarPersonaGlobal(personaId) {
   focusSheetField('epg_nombre');
 }
 
-function _guardarEditarPersonaGlobal() {
+export function _guardarEditarPersonaGlobal() {
   const p = Personas.obtener(_editPersonaGlobalId);
   if (!p) return;
   const nombre = document.getElementById('epg_nombre').value.trim();
@@ -495,13 +510,13 @@ function _guardarEditarPersonaGlobal() {
 }
 
 /* ── PERFIL DE PERSONA ─────────────────────────────────────────── */
-let _perfilPersonaId = null;
-let _verArchivadas = false; // la lista de Personas oculta las archivadas hasta que se pidan
-let _fichaAbierta = false;
+export let _perfilPersonaId = null;
+export let _verArchivadas = false; // la lista de Personas oculta las archivadas hasta que se pidan
+export let _fichaAbierta = false;
 // PC (≥900 px): el perfil de una persona es una ficha dentro de la pantalla Personas (lista | ficha); en celular sigue siendo una hoja.
-const _consultaPcPersonas = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
-function _esPcPersonas() { return !!_consultaPcPersonas && _consultaPcPersonas.matches; }
-function _mostrarFichaPersona() {
+export const _consultaPcPersonas = typeof window.matchMedia === 'function' ? window.matchMedia('(min-width: 900px)') : null;
+export function _esPcPersonas() { return !!_consultaPcPersonas && _consultaPcPersonas.matches; }
+export function _mostrarFichaPersona() {
   _fichaAbierta = true;
   const pantalla = document.getElementById('screen-personas');
   if (pantalla) pantalla.dataset.fichaAbierta = 'si';
@@ -513,13 +528,13 @@ function _mostrarFichaPersona() {
 // Como el prototipo, al abrir Personas en PC no hay nadie elegido: se ve el resumen y las tarjetas a todo el ancho, y la ficha aparece al
 // tocar una persona (con una elegida el resumen se oculta para que quepan las tarjetas). Aquí solo se repinta la ficha de la persona
 // abierta para que no quede vieja; si ya no existe, la ficha se cierra.
-function _sincronizarFichaPersonas() {
+export function _sincronizarFichaPersonas() {
   const pantalla = document.getElementById('screen-personas');
   if (!pantalla || !pantalla.classList.contains('active')) return;
   if (_perfilPersonaId && Personas.obtener(_perfilPersonaId)) abrirPerfilPersona(_perfilPersonaId);
   else _cerrarFichaPersonas();
 }
-function _cerrarFichaPersonas() {
+export function _cerrarFichaPersonas() {
   _perfilPersonaId = null;
   _fichaAbierta = false;
   const pantalla = document.getElementById('screen-personas');
@@ -527,7 +542,7 @@ function _cerrarFichaPersonas() {
   document.querySelectorAll('#lista-personas-body .persona-fila-activa').forEach(fila => fila.classList.remove('persona-fila-activa'));
 }
 // En PC, tocar la persona que ya está abierta cierra su ficha (así vuelve el resumen); en celular y en cualquier otro caso se abre su perfil.
-function _alternarPerfilPersona(personaId) {
+export function _alternarPerfilPersona(personaId) {
   const pantalla = document.getElementById('screen-personas');
   if (_esPcPersonas() && _fichaAbierta && personaId === _perfilPersonaId && pantalla && pantalla.classList.contains('active')) _cerrarFichaPersonas();
   else abrirPerfilPersona(personaId);
@@ -540,7 +555,7 @@ if (_consultaPcPersonas) {
   else if (_consultaPcPersonas.addListener) _consultaPcPersonas.addListener(alCambiarModo);
 }
 // Resumen de la pantalla (solo se ve en PC): mismos totales que Inicio y Préstamos, y quiénes comparten Spotify.
-function _pintarResumenPersonas() {
+export function _pintarResumenPersonas() {
   const poner = (id, texto) => { const el = document.getElementById(id); if (el) el.textContent = texto; };
   const personas = dir => Deudas.lista(dir).filter(d => Deudas.saldo(d) > 0).length;
   const nFavor = personas('favor'), nContra = personas('contra');
@@ -557,7 +572,7 @@ function _pintarResumenPersonas() {
 /* ── SECCIONES DEL PERFIL ──────────────────────────────────────────
    El perfil recorre Personas.relaciones(id) (js/core/personas-core.js) y, por cada relación viva, llama a su sección de _PERFIL_SECCIONES.
    Una relación sin sección propia (un módulo nuevo) sale con _perfilSeccionGenerica: etiqueta, saldo y «ver en el módulo». */
-function _perfilSeccionPrestamos(datos) {
+export function _perfilSeccionPrestamos(datos) {
   const d = datos.deudor;
   const saldo = datos.saldoPrestamo;
   // Consolidar movimientos de TODOS los deudores vinculados a esta persona
@@ -632,7 +647,7 @@ function _perfilSeccionPrestamos(datos) {
   </div>`;
 }
 
-function _perfilSeccionEncargos(datos) {
+export function _perfilSeccionEncargos(datos) {
   const totalEncargo = datos.saldoEncargos;
   // Stats encargos
   const todosMovimientoEncargo = datos.encargos.flatMap(e => (e.movimientos || []).map(m => ({...m, _encargo: e})));
@@ -678,7 +693,7 @@ function _perfilSeccionEncargos(datos) {
   </div>`;
 }
 
-function _perfilSeccionSpotify(datos) {
+export function _perfilSeccionSpotify(datos) {
   const spotifyEntry = datos.spotify;
   const diasRestantes = spotifyEntry.proximoPago
     ? Fecha.diasEntre(hoy(), spotifyEntry.proximoPago)
@@ -740,7 +755,7 @@ function _perfilSeccionSpotify(datos) {
   </div>`;
 }
 
-function _perfilSeccionLeDebo(datos) {
+export function _perfilSeccionLeDebo(datos) {
   const totalMisDeudas = datos.saldoMisDeudas;
   const movimientosTodos = datos.misDeudas.flatMap(d => (d.movimientos || []).map(m => ({...m, _deuda: d})))
     .sort((a, b) => (a.fecha || '').localeCompare(b.fecha || ''));
@@ -803,7 +818,7 @@ function _perfilSeccionLeDebo(datos) {
 }
 
 // Sección de respaldo para relaciones registradas que no tienen sección propia: se ven en el perfil sin tocar este archivo.
-function _perfilSeccionGenerica(datos, rel) {
+export function _perfilSeccionGenerica(datos, rel) {
   const n = rel.registros.length;
   return html`<div class="pe-card-azul">
     <div class="pe-cab">
@@ -823,7 +838,7 @@ function _perfilSeccionGenerica(datos, rel) {
   </div>`;
 }
 
-const _PERFIL_SECCIONES = {
+export const _PERFIL_SECCIONES = {
   'me-deben': _perfilSeccionPrestamos,
   'encargos': _perfilSeccionEncargos,
   'spotify': _perfilSeccionSpotify,
@@ -832,7 +847,7 @@ const _PERFIL_SECCIONES = {
 
 // Saldo neto con la persona (lo que te debe menos lo que le debes), cuando tiene más de una relación con saldo: es el balance real que
 // ninguna sección sola muestra. Mismo criterio que la lista: el saldo de un encargo no entra (es plata suya que solo administras).
-function _perfilBalanceNeto(rels, neto) {
+export function _perfilBalanceNeto(rels, neto) {
   const cls = neto > 0 ? 'pe-c-accent' : neto < 0 ? 'pe-c-red' : 'pe-c-text3';
   const monto = neto > 0 ? '+' + fmt(neto) : neto < 0 ? '\u2212' + fmt(-neto) : 'Al día';
   const detalle = rels.filter(r => r.tieneSaldo).map(r => r.resumen ? r.resumen.tag : r.etiqueta).join(' · ');
@@ -850,7 +865,7 @@ function _perfilBalanceNeto(rels, neto) {
 
 // Archivar y eliminar: el ciclo de vida de la persona (Personas.archivar/restaurar/eliminar). Eliminar solo aparece si no tiene
 // ninguna relación (con historial se archiva).
-function _perfilAcciones(p, rels) {
+export function _perfilAcciones(p, rels) {
   return html`<div class="pe-mt10">
     ${p.archivada ? html`<div class="pe-sub pe-c-text3">Archivada: no sale en la lista ni en los selectores. Sus préstamos y encargos siguen en su módulo.</div>` : ''}
     ${p.archivada
@@ -860,7 +875,7 @@ function _perfilAcciones(p, rels) {
   </div>`;
 }
 
-function abrirPerfilPersona(personaId) {
+export function abrirPerfilPersona(personaId) {
   const p = Personas.obtener(personaId);
   if (!p) return;
   _perfilPersonaId = personaId;
@@ -912,20 +927,20 @@ function abrirPerfilPersona(personaId) {
   else document.getElementById('sheet-perfil-persona').classList.add('open');
 }
 
-function _editarPersonaDesdePerfilSheet() {
+export function _editarPersonaDesdePerfilSheet() {
   if (!_perfilPersonaId) return;
   abrirEditarPersonaGlobal(_perfilPersonaId);
   document.getElementById('sheet-perfil-persona').classList.remove('open');
 }
 
 /* ── CICLO DE VIDA: archivar, restaurar, eliminar ────── */
-function _trasCambioDePersonas(abrirId) {
+export function _trasCambioDePersonas(abrirId) {
   save(); refresh();
   if (abrirId && Personas.obtener(abrirId)) _perfilPersonaId = abrirId; else _cerrarFichaPersonas();
   _renderListaPersonas();
 }
 
-async function _archivarPersona(personaId) {
+export async function _archivarPersona(personaId) {
   const p = Personas.obtener(personaId);
   if (!p) return;
   const ok = await dialogo('Archivar a ' + p.nombre, 'Deja de aparecer en la lista y en los selectores. Sus préstamos, encargos y movimientos no cambian y se siguen viendo en su módulo. La puedes restaurar cuando quieras.', 'Archivar');
@@ -935,7 +950,7 @@ async function _archivarPersona(personaId) {
   toast(p.nombre + ' archivado/a', 'ok');
 }
 
-function _restaurarPersona(personaId) {
+export function _restaurarPersona(personaId) {
   const p = Personas.obtener(personaId);
   if (!p) return;
   const r = Personas.restaurar(personaId);
@@ -947,7 +962,7 @@ function _restaurarPersona(personaId) {
   toast(p.nombre + ' restaurado/a', 'ok');
 }
 
-async function _eliminarPersona(personaId) {
+export async function _eliminarPersona(personaId) {
   const p = Personas.obtener(personaId);
   if (!p) return;
   if (Personas.relaciones(personaId).length) {
@@ -962,17 +977,17 @@ async function _eliminarPersona(personaId) {
   toast(p.nombre + ' eliminado/a', 'ok');
 }
 
-function _alternarArchivadas() { _verArchivadas = !_verArchivadas; _renderListaPersonas(); }
+export function _alternarArchivadas() { _verArchivadas = !_verArchivadas; _renderListaPersonas(); }
 
 // _irADeudor() vive en js/modules/prestado.js; _irAEncargo() en js/modules/encargos.js.
 
-function _irASpotify() {
+export function _irASpotify() {
   document.getElementById('sheet-perfil-persona').classList.remove('open');
   setTimeout(() => { showScreen('spotify'); }, 180);
 }
 
 /* ── RENDERIZADO DEL COLOR PICKER ──────────────────────────────── */
-function _renderColorPicker(containerId, varName) {
+export function _renderColorPicker(containerId, varName) {
   const el = document.getElementById(containerId);
   if (!el) return;
   const current = window[varName] || PERSONA_COLORES[0];
@@ -985,7 +1000,7 @@ function _renderColorPicker(containerId, varName) {
 // Handler del color picker: window[varName] sigue el mismo patrón que ya usaba
 // el onclick inline (_cpgColorSel / _epgColorSel son variables globales reales,
 // no strings mágicos) — solo se movió la asignación de un atributo HTML a acá.
-function _seleccionarColorPersona(containerId, varName, color) {
+export function _seleccionarColorPersona(containerId, varName, color) {
   window[varName] = color;
   _renderColorPicker(containerId, varName);
 }
@@ -1008,7 +1023,7 @@ function _seleccionarColorPersona(containerId, varName, color) {
      .abiertoSinConfirmar   true si se abrió el buscador y se cerró sin elegir a nadie
      .limpiar()             vuelve a «Seleccionar persona…» y quita el bloqueo
      .marcarError()         borde rojo 2 s (para «Selecciona una persona»)  */
-const PersonaPicker = (() => {
+export const PersonaPicker = (() => {
   const registro = new Map();
   function crear(cfg) {
     const prev = registro.get(cfg.prefijo);
@@ -1106,3 +1121,6 @@ Ui.pantalla('personas', () => {
   if (typeof _renderListaPersonas === 'function') _renderListaPersonas();
   if (typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
 }, { key: 'personas-render' });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ PERSONA_COLORES, _TONO_CLASE, _consultaPcPersonas, _PERFIL_SECCIONES, PersonaPicker });

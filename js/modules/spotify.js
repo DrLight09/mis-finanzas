@@ -23,10 +23,33 @@
    openSheet_pagarSpotify().
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { Fuente, Libro, Plata, descontarFuente, fuenteBadgeClass, fuenteLabel, getFuentes, getFuentesSinTC, getSaldoFuente, opcionesCuenta, sumarFuente } from '../core/cuentas-fuentes.js';
+import { crearSplitWidget } from '../core/split.js';
+import { FuentesFiltro } from '../core/fuentes-filtro.js';
+import { S, escHtml, fmt, hoy, pintarAvatarPersona, uid } from '../core/estado.js';
+import { closeSheet, openSheet } from '../core/navegacion.js';
+import { _fechaSafe, avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, confirmarEliminar, nivelAntiguedadMovimiento, toast } from '../core/dialogos.js';
+import { fmtInput, parseMoney, save } from '../core/persistencia.js';
+import { refresh } from '../core/refresh.js';
+import { Fecha } from '../core/fecha.js';
+import { getTCById, spotifyPersonaPagadaVigente, tcCupoDisponible } from '../core/calc-helpers.js';
+import { SIN_DATO, emptyInline, emptyState, mostrarSi } from '../core/utilidades-ui.js';
+import { html, raw } from '../core/html-tag.js';
+import { Personas } from '../core/personas-core.js';
+import { Events } from '../core/events.js';
+import { medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/patrimonio.js';
+import { borrarMovimientoEspejo, registrarMovimientoEspejo } from '../core/cuenta-efectos.js';
+import { Loader } from '../core/lazy-loader.js';
+import { PersonaPicker } from './personas.js';
+import { Ui } from '../core/ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _spotifyProporcionarSplits, getSpotifyFuente, getSpotifyFuenteSaldo, abrirElegirFuenteSpotify, guardarFuenteSpotify, spotifyPeriodosVencidos, spotifyCicloCobrosActual, spotifySumarDias, spotifyTramosDeCobro, spotifyMontoAntesDe, spotifyAsignarPeriodos, spotifyResumenCicloActual, spotifyCostoValido, abrirPagarSpotify, renderSpotify, renderSpotifyHistorial, renderSpotifyStats, deleteSpotifyHistorial, _borrarSpotifyHistorial, deshacerAbonoPendienteSpotify, marcarPagoSpotify, selSpotifyMeses, _syncSpotifyDebeWrap, _spotifyExtraOpts, _syncSpotifyExtraWrap, actualizarSpotifyDestinoPreview, confirmarSpotifyDestino, resolverPendienteSpotifyHistorial, actualizarSpotifyResolverPreview, confirmarSpotifyResolverPendiente, _spotifyEnsureTC, openSheet_pagarSpotify, actualizarSpotifyPagarPreview, confirmarPagarSpotify, addSpotify, deleteSpotify, editarSpotify, guardarEditarSpotify, _spotifyPintarAvatares });
+
 /* ---- SPOTIFY ---- */
-let spotifyDestinoIdx=null;
-let spotifyDestinoPago=0;
-let spotifyDestinoNombre='';
+export let spotifyDestinoIdx=null;
+export let spotifyDestinoPago=0;
+export let spotifyDestinoNombre='';
 
 // ── Pago parcial con deuda pendiente (cobro a un integrante) ───────────────
 // Mismo concepto que "pago parcial con deuda pendiente" de Mesada (ver
@@ -43,7 +66,7 @@ let spotifyDestinoNombre='';
 // criterio que Mesada: "ese mes solo fueron 60mil, no me quedó debiendo
 // nada"). Índice del registro de spotifyHistorial que se está resolviendo
 // desde el sheet "sp-hist-pend":
-let spotifyResolverIdx=null;
+export let spotifyResolverIdx=null;
 
 /* ── Split de fuentes (motor genérico, ver js/core/split.js) ─────
    Dos instancias: 'spc' (cobro — plata que ENTRA, mismo patrón que
@@ -55,8 +78,8 @@ let spotifyResolverIdx=null;
    de un movimiento de cuenta, así que combinarlas en un split no lo
    soporta el motor genérico. El modo simple de "Pagar Spotify" sigue
    permitiendo TC exactamente igual que antes. */
-let spcSplitMode=false;
-let sppSplitMode=false;
+export let spcSplitMode=false;
+export let sppSplitMode=false;
 
 // Cuando un solo cobro dividido termina repartido en DOS registros de historial
 // (parte cierra deuda de un ciclo viejo, el resto es del ciclo nuevo — ver
@@ -65,9 +88,9 @@ let sppSplitMode=false;
 // ── Libro (js/core/cuentas-fuentes.js): origen de cada cambio de saldo ────────────────────────────────────────────────
 // _origenLibroSpotify(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'spotify', ref:<id del registro de spotifyHistorial,
 // o del pago> }. Con rev=true es una reversión (tipo 'reversion'). `opts.exacto` ya no existe: el saldo no se recorta en 0.
-const _origenLibroSpotify = Libro.origen('spotify');
+export const _origenLibroSpotify = Libro.origen('spotify');
 
-function _spotifyProporcionarSplits(splits,montoParcial,montoTotal){
+export function _spotifyProporcionarSplits(splits,montoParcial,montoTotal){
   if(!splits||!splits.length||montoTotal<=0||montoParcial<=0)return null;
   const factor=montoParcial/montoTotal;
   return splits.map(s=>({fuente:s.fuente,monto:Math.round(s.monto*factor)}));
@@ -76,14 +99,14 @@ function _spotifyProporcionarSplits(splits,montoParcial,montoTotal){
 
 // Split de PAGO a Spotify (plata que SALE): solo cuentas con saldo >= $50 (PRESET.SPOTIFY). Distinto del de COBRO ('spc'): allí la
 // plata ENTRA y una cuenta vacía es un destino válido, así que no se filtra por saldo.
-const _spotify_spc = crearSplitWidget('spc', {
+export const _spotify_spc = crearSplitWidget('spc', {
   simpleId:'spCobModoSimple', splitId:'spCobModoDividido', toggleId:'spCobSplitToggle', rowsId:'spCobSplitRows',
   getModo:()=>spcSplitMode, setModo:v=>{spcSplitMode=v;},
   fuentes:{ placeholder:'Selecciona una cuenta...', placeholderDeshabilitado:true },
   onPreview:actualizarSpotifyDestinoPreview
 });
 
-const _spotify_spp = crearSplitWidget('spp', {
+export const _spotify_spp = crearSplitWidget('spp', {
   simpleId:'spPagarModoSimple', splitId:'spPagarModoDividido', toggleId:'spPagarSplitToggle', rowsId:'spPagarSplitRows',
   getModo:()=>sppSplitMode, setModo:v=>{sppSplitMode=v;},
   fuentes:{ sentido:'sale', preset:'SPOTIFY', placeholder:'Selecciona una cuenta...', sinOpcionesTexto:FuentesFiltro.MSG_SIN_SALDO },
@@ -93,12 +116,12 @@ const _spotify_spp = crearSplitWidget('spp', {
 // DÓNDE guardas la plata de Spotify: una cuenta o una cajita CUALQUIERA, la que el usuario elija (S.spotify.fuenteId, p. ej.
 // 'cajita:abc' o 'cuenta:nequi'). Nunca se adivina por el nombre. Una referencia que ya no es válida (cajita eliminada, cuenta
 // archivada o de ahorro) cuenta como «sin elegir»; eliminarCajita la limpia.
-function getSpotifyFuente(){
+export function getSpotifyFuente(){
   const f=S.spotify.fuenteId;
   if(!f)return null;
   return getFuentesSinTC().some(x=>x.val===f)?f:null;
 }
-function getSpotifyFuenteSaldo(){
+export function getSpotifyFuenteSaldo(){
   const f=getSpotifyFuente();
   // getSaldoFuente() ya incluye el interés real de una cajita (calcC, js/core/nu-calc.js).
   return f?getSaldoFuente(f):0;
@@ -106,7 +129,7 @@ function getSpotifyFuenteSaldo(){
 
 // Elegir (o quitar) esa cuenta/cajita. Siempre hay dónde elegir: Efectivo no se puede eliminar. Si todavía no hay una elegida y existe
 // UNA sola cajita con «spotify» en el nombre, se deja preseleccionada como sugerencia (el usuario aún tiene que Guardar).
-function abrirElegirFuenteSpotify(){
+export function abrirElegirFuenteSpotify(){
   const sel=document.getElementById('spFuenteSel');
   if(!sel)return;
   const actual=getSpotifyFuente();
@@ -120,7 +143,7 @@ function abrirElegirFuenteSpotify(){
   if(nota)nota.textContent=sugerida?'Te sugerimos esta cajita por su nombre. Confírmala con Guardar.':'La cuenta o cajita donde vas guardando lo que cobras para pagar Spotify.';
   openSheet('sp-fuente');
 }
-function guardarFuenteSpotify(){
+export function guardarFuenteSpotify(){
   const sel=document.getElementById('spFuenteSel');
   if(!sel)return;
   const f=sel.value||'';
@@ -138,7 +161,7 @@ function guardarFuenteSpotify(){
 // tarjetas aparecían recién al cargarlo y empujaban todo Inicio hacia abajo
 // (CLS). Siguen siendo globales: este archivo las usa igual que antes.
 
-function spotifyPeriodosVencidos(p,fechaCorte,estricto){
+export function spotifyPeriodosVencidos(p,fechaCorte,estricto){
   // Cuenta cuántos períodos de 30 días de este integrante ya se vencieron a la fecha
   // de corte dada, partiendo de su `proximoPago` vigente — que ya refleja todos los
   // cobros aplicados hasta ahora (cada cobro lo avanza N*30 días al confirmarse).
@@ -157,7 +180,7 @@ function spotifyPeriodosVencidos(p,fechaCorte,estricto){
   return n;
 }
 
-function spotifyCicloCobrosActual(){
+export function spotifyCicloCobrosActual(){
   // Cobros registrados en el historial desde el último pago real a Spotify (ciclo actual).
   // Si nunca se ha pagado, todo el historial de cobros pertenece al ciclo actual.
   // Se excluyen los cobros con _pagoIdCierre: aunque queden posicionados después del
@@ -185,14 +208,14 @@ function spotifyCicloCobrosActual(){
 //    (entonces va al nuevo).
 // Todo se DERIVA del historial: no se guarda ningún estado nuevo, así que borrar un
 // cobro o un pago a Spotify reacomoda los períodos solo.
-const SPOTIFY_PERIODO_DIAS=30;
-const SPOTIFY_EMPATE_PERIODOS=2;
+export const SPOTIFY_PERIODO_DIAS=30;
+export const SPOTIFY_EMPATE_PERIODOS=2;
 
 // Avanza `meses` períodos de 30 días desde una fecha (desde la fecha de próximo pago, no desde hoy ni desde cuando se pagó:
 // si tocaba el 8-jun y pagó el 5 o el 10, el siguiente es 8-jun + 30 d). Antes: nextMonthFixed(f,k) ≡ spotifySumarDias(f,30*k).
-function spotifySumarDias(fechaStr,dias){ return Fecha.sumarDias(fechaStr,dias); }
+export function spotifySumarDias(fechaStr,dias){ return Fecha.sumarDias(fechaStr,dias); }
 
-function spotifyTramosDeCobro(h){
+export function spotifyTramosDeCobro(h){
   // Divide un registro de cobro en sus períodos. Un cobro sin `proximoPagoAntes` (la persona
   // no tenía fecha de próximo pago) → tramos sin fecha de inicio: nunca flotan.
   // `_periodoOffset`: períodos del mismo pago que ya cubrió el registro hermano de
@@ -212,13 +235,13 @@ function spotifyTramosDeCobro(h){
   return out;
 }
 
-function spotifyMontoAntesDe(h,fechaCorte){
+export function spotifyMontoAntesDe(h,fechaCorte){
   // Plata de este cobro que ya cubría períodos ANTERIORES a `fechaCorte` (el primer
   // período siempre cuenta; los siguientes solo si empezaron antes del corte).
   return spotifyTramosDeCobro(h).filter(t=>!t.inicio||t.inicio<fechaCorte).reduce((a,t)=>a+t.monto,0);
 }
 
-function spotifyAsignarPeriodos(historial){
+export function spotifyAsignarPeriodos(historial){
   // Devuelve un tramo por período de cada cobro, con el ciclo al que pertenece
   // (0 = antes del primer pago a Spotify; M = pagos.length = ciclo abierto).
   historial=historial||S.spotify.historial||[];
@@ -268,7 +291,7 @@ function spotifyAsignarPeriodos(historial){
   return tramos;
 }
 
-function spotifyResumenCicloActual(historial){
+export function spotifyResumenCicloActual(historial){
   // "Recaudado este ciclo" = tramos del ciclo abierto que ya empezaron. Los períodos
   // prepagados que todavía no empiezan quedan aparte, como `flotante`.
   const tramos=spotifyAsignarPeriodos(historial);
@@ -283,13 +306,13 @@ function spotifyResumenCicloActual(historial){
 
 // ¿El costo del plan es un número mayor que cero? Una sola condición para el aviso de renderSpotify y para
 // el bloqueo de «Pagar Spotify»: sin costo no hay cuota ni ganancia que calcular.
-function spotifyCostoValido(){
+export function spotifyCostoValido(){
   const c=S.spotify.costo;
   return typeof c==='number' && isFinite(c) && c>0;
 }
 
 // Abre «Pagar Spotify» solo con el costo configurado; si no, lleva al campo del costo.
-function abrirPagarSpotify(){
+export function abrirPagarSpotify(){
   if(!spotifyCostoValido()){
     toast('Configura el costo del plan para registrar pagos','err');
     const inp=document.getElementById('spotifyCosto');
@@ -299,7 +322,7 @@ function abrirPagarSpotify(){
   openSheet('pagar-spotify');
 }
 
-function renderSpotify(){
+export function renderSpotify(){
   const el=document.getElementById('spotifyList');
   const p=S.spotify.integrantes||[];
   const costo=S.spotify.costo||0;
@@ -435,7 +458,7 @@ function renderSpotify(){
   renderSpotifyStats();
 }
 
-function renderSpotifyHistorial(){
+export function renderSpotifyHistorial(){
   const el=document.getElementById('spHistorial');
   if(!el)return;
   const total=S.spotify.historial||[];
@@ -491,7 +514,7 @@ function renderSpotifyHistorial(){
   })}`;
 }
 
-function renderSpotifyStats(){
+export function renderSpotifyStats(){
   const el=document.getElementById('spStats');
   if(!el)return;
   const personas=S.spotify.integrantes||[];
@@ -671,7 +694,7 @@ function renderSpotifyStats(){
   html+=`</div>`;
   el.innerHTML=html;
 }
-async function deleteSpotifyHistorial(i){
+export async function deleteSpotifyHistorial(i){
   const h=S.spotify.historial[i];
   if(!h)return;
 
@@ -708,7 +731,7 @@ async function deleteSpotifyHistorial(i){
 // camino normal (confirmación genérica) como el de aviso por antigüedad
 // (confirmación específica, ver arriba) terminen en el mismo lugar sin
 // duplicar la reversión de saldos.
-async function _borrarSpotifyHistorial(i,h){
+export async function _borrarSpotifyHistorial(i,h){
   const _historialAntes=medirPatrimonioParaHistorial(); // el historial de patrimonio deja de contar este registro
 
   if(h.tipo==='cobro'){
@@ -806,7 +829,7 @@ async function _borrarSpotifyHistorial(i,h){
 // se lo quita a pendienteHistorial, y devuelve ese monto de h.monto a h.pendiente.
 // Distinto de deleteSpotifyHistorial/_borrarSpotifyHistorial, que borran el cobro completo
 // (con todos sus abonos) de una sola vez.
-async function deshacerAbonoPendienteSpotify(i,abonoIdx){
+export async function deshacerAbonoPendienteSpotify(i,abonoIdx){
   const h=S.spotify.historial[i];
   if(!h||!h.pendienteHistorial)return;
   const abono=h.pendienteHistorial[abonoIdx];
@@ -821,7 +844,7 @@ async function deshacerAbonoPendienteSpotify(i,abonoIdx){
   toast('Abono deshecho — vuelve a quedar pendiente '+fmt(h.pendiente),'ok',3000);
 }
 
-function marcarPagoSpotify(i){
+export function marcarPagoSpotify(i){
   const p=S.spotify.integrantes[i];
   if(spotifyPersonaPagadaVigente(p)){
     // Ya pagó (y sigue vigente) → esto es solo una corrección manual del badge.
@@ -882,7 +905,7 @@ function marcarPagoSpotify(i){
   openSheet('sp-destino');
 }
 
-function selSpotifyMeses(){
+export function selSpotifyMeses(){
   const n=parseInt(document.getElementById('spMesesSelect').value)||1;
   const monto=(S.spotify.integrantes[spotifyDestinoIdx]?.monto||0)*n;
   document.getElementById('spMesesTotal').textContent='Total a cobrar: '+fmt(monto);
@@ -896,7 +919,7 @@ function selSpotifyMeses(){
 // Muestra/oculta el toggle "quedó debiendo la diferencia" según el monto
 // recibido ingresado vs. lo esperado para los períodos elegidos — mismo
 // patrón que _syncMesadaPagoDebeWrap() en mesada.js.
-function _syncSpotifyDebeWrap(){
+export function _syncSpotifyDebeWrap(){
   const wrap=document.getElementById('spDebeWrap');
   const checkbox=document.getElementById('spQuedaDebiendo');
   const lbl=document.getElementById('spDebeLabel');
@@ -919,7 +942,7 @@ function _syncSpotifyDebeWrap(){
 // se ofrece "Misma cuenta del cobro" como opción visible (no se asume en silencio);
 // en modo dividido no existe "la misma cuenta", así que hay que elegir una.
 // Como todo destino donde ENTRA plata: sin TC, sin filtro por saldo.
-function _spotifyExtraOpts(esSplit){
+export function _spotifyExtraOpts(esSplit){
   const fuentes=getFuentesSinTC();
   const primera=esSplit
     ?'<option value="" disabled selected>Selecciona una opción...</option>'
@@ -929,7 +952,7 @@ function _spotifyExtraOpts(esSplit){
 
 // Muestra/oculta el bloque "te dio un extra" según lo recibido vs. lo esperado.
 // El extra = recibido − (períodos × cuota). Nunca es parte del cobro de Spotify.
-function _syncSpotifyExtraWrap(){
+export function _syncSpotifyExtraWrap(){
   const wrap=document.getElementById('spExtraWrap');
   const sel=document.getElementById('spExtraDestino');
   const lbl=document.getElementById('spExtraLabel');
@@ -962,7 +985,7 @@ function _syncSpotifyExtraWrap(){
 // mesada.js. En modo simple no hay nada que mostrar acá (spMesesTotal ya
 // cubre el total); solo pinta cuando spcSplitMode está activo. Siempre
 // sincroniza el toggle de "quedó debiendo", independientemente del modo.
-function actualizarSpotifyDestinoPreview(){
+export function actualizarSpotifyDestinoPreview(){
   _syncSpotifyDebeWrap();
   _syncSpotifyExtraWrap();
   const prev=document.getElementById('spCobPreview');
@@ -986,7 +1009,7 @@ function actualizarSpotifyDestinoPreview(){
   else{prev.textContent=lines+' · Todo distribuido';prev.style.color='var(--accent)';}
 }
 
-function confirmarSpotifyDestino(){
+export function confirmarSpotifyDestino(){
   if(spotifyDestinoIdx===null)return;
   const p=S.spotify.integrantes[spotifyDestinoIdx];
   const meses=parseInt(document.getElementById('spMesesSelect').value)||1;
@@ -1144,7 +1167,7 @@ function confirmarSpotifyDestino(){
 // Mismo patrón que abrirResolverPendiente()/confirmarPendienteMesada() en
 // mesada.js, pero aplicado a un registro de spotifyHistorial en vez de a un
 // mes calendario. `i` es el índice REAL en S.spotify.historial (h._realIdx).
-function resolverPendienteSpotifyHistorial(i){
+export function resolverPendienteSpotifyHistorial(i){
   const h=S.spotify.historial[i];
   if(!h||!(h.pendiente>0))return;
   spotifyResolverIdx=i;
@@ -1161,7 +1184,7 @@ function resolverPendienteSpotifyHistorial(i){
   openSheet('sp-hist-pend');
 }
 
-function actualizarSpotifyResolverPreview(){
+export function actualizarSpotifyResolverPreview(){
   const prev=document.getElementById('spResPreview');
   if(!prev||spotifyResolverIdx===null)return;
   const h=S.spotify.historial[spotifyResolverIdx];
@@ -1177,7 +1200,7 @@ function actualizarSpotifyResolverPreview(){
   prev.style.color=restante>0?'var(--amber)':'var(--accent)';
 }
 
-function confirmarSpotifyResolverPendiente(){
+export function confirmarSpotifyResolverPendiente(){
   if(spotifyResolverIdx===null)return;
   const h=S.spotify.historial[spotifyResolverIdx];
   if(!h||!(h.pendiente>0))return;
@@ -1211,7 +1234,7 @@ function confirmarSpotifyResolverPendiente(){
 // eager (typeof ya es 'function', Loader.ensure ni se llama) que si en el
 // futuro se vuelve un grupo lazy real. Si la descarga falla (sin conexión),
 // avisa con un toast en vez de dejar la acción muda.
-async function _spotifyEnsureTC(){
+export async function _spotifyEnsureTC(){
   if(typeof getTCById==='function') return true;
   try{
     await Loader.ensure('tarjetas');
@@ -1222,7 +1245,7 @@ async function _spotifyEnsureTC(){
   }
 }
 
-function openSheet_pagarSpotify(){
+export function openSheet_pagarSpotify(){
   const costo=S.spotify.costo||0;
   // Resetear split (mismo patrón que abrirRegistrarMesada en mesada.js)
   sppSplitMode=false;
@@ -1254,7 +1277,7 @@ function openSheet_pagarSpotify(){
   if(fechaPagoEl)fechaPagoEl.value=hoy();
 }
 
-async function actualizarSpotifyPagarPreview(){
+export async function actualizarSpotifyPagarPreview(){
   const prev=document.getElementById('spPagarPreview');
   const fuenteInfo=document.getElementById('spPagarFuenteSaldo');
   // Modo dividido: el desglose de saldo por TC no aplica (no hay TC en split,
@@ -1314,7 +1337,7 @@ async function actualizarSpotifyPagarPreview(){
   }
 }
 
-async function confirmarPagarSpotify(){
+export async function confirmarPagarSpotify(){
   const _pagoRef=uid(); // id del gasto de este pago: lo usan el libro y, más abajo, S.gastosVar
   const monto=parseMoney(document.getElementById('spPagarMonto').value)||0;
   const nota=document.getElementById('spPagarNota')?document.getElementById('spPagarNota').value.trim():'';
@@ -1458,7 +1481,7 @@ async function confirmarPagarSpotify(){
   save();refresh();closeSheet('pagar-spotify');
 }
 
-function addSpotify(){
+export function addSpotify(){
   // El integrante es una persona real (S.personas): sp_n es un input oculto que llena el selector «¿Quién es?».
   const n=document.getElementById('sp_n').value.trim();
   const m=parseMoney(document.getElementById('sp_m').value)||0;
@@ -1490,7 +1513,7 @@ function addSpotify(){
   save();refresh();closeSheet('spotify');
   toast(`${Personas.nombre(pId)} agregado · primer cobro el ${proximoPago}`,'ok');
 }
-async function deleteSpotify(i){
+export async function deleteSpotify(i){
   const p=(S.spotify.integrantes||[])[i];
   if(!p)return;
   const nombreActual=Personas.nombre(p.personaId);
@@ -1501,8 +1524,8 @@ async function deleteSpotify(i){
   toast(`${nombreActual} eliminado de Spotify`,'ok');
 }
 
-let _spotifyEditIdx = null;
-function editarSpotify(i) {
+export let _spotifyEditIdx = null;
+export function editarSpotify(i) {
   const p = S.spotify.integrantes[i];
   if (!p) return;
   _spotifyEditIdx = i;
@@ -1515,7 +1538,7 @@ function editarSpotify(i) {
   _spotifyEditPicker().precargar({ personaId: p.personaId, nombre: Personas.nombre(p.personaId) });
   openSheet('editar-spotify');
 }
-function guardarEditarSpotify() {
+export function guardarEditarSpotify() {
   if (_spotifyEditIdx === null) return;
   const p = S.spotify.integrantes[_spotifyEditIdx];
   if (!p) return;
@@ -1567,45 +1590,45 @@ function guardarEditarSpotify() {
    index.html. Todos estos ids ya existen en el DOM estático antes de
    este <script> (verificado contra index.html), así que no hace falta
    esperar a DOMContentLoaded. ── */
-const _spotifyBtnAdd = document.getElementById('btn-add-spotify-persona');
+export const _spotifyBtnAdd = document.getElementById('btn-add-spotify-persona');
 if (_spotifyBtnAdd) _spotifyBtnAdd.addEventListener('click', () => openSheet('spotify'));
-const _spotifyBtnPagar = document.getElementById('btn-pagar-spotify');
+export const _spotifyBtnPagar = document.getElementById('btn-pagar-spotify');
 if (_spotifyBtnPagar) _spotifyBtnPagar.addEventListener('click', abrirPagarSpotify);
 
-const _spotifyBtnSave = document.getElementById('btn-guardar-spotify');
+export const _spotifyBtnSave = document.getElementById('btn-guardar-spotify');
 if (_spotifyBtnSave) _spotifyBtnSave.addEventListener('click', () => addSpotify());
-const _spotifyBtnDestino = document.getElementById('btn-confirmar-sp-destino');
+export const _spotifyBtnDestino = document.getElementById('btn-confirmar-sp-destino');
 if (_spotifyBtnDestino) _spotifyBtnDestino.addEventListener('click', confirmarSpotifyDestino);
-const _spotifyMesesSelect = document.getElementById('spMesesSelect');
+export const _spotifyMesesSelect = document.getElementById('spMesesSelect');
 if (_spotifyMesesSelect) _spotifyMesesSelect.addEventListener('change', selSpotifyMeses);
-const _spotifyMontoRecibido = document.getElementById('spMontoRecibido');
+export const _spotifyMontoRecibido = document.getElementById('spMontoRecibido');
 if (_spotifyMontoRecibido) _spotifyMontoRecibido.addEventListener('input', actualizarSpotifyDestinoPreview);
-const _mSpotifyDebeWrap = document.getElementById('spDebeWrap');
+export const _mSpotifyDebeWrap = document.getElementById('spDebeWrap');
 if (_mSpotifyDebeWrap) _mSpotifyDebeWrap.addEventListener('click', () => document.getElementById('spQuedaDebiendo').click());
-const _mSpotifyQuedaDebiendo = document.getElementById('spQuedaDebiendo');
+export const _mSpotifyQuedaDebiendo = document.getElementById('spQuedaDebiendo');
 if (_mSpotifyQuedaDebiendo) _mSpotifyQuedaDebiendo.addEventListener('click', (e) => e.stopPropagation());
 // ── Sheet "Registrar pago de lo pendiente" (sp-hist-pend) ──
-const _spotifyBtnResConf = document.getElementById('btn-confirmar-sp-res-pend');
+export const _spotifyBtnResConf = document.getElementById('btn-confirmar-sp-res-pend');
 if (_spotifyBtnResConf) _spotifyBtnResConf.addEventListener('click', confirmarSpotifyResolverPendiente);
-const _spotifyResMonto = document.getElementById('spResMonto');
+export const _spotifyResMonto = document.getElementById('spResMonto');
 if (_spotifyResMonto) _spotifyResMonto.addEventListener('input', actualizarSpotifyResolverPreview);
-const _spotifyBtnPagarConf = document.getElementById('btn-confirmar-pagar-spotify');
+export const _spotifyBtnPagarConf = document.getElementById('btn-confirmar-pagar-spotify');
 if (_spotifyBtnPagarConf) _spotifyBtnPagarConf.addEventListener('click', confirmarPagarSpotify);
 
-const _spotifyPagarFuente = document.getElementById('spPagarFuente');
+export const _spotifyPagarFuente = document.getElementById('spPagarFuente');
 if (_spotifyPagarFuente) _spotifyPagarFuente.addEventListener('change', actualizarSpotifyPagarPreview);
-const _spotifyPagarMonto = document.getElementById('spPagarMonto');
+export const _spotifyPagarMonto = document.getElementById('spPagarMonto');
 if (_spotifyPagarMonto) _spotifyPagarMonto.addEventListener('input', actualizarSpotifyPagarPreview);
 
 // ── Split de fuentes — cobro (spc) y pago (spp), ver crearSplitWidget arriba ──
-const _spotifyCobSplitToggle = document.getElementById('spCobSplitToggle');
+export const _spotifyCobSplitToggle = document.getElementById('spCobSplitToggle');
 if (_spotifyCobSplitToggle) _spotifyCobSplitToggle.addEventListener('click', _spotify_spc.toggle);
-const _spotifyCobBtnAddRow = document.getElementById('btn-add-spcob-split-row');
+export const _spotifyCobBtnAddRow = document.getElementById('btn-add-spcob-split-row');
 if (_spotifyCobBtnAddRow) _spotifyCobBtnAddRow.addEventListener('click', _spotify_spc.addRow);
 
-const _spotifyPagarSplitToggle = document.getElementById('spPagarSplitToggle');
+export const _spotifyPagarSplitToggle = document.getElementById('spPagarSplitToggle');
 if (_spotifyPagarSplitToggle) _spotifyPagarSplitToggle.addEventListener('click', _spotify_spp.toggle);
-const _spotifyPagarBtnAddRow = document.getElementById('btn-add-spp-split-row');
+export const _spotifyPagarBtnAddRow = document.getElementById('btn-add-spp-split-row');
 if (_spotifyPagarBtnAddRow) _spotifyPagarBtnAddRow.addEventListener('click', _spotify_spp.addRow);
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1650,13 +1673,13 @@ Events.on('spotify:abrirSheetAgregar', () => openSheet('spotify'));
    ═══════════════════════════════════════════════════════════════ */
 
 // Campos «¿Quién es?» de las hojas Agregar y Editar: PersonaPicker (js/modules/personas.js), markup estático en index.html.
-const _spotifyPicker = () => PersonaPicker.crear({ prefijo: 'sp-persona', inputId: 'sp_n', titulo: '¿Quién es?' });
-const _spotifyEditPicker = () => PersonaPicker.crear({ prefijo: 'sp-edit-persona', inputId: 'sp_edit_n', titulo: '¿Quién es?' });
+export const _spotifyPicker = () => PersonaPicker.crear({ prefijo: 'sp-persona', inputId: 'sp_n', titulo: '¿Quién es?' });
+export const _spotifyEditPicker = () => PersonaPicker.crear({ prefijo: 'sp-edit-persona', inputId: 'sp_edit_n', titulo: '¿Quién es?' });
 // Al abrir «Agregar persona» el campo arranca vacío.
 Ui.hoja('spotify', function() { _spotifyPicker().limpiar(); }, { key: 'spotify-personas' });
 
 /* Color/foto y nombre de la persona vinculada en cada fila de la lista (la llama renderSpotify con la lista ya ordenada). */
-function _spotifyPintarAvatares(lista, ordenados) {
+export function _spotifyPintarAvatares(lista, ordenados) {
   lista.querySelectorAll('.sp-row').forEach((row, idx) => {
     const spotify = ordenados[idx];
     if (!spotify || !spotify.personaId) return;
@@ -1681,3 +1704,6 @@ Events.registerAll('spotify', {
 Ui.hoja('pagar-spotify', () => { save(); openSheet_pagarSpotify(); }, { key: 'spotify-pagar' });
 Ui.hoja('spotify', () => { const fd = document.getElementById('sp_fecha_ingreso'); if (fd && !fd.value) fd.value = hoy(); }, { key: 'spotify-fecha' });
 Ui.pantalla('spotify', () => { if (typeof renderSpotify === 'function') renderSpotify(); }, { key: 'spotify-render' });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ _origenLibroSpotify, _spotify_spc, _spotify_spp, SPOTIFY_PERIODO_DIAS, SPOTIFY_EMPATE_PERIODOS, _spotifyBtnAdd, _spotifyBtnPagar, _spotifyBtnSave, _spotifyBtnDestino, _spotifyMesesSelect, _spotifyMontoRecibido, _mSpotifyDebeWrap, _mSpotifyQuedaDebiendo, _spotifyBtnResConf, _spotifyResMonto, _spotifyBtnPagarConf, _spotifyPagarFuente, _spotifyPagarMonto, _spotifyCobSplitToggle, _spotifyCobBtnAddRow, _spotifyPagarSplitToggle, _spotifyPagarBtnAddRow, _spotifyPicker, _spotifyEditPicker });

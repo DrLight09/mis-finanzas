@@ -14,7 +14,9 @@
 //
 // El <span class="field-error-msg" id="CAMPO_err"> se crea la primera vez que hace falta, justo después del campo: no hay que
 // escribirlo en el HTML de cada hoja.
-const Formulario = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+
+export const Formulario = (() => {
   const MS_VISIBLE = 3000;
   const temporizadores = new Map(); // campo → id de setTimeout
 
@@ -75,3 +77,6 @@ const Formulario = (() => {
   return { validar, error, limpiar };
 })();
 if (typeof window !== 'undefined') window.Formulario = Formulario;
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Formulario });

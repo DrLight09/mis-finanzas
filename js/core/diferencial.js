@@ -61,8 +61,13 @@
    movió acá.
    ═══════════════════════════════════════════════════════════════ */
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { Events } from './events.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ diffRegistrarInstancia, diffInstancia, diffReset, diffToggle, diffEstaAbierto, diffAddParte, diffRemoveParte, _diffNombreParte, diffElegirPersona, diffSetMonto, diffTogglePagoYo, diffSetCuentaSalida, diffSetCuentaEntrada, _diffFuentesOptsHtml, diffRenderPartes, diffCalcular, diffResumen, _diffActualizarMiCuenta, diffValidarIntercambios, diffValidarMiCuenta, diffAplicar, diffHtmlBloque, diffRenderHistorial });
+
 // Registro de instancias activas: { [instanciaId]: { cfg, partes, abierto } }
-var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests con varios cargadores) no falla
+export var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests con varios cargadores) no falla
 
 /**
  * Crea (o resetea) una instancia del motor de diferencial.
@@ -84,7 +89,7 @@ var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests
  */
 // Devuelve la API de la instancia (`const _diferencial_compraConTc = diffRegistrarInstancia('ctc', {...})` → `_diferencial_compraConTc.toggle()`, `_diferencial_compraConTc.resumen()`…):
 // los módulos ya no escriben un envoltorio de una línea por cada función y por cada instancia.
-function diffRegistrarInstancia(instanciaId, cfg) {
+export function diffRegistrarInstancia(instanciaId, cfg) {
   _diffInstancias[instanciaId] = { cfg, partes: [], abierto: false };
   return {
     instanciaId,
@@ -102,9 +107,9 @@ function diffRegistrarInstancia(instanciaId, cfg) {
   };
 }
 
-function diffInstancia(instanciaId) { return _diffInstancias[instanciaId]; }
+export function diffInstancia(instanciaId) { return _diffInstancias[instanciaId]; }
 
-function diffReset(instanciaId) {
+export function diffReset(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   instancia.partes = [];
@@ -123,7 +128,7 @@ function diffReset(instanciaId) {
   if (instancia.cfg.onReset) instancia.cfg.onReset();
 }
 
-function diffToggle(instanciaId) {
+export function diffToggle(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   const { ids } = instancia.cfg;
@@ -137,14 +142,14 @@ function diffToggle(instanciaId) {
   if (instancia.cfg.onToggle) instancia.cfg.onToggle(instancia.abierto);
 }
 
-function diffEstaAbierto(instanciaId) {
+export function diffEstaAbierto(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return false;
   const body = document.getElementById(instancia.cfg.ids.body);
   return !!body && body.style.display !== 'none';
 }
 
-function diffAddParte(instanciaId) {
+export function diffAddParte(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   instancia.partes.push({ personaId: '', monto: 0, pagadoPorMi: false, miCuentaSalida: '', miCuentaEntrada: '' });
@@ -152,7 +157,7 @@ function diffAddParte(instanciaId) {
   diffResumen(instanciaId);
 }
 
-function diffRemoveParte(instanciaId, i) {
+export function diffRemoveParte(instanciaId, i) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   instancia.partes.splice(i, 1);
@@ -161,9 +166,9 @@ function diffRemoveParte(instanciaId, i) {
 }
 
 // Quien se lleva la parte es una persona de la app (S.personas): se guarda solo su id y el nombre sale de Personas.nombre.
-function _diffNombreParte(b) { return b && b.personaId ? Personas.nombre(b.personaId) : ''; }
+export function _diffNombreParte(b) { return b && b.personaId ? Personas.nombre(b.personaId) : ''; }
 
-function diffElegirPersona(instanciaId, i) {
+export function diffElegirPersona(instanciaId, i) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia || !instancia.partes[i]) return;
   abrirSelPersona(personaId => {
@@ -174,9 +179,9 @@ function diffElegirPersona(instanciaId, i) {
     diffResumen(instanciaId);
   }, '¿Quién se lleva esta parte?');
 }
-function diffSetMonto(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (!instancia) return; instancia.partes[i].monto = parseMoney(v) || 0; diffResumen(instanciaId); }
+export function diffSetMonto(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (!instancia) return; instancia.partes[i].monto = parseMoney(v) || 0; diffResumen(instanciaId); }
 
-function diffTogglePagoYo(instanciaId, i) {
+export function diffTogglePagoYo(instanciaId, i) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   const p = instancia.partes[i];
@@ -186,10 +191,10 @@ function diffTogglePagoYo(instanciaId, i) {
   diffResumen(instanciaId);
 }
 
-function diffSetCuentaSalida(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (instancia) { instancia.partes[i].miCuentaSalida = v; diffResumen(instanciaId); } }
-function diffSetCuentaEntrada(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (instancia) { instancia.partes[i].miCuentaEntrada = v; diffResumen(instanciaId); } }
+export function diffSetCuentaSalida(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (instancia) { instancia.partes[i].miCuentaSalida = v; diffResumen(instanciaId); } }
+export function diffSetCuentaEntrada(instanciaId, i, v) { const instancia = diffInstancia(instanciaId); if (instancia) { instancia.partes[i].miCuentaEntrada = v; diffResumen(instanciaId); } }
 
-function _diffFuentesOptsHtml(selectedVal, soloConSaldo) {
+export function _diffFuentesOptsHtml(selectedVal, soloConSaldo) {
   return opcionesCuenta({
     selectedVal,
     soloConSaldo,
@@ -198,7 +203,7 @@ function _diffFuentesOptsHtml(selectedVal, soloConSaldo) {
   });
 }
 
-function diffRenderPartes(instanciaId) {
+export function diffRenderPartes(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   const { ids, permiteIntercambio } = instancia.cfg;
@@ -255,7 +260,7 @@ function diffRenderPartes(instanciaId) {
 }
 
 /** Calcula dijo/real/margen y el reparto actual de una instancia, sin tocar el DOM. */
-function diffCalcular(instanciaId) {
+export function diffCalcular(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return null;
   const { cfg } = instancia;
@@ -274,7 +279,7 @@ function diffCalcular(instanciaId) {
   return { dijo, real, margen, normales, intercambios, asignadoNormal, asignadoIntercambio, sinAsignar };
 }
 
-function diffResumen(instanciaId) {
+export function diffResumen(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   const { cfg } = instancia;
@@ -327,7 +332,7 @@ function diffResumen(instanciaId) {
   if (cfg.onResumen) cfg.onResumen(calc);
 }
 
-function _diffActualizarMiCuenta(instanciaId, mostrar) {
+export function _diffActualizarMiCuenta(instanciaId, mostrar) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return;
   const { ids } = instancia.cfg;
@@ -343,7 +348,7 @@ function _diffActualizarMiCuenta(instanciaId, mostrar) {
 }
 
 /** Valida que los intercambios "lo pagué yo" tengan saldo suficiente. Retorna string de error o null. */
-function diffValidarIntercambios(instanciaId) {
+export function diffValidarIntercambios(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return null;
   // Cada parte con plata necesita una persona: es el vínculo que mantiene el perfil y la integridad al día.
@@ -365,7 +370,7 @@ function diffValidarIntercambios(instanciaId) {
  * cfg.getMiCuentaSplit y el usuario activó "Dividir ÷"). Retorna string de error o null.
  * Con el split apagado, o sin filas con monto, no valida nada (igual que "Sin especificar").
  */
-function diffValidarMiCuenta(instanciaId) {
+export function diffValidarMiCuenta(instanciaId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia || !instancia.cfg.permiteMiCuenta || !instancia.cfg.getMiCuentaSplit) return null;
   const filas = instancia.cfg.getMiCuentaSplit();
@@ -395,7 +400,7 @@ function diffValidarMiCuenta(instanciaId) {
  *
  * Retorna el objeto diferencial guardado, o null si no había nada que aplicar.
  */
-function diffAplicar(instanciaId, movimiento, linkId) {
+export function diffAplicar(instanciaId, movimiento, linkId) {
   const instancia = diffInstancia(instanciaId);
   if (!instancia) return null;
   if (!diffEstaAbierto(instanciaId)) return null;
@@ -517,7 +522,7 @@ function diffAplicar(instanciaId, movimiento, linkId) {
  *  plantilla de referencia (ver comentario de cabecera). Se actualizó
  *  igual al patrón data-action para que copiarla en el futuro ya salga
  *  compatible con una CSP estricta. */
-function diffHtmlBloque(ids, opts) {
+export function diffHtmlBloque(ids, opts) {
   opts = opts || {};
   const titulo = opts.titulo || 'El valor real era diferente';
   const subtitulo = opts.subtitulo || 'Registrar margen cobrado';
@@ -557,7 +562,7 @@ function diffHtmlBloque(ids, opts) {
 }
 
 /** Renderiza el resumen de un diferencial ya guardado, para el historial. */
-function diffRenderHistorial(diferencial) {
+export function diffRenderHistorial(diferencial) {
   if (!diferencial) return '';
   const d = diferencial;
   const benefs = (d.beneficiarios || []).filter(b => b.personaId).map(b => `${escHtml(Personas.nombre(b.personaId))} ${fmt(b.monto)}`).join(' · ');
@@ -583,4 +588,3 @@ Events.registerAll('diferencial', {
   elegirPersona: diffElegirPersona,
   togglePagoYo: diffTogglePagoYo,
 });
-

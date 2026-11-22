@@ -1,4 +1,6 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
+const { aClasico, PRELUDIO } = require('../scripts/modulos-a-clasico');
 const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
 
 // M1/M3 — ciclo de vida de la interfaz: registro Ui + guarda contra el patrón «const _orig = X; X = function(){…}».
@@ -15,7 +17,7 @@ function cargarUi() {
   const ctx = { console: { error() {}, log() {} } };
   ctx.window = ctx;
   vm.createContext(ctx);
-  vm.runInContext(leer('js/core/ui.js') + '\nthis.Ui = Ui;', ctx);
+  vm.runInContext(PRELUDIO + aClasico(leer('js/core/ui.js')) + '\nthis.Ui = Ui;', ctx);
   return ctx.Ui;
 }
 
@@ -88,11 +90,11 @@ test('hookGlobal y hook-global.js ya no existen', () => {
   assert.equal(fs.existsSync(path.join(raiz, 'js/core/hook-global.js')), false);
   const usos = ARCHIVOS.filter(f => /(^|[^\w$])hookGlobal\s*\(/.test(leer(f).replace(/\/\/.*$/gm, '').replace(/\/\*[\s\S]*?\*\//g, '')));
   assert.deepEqual(usos, []);
-  assert.ok(!/hook-global\.js/.test(leer('index.html').replace(/<!--[\s\S]*?-->/g, '')));
+  assert.ok(!/hook-global\.js/.test(htmlClasico(leer('index.html')).replace(/<!--[\s\S]*?-->/g, '')));
 });
 
 test('index.html carga ui.js antes del núcleo (estado.js), navegacion.js y los módulos', () => {
-  const orden = [...leer('index.html').matchAll(/<script[^>]+src="(js\/[^"]+)"/g)].map(m => m[1]);
+  const orden = [...htmlClasico(leer('index.html')).matchAll(/<script[^>]+src="(js\/[^"]+)"/g)].map(m => m[1]);
   const i = orden.indexOf('js/core/ui.js');
   assert.ok(i >= 0);
   for (const f of ['js/core/estado.js', 'js/core/navegacion.js']) assert.ok(orden.indexOf(f) > i, f);

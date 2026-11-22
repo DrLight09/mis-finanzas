@@ -77,6 +77,19 @@
      botón cerrar simplemente no navega (no rompe nada).
    - `fmt`, `escHtml`, `hoy` — núcleo eager.
    ═══════════════════════════════════════════════════════════════ */
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { esAbonoDeDeuda, escHtml, fmt, hoy } from '../core/estado.js';
+import { Periodo } from '../core/periodo.js';
+import { Fecha } from '../core/fecha.js';
+import { _esGastoVarNoReal, entradasIngresoReal } from '../core/ingresos.js';
+import { _fechaSafe, toast } from '../core/dialogos.js';
+import { registrarSonda, save } from '../core/persistencia.js';
+import { Personas } from '../core/personas-core.js';
+import { Deudas } from '../core/calc-helpers.js';
+import { SIN_DATO } from '../core/utilidades-ui.js';
+import { showScreen } from '../core/navegacion.js';
+import { Ui } from '../core/ui.js';
+
 (function(){
 'use strict';
 

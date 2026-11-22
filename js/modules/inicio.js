@@ -35,6 +35,28 @@
    Ver auditoria-tecnica.md #4.
    ================================================================ */
 
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { Dinero, S, escHtml, fmt, fmtNoCents, hoy } from '../core/estado.js';
+import { _fechaSafe } from '../core/dialogos.js';
+import { Fecha } from '../core/fecha.js';
+import { mesActual } from '../core/ingresos.js';
+import { calcDeudaTcPropia, calcDeudaTcPropiaDeTarjeta, calcLiquidez, calcPatrimonioDesglose, calcPatrimonioVisible } from '../core/patrimonio.js';
+import { Periodo } from '../core/periodo.js';
+import { ingresoFijoEstadoMes } from '../core/cobros.js';
+import { Deudas, _mesNombreDeKey, getDeudorSaldo, getMesadaData, tcCupoUsadoPct } from '../core/calc-helpers.js';
+import { Personas } from '../core/personas-core.js';
+import { ahorroTotalGeneral, calcCDT } from '../core/nu-calc.js';
+import { Ui } from '../core/ui.js';
+import { html, raw } from '../core/html-tag.js';
+import { SIN_DATO, emptyInline, emptyState } from '../core/utilidades-ui.js';
+import { Events } from '../core/events.js';
+import { saldoCuentas } from '../core/cuentas-fuentes.js';
+import { Refresh } from '../core/refresh.js';
+import { showScreen } from '../core/navegacion.js';
+import { Loader } from '../core/lazy-loader.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _diasDeUso, _situacion, calcSinBase, _ctxReglas, _fechaCorta, _eventosCaja, calcCalendarioCaja, renderAttencion, _pintarAtencion, _mesesCubiertos, _nivelRunway, _fmtMeses, calcImpactoCompra, calcHealthScore, renderHealthScore, _deudasPropias, calcEstadoHero, renderHeroEstado, calcEstadoSituacion, _ritmosPorTercio, renderProyeccion, _checkGastoAlto, _renderDispNetoTC, _irADestino });
+
 /* ---- DASHBOARD ATENCIÓN ---- */
 // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
 // exhaustiva de .innerHTML" — nota 2026-08-25, cierre de la discrepancia
@@ -56,13 +78,13 @@
 // únicas de la app (calcLiquidez, Periodo, calcPatrimonioVisible).
 // Días desde el primer punto del historial de patrimonio (la primera vez que se guardó algo); null si aún no hay. Sirve para saber si un
 // «mes completo» de referencia fue en realidad tres días de uso (ver Salud.tieneBase).
-function _diasDeUso(){
+export function _diasDeUso(){
   const t=(S.patrimonioHistorial||[]).map(p=>p&&p.fecha?_fechaSafe(p.fecha).getTime():NaN).filter(isFinite);
   if(!t.length) return null;
   const d=Fecha.diasEntre(Fecha.iso(new Date(Math.min(...t))),hoy());
   return isFinite(d)?Math.max(0,d):null;
 }
-function _situacion(){
+export function _situacion(){
   const mes=mesActual();
   const U=UMBRALES.salud;
   const liquidez=calcLiquidez();
@@ -93,11 +115,11 @@ function _situacion(){
   return m;
 }
 // ¿Estamos sin base para evaluar? Lo leen Análisis y el aviso del hero para no dar por «déficit» lo que es solo falta de historial.
-function calcSinBase(){ return _situacion().sinBase; }
+export function calcSinBase(){ return _situacion().sinBase; }
 
 // El contexto de las reglas del canal 'atencion'. `api`: lo que solo la app sabe calcular. Cada función se omite si su módulo (lazy) aún no
 // cargó, y la regla correspondiente simplemente no dice nada (mismo criterio de antes con los `typeof … === 'function'`).
-function _ctxReglas(){
+export function _ctxReglas(){
   const hoyStr=hoy(), mes=mesActual();
   const api={
     gastosFijosProgramados:()=>[...Periodo.gastosFijosProgramados(mes,hoyStr),...Periodo.gastosFijosProgramados(Periodo.mesDesplazado(mes,1),hoyStr)],
@@ -135,7 +157,7 @@ function _ctxReglas(){
 }
 
 // «5 de nov» para un 'YYYY-MM-DD' (una sola definición: Reglas.fechaCorta).
-function _fechaCorta(f){ return Reglas.fechaCorta(f); }
+export function _fechaCorta(f){ return Reglas.fechaCorta(f); }
 
 // Eventos de caja CONOCIDOS de antemano, para Periodo.saldoProyectado (el calendario de caja):
 //   · sale: cada gasto fijo con día que aún no se paga (el vencido sin pagar se cuenta hoy: es lo primero que saldrá);
@@ -144,7 +166,7 @@ function _fechaCorta(f){ return Reglas.fechaCorta(f); }
 //     es plata libre, ver cdtVencido).
 // Mira el mes actual y el siguiente (el día 30, el arriendo del día 1 ya está a un paso). No hay evento de tarjeta ni de deudas: la
 // liquidez neta (calcLiquidez) ya viene descontando lo que debes, pagarlo no la cambia.
-function _eventosCaja(hoyStr, dias){
+export function _eventosCaja(hoyStr, dias){
   const ev=[];
   const mes=mesActual();
   [mes,Periodo.mesDesplazado(mes,1)].forEach(m=>{
@@ -167,7 +189,7 @@ function _eventosCaja(hoyStr, dias){
 }
 
 // Calendario de caja desde hoy: { saldoProyectado… } con lo ya programado en el horizonte (UMBRALES.caja.horizonteDias).
-function calcCalendarioCaja(){
+export function calcCalendarioCaja(){
   const H=UMBRALES.caja.horizonteDias;
   const hoyStr=hoy();
   return Periodo.saldoProyectado(calcLiquidez().neta,_eventosCaja(hoyStr,H),hoyStr,H);
@@ -175,11 +197,11 @@ function calcCalendarioCaja(){
 
 /* «Necesita atención»: la pinta _pintarAtencion() y luego avisa con el evento 'atencion' (js/core/ui.js) para que otros módulos
    (Plata comprometida) agreguen sus propias alertas sin envolver esta función. Un fallo en la base no corta a los ganchos. */
-function renderAttencion(){
+export function renderAttencion(){
   try { _pintarAtencion(); } catch (e) { console.error('[renderAttencion]', e); }
   Ui.emitir('atencion');
 }
-function _pintarAtencion(){
+export function _pintarAtencion(){
   // Las reglas devuelven TEXTO PLANO; html`` lo escapa (nombres de personas, tarjetas, encargos… son texto libre del usuario).
   const items=Reglas.evaluar('atencion',_ctxReglas()).map(it=>({tipo:it.tipo,texto:html`${it.texto}`}));
   const sec=document.getElementById('s-attn-section');
@@ -283,18 +305,18 @@ function _pintarAtencion(){
 // «Runway»: cuántos meses de gasto típico cubre tu liquidez, sin contar ingresos. null si aún no hay gasto típico; 0 si la liquidez no
 // es positiva.
 // (la definición vive en js/core/reglas.js: la comparten Salud, Atención y el push; aquí quedan los nombres que ya usaba el resto del módulo)
-function _mesesCubiertos(liquidoReal, gastoRef){ return Reglas.mesesCubiertos(liquidoReal, gastoRef); }
+export function _mesesCubiertos(liquidoReal, gastoRef){ return Reglas.mesesCubiertos(liquidoReal, gastoRef); }
 // Nivel del runway según UMBRALES.runway: 'critico' | 'atencion' | 'ok'.
-function _nivelRunway(meses){ return Reglas.nivelRunway(meses, UMBRALES); }
+export function _nivelRunway(meses){ return Reglas.nivelRunway(meses, UMBRALES); }
 // «3,4 meses» / «1 mes» / «menos de 1 mes» / «más de 24 meses».
-function _fmtMeses(meses){ return Reglas.fmtMeses(meses); }
+export function _fmtMeses(meses){ return Reglas.fmtMeses(meses); }
 // Texto del runway («Cubres 3,4 meses de gastos»).
 
 // Impacto de un gasto grande ANTES de hacerlo: qué parte de tu plata disponible es y cuántos meses de gastos cubrirías después.
 // `grande` = sugerencia de marcarlo como compra grande (UMBRALES.compraGrande). Pagar con tarjeta pesa igual: la deuda propia resta de
 // la liquidez neta (calcLiquidez) lo mismo que si saliera de una cuenta. → { monto, grande, pctLiquidez, pctPatrimonio, antes, despues,
 // netaDespues, nivel ('red'|'amber'|'gris'), texto } — null si el monto es menor al mínimo (no hay nada que advertir).
-function calcImpactoCompra(monto){
+export function calcImpactoCompra(monto){
   const C = UMBRALES.compraGrande;
   if(!(monto >= C.minimo)) return null;
   const liquidez = calcLiquidez();
@@ -322,7 +344,7 @@ function calcImpactoCompra(monto){
   }
   return { monto, grande, pctLiquidez, pctPatrimonio, antes, despues, netaDespues, nivel, texto };
 }
-function calcHealthScore(sit){
+export function calcHealthScore(sit){
   const S = window.S || {};
   if(!S.cajitas) return null;
   sit = sit || _situacion(); // renderHealthScore pasa la suya: una sola lectura de la situación por render
@@ -353,8 +375,8 @@ function calcHealthScore(sit){
 // conviene hacer (máx. 3, lo urgente primero, cada uno lleva a donde se resuelve) y los cuatro pilares con semáforo. Sin base (usuario nuevo)
 // no hay puntaje —un número inventado— ni pilares sin datos: solo el estado neutro, lo que sí se sabe y qué registrar.
 // No se repite la misma cifra en tres sitios: el runway («Cubres X meses») vive solo en el pilar Liquidez.
-const SALUD_MAX_CONSEJOS = 3;
-function renderHealthScore(){
+export const SALUD_MAX_CONSEJOS = 3;
+export function renderHealthScore(){
   const el = document.getElementById('health-score-card');
   if(!el) return;
   const sit = _situacion();
@@ -447,7 +469,7 @@ function renderHealthScore(){
    DEUDAS PROPIAS — las usa Análisis para el costo mensual de la deuda (m.costoDeuda → Salud)
 ==================================================== */
 // Deudas PROPIAS: la parte de cada tarjeta que es tuya (no encargos ni plata de otros) y lo que debes a personas. La tasa E.A. es opcional (tarjeta).
-function _deudasPropias(){
+export function _deudasPropias(){
   const out = [];
   (S.tarjetasCredito || []).forEach(tc => {
     const saldo = typeof calcDeudaTcPropiaDeTarjeta === 'function' ? calcDeudaTcPropiaDeTarjeta(tc) : 0;
@@ -465,7 +487,7 @@ function _deudasPropias(){
 // El hero era verde fijo: un patrimonio de −$800.000 se veía igual que uno de +$8.000.000 (solo el signo «−» lo delataba), y quien
 // tenía valor pero liquidez negativa (un CDT y una tarjeta alta) veía «todo bien» mientras Salud gritaba alerta.
 // → { estado, clase (color del monto), tono ('red'|'amber'|'gris'|''), mensaje }. Prioridad: negativo > cero > liquidez negativa > prestado.
-function calcEstadoHero(d, liquidez){
+export function calcEstadoHero(d, liquidez){
   d = d || calcPatrimonioDesglose();
   liquidez = liquidez || calcLiquidez();
   const p = d.visible;
@@ -478,7 +500,7 @@ function calcEstadoHero(d, liquidez){
   if(liquidez.meDeben > 0 && liquidez.meDeben >= p * UMBRALES.hero.meDebenFraccion) return { estado:'prestado', clase:'c-green', tono:'gris', mensaje:'Sin contar lo que te deben: ' + fmtNoCents(p - liquidez.meDeben) };
   return { estado:'sano', clase:'c-green', tono:'', mensaje:'' };
 }
-function renderHeroEstado(d){
+export function renderHeroEstado(d){
   const hero = document.getElementById('heroTotal');
   if(!hero) return;
   const e = calcEstadoHero(d);
@@ -493,7 +515,7 @@ function renderHeroEstado(d){
 
 // Estado de situación (Empezando, Creciendo … Crisis) o null sin datos. Lo leen la tarjeta de Salud y cualquier pantalla que deba ajustar el tono
 // (Análisis, Wrapped): con `serio` (presión o crisis) no se celebra, se habla claro y se señala la acción.
-function calcEstadoSituacion(){
+export function calcEstadoSituacion(){
   const est = Salud.estado(_situacion());
   return est ? Object.assign({ serio: est.id === 'presion' || est.id === 'crisis' }, est) : null;
 }
@@ -503,7 +525,7 @@ function calcEstadoSituacion(){
 ==================================================== */
 // Ritmo mensual (cambio neto ÷ días × 30) de cada tercio del historial, en orden. `intervalos`: [{dias, cambio}] entre puntos
 // consecutivos. Un intervalo cae en el tercio donde está su punto medio.
-function _ritmosPorTercio(intervalos, diasTotal){
+export function _ritmosPorTercio(intervalos, diasTotal){
   const t = [{d:0,c:0},{d:0,c:0},{d:0,c:0}];
   let acum = 0;
   intervalos.forEach(it => {
@@ -513,7 +535,7 @@ function _ritmosPorTercio(intervalos, diasTotal){
   return t.filter(x => x.d > 0).map(x => x.c / x.d * 30);
 }
 
-function renderProyeccion(){
+export function renderProyeccion(){
   const el = document.getElementById('proyeccion-card');
   if(!el) return;
   const S = window.S || {};
@@ -755,7 +777,7 @@ function renderProyeccion(){
 /* ================================================================
    ALERTA DE GASTO ALTO EN EL HERO
    ================================================================ */
-function _checkGastoAlto() {
+export function _checkGastoAlto() {
   const indicator = document.getElementById('hero-change-indicator');
   if (!indicator) return;
   // Gasto real del mes: definición única (periodo.js).
@@ -800,7 +822,7 @@ function _checkGastoAlto() {
    la cifra correcta a mirar; el resto de los días, el neto es el que
    avisa que parte de ese disponible ya tiene dueño.
    ================================================================ */
-function _renderDispNetoTC() {
+export function _renderDispNetoTC() {
   const el = document.getElementById('s-disp-neto-tc');
   if (!el) return;
   // Se resta la deuda TOTAL de la tarjeta, IGNORANDO qué parte es "ajena".
@@ -885,7 +907,7 @@ _renderDispNetoTC();
 //   prestamos/me-deben|yo-debo   abre esa pestaña de Préstamos
 //   analisis/ingresos       deja a la vista los ingresos fijos (donde se registra un cobro)
 // Una pantalla lazy puede no haber cargado: se espera a que cargue antes de abrir el detalle. Sin detalle (o sin su función) queda en la pantalla.
-function _irADestino(destino){
+export function _irADestino(destino){
   const i = String(destino || '').indexOf('/'); // el detalle puede traer ':' pero no '/'
   const [pantalla, detalle] = i < 0 ? [String(destino || ''), ''] : [String(destino).slice(0, i), String(destino).slice(i + 1)];
   if (typeof showScreen !== 'function' || !document.getElementById('screen-' + pantalla)) return;
@@ -905,3 +927,6 @@ function _irADestino(destino){
 Events.registerAll('inicio', {
   irConsejo: (destino) => _irADestino(destino)
 });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ SALUD_MAX_CONSEJOS });

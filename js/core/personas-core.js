@@ -22,7 +22,10 @@
    Qué NO hace todavía (ver docs/personas-modelo-unico.md): vincular el diferencial y la mesada.
    ═══════════════════════════════════════════════════════════════ */
 
-const Personas = (() => {
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S, fmt, hoy, uid } from './estado.js';
+
+export const Personas = (() => {
   const COLOR_DEFECTO = '#60b0f0'; // el primero de PERSONA_COLORES (personas.js carga después y no se puede leer desde acá)
 
   // Nombre comparable: sin tildes, sin mayúsculas, sin espacios de más.
@@ -259,3 +262,6 @@ const Personas = (() => {
   return { COLOR_DEFECTO, norm, registrarRelacion, declaradas, relaciones, registros, posicionNeta, lista, activas, obtener, nombre, color, buscarPorNombre, crear, editar, archivar, restaurar, eliminar, huerfanos, verificar };
 })();
 if (typeof window !== 'undefined') window.Personas = Personas; // los tests lo leen como ctx.Personas
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ Personas });

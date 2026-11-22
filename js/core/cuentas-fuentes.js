@@ -5,6 +5,11 @@
 // léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
+import { exponerGlobales, exponerVariables } from './puente.js';
+import { S, escHtml, fmt, hoy } from './estado.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _buildFuentesOpts, opcionesCuenta, esCuentaFija, asegurarEfectivo, esFuenteCuenta, fuenteDeCuenta, idDeFuenteCuenta, _cuentasArr, getCuenta, getCuentaDeFuente, esCuentaAhorro, cuentasTodas, cuentasActivas, cuentasAhorro, cuentasConSaldo, cajitasDeCuenta, cuentaDeCajita, nombreCuenta, _luminancia, colorLegible, colorCuenta, saldoCuentas, redondearCentavos, ajustarSaldoCuenta, descontarFuente, sumarFuente, _fuenteHuerfana, _fijarSaldoReconciliado, _listaFuentes, getFuentes, getFuentesSinTC, fuenteTexto, fuenteHtml, fuenteLabel, _clasePorCuenta, fuenteBadgeClass, poblarFuente, getSaldoFuente });
+
 /**
  * _buildFuentesOpts — constructor interno de <option>s de fuentes (privado: las pantallas usan opcionesCuenta, más abajo).
  * Reemplaza: getFuentesOptions, _diffFuentesOptsHtml, poblarFuente,
@@ -19,7 +24,7 @@
  * @param {Array}   [opts.fuentesCustom=null]      Lista custom (ej: cuentas de encargo).
  *                  Cada item debe tener { val, label } o { cuenta, label, saldo }.
  */
-function _buildFuentesOpts({
+export function _buildFuentesOpts({
   selectedVal = '',
   soloConSaldo = false,
   incluirTC = true,
@@ -60,7 +65,7 @@ function _buildFuentesOpts({
  *   placeholder / placeholderDeshabilitado / sinOpcionesTexto
  *   extra          HTML de opciones al final, o función (selectedVal) → HTML (p. ej. «Ganancia (no salió plata)» de préstamos)
  */
-function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarjetas = false, soloDe = null, mostrarSaldo = false, soloConSaldo = false,
+export function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarjetas = false, soloDe = null, mostrarSaldo = false, soloConSaldo = false,
   placeholder, placeholderDeshabilitado = false, sinOpcionesTexto, extra = '' } = {}) {
   const hayCustom = Array.isArray(soloDe); // `soloDe: []` = «ninguna» (solo el placeholder); `null` = todas
   let out;
@@ -85,14 +90,14 @@ function opcionesCuenta({ selectedVal = '', sentido = null, preset = null, tarje
    migró exactamente (incluida la limpieza de onclick/oninput/onchange en
    diffRenderPartes/diffHtmlBloque). ---- */
 
-const FUENTE_CUENTA_PREFIJO='cuenta:';
+export const FUENTE_CUENTA_PREFIJO='cuenta:';
 // Clases de cuenta. `ahorro` es la única con cajitas y tasa; el resto solo guarda un saldo. `etiqueta` es lo que se ve en el
 // rótulo del saldo. Una clase nueva (p. ej. 'inversion') se agrega acá y en el catálogo, no repartida por el código.
 // Registro de pantallas propias por clase de cuenta (hoy solo 'ahorro'): cada módulo la presenta aquí al cargar y cuentas.js la
 // consulta sin importarlo. Forma: { paneles:[ids], panel:id, reiniciar(), ... }.
-const CuentaPantallas={};
+export const CuentaPantallas={};
 
-const TIPOS_CUENTA={
+export const TIPOS_CUENTA={
   banco:    {nombre:'Cuenta bancaria',   etiqueta:'Saldo disponible'},
   billetera:{nombre:'Billetera digital', etiqueta:'Saldo disponible'},
   efectivo: {nombre:'Efectivo',          etiqueta:'Disponible en efectivo', fija:true},
@@ -100,48 +105,48 @@ const TIPOS_CUENTA={
 };
 // Efectivo es PERMANENTE: casi todo el mundo maneja plata en efectivo, así que existe siempre (se crea sola) y no se archiva ni se
 // elimina; sí se puede renombrar o cambiar de color. El resto de cuentas se administran sin restricción.
-function esCuentaFija(c){return !!c&&!!(TIPOS_CUENTA[c.tipo]||{}).fija;}
-function asegurarEfectivo(){
+export function esCuentaFija(c){return !!c&&!!(TIPOS_CUENTA[c.tipo]||{}).fija;}
+export function asegurarEfectivo(){
   const arr=_cuentasArr();
   const ef=arr.find(c=>c&&c.tipo==='efectivo');
   if(!ef){arr.push({id:'efectivo',tipo:'efectivo',nombre:'Efectivo',icono:'efectivo',color:'#f0b840',saldo:0});return true;}
   if(ef.archivada){ef.archivada=false;return true;}
   return false;
 }
-function esFuenteCuenta(f){return typeof f==='string'&&f.startsWith(FUENTE_CUENTA_PREFIJO);}
-function fuenteDeCuenta(id){return FUENTE_CUENTA_PREFIJO+id;}
-function idDeFuenteCuenta(f){return esFuenteCuenta(f)?f.slice(FUENTE_CUENTA_PREFIJO.length):'';}
-function _cuentasArr(){
+export function esFuenteCuenta(f){return typeof f==='string'&&f.startsWith(FUENTE_CUENTA_PREFIJO);}
+export function fuenteDeCuenta(id){return FUENTE_CUENTA_PREFIJO+id;}
+export function idDeFuenteCuenta(f){return esFuenteCuenta(f)?f.slice(FUENTE_CUENTA_PREFIJO.length):'';}
+export function _cuentasArr(){
   if(!Array.isArray(S.cuentas))S.cuentas=[];
   return S.cuentas;
 }
 // Cuenta por id; undefined si no existe.
-function getCuenta(id){return _cuentasArr().find(c=>c.id===id);}
+export function getCuenta(id){return _cuentasArr().find(c=>c.id===id);}
 // Cuenta a partir de su fuente ('cuenta:ID'); undefined para el resto (cajita:ID, tc:ID…).
-function getCuentaDeFuente(fuente){return esFuenteCuenta(fuente)?getCuenta(idDeFuenteCuenta(fuente)):undefined;}
+export function getCuentaDeFuente(fuente){return esFuenteCuenta(fuente)?getCuenta(idDeFuenteCuenta(fuente)):undefined;}
 // ¿Tiene cajitas y tasa propia? (cuenta de ahorro)
-function esCuentaAhorro(c){return !!c&&c.tipo==='ahorro';}
+export function esCuentaAhorro(c){return !!c&&c.tipo==='ahorro';}
 // Todas las cuentas (activas y archivadas), solo las activas y las de ahorro / con saldo propio.
-function cuentasTodas(){return _cuentasArr();}
-function cuentasActivas(){return _cuentasArr().filter(c=>!c.archivada);}
-function cuentasAhorro(opts){return _cuentasArr().filter(c=>esCuentaAhorro(c)&&(!(opts&&opts.soloActivas)||!c.archivada));}
-function cuentasConSaldo(opts){return _cuentasArr().filter(c=>!esCuentaAhorro(c)&&(!(opts&&opts.soloActivas)||!c.archivada));}
+export function cuentasTodas(){return _cuentasArr();}
+export function cuentasActivas(){return _cuentasArr().filter(c=>!c.archivada);}
+export function cuentasAhorro(opts){return _cuentasArr().filter(c=>esCuentaAhorro(c)&&(!(opts&&opts.soloActivas)||!c.archivada));}
+export function cuentasConSaldo(opts){return _cuentasArr().filter(c=>!esCuentaAhorro(c)&&(!(opts&&opts.soloActivas)||!c.archivada));}
 // Cajitas de una cuenta de ahorro (las que no son CDT sueltos).
-function cajitasDeCuenta(cuentaId){return (S.cajitas||[]).filter(c=>c.cuentaId===cuentaId);}
+export function cajitasDeCuenta(cuentaId){return (S.cajitas||[]).filter(c=>c.cuentaId===cuentaId);}
 // Cuenta de ahorro a la que pertenece una cajita (undefined si la cajita quedó huérfana).
-function cuentaDeCajita(c){return c&&c.cuentaId?getCuenta(c.cuentaId):undefined;}
+export function cuentaDeCajita(c){return c&&c.cuentaId?getCuenta(c.cuentaId):undefined;}
 // Nombre de una cuenta para mostrar; las fuentes que ya no existen se muestran como «Cuenta eliminada».
-function nombreCuenta(c){return c?(c.nombre||'Cuenta'):'Cuenta eliminada';}
+export function nombreCuenta(c){return c?(c.nombre||'Cuenta'):'Cuenta eliminada';}
 // Color de una cuenta (hex); gris neutro si no tiene.
 // El tema de la app es oscuro (fondo ~#181818): un color de marca muy oscuro (Bancolombia negro, BBVA azul marino) desaparece contra
 // el fondo y contra su propio recuadro translúcido. colorLegible() lo aclara (mezclándolo con blanco, conservando el tono) hasta
 // alcanzar un contraste mínimo; el color guardado de la cuenta no se toca, solo cómo se pinta. Los colores ya claros no cambian.
-function _luminancia(hex){
+export function _luminancia(hex){
   const n=parseInt(String(hex).slice(1,7),16);
   const ch=[(n>>16)&255,(n>>8)&255,n&255].map(v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);});
   return 0.2126*ch[0]+0.7152*ch[1]+0.0722*ch[2];
 }
-function colorLegible(hex,minContraste){
+export function colorLegible(hex,minContraste){
   if(!/^#[0-9a-fA-F]{6}$/.test(String(hex||'')))return '#888880';
   const lumFondo=_luminancia('#181818'), min=minContraste||3.5;
   const n=parseInt(hex.slice(1),16), rgb=[(n>>16)&255,(n>>8)&255,n&255];
@@ -152,9 +157,9 @@ function colorLegible(hex,minContraste){
   }
   return '#ffffff';
 }
-function colorCuenta(c){return colorLegible((c&&c.color)||'#888880');}
+export function colorCuenta(c){return colorLegible((c&&c.color)||'#888880');}
 // "Cuenta Mínima" en pesos para mostrar un saldo cuando hay varias cuentas.
-function saldoCuentas(opts){return cuentasConSaldo(opts).reduce((a,c)=>a+(c.saldo||0),0);}
+export function saldoCuentas(opts){return cuentasConSaldo(opts).reduce((a,c)=>a+(c.saldo||0),0);}
 
 /* ---- LIBRO DE MOVIMIENTOS ----
    S.libro es la lista de entradas de plata de las cuentas con saldo (cuenta:ID, cajita:ID): una entrada por
@@ -166,8 +171,8 @@ function saldoCuentas(opts){return cuentasConSaldo(opts).reduce((a,c)=>a+(c.sald
 // El dinero se guarda con 2 decimales como máximo: sumar y restar decimales binarios (0,1 + 0,2) deja residuos como 0,30000000000000004 que
 // se acumulan y acaban descuadrando el saldo contra el libro. Todo monto que entra a un saldo o al libro pasa por aquí (puerta única).
 // Los pesos van en enteros; los 2 decimales cubren los intereses.
-function redondearCentavos(x){return Math.round((Number(x)||0)*100)/100;}
-const Libro = (() => {
+export function redondearCentavos(x){return Math.round((Number(x)||0)*100)/100;}
+export const Libro = (() => {
   const TOL = 0.01; // diferencia máxima tolerada entre el saldo guardado y el libro
   let _seq = 0, _ctx = null;
   const _arr = x => (Array.isArray(x) ? x : []);
@@ -264,10 +269,10 @@ if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen co
 // del libro. Ningún módulo debe escribir `c.saldo` directamente.
 // `opts` (opcional, en ambas): { tipo, desc, origen:{modulo, ref, rev}, fecha } — qué es el movimiento y quién lo originó.
 // Sin `origen` queda como 'sin-origen' (o el de Libro.conOrigen).
-const _libroPata = (fuente, monto, opts) => Libro.registrar(fuente, monto, opts);
+export const _libroPata = (fuente, monto, opts) => Libro.registrar(fuente, monto, opts);
 // Fija el saldo de una cuenta a `nuevoSaldo` (intereses de Nu, chequeo rápido, CDT…) y registra la DIFERENCIA en el
 // libro. Devuelve esa diferencia. Es la única forma permitida de asignar un saldo "absoluto".
-function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
+export function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
   const c=Fuente.esCajita(fuente)?(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]):getCuentaDeFuente(fuente);
   if(!c||esCuentaAhorro(c))return 0;
   nuevoSaldo=redondearCentavos(nuevoSaldo);
@@ -279,7 +284,7 @@ function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
 // Restar plata de una fuente. Antes recortaba el saldo en 0 (y la diferencia se perdía sin avisar); ahora el saldo
 // refleja exactamente lo restado, aunque quede negativo — los selectores ya solo ofrecen cuentas con saldo
 // suficiente, así que un negativo indica un movimiento mal registrado y se ve en vez de esconderse.
-function descontarFuente(fuente,monto,opts){
+export function descontarFuente(fuente,monto,opts){
   monto=redondearCentavos(monto);
   if(!fuente||!monto)return false;
   if(fuente==='ganancia'){
@@ -316,7 +321,7 @@ function descontarFuente(fuente,monto,opts){
   }
   return _fuenteHuerfana(fuente);
 }
-function sumarFuente(fuente,monto,opts){
+export function sumarFuente(fuente,monto,opts){
   monto=redondearCentavos(monto);
   if(!fuente||!monto)return false;
   if(esFuenteCuenta(fuente)){
@@ -345,8 +350,8 @@ function sumarFuente(fuente,monto,opts){
 // Una fuente que no se pudo aplicar (la cuenta/cajita/TC ya no existe, o es una cuenta de ahorro, que no tiene saldo propio) NO mueve
 // plata. Antes callaba: si el otro lado del movimiento sí se aplicaba, la plata se creaba o se perdía sin que nadie se enterara.
 // Ahora devuelve false (los callers nuevos lo respetan) y deja el aviso en consola para detectarlo.
-const _huerfanasAvisadas=new Set();
-function _fuenteHuerfana(fuente){
+export const _huerfanasAvisadas=new Set();
+export function _fuenteHuerfana(fuente){
   if(fuente==='alcancia')return true; // la Alcancía se maneja en su propio módulo: aquí no hay saldo que mover
   if(!_huerfanasAvisadas.has(fuente)){_huerfanasAvisadas.add(fuente);try{console.warn('[Plata] fuente sin efecto (no existe o no guarda saldo):',fuente);}catch(_){}}
   return false;
@@ -361,7 +366,7 @@ function _fuenteHuerfana(fuente){
 //   · Plata.disponibilidad(fuente, opts)        → { ok, motivo }  ¿esa fuente puede entregar/recibir plata hoy?
 //   · Plata.transferir(origen, destino, monto, { og, sinSaldo, permitirArchivada }) → { ok, motivo }  atómica: valida ANTES de tocar.
 // Siguen siendo sumarFuente/descontarFuente (y el libro) quienes cambian saldos; Plata solo decide si se puede y los aplica juntos.
-const Plata=(()=>{
+export const Plata=(()=>{
   const cent=n=>Math.round((Number(n)||0)*100);
   const tipoDe=f=>{
     if(!f)return null;
@@ -456,9 +461,9 @@ if(typeof window!=='undefined')window.Plata=Plata;
 // getFuentesSinTC() son la misma lista, con y sin TC.
 // Parte de la puerta única: la ÚNICA asignación de saldo que no lleva entrada de libro, porque el saldo se iguala a la suma del libro que
 // ya tiene todas las entradas (Libro.recalcularSaldos, tras fusionar el estado de dos dispositivos). No usar para nada más.
-function _fijarSaldoReconciliado(cuentaOCajita,saldoDelLibro){cuentaOCajita.saldo=saldoDelLibro;}
+export function _fijarSaldoReconciliado(cuentaOCajita,saldoDelLibro){cuentaOCajita.saldo=saldoDelLibro;}
 
-function _listaFuentes(incluirTC){
+export function _listaFuentes(incluirTC){
   const arr=[];
   const activas=cuentasActivas();
   const activasId=new Set(activas.map(c=>c.id));
@@ -470,8 +475,8 @@ function _listaFuentes(incluirTC){
   if(incluirTC)(S.tarjetasCredito||[]).filter(tc=>(tc.estado||'activa')==='activa').forEach(tc=>arr.push({val:'tc:'+tc.id,label:tc.nombre+' (TC)'}));
   return arr;
 }
-function getFuentes(){return _listaFuentes(true);}
-function getFuentesSinTC(){return _listaFuentes(false);}
+export function getFuentes(){return _listaFuentes(true);}
+export function getFuentesSinTC(){return _listaFuentes(false);}
 
 /* ---- CÓDIGO DE FUENTE: Fuente.parsear y etiquetas ----
    Una «fuente» es el código de dónde sale o a dónde entra la plata: '' (sin especificar), 'alcancia', 'ganancia' (plata virtual),
@@ -483,7 +488,7 @@ function getFuentesSinTC(){return _listaFuentes(false);}
      fuenteHtml(val)  → SIEMPRE HTML seguro (texto escapado; 'ganancia' lleva su ícono). Solo para armar strings de HTML a mano
                         o dentro de raw(); en html`` usar ${raw(fuenteHtml(v))}.
      fuenteLabel(val) → alias de fuenteTexto (compatibilidad). */
-const Fuente = (() => {
+export const Fuente = (() => {
   const PREFIJOS = { cuenta: 'cuenta:', cajita: 'cajita:', tc: 'tc:' };
   const tipoDe = val => {
     if (!val || typeof val !== 'string') return 'vacia';
@@ -503,7 +508,7 @@ const Fuente = (() => {
 })();
 if (typeof window !== 'undefined') window.Fuente = Fuente;
 
-function fuenteTexto(val){
+export function fuenteTexto(val){
   if(!val)return'Sin especificar';
   if(val==='alcancia')return'Alcancía';
   if(val==='ganancia')return'Ganancia (no desembolsada)';
@@ -519,16 +524,16 @@ function fuenteTexto(val){
   }
   return val;
 }
-const _ICONO_GANANCIA='<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
-function fuenteHtml(val){
+export const _ICONO_GANANCIA='<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="ico-inline"><ellipse cx="12" cy="17" rx="8" ry="5"/><path d="M4 17v-4c0-2.76 3.58-5 8-5s8 2.24 8 5v4"/><path d="M4 13c0-2.76 3.58-5 8-5s8 2.24 8 5"/></svg>';
+export function fuenteHtml(val){
   return val==='ganancia' ? _ICONO_GANANCIA+' Ganancia (no desembolsada)' : escHtml(fuenteTexto(val));
 }
-function fuenteLabel(val){ return fuenteTexto(val); }
+export function fuenteLabel(val){ return fuenteTexto(val); }
 
 /* Clase de «badge» de una fuente. Cada cuenta tiene su propio color, así que la clase se genera por cuenta (bg-cta-<id>) y su regla
    se inyecta una sola vez en <style id="badges-cuentas">: los sitios que escriben class="badge ${fuenteBadgeClass(f)}" no cambian. */
-const _badgesInyectados=new Set();
-function _clasePorCuenta(c){
+export const _badgesInyectados=new Set();
+export function _clasePorCuenta(c){
   const hex=colorCuenta(c);
   const clase='bg-cta-'+String(c.id).replace(/[^a-zA-Z0-9_-]/g,'');
   try{
@@ -543,7 +548,7 @@ function _clasePorCuenta(c){
   }catch(e){/* sin DOM (tests): la clase se devuelve igual */}
   return clase;
 }
-function fuenteBadgeClass(val){
+export function fuenteBadgeClass(val){
   if(!val)return'bg-blue';
   if(val==='ganancia')return'bg-green';
   if(esFuenteCuenta(val)){const c=getCuentaDeFuente(val);return c?_clasePorCuenta(c):'bg-blue';}
@@ -552,13 +557,13 @@ function fuenteBadgeClass(val){
   return'bg-blue';
 }
 
-function poblarFuente(selectId, required=false, incluirTC=true){
+export function poblarFuente(selectId, required=false, incluirTC=true){
   const sel=document.getElementById(selectId);
   if(!sel)return;
   sel.innerHTML=opcionesCuenta({ placeholder: required ? 'Seleccionar cuenta' : 'Sin especificar', tarjetas: incluirTC });
 }
 
-function getSaldoFuente(fuente){
+export function getSaldoFuente(fuente){
   if(!fuente)return 0;
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
@@ -591,3 +596,6 @@ function getSaldoFuente(fuente){
 //    hay límite que validar; una TC inexistente tampoco bloquea: eso lo decide quien la busca).
 //  · Fuente vacía: ok (el gasto "sin especificar" no mueve plata).
 // Comparación estricta (disponible < monto), igual que los módulos que la usaban.
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ FUENTE_CUENTA_PREFIJO, CuentaPantallas, TIPOS_CUENTA, Libro, _libroPata, _huerfanasAvisadas, Plata, Fuente, _ICONO_GANANCIA, _badgesInyectados });

@@ -1,4 +1,5 @@
 'use strict';
+const { htmlClasico } = require('./support/html-clasico');
 const { leerEstado, REL: PARTES_ESTADO, esParte } = require('./support/nucleo-estado');
 
 // tests/interfaz.test.js — Interfaz: estilos sin inline, innerHTML escapado, Refresh y filtros de Gastos.
@@ -167,7 +168,7 @@ test('index.html: cada clase ix-* con min-height tiene su regla :empty (reemplaz
 });
 
 test('index.html: el primer pintado (carga, login, PIN, toasts) conserva sus style="" porque styles.css es async', () => {
-  const html = leer('index.html');
+  const html = htmlClasico(leer('index.html'));
   assert.match(html, /<div[^>]*id="fb-loading-screen"[^>]*style="display:flex;?"|<div[^>]*style="display:flex;?"[^>]*id="fb-loading-screen"/);
   assert.match(html, /id="fb-loading-screen"/);
   // un style="" de más aquí es intencional: si alguien lo mueve a styles.css, la pantalla de carga se vería sin estilo hasta que llegue el CSS
@@ -190,7 +191,7 @@ test('alcancia: el margen inferior de la fila "Duración" solo existe cuando hay
 });
 
 test('index.html: #gv_fuente_hint conserva visibility:hidden inline (styles.css lo usa como selector de atributo)', () => {
-  assert.match(leer('index.html'), /id="gv_fuente_hint"[^>]*style="visibility:hidden;"|style="visibility:hidden;"[^>]*id="gv_fuente_hint"/);
+  assert.match(htmlClasico(leer('index.html')), /id="gv_fuente_hint"[^>]*style="visibility:hidden;"|style="visibility:hidden;"[^>]*id="gv_fuente_hint"/);
 });
 
 test('styles.css: un parser real (jsdom) lee tantas reglas como bloques de nivel superior (ninguna se pierde por un error de sintaxis)', { skip: (() => { try { require('jsdom'); return false; } catch { return 'jsdom no instalado'; } })() }, () => {
@@ -268,7 +269,7 @@ test('héroes: ::before/::after usan --hero-rgb y cada variante de color la rede
     assert.ok(/rgb\(var\(--hero-rgb\)\)/.test(r), pseudo + ' usa --hero-rgb');
     assert.ok(!/var\(--accent\)/.test(r), pseudo + ' no usa --accent fijo');
   }
-  const html = leer('index.html');
+  const html = htmlClasico(leer('index.html'));
   const variantes = new Set();
   for (const m of html.matchAll(/class="hero (hero-[a-z]+)[" ]/g)) variantes.add(m[1]);
   assert.ok(variantes.size >= 2, 'hay variantes de color en index.html');
@@ -288,7 +289,7 @@ test('eliminar cuenta: el botón de confirmar es rojo con una regla que gana a l
 // Mejora 9: en el detalle de TODA cuenta el orden es Encargos → Movimientos (título, filtros, lista en un solo bloque que se
 // oculta sin movimientos, dejando solo el estado vacío).
 test('detalle de cuenta: Encargos antes que el bloque de Movimientos, y el bloque se oculta sin movimientos', () => {
-  const html = leer('index.html');
+  const html = htmlClasico(leer('index.html'));
   for (const [encargo, titulo] of [['det-cuenta-encargos', 'Movimientos registrados</div>'], ['det-nu-encargos', 'Movimientos de la cuenta</div>']]) {
     const iEncargo = html.indexOf('id="' + encargo + '"'), iBloque = html.indexOf('class="cuenta-movs-bloque"', iEncargo);
     assert.ok(iEncargo > 0 && iBloque > iEncargo, encargo + ' va antes de su bloque de movimientos');

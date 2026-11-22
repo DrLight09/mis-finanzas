@@ -84,13 +84,35 @@
    (siguen necesitándolo para tcRecalcular, que sigue acá y sigue lazy).
    ═══════════════════════════════════════════════════════════════ */
 
-let _tcActualId = null;
-let _tcCompraTcId = null;
-let _tcEditId = null;
-let _tcColorSel = null;
-let _tcCargoEspecialId = null;
+import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { Fuente, Libro, Plata, descontarFuente, fuenteBadgeClass, fuenteLabel, getFuentesSinTC, getSaldoFuente, sumarFuente } from '../core/cuentas-fuentes.js';
+import { S, escHtml, fmt, getCatsVar, hoy, mesKey, poblarCatSelect, uid } from '../core/estado.js';
+import { fmtInput, parseMoney, registrarSonda, save } from '../core/persistencia.js';
+import { html, raw } from '../core/html-tag.js';
+import { closeSheet, openSheet, showScreen } from '../core/navegacion.js';
+import { Deudas, getTCById, tcCupoDisponible, tcCupoUsadoPct } from '../core/calc-helpers.js';
+import { marcarColorSeleccionado } from '../core/color-picker.js';
+import { avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, confirmarEliminar, dialogo, nivelAntiguedadMovimiento, toast } from '../core/dialogos.js';
+import { refresh } from '../core/refresh.js';
+import { botonEliminarFila, emptyInline, emptyState, filaMovimiento, mostrarSi } from '../core/utilidades-ui.js';
+import { Events } from '../core/events.js';
+import { calcC } from '../core/nu-calc.js';
+import { FuentesFiltro } from '../core/fuentes-filtro.js';
+import { mesActual } from '../core/ingresos.js';
+import { Personas } from '../core/personas-core.js';
+import { medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/patrimonio.js';
+import { abrirDetalleMovimiento } from '../core/movimientos.js';
+import { Ui } from '../core/ui.js';
+// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+exponerGlobales({ _tcOperacionesPosteriores, tcDeudaTotal, tcEstadoInfo, _tcEsCargoExterno, tcDeudaCalculada, tcRecalcular, tcNormalizarTarjetas, tcCrearCompra, tcEliminarCompraInterna, tcBuscarCompraPorIdOMatch, tcCrearPago, tcEliminarPagoInterna, _tcPoblarSelectCajita, abrirNuevaTarjeta, abrirEditarTC, tcSelColor, guardarTC, eliminarTC, _tcPanelPc, _tcMarcarActiva, renderTCScreen, renderTCDashboard, abrirCompraTC, confirmarCompraTC, abrirCargoEspecialTC, confirmarCargoEspecialTC, abrirPagarTC, ptcSetMonto, ptcActualizarPreview, confirmarPagarTC, abrirDetalleTCSheet, eliminarCompraTC, eliminarPagoTC });
 
-const TC_ESTADOS = {
+export let _tcActualId = null;
+export let _tcCompraTcId = null;
+export let _tcEditId = null;
+export let _tcColorSel = null;
+export let _tcCargoEspecialId = null;
+
+export const TC_ESTADOS = {
   activa:    {label:'Activa',    badge:null},
   bloqueada: {label:'Bloqueada', badge:'bg-amber'},
   cancelada: {label:'Cancelada', badge:'bg-red'},
@@ -103,7 +125,7 @@ const TC_ESTADOS = {
 // Por eso el flujo de "+ Cargo especial" NO valida cupo disponible, a
 // propósito, mientras que una compra normal (tcCrearCompra vía
 // confirmarCompraTC) sí lo hace siempre.
-const TC_MOTIVOS_CARGO = {
+export const TC_MOTIVOS_CARGO = {
   interes: 'Interés',
   comision: 'Comisión',
   otro: 'Otro cargo del banco'
@@ -123,20 +145,20 @@ const TC_MOTIVOS_CARGO = {
 // Spotify, se cuenta contra la cuenta/tarjeta afectada en su lugar).
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
 // _origenLibroTc(ref, rev): cada sumar/descontarFuente deja en el libro { modulo:'tarjetas', ref:<id del pago de la tarjeta> }. Con rev=true es una reversión (tipo 'reversion', mismo ref que lo que deshace).
-const _origenLibroTc = Libro.origen('tarjetas');
+export const _origenLibroTc = Libro.origen('tarjetas');
 
-function _tcOperacionesPosteriores(tc, fecha, excludeId){
+export function _tcOperacionesPosteriores(tc, fecha, excludeId){
   if(!fecha)return 0;
   const compras=(tc.compras||[]).filter(c=>!c.eliminado&&c.id!==excludeId&&c.fecha>fecha).length;
   const pagos=(tc.pagos||[]).filter(p=>!p.eliminado&&p.id!==excludeId&&p.fecha>fecha).length;
   return compras+pagos;
 }
 
-function tcDeudaTotal(){
+export function tcDeudaTotal(){
   return (S.tarjetasCredito||[]).reduce((a,tc)=>a+(tc.deuda||0),0);
 }
 
-function tcEstadoInfo(estado){
+export function tcEstadoInfo(estado){
   return TC_ESTADOS[estado]||TC_ESTADOS.activa;
 }
 
@@ -151,13 +173,13 @@ function tcEstadoInfo(estado){
 // que no esté en esta lista se perdería en el siguiente refresh().
 //   cargo_encargo / cargo_prestamo / cargo_spotify — plata ajena (ver calcDeudaAjenaDeTarjeta)
 //   cargo_deuda — pago de una deuda PROPIA ("Yo debo") con esta tarjeta: es deuda tuya, no ajena
-function _tcEsCargoExterno(m){
+export function _tcEsCargoExterno(m){
   return m.tipo==='cargo_encargo'||m.tipo==='cargo_prestamo'||m.tipo==='cargo_spotify'||m.tipo==='cargo_deuda';
 }
 // Deuda de una tarjeta calculada desde sus movimientos (saldo inicial + compras + cargos − pagos, sin los eliminados, con piso en 0).
 // PURA: no escribe nada. Es la única definición de esa cuenta: tcRecalcular la guarda en tc.deuda y la sonda «tarjetas» de la huella
 // (js/core/huella.js) la lee para comprobar que un cambio de almacenamiento no la altera.
-function tcDeudaCalculada(tc){
+export function tcDeudaCalculada(tc){
   if(!tc) return 0;
   let total=0;
   if(tc.saldoInicial && !tc.saldoInicial.eliminado) total+=(tc.saldoInicial.monto||0);
@@ -168,7 +190,7 @@ function tcDeudaCalculada(tc){
   (tc.pagos||[]).forEach(p=>{ if(!p.eliminado) total-=(p.monto||0); });
   return Math.max(0,total);
 }
-function tcRecalcular(tc){
+export function tcRecalcular(tc){
   if(!tc) return 0;
   tc.deuda=tcDeudaCalculada(tc);
   return tc.deuda;
@@ -194,7 +216,7 @@ registrarSonda('tarjetas',estadoActual=>{
 //     cuadre exactamente con la deuda que ya existía;
 //   · limpia avisos de corte, que ya no existen en este modelo;
 //   · recalcula la deuda de cada tarjeta desde sus movimientos.
-function tcNormalizarTarjetas(){
+export function tcNormalizarTarjetas(){
   if(!Array.isArray(S.tarjetasCredito)) S.tarjetasCredito=[];
   if(Array.isArray(S.tcMovimientos)){
     S.tcMovimientos=S.tcMovimientos.filter(m=>m.tipo!=='corte_aviso');
@@ -227,7 +249,7 @@ function tcNormalizarTarjetas(){
 }
 
 // ── Compras: capa de datos (sin tocar UI ni gastosVar) ───────────
-function tcCrearCompra(tc,datos){
+export function tcCrearCompra(tc,datos){
   if(!Array.isArray(tc.compras)) tc.compras=[];
   const compra={
     id:uid(),
@@ -249,7 +271,7 @@ function tcCrearCompra(tc,datos){
 // Marca una compra como eliminada (nunca se borra físicamente del
 // array), recalcula la deuda y devuelve la compra para que quien
 // llama limpie lo que corresponda (p.ej. el gasto variable espejo).
-function tcEliminarCompraInterna(tc,compraId){
+export function tcEliminarCompraInterna(tc,compraId){
   const compra=(tc.compras||[]).find(c=>c.id===compraId&&!c.eliminado);
   if(!compra) return null;
   compra.eliminado=true;
@@ -260,7 +282,7 @@ function tcEliminarCompraInterna(tc,compraId){
 // Busca una compra por id; si no la encuentra (registros de antes de
 // este refactor no siempre tenían un id enlazado del lado del gasto),
 // cae de vuelta a un match por descripción+monto sin eliminar.
-function tcBuscarCompraPorIdOMatch(tc,compraId,desc,monto){
+export function tcBuscarCompraPorIdOMatch(tc,compraId,desc,monto){
   if(compraId){
     const porId=(tc.compras||[]).find(c=>c.id===compraId&&!c.eliminado);
     if(porId) return porId;
@@ -269,7 +291,7 @@ function tcBuscarCompraPorIdOMatch(tc,compraId,desc,monto){
 }
 
 // ── Pagos: capa de datos ──────────────────────────────────────────
-function tcCrearPago(tc,datos){
+export function tcCrearPago(tc,datos){
   if(!Array.isArray(tc.pagos)) tc.pagos=[];
   const pago={
     id:uid(),
@@ -284,7 +306,7 @@ function tcCrearPago(tc,datos){
   return pago;
 }
 
-function tcEliminarPagoInterna(tc,pagoId){
+export function tcEliminarPagoInterna(tc,pagoId){
   const pago=(tc.pagos||[]).find(p=>p.id===pagoId&&!p.eliminado);
   if(!pago) return null;
   pago.eliminado=true;
@@ -295,7 +317,7 @@ function tcEliminarPagoInterna(tc,pagoId){
 // ── Nueva / editar tarjeta ────────────────────────────────────────
 // Repuebla el <select> de cajita vinculada cada vez que se abre el form,
 // por si el usuario creó/eliminó cajitas desde la última vez.
-function _tcPoblarSelectCajita(selectedId){
+export function _tcPoblarSelectCajita(selectedId){
   const sel=document.getElementById('tc_cajita_vinculada');
   if(!sel)return;
   const opciones=(S.cajitas||[]).map(c=>html`<option value="${c.id}">${c.nombre}</option>`).join('');
@@ -305,7 +327,7 @@ function _tcPoblarSelectCajita(selectedId){
   sel.value=selectedId||'';
 }
 
-function abrirNuevaTarjeta(){
+export function abrirNuevaTarjeta(){
   _tcEditId=null;
   document.getElementById('tc-form-title').textContent='Nueva tarjeta de crédito';
   document.getElementById('tc_nombre').value='';
@@ -323,7 +345,7 @@ function abrirNuevaTarjeta(){
   focusSheetField('tc_nombre');
 }
 
-function abrirEditarTC(id){
+export function abrirEditarTC(id){
   const tc=getTCById(id);
   if(!tc)return;
   _tcEditId=id;
@@ -342,12 +364,12 @@ function abrirEditarTC(id){
   openSheet('nueva-tc');
 }
 
-function tcSelColor(color){
+export function tcSelColor(color){
   _tcColorSel=color;
   marcarColorSeleccionado('.tc-color-opt', color); // js/core/color-picker.js
 }
 
-function guardarTC(){
+export function guardarTC(){
   const nombre=document.getElementById('tc_nombre').value.trim();
   if(!nombre){toast('Ingresa el nombre de la tarjeta','err');return;}
   const banco=document.getElementById('tc_banco').value.trim();
@@ -405,7 +427,7 @@ function guardarTC(){
   renderTCScreen();
 }
 
-async function eliminarTC(id){
+export async function eliminarTC(id){
   const tc=getTCById(id);
   if(!tc)return;
   const tieneVinculos=(S.tcMovimientos||[]).some(m=>m.tcId===id);
@@ -424,17 +446,17 @@ async function eliminarTC(id){
 // ── Dashboard ─────────────────────────────────────────────────────
 /* ── PC (≥900 px): como el prototipo, la pantalla es resumen arriba y debajo la lista de tarjetas | compras y pagos de la tarjeta elegida.
    En celular «Ver» abre la hoja de siempre. La tarjeta elegida (_tcSelId) es la primera mientras no se toque otra. ── */
-let _tcSelId=null;
-const _consultaPcTC=typeof window.matchMedia==='function'?window.matchMedia('(min-width: 900px)'):null;
-function _tcPanelPc(){
+export let _tcSelId=null;
+export const _consultaPcTC=typeof window.matchMedia==='function'?window.matchMedia('(min-width: 900px)'):null;
+export function _tcPanelPc(){
   if(!_consultaPcTC||!_consultaPcTC.matches)return false;
   const pantalla=document.getElementById('screen-tarjetas');
   return !!(pantalla&&pantalla.classList.contains('active')&&document.getElementById('tc-detalle'));
 }
-function _tcMarcarActiva(){
+export function _tcMarcarActiva(){
   document.querySelectorAll('#tc-lista .tc-card[data-tc-id]').forEach(c=>c.classList.toggle('tc-card-activa',_tcPanelPc()&&c.getAttribute('data-tc-id')===_tcSelId));
 }
-function renderTCScreen(){
+export function renderTCScreen(){
   const tarjetas=S.tarjetasCredito||[];
   const hero=document.getElementById('tc-hero-deuda');
   const heroCupo=document.getElementById('tc-hero-cupo');
@@ -537,7 +559,7 @@ document.addEventListener('click',e=>{
 });
 
 // ── Resumen de TC en la pantalla de Inicio ────────────────────────
-function renderTCDashboard(){
+export function renderTCDashboard(){
   const el=document.getElementById('tc-deuda-card');
   if(!el)return;
   const tarjetas=S.tarjetasCredito||[];
@@ -631,7 +653,7 @@ function renderTCDashboard(){
 }
 
 // ── Registrar compra en TC ────────────────────────────────────────
-function abrirCompraTC(tcId){
+export function abrirCompraTC(tcId){
   _tcCompraTcId=tcId;
   const tc=getTCById(tcId);
   if(!tc)return;
@@ -646,7 +668,7 @@ function abrirCompraTC(tcId){
   focusSheetField('tcc_desc');
 }
 
-function confirmarCompraTC(){
+export function confirmarCompraTC(){
   const tc=getTCById(_tcCompraTcId);
   if(!tc){toast('Tarjeta no encontrada','err');return;}
   const desc=document.getElementById('tcc_desc').value.trim();
@@ -685,7 +707,7 @@ function confirmarCompraTC(){
 // — se borra igual que cualquier compra desde el detalle) pero se salta
 // a propósito la validación de cupo que sí aplica siempre en
 // confirmarCompraTC.
-function abrirCargoEspecialTC(tcId){
+export function abrirCargoEspecialTC(tcId){
   const tc=getTCById(tcId);
   if(!tc)return;
   _tcCargoEspecialId=tcId;
@@ -700,7 +722,7 @@ function abrirCargoEspecialTC(tcId){
   focusSheetField('tcx_desc');
 }
 
-async function confirmarCargoEspecialTC(){
+export async function confirmarCargoEspecialTC(){
   const tc=getTCById(_tcCargoEspecialId);
   if(!tc){toast('Tarjeta no encontrada','err');return;}
   const desc=document.getElementById('tcx_desc').value.trim();
@@ -741,7 +763,7 @@ async function confirmarCargoEspecialTC(){
 }
 
 // ── Pagar TC ───────────────────────────────────────────────────────
-function abrirPagarTC(tcId){
+export function abrirPagarTC(tcId){
   _tcActualId=tcId;
   const tc=getTCById(tcId);
   if(!tc)return;
@@ -776,14 +798,14 @@ function abrirPagarTC(tcId){
   focusSheetField('ptc_monto');
 }
 
-function ptcSetMonto(val){
+export function ptcSetMonto(val){
   const el=document.getElementById('ptc_monto');
   el.value=fmtInput(val);
   el.dispatchEvent(new Event('input',{bubbles:true}));
   ptcActualizarPreview();
 }
 
-function ptcActualizarPreview(){
+export function ptcActualizarPreview(){
   const montoEl=document.getElementById('ptc_monto');
   const monto=parseMoney(montoEl.value)||0;
   const fuente=document.getElementById('ptc_fuente').value;
@@ -807,7 +829,7 @@ function ptcActualizarPreview(){
   }
 }
 
-function confirmarPagarTC(){
+export function confirmarPagarTC(){
   const tc=getTCById(_tcActualId);
   if(!tc){toast('Tarjeta no encontrada','err');return;}
   const montoEl=document.getElementById('ptc_monto');
@@ -845,7 +867,7 @@ function confirmarPagarTC(){
 }
 
 // ── Detalle de TC (historial: saldo inicial + compras + pagos) ────
-function abrirDetalleTCSheet(tcId){
+export function abrirDetalleTCSheet(tcId){
   const tc=getTCById(tcId);
   if(!tc)return;
   const enPanel=_tcPanelPc();
@@ -1032,7 +1054,7 @@ function abrirDetalleTCSheet(tcId){
   openSheet('detalle-tc');
 }
 
-async function eliminarCompraTC(tcId,compraId){
+export async function eliminarCompraTC(tcId,compraId){
   const tc=getTCById(tcId);
   if(!tc)return;
   const compra=(tc.compras||[]).find(c=>c.id===compraId&&!c.eliminado);
@@ -1058,7 +1080,7 @@ async function eliminarCompraTC(tcId,compraId){
   toast('Compra eliminada — deuda actualizada','ok');
 }
 
-async function eliminarPagoTC(tcId,pagoId){
+export async function eliminarPagoTC(tcId,pagoId){
   const tc=getTCById(tcId);
   if(!tc)return;
   const pago=(tc.pagos||[]).find(p=>p.id===pagoId&&!p.eliminado);
@@ -1109,21 +1131,21 @@ Events.registerAll('tarjetas', {
 // actividad-reciente.js (auditoria-tecnica.md #4, grupo "historial"). Se
 // wirea directo, top-level, contra ids que ya existen en el DOM estático
 // de index.html — mismo patrón ya probado en mesada.js.
-const btnGuardarTC=document.getElementById('btn-guardar-tc');
+export const btnGuardarTC=document.getElementById('btn-guardar-tc');
 if(btnGuardarTC)btnGuardarTC.addEventListener('click',guardarTC);
 
-const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
+export const btnCompraTC=document.getElementById('btn-confirmar-compra-tc-tarjetas');
 if(btnCompraTC)btnCompraTC.addEventListener('click',confirmarCompraTC);
 
-const btnCargoEspecialTC=document.getElementById('btn-confirmar-cargo-especial-tc');
+export const btnCargoEspecialTC=document.getElementById('btn-confirmar-cargo-especial-tc');
 if(btnCargoEspecialTC)btnCargoEspecialTC.addEventListener('click',confirmarCargoEspecialTC);
 
-const btnPagarTC=document.getElementById('btn-confirmar-pagar-tc');
+export const btnPagarTC=document.getElementById('btn-confirmar-pagar-tc');
 if(btnPagarTC)btnPagarTC.addEventListener('click',confirmarPagarTC);
 
-const ptcFuente=document.getElementById('ptc_fuente');
+export const ptcFuente=document.getElementById('ptc_fuente');
 if(ptcFuente)ptcFuente.addEventListener('change',ptcActualizarPreview);
-const ptcMonto=document.getElementById('ptc_monto');
+export const ptcMonto=document.getElementById('ptc_monto');
 if(ptcMonto)ptcMonto.addEventListener('input',ptcActualizarPreview);
 
 // Mostrar el label TC en el gasto variable al seleccionarlo: mostrarAlertaFuente() (navegacion.js) pregunta al evento
@@ -1148,3 +1170,6 @@ Ui.en('fuente-alerta', function(prefix){
 
 // Sin esta rama, la primera vez que el grupo lazy termina de cargar la pantalla quedaba visible pero vacía.
 Ui.pantalla('tarjetas', () => { if (typeof renderTCScreen === 'function') renderTCScreen(); }, { key: 'tarjetas-render' });
+
+// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+exponerGlobales({ TC_ESTADOS, TC_MOTIVOS_CARGO, _origenLibroTc, _consultaPcTC, btnGuardarTC, btnCompraTC, btnCargoEspecialTC, btnPagarTC, ptcFuente, ptcMonto });

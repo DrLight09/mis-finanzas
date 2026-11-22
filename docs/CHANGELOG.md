@@ -35,6 +35,10 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Teclado que se abría al cargar
+
+- Se quitó `autofocus` del campo de búsqueda y del monto de «Agregar dinero»: en el celular el navegador lo aplicaba al cargar y abría el teclado (el numérico, el del monto) unos segundos en cada recarga. Prueba nueva en `tests/convenciones.test.js`.
+
 ## Tipos con `tsc --checkJs`, imports de la lógica pura y limpieza
 
 - Nuevo `npm run tipos` (TypeScript como herramienta de desarrollo, sin build): revisa los archivos de lógica pura y de sincronización listados en `tsconfig.json`. Corre también dentro de `npm test` (`tests/tipos.test.js`). `subir.sh` ahora ejecuta `npm ci` solo si falta TypeScript/jsdom o cambió `package-lock.json`. Encontró que `salud.js` usaba `cuentasAhorro`/`fuenteDeCuenta` sin declararlas; quedan en `js/tipos-globales.d.ts`.

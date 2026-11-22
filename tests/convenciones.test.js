@@ -159,3 +159,8 @@ test('trinquete de CSS: no aparecen clases con prefijo abreviado ni fuera de keb
   const bajan = [...d.opacasQueBajan, ...d.noKebabQueBajan];
   assert.ok(!bajan.length && !d.importantesBajan && !d.hexBajan, 'Algo bajó (¡bien!): registra la mejora con `node scripts/convenciones-css.js --actualizar`');
 });
+
+test('index.html no usa autofocus: en el celular abre el teclado al cargar la página, aunque el campo esté en una hoja cerrada', () => {
+  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
+  assert.ok(!/\bautofocus\b/.test(html.replace(/<!--[\s\S]*?-->/g, '')));
+});

@@ -1,15 +1,14 @@
 // js/core/persistencia.js
 //
 // Carga, guardado y formatos de entrada: fmtInput/setMoneyInput/parseMoney/parsePct, clase efectiva de movimientos, migraciones de esquema, load() y save().
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { S, hoy, setEstado } from './estado.js';
 import { Libro, _cuentasArr } from './cuentas-fuentes.js';
 import { Personas } from './personas-core.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ fmtInput, setMoneyInput, claseEfectivaMovimiento, movimientosSinClase, aplicarMigraciones, _ensureSpotify, registrarSonda, conEstadoAislado, load, parseMoney, parsePct, save });
 
 /* ---- LOAD / SAVE ---- */
@@ -252,5 +251,5 @@ export function save(){
   }
 }
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ SCHEMA_BASE, MIGRACIONES, SCHEMA_VERSION_ACTUAL });

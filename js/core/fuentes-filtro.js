@@ -26,7 +26,7 @@
    se le abona deuda desde "Pagar TC"), sin mirar saldo. Se aplican en el
    selector y otra vez al confirmar.
 
-   Núcleo, carga de entrada (<script defer>) justo después de
+   Núcleo, carga de entrada (js/main.js) justo después de
    calc-helpers.js — usa getSaldoFuente/getFuentesSinTC (js/core/cuentas-fuentes.js)
    y tcCupoDisponible/getTCById (calc-helpers.js) SOLO al ser llamado,
    nunca al cargar. No modifica opcionesCuenta/poblarFuente: los
@@ -169,5 +169,5 @@ export const FuentesFiltro = (() => {
   return { MIN, PRESET, MSG_SIN_SALDO, esCuenta, esTC, tcConCupo, hayTCConCupo, hayUtilizable, utilizable, filtrar, optsHtml, podar, puedeMover, puedeRecibir, receptoras };
 })();
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ FuentesFiltro });

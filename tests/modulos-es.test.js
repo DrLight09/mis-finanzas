@@ -15,7 +15,7 @@ const ordenMain = [...main.matchAll(/^import '\.\/([^']+)';/gm)].map(m => 'js/' 
 const html = leer('index.html').replace(/<!--[\s\S]*?-->/g, '');
 const clasicos = [...html.matchAll(/<script(?![^>]*type="module")[^>]*src="(js\/[^"]+)"/g)].map(m => m[1]);
 const lazy = (() => { const g = leer('js/core/lazy-loader.js').match(/const GROUPS = (\{[\s\S]*?\n  \});/)[1]; return [...new Set([...g.matchAll(/'(js\/[a-z/-]+\.js)'/g)].map(m => m[1]))]; })();
-const ES_DE_FUERA = ['js/core/firebase-init.js', 'js/core/firebase-sync.js', 'js/core/pin-bio.js', 'js/core/payload-codec.js', 'js/core/fusion.js', 'js/core/validar-estado.js', 'js/core/wait-for-module.js', 'js/core/respaldos.js'];
+const ES_DE_FUERA = ['js/core/firebase-init.js', 'js/core/firebase-sync.js', 'js/core/pin-bio.js', 'js/core/payload-codec.js', 'js/core/fusion.js', 'js/core/validar-estado.js', 'js/core/respaldos.js'];
 const modulosApp = [...ordenMain, ...lazy.filter(f => !ordenMain.includes(f))];
 const exportados = f => new Set([...leer(f).matchAll(/^export\s+(?:async\s+)?(?:function\s*\*?|class|const|let|var)\s+([A-Za-z_$][\w$]*)/gm)].map(m => m[1]));
 const importsDe = f => [...leer(f).matchAll(/^import\s+\{([^}]*)\}\s+from\s+'([^']+)';/gm)].map(m => ({ nombres: m[1].split(',').map(x => x.trim()).filter(Boolean), de: path.posix.normalize(path.posix.join(path.posix.dirname(f), m[2])) }));

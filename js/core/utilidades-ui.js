@@ -1,15 +1,14 @@
 // js/core/utilidades-ui.js
 //
 // Utilidades de interfaz compartidas: Reversibles, debounceSave, estados vacíos, filaMovimiento, pedirPinAntesDe, mostrarSi y los guards de carga lazy de cuentas.js.
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, nivelAntiguedadMovimiento, toast } from './dialogos.js';
 import { Events } from './events.js';
 import { escHtml } from './estado.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ debounceSave, emptyState, emptyInline, botonEliminarFila, filaMovimiento, pedirPinAntesDe, mostrarSi });
 
 export var Reversibles = (() => {
@@ -191,5 +190,5 @@ export function mostrarSi(el, visible) {
 // En html`` va como raw(SIN_DATO); en una plantilla normal o en innerHTML, directo.
 export const SIN_DATO = '<svg class="sin-dato" role="img" aria-label="Sin datos" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="7" y1="12" x2="17" y2="12"/></svg>';
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ ICONO_VACIO_CUENTAS, SIN_DATO });

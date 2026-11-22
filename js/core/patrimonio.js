@@ -1,8 +1,7 @@
 // js/core/patrimonio.js
 //
 // Patrimonio, liquidez e historial: calcPatrimonio*, bienes, liquidez, snapshots y la limpieza del historial cuando se elimina o edita un movimiento.
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 
@@ -10,7 +9,7 @@ import { exponerGlobales, exponerVariables } from './puente.js';
 import { S, TIPO_PAGO_COMPLETO, hoy } from './estado.js';
 import { saldoCuentas } from './cuentas-fuentes.js';
 import { Fecha } from './fecha.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _saldoPlataComprometidaAjeno, calcSaldoInicialPendiente, calcDeudaAjenaDeTarjeta, calcDeudaTcPropiaDeTarjeta, calcDeudaTcPropia, calcPatrimonioDesglose, calcPatrimonioTotal, calcPatrimonioVisible, calcValorBien, calcBienes, calcPatrimonioConBienes, patrimonioFormulaTexto, calcLiquidez, _patrimonioDependenciasListas, _ajusteAlcanciaPorFecha, recalcularMontoBaseHistorial, _movimientosDeudaSinCuenta, _ajusteDeudasSinCuentaPorFecha, _actualizarCierresPatrimonio, snapshotPatrimonio, medirPatrimonioParaHistorial, diaCreacionMovimiento, quitarDeHistorial, purgarEfectoEnHistorial, purgarAperturaDelHistorial, _saldoEncargosEnCuenta });
 
 /* ---- SNAPSHOT PATRIMONIO ---- */
@@ -508,5 +507,5 @@ export function _saldoEncargosEnCuenta(cuentaKey){
 // Se mantiene esta función con nombre propio porque calcC() ya la usa así.
 // Nu: tasa EA (historial por tramos) y cálculo de CDTs migrados a js/modules/nu.js (el cálculo puro, a nu-calc.js).
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ ME_DEBEN_ABRE, YO_DEBO_ABRE });

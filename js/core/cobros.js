@@ -33,7 +33,7 @@
 
    Las funciones de dominio validan antes de mutar (un rechazo no deja efectos a medias) y devuelven
    { ok:true, ... } o { ok:false, motivo }. No llaman a save(), refresh(), toast() ni tocan el DOM.
-   Carga de entrada (<script defer>) después de cuenta-efectos.js: usa uid(), hoy(), S, sumarFuente(), descontarFuente(),
+   Carga de entrada (js/main.js) después de cuenta-efectos.js: usa uid(), hoy(), S, sumarFuente(), descontarFuente(),
    registrarMovimientoEspejo() y borrarMovimientoEspejo().
    ═══════════════════════════════════════════════════════════════ */
 
@@ -42,7 +42,7 @@ import { Libro, descontarFuente, sumarFuente } from './cuentas-fuentes.js';
 import { borrarMovimientoEspejo, registrarMovimientoEspejo } from './cuenta-efectos.js';
 import { S, hoy, uid } from './estado.js';
 import { mesActual } from './ingresos.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _cobroEntrar, _cobroSacar, ingresoFijoPorId, cobrosDeIngresoFijo, ingresoFijoEsperadoEn, ingresoFijoEstadoMes, cobroMesTexto, cobroFuentesDe, cobroRegistrar, cobroRevertir, cobroBorrar, cobroAvisoMes });
 
 // Libro (js/core/cuentas-fuentes.js): cada sumar/descontarFuente deja { modulo:'ingreso-fijo', ref:<id del espejo> }; rev=true es la reversión.
@@ -153,5 +153,5 @@ export function cobroAvisoMes(mesCubre, fecha) {
   return 'Cubre ' + cobroMesTexto(mesCubre) + ', pero cuenta como ingreso de ' + donde + ': el mes en que te pagaron.';
 }
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _origenLibroCobro, COBRO_MES_RE });

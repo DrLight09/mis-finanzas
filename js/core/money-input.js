@@ -5,12 +5,11 @@
 // Los dos comparten el mismo motor (_montoFormatear): el texto del campo ES el valor (sin buffer
 // oculto), así que el cursor se puede mover y se puede escribir, borrar o pegar en medio del número
 // sin que salte al final. El punto es solo visual: al leer, parseMoney()/parseMiles() lo quitan.
-// Depende de parseMoney() (js/core/persistencia.js) — variables globales compartidas entre scripts clásicos,
-// no imports; por eso este archivo debe seguir cargando como <script> normal (sin type="module").
+// Depende de parseMoney() (js/core/persistencia.js), que importa.
 // Ver auditoria-tecnica.md #2/#4 y changelog/infraestructura-seguridad.md.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _montoFormatear, _montoCursor, _montoAlEscribir, parseMiles, _milesFormatear });
 
 export const _MONTO_MAX_ENTEROS = 12;
@@ -93,5 +92,5 @@ export function parseMiles(v){
 // Compat. con Presupuestos: formatea un entero ya numérico para mostrarlo (500000 → "500.000").
 export function _milesFormatear(texto,pegado){return _montoFormatear(texto,0,pegado).texto;}
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _MONTO_MAX_ENTEROS });

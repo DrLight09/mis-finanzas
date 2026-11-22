@@ -1,14 +1,13 @@
 // Sistema de PIN + biometría (WebAuthn) — extraído de index.html (era
 // <script type="module"> inline). Ver auditoria-tecnica.md #2.
 //
-// import de waitFor (js/core/wait-for-module.js — versión ES module
-// independiente de js/core/wait-for.js, ver ese archivo para el porqué):
+// import de waitFor (js/core/wait-for.js):
 // reemplaza los dos reintentos manuales con setInterval que tenía este
 // archivo (registro de Events('pin',...) y el hook de refresh(), más
 // abajo). Se usa `import` en vez de asumir un global porque este archivo
 // carga como `type="module" async`, sin garantía de orden frente a ningún
 // <script defer>. Ver changelog/infraestructura-seguridad.md.
-import { waitFor } from './wait-for-module.js';
+import { waitFor } from './wait-for.js';
 // El hook a refresh() ya no es un wrap de window.refresh: se registra con Refresh.registrar() (js/core/refresh.js), esperando a que exista.
 
 /* ================================================================

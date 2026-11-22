@@ -1,8 +1,7 @@
 // js/core/refresh.js
 //
 // Refresh: repintado de la app: Refresh.registrar/refresh(), el repintado de Inicio (_refreshNucleo, renderCuentasInicio) y saveAndRefresh.
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
@@ -12,7 +11,7 @@ import { Events } from './events.js';
 import { mesActual } from './ingresos.js';
 import { calcPatrimonioDesglose, patrimonioFormulaTexto } from './patrimonio.js';
 import { save } from './persistencia.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ refresh, _colorSeguro, renderCuentasInicio, _refreshNucleo, saveAndRefresh });
 
 export const Refresh = (() => {
@@ -296,5 +295,5 @@ export function saveAndRefresh() {
   refresh();
 }
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ Refresh });

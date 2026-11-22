@@ -31,7 +31,7 @@
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { toast } from './dialogos.js';
 import { Events } from './events.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _estadoPush, _pushYaActivo, _refrescarEstadoPush, _mensajePushError, _obtenerTokenPush, activarNotificaciones });
 
 export const _FCM_CONFIG = {
@@ -177,5 +177,5 @@ if (typeof Events !== 'undefined' && typeof Events.registerAll === 'function') {
   Events.registerAll('notificaciones', { activar: activarNotificaciones });
 }
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _FCM_CONFIG, _FCM_VAPID_KEY });

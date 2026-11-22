@@ -54,7 +54,7 @@ import { saldoCuentas } from '../core/cuentas-fuentes.js';
 import { Refresh } from '../core/refresh.js';
 import { showScreen } from '../core/navegacion.js';
 import { Loader } from '../core/lazy-loader.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _diasDeUso, _situacion, calcSinBase, _ctxReglas, _fechaCorta, _eventosCaja, calcCalendarioCaja, renderAttencion, _pintarAtencion, _mesesCubiertos, _nivelRunway, _fmtMeses, calcImpactoCompra, calcHealthScore, renderHealthScore, _deudasPropias, calcEstadoHero, renderHeroEstado, calcEstadoSituacion, _ritmosPorTercio, renderProyeccion, _checkGastoAlto, _renderDispNetoTC, _irADestino });
 
 /* ---- DASHBOARD ATENCIÓN ---- */
@@ -928,5 +928,5 @@ Events.registerAll('inicio', {
   irConsejo: (destino) => _irADestino(destino)
 });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ SALUD_MAX_CONSEJOS });

@@ -1,13 +1,12 @@
 // js/core/cuentas-fuentes.js
 //
 // Cuentas, libro de movimientos y fuentes de plata: Tipos de cuenta y sus getters, Libro (única vía para tocar saldos), descontarFuente/sumarFuente, Plata, Fuente + fuenteTexto/fuenteHtml, opcionesCuenta (único constructor de <option>s), poblarFuente y getSaldoFuente.
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { S, escHtml, fmt, hoy } from './estado.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _buildFuentesOpts, opcionesCuenta, esCuentaFija, asegurarEfectivo, esFuenteCuenta, fuenteDeCuenta, idDeFuenteCuenta, _cuentasArr, getCuenta, getCuentaDeFuente, esCuentaAhorro, cuentasTodas, cuentasActivas, cuentasAhorro, cuentasConSaldo, cajitasDeCuenta, cuentaDeCajita, nombreCuenta, _luminancia, colorLegible, colorCuenta, saldoCuentas, redondearCentavos, ajustarSaldoCuenta, descontarFuente, sumarFuente, _fuenteHuerfana, _fijarSaldoReconciliado, _listaFuentes, getFuentes, getFuentesSinTC, fuenteTexto, fuenteHtml, fuenteLabel, _clasePorCuenta, fuenteBadgeClass, poblarFuente, getSaldoFuente });
 
 /**
@@ -597,5 +596,5 @@ export function getSaldoFuente(fuente){
 //  · Fuente vacía: ok (el gasto "sin especificar" no mueve plata).
 // Comparación estricta (disponible < monto), igual que los módulos que la usaban.
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ FUENTE_CUENTA_PREFIJO, CuentaPantallas, TIPOS_CUENTA, Libro, _libroPata, _huerfanasAvisadas, Plata, Fuente, _ICONO_GANANCIA, _badgesInyectados });

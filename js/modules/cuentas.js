@@ -48,7 +48,7 @@ import { Deudas } from '../core/calc-helpers.js';
 import { FuentesFiltro } from '../core/fuentes-filtro.js';
 import { Reordenable } from '../core/reordenable.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _reiniciarPantallasCuenta, abrirCuenta, volverSelector, renderArchivadas, abrirArchivadas, renderDetalleCuenta, _tituloCuentaHtml, _pintarAdministrarCuenta, _accionAdministrarCuenta, _renderDetalleSimple, getIconoData, renderIconoCustom, selColorNuevaCuenta, selIconoNuevaCuenta, selTipoNuevaCuenta, _mostrarTipoNuevaCuenta, ocultarInvitacionCuentas, alternarAhorroNuevaCuenta, _renderTiposNuevaCuenta, renderIconGrid, abrirNuevaCuenta, abrirOnboarding, crearCuenta, _descriptorDeCuenta, _descriptorCuenta, _cuentasSelector, _cuentaSelectorHtml, _activasEnOrden, moverCuenta, ordenarCuentas, _aplicarOrdenArrastre, alternarOrdenCuentas, moverCuentaUI, _cuentaOrdenHtml, renderSelectorCuentas, hexToRgb, _encargosConSaldoEn, _fuentesDeCuenta, cuentaSePuedeEliminar, _motivoNoArchivar, archivarCuenta, reactivarCuenta, eliminarCuenta, editarCuenta, _resetSheetNuevaCuenta, _showCuentasPanel, _abrirCuentaPorDefecto, _marcarCuentaActivaEnSelector, getMovimientosCuenta, _getMovimientosFilter, renderMovimientosFiltros, _movimientosOnSearch, _movimientosOnTipo, _movimientosOnFecha, _movimientosLimpiarFechas, _movimientosMas, _movimientosRefresh, _movimientosAplicarFiltro, renderMovimientosCuenta, abrirAgregarDinero, _aperturaToggleUI, registrarEntradaConApertura, registrarSalida, toggleAgregarDineroApertura, confirmarAgregarDinero, openSheet_agregarDineroMenu, actualizarAgregarDineroMenuSaldo, actualizarAgregarDineroMenuPreview, confirmarAgregarDineroMenu, getAperturaMovimiento, renderBannerApertura, abrirRegistrarApertura, abrirEditarApertura, confirmarEditarApertura, abrirRestarDinero, confirmarRestarDinero, _setBtnEstado, _setBtnTransferir, _motivoSinRetiro, actualizarBotonRetirar, actualizarBotonesTransferir, abrirTransferir, _trPodarSelect, _trOrigenCambio, _trDestinoCambio, validarTransferencia, actualizarTransfPreview, confirmarTransferir });
 
 /* ───────────────────────────────────────────────────────────────
@@ -1843,6 +1843,6 @@ Ui.pantalla('cuentas', () => {
   if (typeof _abrirCuentaPorDefecto === 'function') _abrirCuentaPorDefecto();
 }, { key: 'cuentas-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _origenLibroCta, ICONOS_CUENTA, _consultaPcCuentas, MOVIMIENTOS_PAGINA, _movimientosFilters, _MIN_RETIRO, TR_MIN_EFECTIVO, btnAgregarCuentaCustom, _nuevaCuentaNombreInput, btnCrearCuentaCustom, btnAgregarDineroConf, btnAgregarDineroMenuConf, btnRdConf, btnEaConf, btnTrConf, btnSwitchTr, _selectorCuentasLista, _archivadasLista, _volverDeArchivadas, _detalleSimple, _detalleAhorro, agregarDineroMenuDestino, agregarDineroMenuMonto, trOrigen, trDestino, trMonto });
 exponerVariables({ cuentaActual: [() => cuentaActual, v => { cuentaActual = v; }] });

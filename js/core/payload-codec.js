@@ -1,4 +1,4 @@
-// Códec del payload de Firestore (ES module, igual que wait-for-module.js: solo existe como dependencia vía `import`
+// Códec del payload de Firestore (ES module, solo existe como dependencia vía `import`
 // de firebase-sync.js, no tiene <script> propio).
 //
 // Todo el estado de la app se guarda como UN campo `payload` de UN documento, y Firestore limita el documento a 1 MiB.

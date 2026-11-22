@@ -35,6 +35,10 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Limpieza tras M6: `waitFor` en un solo archivo y comentarios al día
+- `wait-for-module.js` (la copia de `waitFor` para los módulos de Firebase y PIN, que existía mientras convivían scripts clásicos y módulos) se borró: `firebase-sync.js` y `pin-bio.js` importan de `wait-for.js`, que ahora sirve a todos.
+- Unos 50 archivos tenían comentarios de cabecera que decían «clásico (`<script defer>`)» o «sin `type="module"`»: ahora dicen módulo ES y `js/main.js`. El comentario repetido del puente global se acortó.
+
 ## M6 completo: la app pasa de scripts clásicos a módulos ES nativos (sin bundler)
 - **Qué cambió.** `index.html` ya no lista ~50 `<script defer>`: carga UN módulo, `js/main.js`, que importa el núcleo y las pantallas de carga inmediata en el mismo orden de siempre. Cada archivo exporta lo suyo e importa de forma explícita lo que usa de los archivos que cargan ANTES (~890 referencias). Los módulos de pantalla lazy se cargan con `import()` desde `Loader`. Las dependencias dejaron de ser implícitas: `npm run lint` ahora también revisa en modo módulo y `tests/modulos-es.test.js` vigila la estructura (imports de una línea que existen y exportan lo pedido, solo hacia atrás, sin ciclos, sin importar módulos lazy, nombres únicos, nada asigna un import).
 - **Puente global (`js/core/puente.js`).** Lo que no se puede importar (módulos lazy; una llamada «hacia adelante» que solo ocurre al ejecutar; ~150 referencias) sigue llamándose por nombre suelto: cada módulo deja sus funciones (al principio, se hoistean) y constantes/clases (al final) en `window`; las `let` que otro archivo lee tienen accesor, para que nadie se quede con una copia vieja. Es lo que antes hacía el ámbito global de los scripts clásicos, ahora explícito y limitado.

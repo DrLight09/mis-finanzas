@@ -4,12 +4,12 @@
 // (Loader). Esta es la ÚNICA pieza que conoce el ciclo; lo que cada hoja o pantalla hace al abrirse lo registra su módulo dueño:
 //   · Ui.hoja(id, fn, {fase})     al abrir la hoja `id`;
 //   · Ui.pantalla(nombre, fn)     cuando showScreen(nombre) terminó (re-pintar la lista, resetear un detalle…).
-// Ver js/core/ui.js. Carga como <script> clásico, después del núcleo y antes de los módulos que llaman openSheet/showScreen.
+// Ver js/core/ui.js. Módulo ES, después del núcleo y antes de los módulos que llaman openSheet/showScreen.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { Ui } from './ui.js';
 import { toast } from './dialogos.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _sheetAccesible, openSheet, closeSheet, showScreen, _showScreenLoading, _hideScreenLoading });
 
 /* ── Sheet stack manager ────────────────────────────────────────────────────
@@ -145,5 +145,5 @@ export function _hideScreenLoading(name) {
   if (el) el.remove();
 }
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _sheetStack, _sheetOrigenFoco });

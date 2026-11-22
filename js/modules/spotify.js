@@ -43,7 +43,7 @@ import { borrarMovimientoEspejo, registrarMovimientoEspejo } from '../core/cuent
 import { Loader } from '../core/lazy-loader.js';
 import { PersonaPicker } from './personas.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _spotifyProporcionarSplits, getSpotifyFuente, getSpotifyFuenteSaldo, abrirElegirFuenteSpotify, guardarFuenteSpotify, spotifyPeriodosVencidos, spotifyCicloCobrosActual, spotifySumarDias, spotifyTramosDeCobro, spotifyMontoAntesDe, spotifyAsignarPeriodos, spotifyResumenCicloActual, spotifyCostoValido, abrirPagarSpotify, renderSpotify, renderSpotifyHistorial, renderSpotifyStats, deleteSpotifyHistorial, _borrarSpotifyHistorial, deshacerAbonoPendienteSpotify, marcarPagoSpotify, selSpotifyMeses, _syncSpotifyDebeWrap, _spotifyExtraOpts, _syncSpotifyExtraWrap, actualizarSpotifyDestinoPreview, confirmarSpotifyDestino, resolverPendienteSpotifyHistorial, actualizarSpotifyResolverPreview, confirmarSpotifyResolverPendiente, _spotifyEnsureTC, openSheet_pagarSpotify, actualizarSpotifyPagarPreview, confirmarPagarSpotify, addSpotify, deleteSpotify, editarSpotify, guardarEditarSpotify, _spotifyPintarAvatares });
 
 /* ---- SPOTIFY ---- */
@@ -1705,5 +1705,5 @@ Ui.hoja('pagar-spotify', () => { save(); openSheet_pagarSpotify(); }, { key: 'sp
 Ui.hoja('spotify', () => { const fd = document.getElementById('sp_fecha_ingreso'); if (fd && !fd.value) fd.value = hoy(); }, { key: 'spotify-fecha' });
 Ui.pantalla('spotify', () => { if (typeof renderSpotify === 'function') renderSpotify(); }, { key: 'spotify-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _origenLibroSpotify, _spotify_spc, _spotify_spp, SPOTIFY_PERIODO_DIAS, SPOTIFY_EMPATE_PERIODOS, _spotifyBtnAdd, _spotifyBtnPagar, _spotifyBtnSave, _spotifyBtnDestino, _spotifyMesesSelect, _spotifyMontoRecibido, _mSpotifyDebeWrap, _mSpotifyQuedaDebiendo, _spotifyBtnResConf, _spotifyResMonto, _spotifyBtnPagarConf, _spotifyPagarFuente, _spotifyPagarMonto, _spotifyCobSplitToggle, _spotifyCobBtnAddRow, _spotifyPagarSplitToggle, _spotifyPagarBtnAddRow, _spotifyPicker, _spotifyEditPicker });

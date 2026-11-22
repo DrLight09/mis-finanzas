@@ -16,9 +16,8 @@
 
    También aloja `Deudas` (capa de acceso a "Me deben"/"Yo debo" y sus saldos).
 
-   Este archivo carga de entrada (<script defer>, sin passar por
-   Loader), justo después del núcleo — ver orden de <script>
-   en index.html. mesada.js y tarjetas-credito.js YA NO definen estas
+   Este archivo carga de entrada (import en js/main.js, sin pasar por
+   Loader), justo después del núcleo. mesada.js y tarjetas-credito.js YA NO definen estas
    funciones: las usan como globales definidas acá. Por eso este
    archivo tiene que estar cargado ANTES que ellos (irrelevante en la
    práctica ya que son lazy y cargan mucho después, pero se respeta
@@ -29,7 +28,7 @@ import { exponerGlobales, exponerVariables } from './puente.js';
 import { MC, S } from './estado.js';
 import { Periodo } from './periodo.js';
 import { _fechaSafe } from './dialogos.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _ensureMesadas, getMesadaData, _getCuotaAnio, _mesNombreDeKey, mesadaOrigenDeMovimientoEncargo, getTCById, tcCupoUsadoPct, tcCupoDisponible, getDeudorSaldo, getMiDeudaSaldo, totalPrestadoPendiente, totalMisDeudasPendiente, encargoSaldo, encargoComprometido, encargoLibre, spotifyPersonaPagadaVigente });
 
 /* ---- Mesada (antes en mesada.js) ---- */
@@ -189,5 +188,5 @@ export function spotifyPersonaPagadaVigente(p){
   return prox>hoy0;
 }
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ Deudas });

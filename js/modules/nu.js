@@ -43,7 +43,7 @@ import { SIN_DATO, emptyInline, emptyState } from '../core/utilidades-ui.js';
 import { FuentesFiltro } from '../core/fuentes-filtro.js';
 import { Fecha } from '../core/fecha.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _ahorroActualId, _ahorroActual, _nombreAhorro, registrarTasaHistorial, materializarIntereses, calcularSerieTasaImplicita, verificarTasaAhorro, poblarChequeoNu, abrirChequeoNu, _interpretarLecturaChequeoNu, guardarChequeoNu, corregirChequeoNu, _abrirConfirmarTasaNu, confirmarCambioTasaNu, verificarVencimientosCDT, _procesarSiguienteCDTVencido, calcMetaProgreso, abrirMetaCajita, _renderMetaAportes, _metaAporteEliminar, _updateMetaCuotaPreview, guardarMetaCajita, toggleMetaMinWrap, quitarMetaCajita, addCajita, deleteCajita, _cdtModoSheet, confirmarSheetCDT, abrirCrearCDT, validarCamposCDT, confirmarCrearCDT, liberarCDTManual, abrirCobrarCDT, confirmarCobrarCDT, _cancelarCobrarCDT, editarCDT, guardarCDT, renderCajitas, renderDetalleAhorro, _nuActualizarBotonesTransferir, volverANu, volverADetalleCajita, abrirDetalleCajita, _renderDetalleCajita, _cajitaDetDelete, abrirSubMeta, abrirSubCDTs, _refreshCajitaDet, abrirNuMovimiento, _nuMovimientoRenderCajitas, _nuMovimientoToggleApertura, _nuMovimientoActualizarPreview, confirmarNuMovimiento, _cajitasAhorroActual, _wireTasaInput, _motivoNuSinCajitas, _motivoNuSinTasa, _motivoNuMovimiento, _motivoNuChequeo, actualizarBotonesNu });
 
 // Cuenta de ahorro abierta ahora ('' si no hay ninguna): todo lo que esta pantalla crea o chequea es de ESA cuenta.
@@ -1562,5 +1562,5 @@ Events.registerAll('nu', {
 Ui.hoja('chequeo-nu', () => { poblarChequeoNu(); }, { key: 'nu-chequeo' });
 Ui.pantalla('cuentas', () => { if (typeof renderCajitas === 'function') renderCajitas(); }, { key: 'nu-cajitas-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _CFG_CHEQUEO, btnCDTConf, btnCobrarConf, btnGuardarMeta, btnQuitarMeta, btnAddMetaAporte, btnNuEntro, btnNuSalio, btnNuMovimientoConf, btnAddCajita });

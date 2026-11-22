@@ -1,14 +1,13 @@
 // js/core/dialogos.js
 //
 // Avisos y diálogos: toast, dialogo/confirmarEliminar/avisarNoSePuede y los avisos de movimientos antiguos o bloqueados.
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { Fecha } from './fecha.js';
 import { S, fmt, hoy } from './estado.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _toastTexto, toast, _closeDialog, dialogo, confirmarEliminar, avisarNoSePuede, _fechaSafe, nivelAntiguedadMovimiento, confirmarBorrarMovimientoViejo, avisarMovimientoBloqueado });
 
 export function _toastTexto(v){

@@ -1,13 +1,12 @@
 // js/core/estado.js
 //
 // Estado global y utilidades base: S (el estado), categorías por defecto, Dinero/fmt, uid, hoy, escHtml, mesKey, avatares. Carga PRIMERO entre las partes del núcleo: todo lo demás asume que S/fmt/uid existen.
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { Fecha } from './fecha.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ setEstado, esAbonoDeDeuda, getCatsVar, getCatsFijo, poblarCatSelect, fmt, fmtNoCents, fmtSaldoSelector, uid, medirAnchoTexto, hoy, crearMovimientoApertura, escHtml, mesKey, pintarAvatarPersona });
 
 export const MC=Fecha.MESES_CORTOS;   // alias de la lista única de js/core/fecha.js
@@ -214,6 +213,6 @@ export function pintarAvatarPersona(av, persona, opts){
    El saldo de una cuenta se lee y se escribe SOLO por sumarFuente/descontarFuente/ajustarSaldoCuenta (puerta única del
    libro): ningún módulo toca `c.saldo` directamente. */
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ MC, CATS_VAR_DEFAULT, CATS_FIJO_DEFAULT, MAX, TIPO_PAGO_COMPLETO, TIPO_ALCANCIA, Dinero, _medirCtx });
 exponerVariables({ S: [() => S, v => { S = v; }] });

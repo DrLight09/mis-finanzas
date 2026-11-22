@@ -54,7 +54,7 @@ import { SIN_DATO } from '../core/utilidades-ui.js';
 import { medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/patrimonio.js';
 import { abrirSelPersona } from './personas.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ mesadaNombrePadre, _mesadaAnioDeKey, mesadaCuotaDeKey, mesadaMesVencido, mesadaEstadoMes, mesadaResumenAnio, _mesadaApiEncargos, mesadaDisponibleEncargo, mesadaCuentasDeEncargo, _normTxt, _mesadaNombreCoincide, mesadaEncargosDelParent, _mesadaEntrar, _mesadaSacar, _mesadaCrearSalidaEncargo, _mesadaQuitarSalidaEncargo, _mesadaValidarEncargo, _mesadaAplicarEntrada, mesadaAbonosDe, mesadaRevertirAbono, mesadaRegistrarPago, mesadaAbonarPendiente, mesadaMarcarPendiente, mesadaBorrarPago, mesadaDeshacerAbono, mesadaFuentesDe, mesadaTieneCuentaAfectada, mesadaOperacionesPosteriores, _crearEncargoPicker, renderMesada, _htmlMesDot, clickMesDot, cambiarAnio, _poblarDestinoMesada, mesadaAvisoMesPago, actualizarMesadaPagoAvisoMes, abrirRegistrarMesada, _previewSplit, _previewDisponible, actualizarMesadaPagoPreview, _syncMesadaPagoDebeWrap, _mesadaMostrarError, confirmarMesadaPago, abrirDetalleMesada, eliminarMesadaPago, marcarMesadaComoPendiente, abrirResolverPendiente, actualizarMesadaPagoPendientePreview, confirmarPendienteMesada, deshacerPendienteMesada, _msOn, _msFilaClickeable, _msCablear, getMesadaPersonaId, vincularMesadaPersona, desvincularMesadaPersona });
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1008,5 +1008,5 @@ Events.registerAll('mesada', {
 
 Ui.pantalla('mesada', () => { if (typeof renderMesada === 'function') renderMesada(); }, { key: 'mesada-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ MESADA_PADRES, _origenLibroMes, _MESADA_CLAVES, _mesadaSumaSplits, _msEl, _msVal, _msFlujos, _msPickers, _MES_DOT_CLASE });

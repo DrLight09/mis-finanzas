@@ -1,28 +1,8 @@
 // js/core/wait-for.js
 //
-// Centraliza el patrón "reintentar hasta que una función/condición exista"
-// para los <script> CLÁSICOS (defer). Consumidor directo hoy: personas-init.js.
-// (hook-global.js, que también lo usaba, se eliminó: los ganchos de hojas/pantallas pasan por js/core/ui.js.)
-// Antes cada archivo reimplementaba a mano su propio setInterval + contador de reintentos
-// (ver changelog/infraestructura-seguridad.md).
-//
-// NOTA — por qué NO es un ES module (corrección tras un intento fallido):
-// La primera versión de este archivo intentó ser un solo archivo híbrido
-// (`export function waitFor` + `window.waitFor = waitFor`) para servir
-// también a pin-bio.js/firebase-sync.js vía `import`. Eso rompió en
-// producción con `ReferenceError: waitFor is not defined` en
-// personas-init.js — el global no estaba listo cuando el script clásico
-// corrió, pese a aparecer antes en el documento. En vez de perseguir la
-// causa exacta (pudo ser orden real módulo-vs-defer, un 404 de despliegue,
-// o ambos), se separó en dos archivos independientes que no comparten
-// ninguna suposición de orden entre sí:
-//   - este archivo (js/core/wait-for.js): <script defer> clásico, para
-//     los 3 consumidores que también son <script defer> clásicos.
-//   - js/core/wait-for-module.js: ES module aparte, para pin-bio.js/
-//     firebase-sync.js (que cargan type="module" async), consumido con
-//     `import` — nunca con un <script> propio, solo como dependencia.
-// Es la misma función escrita dos veces (15 líneas), a propósito: preferible
-// a una unificación "inteligente" que ya demostró romperse.
+// Centraliza el patrón "reintentar hasta que una función/condición exista". Lo importan personas-init.js, pin-bio.js y firebase-sync.js
+// (antes había una segunda copia, wait-for-module.js, mientras unos archivos eran scripts clásicos y otros módulos: con todo en módulos ES
+// un solo archivo sirve a todos, y el `import` garantiza que existe antes de que corra quien lo usa).
 //
 // Uso:
 //   waitFor(() => typeof miFuncion === 'function', () => miFuncion());
@@ -40,7 +20,7 @@
 //          ni lo modifica.
 // callback: se llama UNA sola vez, apenas checkFn() da true. No recibe argumentos.
 import { exponerGlobales, exponerVariables } from './puente.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ waitFor });
 
 export function waitFor(checkFn, callback, opts) {

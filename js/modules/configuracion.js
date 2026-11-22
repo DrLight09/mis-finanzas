@@ -46,7 +46,7 @@ import { Fecha } from '../core/fecha.js';
 import { applyModulos } from '../core/modulos-activos.js';
 import { showScreen } from '../core/navegacion.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
@@ -551,5 +551,5 @@ Ui.pantalla('config', () => {
   if (typeof window._pinRenderBtn === 'function') window._pinRenderBtn();
 }, { key: 'config-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _MESES_RESP, _btnExportarJSON, _btnImportarJSON, _btnExportarCSV, _btnBorrarTodo, _importFileInput });

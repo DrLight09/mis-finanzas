@@ -326,5 +326,5 @@ export const Loader = (function () {
   return { ensure, ensureAll, isLoaded, GROUPS };
 })();
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ Loader });

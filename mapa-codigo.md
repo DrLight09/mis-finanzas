@@ -65,8 +65,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/umbrales.js` | de entrada (defer) | 1 | 0 |
 | `js/core/utilidades-ui.js` | módulo ES — importado por `js/core/eventos-base.js`, `js/core/movimientos.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 8 | 2 |
 | `js/core/validar-estado.js` | módulo ES — importado por `js/core/firebase-sync.js` | 2 | 2 |
-| `js/core/wait-for-module.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/pin-bio.js` | 1 | 0 |
-| `js/core/wait-for.js` | módulo ES — importado por `js/core/personas-init.js`, `js/main.js`, `js/modules/alcancia.js` | 1 | 0 |
+| `js/core/wait-for.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/personas-init.js`, `js/core/pin-bio.js`, `js/main.js`, `js/modules/alcancia.js` | 1 | 0 |
 | `js/core/wrapped-gate.js` | módulo ES — importado por `js/main.js` | 9 | 2 |
 | `js/modules/actividad-reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 31 | 0 |
@@ -455,15 +454,9 @@ Carga: módulo ES — importado por `js/core/firebase-sync.js`
 
 **Globales:** `CAMPOS_DINERO`, `LISTAS_CON_ID`
 
-### `js/core/wait-for-module.js`
-
-Carga: módulo ES — importado por `js/core/firebase-sync.js`, `js/core/pin-bio.js`
-
-**Funciones:** `waitFor`
-
 ### `js/core/wait-for.js`
 
-Carga: módulo ES — importado por `js/core/personas-init.js`, `js/main.js`, `js/modules/alcancia.js`
+Carga: módulo ES — importado por `js/core/firebase-sync.js`, `js/core/personas-init.js`, `js/core/pin-bio.js`, `js/main.js`, `js/modules/alcancia.js`
 
 **Funciones:** `waitFor`
 
@@ -595,11 +588,7 @@ Carga: lazy — grupo `wrapped`
 
 ## 3. Nombres declarados en más de un archivo
 
-Un nombre declarado (function/const/let/var) en dos archivos es una posible colisión: la última carga pisa a la anterior. No cuenta `window.x = …`, que se usa a propósito para parchar.
-
-| Nombre | Archivos |
-|---|---|
-| `waitFor` | `js/core/wait-for-module.js`, `js/core/wait-for.js` |
+Ninguno.
 
 ## 4. Índice inverso (nombre → archivo)
 
@@ -1763,7 +1752,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `volverEncargosLista` | `js/modules/encargos.js` |
 | `volverMisDeudas` | `js/modules/prestado.js` |
 | `volverSelector` | `js/modules/cuentas.js` |
-| `waitFor` | `js/core/wait-for-module.js`, `js/core/wait-for.js` |
+| `waitFor` | `js/core/wait-for.js` |
 | `WRAPPED_BANCO_INSUFICIENTE` | `js/modules/wrapped.js` |
 | `WRAPPED_MAX_INSIGHTS_POOL` | `js/modules/wrapped.js` |
 | `WRAPPED_MIN_DIAS` | `js/core/wrapped-gate.js` |

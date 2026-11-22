@@ -3,15 +3,14 @@
 // del botón de login — extraído de index.html (era <script type="module">
 // inline). Ver auditoria-tecnica.md #2 y changelog/infraestructura-seguridad.md.
 //
-// import de waitFor (js/core/wait-for-module.js — versión ES module
-// independiente de js/core/wait-for.js, ver ese archivo para el porqué):
+// import de waitFor (js/core/wait-for.js)):
 // reemplaza los dos reintentos manuales con setInterval/setTimeout que
 // tenía este archivo (_runWhenEventListenersReady y el registro de
 // Events('authgate',...), más abajo). Se usa `import` en vez de asumir un
 // global porque este archivo carga como `type="module" async`, sin
 // garantía de orden frente a ningún <script defer>. Ver
 // changelog/infraestructura-seguridad.md.
-import { waitFor } from './wait-for-module.js';
+import { waitFor } from './wait-for.js';
 import { codificarPayload, decodificarPayload } from './payload-codec.js';
 import { fusionarEstados } from './fusion.js';
 import { validarEstado } from './validar-estado.js';

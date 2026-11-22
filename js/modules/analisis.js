@@ -43,7 +43,7 @@ import { refresh } from '../core/refresh.js';
 import { crearSplitWidget, splitAgregarRow, splitGetData, splitReset, splitToggle } from '../core/split.js';
 import { _milesFormatear, parseMiles } from '../core/money-input.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ renderBienes, renderAnalisis, renderSimulador, renderConciliacion, renderIngresosFijos, abrirSheetIngresoFijo, editarIngresoFijo, eliminarIngresoFijo, guardarIngresoFijo, actualizarCbAvisoMes, actualizarCbPreview, abrirCobroIngresoFijo, confirmarCobroIngresoFijo, eliminarCobroIngresoFijo, abrirPresupuestos, renderPresupuestos });
 
 /* ---- ANÁLISIS FINANCIERO ---- */
@@ -984,5 +984,5 @@ if (_btnGuardarIngresoFijo) _btnGuardarIngresoFijo.addEventListener('click', gua
 
 Ui.pantalla('analisis', () => { if (typeof renderAnalisis === 'function') renderAnalisis(); }, { key: 'analisis-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _btnGuardarIngresoFijo });

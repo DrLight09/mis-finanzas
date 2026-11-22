@@ -12,7 +12,7 @@
    sobre-ingeniería para algo de una línea.
    ═══════════════════════════════════════════════════════════════ */
 import { exponerGlobales, exponerVariables } from './puente.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ marcarColorSeleccionado });
 
 export function marcarColorSeleccionado(claseCirculos, color){

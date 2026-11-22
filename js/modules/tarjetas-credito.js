@@ -103,7 +103,7 @@ import { Personas } from '../core/personas-core.js';
 import { medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/patrimonio.js';
 import { abrirDetalleMovimiento } from '../core/movimientos.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _tcOperacionesPosteriores, tcDeudaTotal, tcEstadoInfo, _tcEsCargoExterno, tcDeudaCalculada, tcRecalcular, tcNormalizarTarjetas, tcCrearCompra, tcEliminarCompraInterna, tcBuscarCompraPorIdOMatch, tcCrearPago, tcEliminarPagoInterna, _tcPoblarSelectCajita, abrirNuevaTarjeta, abrirEditarTC, tcSelColor, guardarTC, eliminarTC, _tcPanelPc, _tcMarcarActiva, renderTCScreen, renderTCDashboard, abrirCompraTC, confirmarCompraTC, abrirCargoEspecialTC, confirmarCargoEspecialTC, abrirPagarTC, ptcSetMonto, ptcActualizarPreview, confirmarPagarTC, abrirDetalleTCSheet, eliminarCompraTC, eliminarPagoTC });
 
 export let _tcActualId = null;
@@ -1171,5 +1171,5 @@ Ui.en('fuente-alerta', function(prefix){
 // Sin esta rama, la primera vez que el grupo lazy termina de cargar la pantalla quedaba visible pero vacía.
 Ui.pantalla('tarjetas', () => { if (typeof renderTCScreen === 'function') renderTCScreen(); }, { key: 'tarjetas-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ TC_ESTADOS, TC_MOTIVOS_CARGO, _origenLibroTc, _consultaPcTC, btnGuardarTC, btnCompraTC, btnCargoEspecialTC, btnPagarTC, ptcFuente, ptcMonto });

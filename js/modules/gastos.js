@@ -95,7 +95,7 @@ import { Formulario } from '../core/formulario.js';
 import { medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/patrimonio.js';
 import { tcCupoDisponible } from '../core/calc-helpers.js';
 import { Ui } from '../core/ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ actualizarGastoVariableSplitPreview, switchGastoTab, actualizarGastoVariableImpacto, toggleCompraGrande, abrirNuevoGastoVar, _gastoFijoPoblar, _bienPoblar, abrirSheetBien, abrirEditarBien, guardarBien, eliminarBien, abrirNuevoGastoFijo, abrirEditarGastoFijo, renderMesFiltros, setMesFiltro, _gastoVariableDiaLabel, renderGastosVar, addGastoVar, deleteGastoVar, renderGastosFijos, addGastoFijo, deleteGastoFijo, abrirPagarGastoFijo, pgfActualizarSaldo, confirmarPagarGastoFijo });
 
 export let mesFilter = 'todos';
@@ -905,5 +905,5 @@ Ui.pantalla('gastos', () => {
   if (typeof renderGastosFijos === 'function') renderGastosFijos();
 }, { key: 'gastos-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _origenLibroGastoVariable, gastoVariableSplit, _gBtnGastoVar, _gBtnGastoVarArriba, _gBtnGastoFijo, _gBtnGastoVariableSave, _gBtnBienSave, _gBtnGastoFijoSave, _gBtnPGFConfirm, _gPgfFuenteSel, _gGastoVariableFuente, _gGastoVariableSplitToggle, _gGastoVariableBtnAddRow, _gGastoVariableMonto, _gGastoVariableGrande });

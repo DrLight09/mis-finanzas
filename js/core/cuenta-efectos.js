@@ -31,7 +31,7 @@
    excluye del ingreso sin depender del texto ni del prefijo de _origenSeccion. Las
    banderas de "sí es ingreso" de `extra` tienen prioridad sobre `_esEspejo`.
 
-   Carga de entrada (<script defer>), después del núcleo: usa uid(),
+   Carga de entrada (js/main.js), después del núcleo: usa uid(),
    getCuentaDeFuente() y S. Por ser núcleo, lo pueden usar módulos lazy
    (prestado, mesada, alcancia, encargos) sin depender del orden de carga.
    ═══════════════════════════════════════════════════════════════ */
@@ -40,7 +40,7 @@ import { exponerGlobales, exponerVariables } from './puente.js';
 import { Fuente, esFuenteCuenta, getCuentaDeFuente } from './cuentas-fuentes.js';
 import { S, uid } from './estado.js';
 import { _claseValida } from './ingresos.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _espejoLista, registrarMovimientoEspejo, borrarMovimientoEspejo });
 
 // Resuelve dónde vive el espejo de esa cuenta (siempre S.movimientos) y el 'tipo' que corresponde al flujo.

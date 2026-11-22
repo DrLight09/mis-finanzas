@@ -5,7 +5,7 @@
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { waitFor } from './wait-for.js';
 import { _inyectarPersonaSheets } from '../modules/personas.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _intentarInyectarPersonaSheets });
 
 export function _intentarInyectarPersonaSheets() {

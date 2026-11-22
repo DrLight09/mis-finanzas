@@ -45,7 +45,7 @@
 
    Todas las funciones reciben `estado` opcional (por defecto S): Wrapped trabaja
    sobre el estado que le pasan, no necesariamente el global.
-   Sin DOM. Carga de entrada (<script defer>) justo después del núcleo; solo
+   Sin DOM. Carga de entrada (js/main.js) justo después del núcleo; solo
    usa mesKey/_esGastoVarNoReal/entradasIngresoReal (el núcleo) al ser llamado.
    ═══════════════════════════════════════════════════════════════ */
 import { exponerGlobales, exponerVariables } from './puente.js';
@@ -574,5 +574,5 @@ export const Periodo = (() => {
 // Visible también como propiedad global (un `const` de nivel superior no lo es): los tests lo leen como ctx.Periodo.
 if (typeof window !== 'undefined') window.Periodo = Periodo;
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ Periodo });

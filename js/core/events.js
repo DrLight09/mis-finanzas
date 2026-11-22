@@ -175,5 +175,5 @@ export const Events = (function () {
   return { on, attr, registerAll };
 })();
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ Events });

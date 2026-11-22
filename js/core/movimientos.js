@@ -87,7 +87,7 @@ import { medirPatrimonioParaHistorial, purgarAperturaDelHistorial, purgarEfectoE
 import { save } from './persistencia.js';
 import { refresh } from './refresh.js';
 import { Ui } from './ui.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ abrirDetalleMovimiento, _cuentaOperacionesPosteriores, _movimientoExiste, eliminarMovimiento, _eliminarMovimientoImpl, _rerenderCuentaActiva, toggleExtraordinario });
 
 // ── Libro (js/core/cuentas-fuentes.js) ─────────────────────────────────────────────────────────────────────────────────
@@ -747,5 +747,5 @@ Reversibles.registrar({ tipo: 'gasto', proteccion(g) {
 
 Ui.hoja('registrar-movimiento', () => { poblarFuente('mov_fuente'); poblarFuente('mov_destino'); }, { key: 'movimientos-fuentes' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _origenLibroMovimiento, _movimientoEliminando });

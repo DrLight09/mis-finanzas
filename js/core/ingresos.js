@@ -1,8 +1,7 @@
 // js/core/ingresos.js
 //
 // Mes actual, clases de movimiento e ingreso real: mesActual/gastosMes, CLASES_MOVIMIENTO, la ÚNICA definición de «ingreso real» (Inicio, Análisis y Wrapped) y _esGastoVarNoReal.
-// Parte del antiguo core-state.js (dividido por responsabilidad). Clásico (<script defer>), sin type="module": sus globales son
-// léxicos de script clásico. El ORDEN de carga en index.html es el de esta lista: estado → cuentas-fuentes → persistencia →
+// Parte del antiguo core-state.js (dividido por responsabilidad). Módulo ES. El ORDEN de carga (js/main.js) es el de esta lista: estado → cuentas-fuentes → persistencia →
 // patrimonio → ingresos → dialogos → utilidades-ui → refresh.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
@@ -10,7 +9,7 @@ import { Fecha } from './fecha.js';
 import { S, mesKey } from './estado.js';
 import { claseEfectivaMovimiento } from './persistencia.js';
 import { _movimientosDeudaSinCuenta } from './patrimonio.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ mesActual, gastosMes, _esEntradaEspejoNoIngreso, entradasIngresoReal, ingresosRealesDelMes, _esGastoVarNoReal });
 
 export function mesActual(){return Fecha.mes();}   // alias de Fecha.mes()
@@ -87,5 +86,5 @@ export function _esGastoVarNoReal(g){
 // escHtml() dentro de toast()) y, como red para cualquier texto que aún llegue pre-escapado desde un validador, `_toastTexto()` decodifica
 // SOLO las cinco entidades que produce escHtml() — compatibilidad transitoria, no contrato: ya no hay llamadas que dependan de ella.
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ CLASES_MOVIMIENTO, _claseValida });

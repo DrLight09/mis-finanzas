@@ -63,7 +63,7 @@
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { Events } from './events.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ diffRegistrarInstancia, diffInstancia, diffReset, diffToggle, diffEstaAbierto, diffAddParte, diffRemoveParte, _diffNombreParte, diffElegirPersona, diffSetMonto, diffTogglePagoYo, diffSetCuentaSalida, diffSetCuentaEntrada, _diffFuentesOptsHtml, diffRenderPartes, diffCalcular, diffResumen, _diffActualizarMiCuenta, diffValidarIntercambios, diffValidarMiCuenta, diffAplicar, diffHtmlBloque, diffRenderHistorial });
 
 // Registro de instancias activas: { [instanciaId]: { cfg, partes, abierto } }

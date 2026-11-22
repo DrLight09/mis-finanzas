@@ -34,7 +34,7 @@ import { save } from '../core/persistencia.js';
 import { refresh } from '../core/refresh.js';
 import { Ui } from '../core/ui.js';
 import { Fecha } from '../core/fecha.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _datosPersona, _inyectarPersonaSheets, _relacionPersonaPc, _pieTarjetaPersona, _abrirListaPersonas, _renderListaPersonas, _actualizarMasPersonasSub, abrirSelPersona, _selPersonaFiltrar, _selPersonaElegir, _selPersonaCrearDirecto, _abrirCrearPersonaGlobal, _volverASelPersona, _crearPersonaGlobal, abrirEditarPersonaGlobal, _guardarEditarPersonaGlobal, _esPcPersonas, _mostrarFichaPersona, _sincronizarFichaPersonas, _cerrarFichaPersonas, _alternarPerfilPersona, _pintarResumenPersonas, _perfilSeccionPrestamos, _perfilSeccionEncargos, _perfilSeccionSpotify, _perfilSeccionLeDebo, _perfilSeccionGenerica, _perfilBalanceNeto, _perfilAcciones, abrirPerfilPersona, _editarPersonaDesdePerfilSheet, _trasCambioDePersonas, _archivarPersona, _restaurarPersona, _eliminarPersona, _alternarArchivadas, _irASpotify, _renderColorPicker, _seleccionarColorPersona });
 
 /* ── COLORES DE AVATAR ─────────────────────────────────────────── */
@@ -1122,5 +1122,5 @@ Ui.pantalla('personas', () => {
   if (typeof _actualizarMasPersonasSub === 'function') _actualizarMasPersonasSub();
 }, { key: 'personas-render' });
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ PERSONA_COLORES, _TONO_CLASE, _consultaPcPersonas, _PERFIL_SECCIONES, PersonaPicker });

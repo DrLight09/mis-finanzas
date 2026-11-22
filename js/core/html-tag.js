@@ -36,15 +36,11 @@
 // reescribir todo"). No hace falta convertir nada que no se esté tocando
 // ya por otro motivo.
 //
-// Carga como <script> clásico (no type="module"), mismo criterio que
-// el núcleo/navegacion.js: sus globales (html, raw) deben quedar
-// disponibles como variables léxicas para el resto de los <script>
-// clásicos del documento. Depende de escHtml(), definida en js/core/estado.js
-// — debe cargar después de ese archivo.
+// Módulo ES (js/main.js): los demás archivos importan `html` y `raw` de aquí. Depende de escHtml(), de js/core/estado.js, que carga antes.
 
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { escHtml } from './estado.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ raw, _htmlEscapeValue, html });
 
 export function raw(value) {

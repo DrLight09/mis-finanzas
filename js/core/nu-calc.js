@@ -17,7 +17,7 @@
    se guardaba antes de que cargara Cuentas. Con el cálculo siempre
    disponible esos guards ya no existen.
 
-   Carga de entrada (<script defer>) justo después del núcleo.
+   Carga de entrada (js/main.js) justo después del núcleo.
    Lo que muta datos (materializarIntereses, registrarTasaNuHistorial)
    sigue en cuentas.js: acá solo se calcula.
    ═══════════════════════════════════════════════════════════════ */
@@ -28,7 +28,7 @@ import { Fuente, cajitasDeCuenta, cuentasAhorro, getCuenta } from './cuentas-fue
 import { S, hoy } from './estado.js';
 import { Fecha } from './fecha.js';
 import { _fechaSafe } from './dialogos.js';
-// Puente global (M6): las funciones se hoistean, así que quedan en window desde el principio, igual que con scripts clásicos.
+// Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
 exponerGlobales({ _saldoEncargosEnCajita, ahorroTasaConfigurada, getTasaCuenta, tasaSanear, tasaDesdeTexto, tasaATexto, ahorroAplicarTasaEscrita, _historialTasas, _tasaVigenteEnFecha, _diasEntreFechas, _segmentosTasa, _saldoEncargosEnCajitaEnFecha, _fechasCambioEncargoEnCajita, calcC, rendimientoCajitaPorMes, _tasaCDT, cdtVencido, calcCDT, _rendimientoCDTaDias, calcRendimientoCDTMes, calcRendimientoCDTsMes, ahorroTotal, ahorroTotalGeneral, ahorroValorEsperadoCajita, cajitaGeneraIntereses, cajitaChequeable, cajitasChequeables, getCajitaNombre });
 
 export function _saldoEncargosEnCajita(cajitaId){
@@ -383,5 +383,5 @@ export function getCajitaNombre(fuente) {
   return c ? (c.nombre || 'Cajita') : null;
 }
 
-// Puente global (M6): constantes y clases (ya inicializadas) y variables que otros archivos leen por nombre.
+// Puente global (js/core/puente.js): constantes y clases ya inicializadas, y variables que otros archivos leen por nombre.
 exponerGlobales({ _cdtSinTasaAvisados });

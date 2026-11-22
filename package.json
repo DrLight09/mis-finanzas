@@ -9,7 +9,8 @@
     "smoke:cierre": "node scripts/smoke-cierre.js",
     "navegador": "node scripts/pruebas-navegador.js",
     "build": "node scripts/preparar-despliegue.js",
-    "lint": "node scripts/lint-globales.js"
+    "lint": "node scripts/lint-globales.js",
+    "tipos": "tsc -p tsconfig.json"
   },
   "engines": {
     "node": ">=20.19"
@@ -19,6 +20,7 @@
     "eslint": "^9.39.5",
     "globals": "^15.15.0",
     "jsdom": "^27.4.0",
-    "playwright": "^1.63.0"
+    "playwright": "^1.63.0",
+    "typescript": "^5.9.3"
   }
 }

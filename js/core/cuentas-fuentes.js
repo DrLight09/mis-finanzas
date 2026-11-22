@@ -83,11 +83,11 @@ export function opcionesCuenta({ selectedVal = '', sentido = null, preset = null
 }
 
 /* ---- Resto del motor de Diferencial (diffRenderPartes, diffCalcular, diffResumen,
-   _diffActualizarMiCuenta, diffValidarIntercambios, diffAplicar, diffHtmlBloque,
+   _diffActualizarMiCuenta, diffValidarIntercambios, diffAplicar,
    diffRenderHistorial, _diffFuentesOptsHtml, _diffInstancias) ----
    migrado a js/core/diferencial.js. Ver comentario ahí para el detalle de qué se
    migró exactamente (incluida la limpieza de onclick/oninput/onchange en
-   diffRenderPartes/diffHtmlBloque). ---- */
+   diffRenderPartes). ---- */
 
 export const FUENTE_CUENTA_PREFIJO='cuenta:';
 // Clases de cuenta. `ahorro` es la única con cajitas y tasa; el resto solo guarda un saldo. `etiqueta` es lo que se ve en el

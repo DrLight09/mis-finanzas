@@ -18,7 +18,7 @@
    instancia con su propia config (ids de elementos del DOM + qué
    capacidades habilita) y llama a las funciones genéricas de abajo.
    Para agregar un sheet nuevo con este patrón: copiar el bloque
-   HTML de diffHtmlBloque(), llamar a diffRegistrarInstancia(), y
+   HTML de uno de los sheets que ya lo usan (ids wrap/icon/body/real/partesList/resumen), llamar a diffRegistrarInstancia(), y
    usar diffAplicar() al confirmar. No hace falta escribir lógica
    nueva.
 
@@ -48,11 +48,6 @@
        usan data-action (diferencial:removeParte / diferencial:togglePagoYo)
        y los oninput/onchange se re-adjuntan con addEventListener
        después de cada render (Events solo despacha clicks).
-     - diffHtmlBloque(): plantilla de referencia (no se llama desde
-       ningún lado activo hoy — el HTML real de los 4 sheets fue
-       copiado a mano en su momento, ver comentario arriba). Se
-       actualizó igual para que quien la use de acá en más copie ya
-       el patrón data-action correcto.
 
    opcionesCuenta() se QUEDÓ en index.html a propósito: es
    canónica y la usan muchos módulos más, no es exclusiva de este
@@ -64,7 +59,7 @@
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { Events } from './events.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ diffRegistrarInstancia, diffInstancia, diffReset, diffToggle, diffEstaAbierto, diffAddParte, diffRemoveParte, _diffNombreParte, diffElegirPersona, diffSetMonto, diffTogglePagoYo, diffSetCuentaSalida, diffSetCuentaEntrada, _diffFuentesOptsHtml, diffRenderPartes, diffCalcular, diffResumen, _diffActualizarMiCuenta, diffValidarIntercambios, diffValidarMiCuenta, diffAplicar, diffHtmlBloque, diffRenderHistorial });
+exponerGlobales({ diffRegistrarInstancia, diffInstancia, diffReset, diffToggle, diffEstaAbierto, diffAddParte, diffRemoveParte, _diffNombreParte, diffElegirPersona, diffSetMonto, diffTogglePagoYo, diffSetCuentaSalida, diffSetCuentaEntrada, _diffFuentesOptsHtml, diffRenderPartes, diffCalcular, diffResumen, _diffActualizarMiCuenta, diffValidarIntercambios, diffValidarMiCuenta, diffAplicar, diffRenderHistorial });
 
 // Registro de instancias activas: { [instanciaId]: { cfg, partes, abierto } }
 export var _diffInstancias = _diffInstancias || {}; // `var`: cargarlo dos veces (tests con varios cargadores) no falla
@@ -517,50 +512,6 @@ export function diffAplicar(instanciaId, movimiento, linkId) {
   return diferencial;
 }
 
-/** Genera el HTML del bloque colapsable de diferencial para un sheet nuevo.
- *  NOTA: esta función no se llama desde ningún lado activo hoy — es una
- *  plantilla de referencia (ver comentario de cabecera). Se actualizó
- *  igual al patrón data-action para que copiarla en el futuro ya salga
- *  compatible con una CSP estricta. */
-export function diffHtmlBloque(ids, opts) {
-  opts = opts || {};
-  const titulo = opts.titulo || 'El valor real era diferente';
-  const subtitulo = opts.subtitulo || 'Registrar margen cobrado';
-  return `
-  <div id="${ids.wrap}" class="diferencial-wrap" style="display:none;">
-    <div class="diferencial-cabecera" ${Events.attr('diferencial:toggle', opts.instanciaId)}>
-      <div class="diferencial-cabecera-izq">
-        <span class="diferencial-icono"><svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" class="diferencial-svg"><path d="M8 1a.5.5 0 0 1 .5.5V2h1a.75.75 0 0 1 0 1.5H8.5v1h.75a2.25 2.25 0 0 1 0 4.5H8.5V10h1a.75.75 0 0 1 0 1.5H8.5v.5a.5.5 0 0 1-1 0V11.5H6.75a.75.75 0 0 1 0-1.5H7.5V9H6.5A2.25 2.25 0 0 1 4.25 6.75v-.5A.75.75 0 0 1 5 5.5h2.5V4H6.5a.75.75 0 0 1 0-1.5H7.5V1.5A.5.5 0 0 1 8 1zM5.75 6.75A.75.75 0 0 0 6.5 7.5H7.5V6H6.5a.75.75 0 0 0-.75.75zM8.5 9v1.5h.25A.75.75 0 0 0 8.5 9z"/><circle cx="8" cy="8" r="7" fill="none" stroke="currentColor" stroke-width="1.2"/></svg></span>
-        <div>
-          <div class="diferencial-titulo">${titulo}</div>
-          <div class="diferencial-subtitulo">${subtitulo}</div>
-        </div>
-      </div>
-      <div id="${ids.icon}" class="diferencial-chevron"><i class="fa-solid fa-chevron-down"></i></div>
-    </div>
-    <div id="${ids.body}" class="diferencial-cuerpo" style="display:none;">
-      <div class="ig diferencial-ig">
-        <label class="il diferencial-lbl-amber">${opts.labelReal || '¿Cuánto era en realidad?'}</label>
-        <input type="text" inputmode="decimal" id="${ids.real}" placeholder="0,00" class="money-input diff-real-input" data-instancia-id="${opts.instanciaId}">
-      </div>
-      ${opts.permiteBeneficiarios ? `
-      <div class="diferencial-seccion">Quién se quedó con qué (opcional)</div>
-      <div id="${ids.partesList}"></div>
-      <button type="button" ${Events.attr('diferencial:addParte', opts.instanciaId)} class="diferencial-agregar">+ Agregar persona</button>
-      ` : ''}
-      <div id="${ids.resumen}" class="diferencial-resumen"></div>
-      ${opts.permiteMiCuenta ? `
-      <div id="${ids.miCuentaWrap}" class="diferencial-micuenta" style="display:none;">
-        <label class="il diferencial-lbl-accent">¿A cuál de tus cuentas entra ese sobrante?</label>
-        <div class="select-wrap"><select id="${ids.miCuenta}"><option value="">Sin especificar</option></select></div>
-      </div>` : ''}
-    </div>
-  </div>`;
-  // Nota para quien copie este bloque: el input con clase "diff-real-input"
-  // necesita su propio addEventListener('input', () => diffResumen(instanciaId))
-  // después de insertarlo en el DOM — Events no despacha oninput, solo clicks.
-}
-
 /** Renderiza el resumen de un diferencial ya guardado, para el historial. */
 export function diffRenderHistorial(diferencial) {
   if (!diferencial) return '';
@@ -576,14 +527,10 @@ export function diffRenderHistorial(diferencial) {
 }
 
 /* ---- EVENTOS: acciones con data-action="diferencial:..." ----
-   Nota: diffToggle/diffAddParte quedan registradas para diffHtmlBloque()
-   (la plantilla) y para cualquier sheet nuevo que use el namespace genérico
-   directamente. Los 4 sheets existentes siguen usando sus propios wrappers
+   Los 4 sheets existentes siguen usando sus propios wrappers
    con nombres de módulo (encargos:diferencialToggle, prestado:prestamoConTcDiferencialToggle, etc.),
    definidos en sus respectivos archivos — no se tocaron. */
 Events.registerAll('diferencial', {
-  toggle: diffToggle,
-  addParte: diffAddParte,
   removeParte: diffRemoveParte,
   elegirPersona: diffElegirPersona,
   togglePagoYo: diffTogglePagoYo,

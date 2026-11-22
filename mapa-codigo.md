@@ -19,7 +19,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/cuenta-efectos.js` | módulo ES — importado por `js/core/cobros.js`, `js/main.js`, `js/modules/mesada.js`, `js/modules/prestado.js`, `js/modules/spotify.js` | 3 | 0 |
 | `js/core/cuentas-fuentes.js` | módulo ES — importado por `js/core/busqueda-global.js`, `js/core/cobros.js`, `js/core/cuenta-efectos.js`, `js/core/fuentes-filtro.js`, `js/core/huella.js`, `js/core/movimientos.js`, `js/core/nu-calc.js`, `js/core/patrimonio.js`, `js/core/persistencia.js`, `js/core/refresh.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 42 | 3 |
 | `js/core/dialogos.js` | módulo ES — importado por `js/core/calc-helpers.js`, `js/core/eventos-base.js`, `js/core/movimientos.js`, `js/core/navegacion.js`, `js/core/notificaciones-push.js`, `js/core/nu-calc.js`, `js/core/utilidades-ui.js`, `js/main.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 10 | 0 |
-| `js/core/diferencial.js` | módulo ES — importado por `js/main.js`, `js/modules/encargos.js`, `js/modules/prestado.js` | 23 | 0 |
+| `js/core/diferencial.js` | módulo ES — importado por `js/main.js`, `js/modules/encargos.js`, `js/modules/prestado.js` | 22 | 0 |
 | `js/core/disposicion-pc.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/estado.js` | módulo ES — importado por `js/core/busqueda-global.js`, `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/cobros.js`, `js/core/cuenta-efectos.js`, `js/core/cuentas-fuentes.js`, `js/core/dialogos.js`, `js/core/eventos-base.js`, `js/core/fuentes-filtro.js`, `js/core/gastos-fijos-progress.js`, `js/core/html-tag.js`, `js/core/huella.js`, `js/core/ingresos.js`, `js/core/lazy-loader.js`, `js/core/modulos-activos.js`, `js/core/movimientos.js`, `js/core/nu-calc.js`, `js/core/patrimonio.js`, `js/core/periodo.js`, `js/core/persistencia.js`, `js/core/personas-core.js`, `js/core/refresh.js`, `js/core/utilidades-ui.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 16 | 7 |
 | `js/core/eventos-base.js` | módulo ES — importado por `js/main.js` | 2 | 0 |
@@ -51,19 +51,19 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/personas-core.js` | módulo ES — importado por `js/core/busqueda-global.js`, `js/core/movimientos.js`, `js/core/persistencia.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 1 | 0 |
 | `js/core/personas-init.js` | módulo ES — importado por `js/main.js` | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
-| `js/core/plan-deudas.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/main.js` | 1 | 0 |
+| `js/core/plan-deudas.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, `js/modules/analisis.js` | 1 | 0 |
 | `js/core/puente.js` | módulo ES — importado por `js/core/arranque-ui.js`, `js/core/async-css.js`, `js/core/bootstrap.js`, `js/core/busqueda-global.js`, `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/cobros.js`, `js/core/color-picker.js`, `js/core/cuenta-efectos.js`, `js/core/cuentas-fuentes.js`, `js/core/dialogos.js`, `js/core/diferencial.js`, `js/core/disposicion-pc.js`, `js/core/estado.js`, `js/core/eventos-base.js`, `js/core/events.js`, `js/core/fecha.js`, `js/core/formulario.js`, `js/core/formularios-ui.js`, `js/core/fuentes-filtro.js`, `js/core/gastos-fijos-progress.js`, `js/core/globales-logica.js`, `js/core/html-tag.js`, `js/core/huella.js`, `js/core/ingresos.js`, `js/core/lazy-loader.js`, `js/core/mas-menu.js`, `js/core/modulos-activos.js`, `js/core/money-input.js`, `js/core/movimientos.js`, `js/core/navegacion.js`, `js/core/notificaciones-push.js`, `js/core/nu-calc.js`, `js/core/patrimonio.js`, `js/core/periodo.js`, `js/core/persistencia.js`, `js/core/personas-core.js`, `js/core/personas-init.js`, `js/core/refresh.js`, `js/core/reordenable.js`, `js/core/saldos-ocultos.js`, `js/core/sheet-behavior.js`, `js/core/split.js`, `js/core/sw-registro.js`, `js/core/ui.js`, `js/core/utilidades-ui.js`, `js/core/wait-for.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 2 | 0 |
 | `js/core/refresh.js` | módulo ES — importado por `js/core/arranque-ui.js`, `js/core/gastos-fijos-progress.js`, `js/core/lazy-loader.js`, `js/core/mas-menu.js`, `js/core/movimientos.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 6 | 0 |
-| `js/core/reglas.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/core/salud.js`, `js/main.js` | 1 | 0 |
+| `js/core/reglas.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/core/salud.js`, `js/main.js`, `js/modules/inicio.js` | 1 | 0 |
 | `js/core/reordenable.js` | módulo ES — importado por `js/main.js`, `js/modules/cuentas.js` | 1 | 0 |
 | `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 17 | 4 |
 | `js/core/saldos-ocultos.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
-| `js/core/salud.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/main.js` | 1 | 0 |
+| `js/core/salud.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/inicio.js` | 1 | 0 |
 | `js/core/sheet-behavior.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/split.js` | módulo ES — importado por `js/main.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/mesada.js`, `js/modules/prestado.js`, `js/modules/spotify.js` | 10 | 0 |
 | `js/core/sw-registro.js` | módulo ES — importado por `js/main.js` | 1 | 0 |
 | `js/core/ui.js` | módulo ES — importado por `js/core/disposicion-pc.js`, `js/core/formularios-ui.js`, `js/core/mas-menu.js`, `js/core/modulos-activos.js`, `js/core/movimientos.js`, `js/core/navegacion.js`, `js/main.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 1 | 0 |
-| `js/core/umbrales.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/core/reglas.js`, `js/core/salud.js`, `js/main.js` | 1 | 0 |
+| `js/core/umbrales.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/core/reglas.js`, `js/core/salud.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/wrapped.js` | 1 | 0 |
 | `js/core/utilidades-ui.js` | módulo ES — importado por `js/core/eventos-base.js`, `js/core/movimientos.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 8 | 2 |
 | `js/core/validar-estado.js` | módulo ES — importado por `js/core/firebase-sync.js` | 2 | 2 |
 | `js/core/wait-for.js` | módulo ES — importado por `js/core/firebase-sync.js`, `js/core/personas-init.js`, `js/core/pin-bio.js`, `js/main.js`, `js/modules/alcancia.js` | 1 | 0 |
@@ -163,7 +163,7 @@ Carga: módulo ES — importado por `js/core/calc-helpers.js`, `js/core/eventos-
 
 Carga: módulo ES — importado por `js/main.js`, `js/modules/encargos.js`, `js/modules/prestado.js`
 
-**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `_diffNombreParte`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffElegirPersona`, `diffEstaAbierto`, `diffHtmlBloque`, `diffInstancia`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
+**Funciones:** `_diffActualizarMiCuenta`, `_diffFuentesOptsHtml`, `_diffNombreParte`, `diffAddParte`, `diffAplicar`, `diffCalcular`, `diffElegirPersona`, `diffEstaAbierto`, `diffInstancia`, `diffRegistrarInstancia`, `diffRemoveParte`, `diffRenderHistorial`, `diffRenderPartes`, `diffReset`, `diffResumen`, `diffSetCuentaEntrada`, `diffSetCuentaSalida`, `diffSetMonto`, `diffToggle`, `diffTogglePagoYo`, `diffValidarIntercambios`, `diffValidarMiCuenta`
 
 ### `js/core/disposicion-pc.js`
 
@@ -365,7 +365,7 @@ Carga: de entrada (módulo ES)
 
 ### `js/core/plan-deudas.js`
 
-Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`
+Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, `js/modules/analisis.js`
 
 **Funciones:** `PlanDeudas`
 
@@ -383,7 +383,7 @@ Carga: módulo ES — importado por `js/core/arranque-ui.js`, `js/core/gastos-fi
 
 ### `js/core/reglas.js`
 
-Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/core/salud.js`, `js/main.js`
+Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/core/salud.js`, `js/main.js`, `js/modules/inicio.js`
 
 **Funciones:** `Reglas`
 
@@ -409,7 +409,7 @@ Carga: módulo ES — importado por `js/main.js`
 
 ### `js/core/salud.js`
 
-Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`
+Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/inicio.js`
 
 **Funciones:** `Salud`
 
@@ -439,7 +439,7 @@ Carga: módulo ES — importado por `js/core/disposicion-pc.js`, `js/core/formul
 
 ### `js/core/umbrales.js`
 
-Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/core/reglas.js`, `js/core/salud.js`, `js/main.js`
+Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/core/reglas.js`, `js/core/salud.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/wrapped.js`
 
 **Funciones:** `UMBRALES`
 
@@ -1376,7 +1376,6 @@ Ninguno.
 | `diffCalcular` | `js/core/diferencial.js` |
 | `diffElegirPersona` | `js/core/diferencial.js` |
 | `diffEstaAbierto` | `js/core/diferencial.js` |
-| `diffHtmlBloque` | `js/core/diferencial.js` |
 | `diffInstancia` | `js/core/diferencial.js` |
 | `diffRegistrarInstancia` | `js/core/diferencial.js` |
 | `diffRemoveParte` | `js/core/diferencial.js` |

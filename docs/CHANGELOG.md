@@ -35,6 +35,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Tipos con `tsc --checkJs`, imports de la lógica pura y limpieza
+
+- Nuevo `npm run tipos` (TypeScript como herramienta de desarrollo, sin build): revisa los archivos de lógica pura y de sincronización listados en `tsconfig.json`. Corre también dentro de `npm test` (`tests/tipos.test.js`). `subir.sh` ahora ejecuta `npm ci` solo si falta TypeScript/jsdom o cambió `package-lock.json`. Encontró que `salud.js` usaba `cuentasAhorro`/`fuenteDeCuenta` sin declararlas; quedan en `js/tipos-globales.d.ts`.
+- `gastos`, `inicio`, `analisis`, `wrapped` y `wrapped-gate` importan `UMBRALES`, `Salud`, `Reglas` y `PlanDeudas` en vez de leerlos del global.
+- Se borró `diffHtmlBloque` (plantilla que nadie llamaba) de `diferencial.js`.
+
 ## Los cuatro archivos de lógica pura pasan a módulos ES
 
 - `umbrales.js`, `reglas.js`, `salud.js` y `plan-deudas.js` ya no son `<script>` clásicos: son módulos ES (`export const …`), importados desde `js/main.js` antes que el resto. `reglas.js` y `salud.js` importan `UMBRALES` (y `Reglas`) en vez de buscarlos en el global o con `require`; se quitaron los `window.X = …` y los `module.exports` de cada uno.

@@ -78,6 +78,7 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { UMBRALES } from '../core/umbrales.js';
 import { Fuente, Libro, Plata, descontarFuente, fuenteBadgeClass, fuenteLabel, getFuentes, getSaldoFuente, poblarFuente, sumarFuente } from '../core/cuentas-fuentes.js';
 import { crearSplitWidget } from '../core/split.js';
 import { FuentesFiltro } from '../core/fuentes-filtro.js';

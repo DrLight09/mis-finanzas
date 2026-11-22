@@ -36,6 +36,9 @@
    ================================================================ */
 
 import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { UMBRALES } from '../core/umbrales.js';
+import { Salud } from '../core/salud.js';
+import { Reglas } from '../core/reglas.js';
 import { Dinero, S, escHtml, fmt, fmtNoCents, hoy } from '../core/estado.js';
 import { _fechaSafe } from '../core/dialogos.js';
 import { Fecha } from '../core/fecha.js';

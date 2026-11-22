@@ -91,3 +91,9 @@ Un módulo que necesita reaccionar a «se abrió la hoja X» o «se mostró la p
 
 Reglas: toda key es única y registrar otra vez la misma la **reemplaza** (un módulo lazy cargado dos veces no duplica); cada gancho corre en su propio try/catch. Cuando una función base necesita lógica de otro módulo que SÍ siempre carga con ella (p. ej. Personas dentro de Spotify/Encargos), esa lógica vive **dentro de la función base** (o en un helper llamado explícitamente), no como parche encima.
 
+
+## Tipos (JSDoc + `tsc --checkJs`)
+
+`npm run tipos` revisa con TypeScript (sin compilar nada, `noEmit`) los archivos que lista `tsconfig.json`: la lógica pura (`umbrales`, `reglas`, `salud`, `plan-deudas`), `payload-codec`, `fusion`, `validar-estado`, `respaldos`, `fecha`, `wait-for` y `puente`. También corre dentro de `npm test` (`tests/tipos.test.js`), así que lo cubren `subir.sh` y el CI. Lo que esos archivos leen del global sin importarlo se declara en `js/tipos-globales.d.ts`.
+
+Para sumar un archivo: añadirlo a `include` en `tsconfig.json` y corregir lo que avise. Los que dependen de `estado.js` (casi todos los demás) aún no se pueden sumar: leen `S` y decenas de funciones por el puente global, y TypeScript no las ve hasta que sean imports. Los JSDoc (`@param`, `@typedef`) afinan la revisión pero no son obligatorios.

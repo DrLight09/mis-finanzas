@@ -78,6 +78,7 @@
    - `fmt`, `escHtml`, `hoy` — núcleo eager.
    ═══════════════════════════════════════════════════════════════ */
 import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { UMBRALES } from '../core/umbrales.js';
 import { esAbonoDeDeuda, escHtml, fmt, hoy } from '../core/estado.js';
 import { Periodo } from '../core/periodo.js';
 import { Fecha } from '../core/fecha.js';

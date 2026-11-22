@@ -25,6 +25,9 @@
    ═══════════════════════════════════════════════════════════════ */
 
 import { exponerGlobales, exponerVariables } from '../core/puente.js';
+import { UMBRALES } from '../core/umbrales.js';
+import { Salud } from '../core/salud.js';
+import { PlanDeudas } from '../core/plan-deudas.js';
 import { calcBienes, calcPatrimonioConBienes, medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/patrimonio.js';
 import { html, raw } from '../core/html-tag.js';
 import { S, escHtml, fmt, hoy, medirAnchoTexto, uid } from '../core/estado.js';

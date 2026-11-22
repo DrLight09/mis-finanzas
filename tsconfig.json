@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "lib": ["ES2022", "DOM"],
+    "skipLibCheck": true
+  },
+  "include": [
+    "js/tipos-globales.d.ts",
+    "js/core/umbrales.js", "js/core/reglas.js", "js/core/salud.js", "js/core/plan-deudas.js",
+    "js/core/payload-codec.js", "js/core/fusion.js", "js/core/validar-estado.js", "js/core/respaldos.js", "js/core/fecha.js", "js/core/wait-for.js", "js/core/puente.js"
+  ]
+}

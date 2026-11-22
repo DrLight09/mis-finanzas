@@ -61,6 +61,7 @@
    un dato financiero nuevo.
    ═══════════════════════════════════════════════════════════════ */
 import { exponerGlobales, exponerVariables } from './puente.js';
+import { UMBRALES } from './umbrales.js';
 import { S, hoy } from './estado.js';
 import { Periodo } from './periodo.js';
 import { entradasIngresoReal } from './ingresos.js';

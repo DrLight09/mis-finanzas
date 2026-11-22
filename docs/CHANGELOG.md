@@ -35,6 +35,10 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Reglas de Firestore probadas y más cortas
+
+- `firestore.rules` se probó en la Zona de pruebas de reglas de la consola (8 casos: lectura propia, de otro usuario, sin sesión y de ruta ajena; escritura válida, con campo de más, con payload vacío y de tokens push) y todas dieron lo esperado. Se recortaron los comentarios a los que evitan errores; la lógica no cambió.
+
 ## Teclado que se abría al cargar
 
 - Se quitó `autofocus` del campo de búsqueda y del monto de «Agregar dinero»: en el celular el navegador lo aplicaba al cargar y abría el teclado (el numérico, el del monto) unos segundos en cada recarga. Prueba nueva en `tests/convenciones.test.js`.

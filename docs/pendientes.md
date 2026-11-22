@@ -10,7 +10,6 @@ Solo lo que falta. Lo que ya está hecho al 100 % se borra de aquí cuando se ha
 |---|---|---|
 | 0 | **Tras subir M6: abrir la app desplegada en tu navegador y en el celular, recargar hasta que salga «Actualizar» y probar un recorrido normal** (agregar un gasto, abrir cuentas, Configuración, un préstamo) | La prueba en Chromium real y la comparación con la versión anterior dieron idénticas, pero no se pudo probar el despliegue real, Firebase ni un teléfono |
 | 1 | Subir el último zip y hacer un despliegue NUEVO (commit nuevo o Actions → «Run workflow»), sin «Re-run» | `deploy-pages` falló 3 veces con «Found 0 artifact(s)»; el flujo ya espera y reintenta |
-| 2 | Probar `firestore.rules` en el simulador de Firebase antes de publicarlas | No se pudo probar con el emulador desde aquí |
 | 3 | Probar la fusión con dos pestañas en un navegador real (recargar todas antes) | Solo está probada con tests y un navegador sin Firebase |
 | 4 | Probar los avisos push con la app cerrada en el celular (instalada en pantalla de inicio) | El evento `push` nativo (M4) no se pudo probar en un teléfono real |
 | 5 | Borrar `.github/workflows/test.yml` y `mapa-codigo.yml` si aún existen | Quedaron reemplazados por `ci.yml` |

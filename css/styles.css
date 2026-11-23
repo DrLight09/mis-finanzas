@@ -762,6 +762,7 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 /* Sin texto no ocupa lugar: el JS lo deja vacío con textContent = '' (mesadaPagoPreview y mesadaPagoPendientePreview) */
 .ms-preview:empty{display:none;}
 .sheet-x{display:none;} /* botón X de la hoja: solo PC (css/pc.css); en celular se cierra con el gesto, el asa o el botón de abajo */
+.sheet-par{display:contents;} /* envoltorio de dos campos que en PC van lado a lado (css/pc.css); en celular no cambia nada */
 .sheet-acciones{display:contents;} /* envoltorio de «Guardar» + «Cancelar»: en celular no cambia nada, en PC se ponen en fila (css/pc.css) */
 .ms-aviso-mes{font-size:12px;line-height:1.4;color:var(--amber);margin:-6px 0 14px;}
 .ms-aviso-mes:empty{display:none;}
@@ -1299,16 +1300,16 @@ button.inicio-pilar-accion{cursor:pointer;}
 .mdet-tc-amber{font-size:12px;color:var(--amber);}
 .mdet-tc-accent{font-size:12px;font-weight:600;color:var(--accent);}
 .mdet-rich{display:flex;flex-direction:column;gap:8px;margin-bottom:14px;}
-.mdet-cab{text-align:center;padding:6px 0 18px;}
+.mdet-cab{text-align:center;padding:18px 16px;margin-bottom:14px;background:var(--bg3);border:1px solid var(--border);border-radius:14px;}
 .mdet-tipo{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px;}
-.mdet-desc{font-size:13px;color:var(--text2);}
-.mdet-fecha{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:4px;}
+.mdet-desc{font-size:14px;font-weight:600;color:var(--text);}
+.mdet-fecha{font-size:11.5px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:3px;}
 .mdet-saldo-fila{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .mdet-saldo-antes{font-size:15px;font-family:'DM Mono',monospace;color:var(--text2);}
 .mdet-derecha{text-align:right;}
 .mdet-oc-monto{font-size:13px;font-family:'DM Mono',monospace;}
 .mdet-dif-monto{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;}
-.mdet-monto-grande{font-size:28px;font-weight:600;font-family:'DM Mono',monospace;margin-bottom:6px;}
+.mdet-monto-grande{font-size:30px;font-weight:400;font-family:'DM Mono',monospace;letter-spacing:-1px;margin:8px 0 6px;}
 .mdet-saldo-desp{font-size:15px;font-family:'DM Mono',monospace;font-weight:600;}
 .mdet-c-text2{color:var(--text2);}
 .mdet-c-accent{color:var(--accent);}
@@ -1516,6 +1517,12 @@ button.inicio-pilar-accion{cursor:pointer;}
 .tc-mv{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"desc monto borrar" "fecha monto borrar" "det monto borrar";column-gap:8px;align-items:start;padding:11px 2px;border-top:1px solid var(--border);}
 .tc-mv[data-action]{cursor:pointer;}
 .tc-mv-cab{display:none;}
+.tc-mv-vacio{padding:30px 0;border-top:1px solid var(--border);text-align:center;font-size:12.5px;color:var(--text2);}
+#tc-lista > .empty-state{min-height:360px;padding:56px 24px 32px;gap:10px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;justify-content:flex-start;}
+#tc-lista > .empty-state .empty-state-icon{width:44px;height:44px;border-radius:50%;margin-bottom:4px;}
+#tc-lista > .empty-state .empty-state-title{font-size:15px;}
+#tc-lista > .empty-state .empty-state-sub{font-size:12.5px;color:var(--text2);line-height:1.5;max-width:300px;}
+#tc-lista > .empty-state .empty-state-btn{margin-top:8px;height:38px;padding:0 20px;border-radius:11px;background:var(--accent);border:0;color:var(--bg);font-size:13px;}
 .tc-mv-cab-monto{text-align:right;}
 .tc-mv-desc{grid-area:desc;min-width:0;}
 .tc-mv-nombre{font-size:13px;overflow-wrap:anywhere;}

@@ -94,7 +94,7 @@ import { Deudas, getTCById, tcCupoDisponible, tcCupoUsadoPct } from '../core/cal
 import { marcarColorSeleccionado } from '../core/color-picker.js';
 import { avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, confirmarEliminar, dialogo, nivelAntiguedadMovimiento, toast } from '../core/dialogos.js';
 import { refresh } from '../core/refresh.js';
-import { botonEliminarFila, emptyInline, emptyState } from '../core/utilidades-ui.js';
+import { botonEliminarFila, emptyState } from '../core/utilidades-ui.js';
 import { Events } from '../core/events.js';
 import { calcC } from '../core/nu-calc.js';
 import { FuentesFiltro } from '../core/fuentes-filtro.js';
@@ -993,7 +993,7 @@ export function abrirDetalleTCSheet(tcId){
 
   let filas='';
   if(!itemsLinea.length){
-    filas=emptyInline('Sin movimientos registrados.',{clase:'empty-inline-sep'});
+    filas='<div class="tc-mv-vacio">Sin movimientos registrados.</div>';
   } else {
     // Arma los data-mov-* de cada fila (los usa el sheet de detalle de
     // movimiento al hacer click) — es HTML de confianza ya escapado acá

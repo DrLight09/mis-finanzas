@@ -33,6 +33,18 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## Versión PC, parte 21: Tarjetas de crédito como el prototipo (PC y celular)
+
+Rediseño visual de la pantalla de Tarjetas siguiendo `TarjetaCredito/` (prototipo). **Sin ver en navegador real** (jsdom no dibuja): revisar a 1366×768, 1100, 800, 430 y 360.
+- **Lista (`#tc-lista`)**: tarjeta con ícono de 18 px, botones de editar/borrar cuadrados, cajas «Deuda actual» y «Cupo disponible» con tinte y borde, barra «Usado» y botones `+ Compra` (contorno), `Pagar` (verde) y `Ver`. En PC no hay «Ver»: tocar la tarjeta la elige y queda con borde verde. `.tc-card-deuda` ya no existe.
+- **Cabecera de la lista (`.tarjetas-cab`)**: en celular, título «Tarjetas de crédito» + «Agregar tarjeta» arriba de todo; en PC, etiqueta «Tarjetas» + «Agregar tarjeta de crédito» fijos arriba de la lista. Un solo botón (`#btn-nueva-tarjeta`); con 0 tarjetas se oculta por CSS con `data-vacio="si"` en `#screen-tarjetas` (se quitó el `mostrarSi`). Con 0 tarjetas el resumen también se oculta y el estado vacío ocupa todo el ancho (PC).
+- **Detalle**: en PC, caja a la derecha con las dos cajas (deuda / este mes), cobertura con barra y pastilla, «+ Cargo especial» punteado y los movimientos como **tabla** (Fecha, Descripción, Detalle, Monto, borrar). En celular el detalle **ya no es hoja**: es una pantalla propia dentro de `#screen-tarjetas` con botón volver (`data-detalle-abierto="si"`, acción `tarjetas:cerrarDetalle`), igual que la ficha de Personas. Se quitó `#sheet-detalle-tc`; `abrirDetalleTCSheet` conserva su nombre y pinta en el panel (PC) o abre la pantalla (celular).
+- **Columna «Estado» del prototipo: no se hizo** (la app no guarda ese dato). En su lugar, «Detalle» trae la categoría (compras), el origen «Desde …» (pagos) o el tipo (encargo, préstamo, pago de deuda). El saldo inicial y «Reduce deuda» van como etiqueta debajo de la descripción.
+- **Filas**: una sola función `_tcFila` para PC y celular (cuadrícula CSS: tabla en PC, lista en celular). Fecha corta («8 nov»; con año si no es el actual). Se quitó el `style="cursor:pointer;"` del fragmento `_tcAttrs`.
+- **Hojas** (registrar compra, pagar, cargo especial, detalle del movimiento): sin cambios; conservan el diseño de la app.
+- Pruebas: `smoke-browser.js` (FASE 4) comprueba ahora `data-vacio` en vez de la visibilidad del botón. `npm test`, `npm run lint`, `npm run tipos` y `npm run smoke` en verde.
+- Archivos: `index.html`, `css/styles.css` (bloque `tc-*` reescrito), `css/pc.css` (bloque de Tarjetas), `js/modules/tarjetas-credito.js`, `scripts/smoke-browser.js`.
+
 
 
 ## Varias pestañas: «Actualizar» y «Borrar todos los datos»

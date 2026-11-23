@@ -151,9 +151,9 @@ const esperar = ms => new Promise(r => setTimeout(r, ms));
     c4(nBtn(q('#gastosFijosList')) === 0 && viz(q('.btn-open-gasto-fijo')), 'Gastos fijos con datos: falta el botón de pie');
 
     ev(`S.tarjetasCredito=[]; renderTCScreen()`);
-    c4(nBtn(q('#tc-lista')) === 1 && !viz(q('#btn-nueva-tarjeta')) && sinSvg(q('#tc-lista')), 'Tarjetas vacío: un solo botón y sin «svg»');
+    c4(nBtn(q('#tc-lista')) === 1 && q('#screen-tarjetas').dataset.vacio === 'si' && sinSvg(q('#tc-lista')), 'Tarjetas vacío: un solo botón y sin «svg»');
     ev(`S.tarjetasCredito=[{id:'t1',nombre:'Visa',cupo:1000000,deuda:0,color:'#60b0f0',ultimos4:'1234'}]; renderTCScreen()`);
-    c4(nBtn(q('#tc-lista')) === 0 && viz(q('#btn-nueva-tarjeta')), 'Tarjetas con datos: falta el botón de pie');
+    c4(nBtn(q('#tc-lista')) === 0 && q('#screen-tarjetas').dataset.vacio === 'no', 'Tarjetas con datos: falta el botón de pie');
 
     ev(`S.spotify.integrantes=[]; S.spotify.historial=[]; renderSpotify(); renderSpotifyHistorial(); renderSpotifyStats()`);
     c4(nBtn(q('#spotifyList')) === 1 && !viz(q('#btn-add-spotify-persona')) && sinSvg(q('#spotifyList')), 'Spotify vacío: un solo «Agregar persona» y sin «svg»');

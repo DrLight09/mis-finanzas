@@ -82,7 +82,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/plata-comprometida.js` | lazy — grupo `comprometida` | 33 | 0 |
 | `js/modules/prestado.js` | lazy — grupo `prestamos` | 118 | 0 |
 | `js/modules/spotify.js` | lazy — grupo `spotify` | 41 | 2 |
-| `js/modules/tarjetas-credito.js` | lazy — grupo `tarjetas` | 33 | 2 |
+| `js/modules/tarjetas-credito.js` | lazy — grupo `tarjetas` | 36 | 2 |
 | `js/modules/wrapped.js` | lazy — grupo `wrapped` | 116 | 3 |
 
 ## 2. Qué declara cada archivo
@@ -579,7 +579,7 @@ Carga: lazy — grupo `spotify`
 
 Carga: lazy — grupo `tarjetas`
 
-**Funciones:** `_tcEsCargoExterno`, `_tcMarcarActiva`, `_tcOperacionesPosteriores`, `_tcPanelPc`, `_tcPoblarSelectCajita`, `abrirCargoEspecialTC`, `abrirCompraTC`, `abrirDetalleTCSheet`, `abrirEditarTC`, `abrirNuevaTarjeta`, `abrirPagarTC`, `confirmarCargoEspecialTC`, `confirmarCompraTC`, `confirmarPagarTC`, `eliminarCompraTC`, `eliminarPagoTC`, `eliminarTC`, `guardarTC`, `ptcActualizarPreview`, `ptcSetMonto`, `renderTCDashboard`, `renderTCScreen`, `tcBuscarCompraPorIdOMatch`, `tcCrearCompra`, `tcCrearPago`, `tcDeudaCalculada`, `tcDeudaTotal`, `tcEliminarCompraInterna`, `tcEliminarPagoInterna`, `tcEstadoInfo`, `tcNormalizarTarjetas`, `tcRecalcular`, `tcSelColor`
+**Funciones:** `_tcCerrarDetalle`, `_tcEsCargoExterno`, `_tcFechaCorta`, `_tcFila`, `_tcMarcarActiva`, `_tcOperacionesPosteriores`, `_tcPanelPc`, `_tcPoblarSelectCajita`, `abrirCargoEspecialTC`, `abrirCompraTC`, `abrirDetalleTCSheet`, `abrirEditarTC`, `abrirNuevaTarjeta`, `abrirPagarTC`, `confirmarCargoEspecialTC`, `confirmarCompraTC`, `confirmarPagarTC`, `eliminarCompraTC`, `eliminarPagoTC`, `eliminarTC`, `guardarTC`, `ptcActualizarPreview`, `ptcSetMonto`, `renderTCDashboard`, `renderTCScreen`, `tcBuscarCompraPorIdOMatch`, `tcCrearCompra`, `tcCrearPago`, `tcDeudaCalculada`, `tcDeudaTotal`, `tcEliminarCompraInterna`, `tcEliminarPagoInterna`, `tcEstadoInfo`, `tcNormalizarTarjetas`, `tcRecalcular`, `tcSelColor`
 
 **Globales:** `TC_ESTADOS`, `TC_MOTIVOS_CARGO`
 
@@ -998,7 +998,10 @@ Ninguno.
 | `_syncSpotifyExtraWrap` | `js/modules/spotify.js` |
 | `_tasaCDT` | `js/core/nu-calc.js` |
 | `_tasaVigenteEnFecha` | `js/core/nu-calc.js` |
+| `_tcCerrarDetalle` | `js/modules/tarjetas-credito.js` |
 | `_tcEsCargoExterno` | `js/modules/tarjetas-credito.js` |
+| `_tcFechaCorta` | `js/modules/tarjetas-credito.js` |
+| `_tcFila` | `js/modules/tarjetas-credito.js` |
 | `_tcMarcarActiva` | `js/modules/tarjetas-credito.js` |
 | `_tcOperacionesPosteriores` | `js/modules/tarjetas-credito.js` |
 | `_tcPanelPc` | `js/modules/tarjetas-credito.js` |

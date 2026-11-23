@@ -120,7 +120,7 @@ Botón "+ Cargo especial" dentro del detalle de la tarjeta (`abrirDetalleTCSheet
 | `renderTCScreen` / `renderTCDashboard` | Pantalla completa de Tarjetas / resumen en Inicio |
 | `abrirCompraTC` / `confirmarCompraTC` | Sheet "Registrar compra en TC" (valida cupo, ver `CHANGELOG.md`) |
 | `abrirPagarTC` / `confirmarPagarTC` | Sheet "Pagar tarjeta" |
-| `abrirDetalleTCSheet` | Sheet de detalle: cobertura + historial completo (saldo inicial, compras, cargos, pagos) |
+| `abrirDetalleTCSheet` | Detalle de la tarjeta (ya no es hoja): cobertura + historial completo (saldo inicial, compras, cargos, pagos). PC: panel `#tc-detalle`; celular: pantalla propia con «volver» (`_tcCerrarDetalle`) |
 | `eliminarCompraTC` / `eliminarPagoTC` | Eliminar desde el detalle de la tarjeta (con confirmación) |
 | `getFuentesSinTC` vs. `poblarFuente(..., incluirTC)` | Listas de cuentas destino (sin TC) vs. origen (con TC), ver regla en §3 |
 | `getSaldoFuente` / `descontarFuente` / `sumarFuente` | Genéricas de todo el proyecto; su rama `tc:` es la interfaz que usa el resto de la app para tratar una tarjeta como "cuenta" de origen |

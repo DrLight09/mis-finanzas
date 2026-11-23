@@ -1462,29 +1462,92 @@ button.inicio-pilar-accion{cursor:pointer;}
 .alc-c-accent{color:var(--accent);} .alc-c-text3{color:var(--text3);} .alc-c-red{color:var(--red);}
 
 /* ── Tarjetas de crédito (js/modules/tarjetas-credito.js, Paso 5 tanda 14): tc-* ── */
-.tc-cab{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+/* Tarjetas de crédito como el prototipo (TarjetaCredito/): la lista y el detalle comparten estas reglas; css/pc.css solo cambia la distribución y la tabla. */
+.card.tc-card{padding:14px;margin-bottom:10px;}
+.tc-cab{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
 .tc-flex1-min0{flex:1;min-width:0;}
-.tc-nombre{font-size:15px;font-weight:700;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.tc-ico-tarjeta{display:inline-block;vertical-align:middle;margin-right:2px;flex-shrink:0;}
-.tc-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+.tc-ico-tarjeta{flex-shrink:0;}
+.tc-nombre{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.tc-sub{font-size:11px;color:var(--text2);margin-top:1px;}
 .tc-acciones{display:flex;gap:6px;flex-shrink:0;}
-.tc-btn-editar{background:none;border:1px solid var(--border2);border-radius:7px;color:var(--text2);font-size:11px;padding:4px 9px;cursor:pointer;}
-.tc-btn-borrar{background:none;border:1px solid rgba(240,104,104,.3);border-radius:7px;color:var(--red);font-size:11px;padding:4px 9px;cursor:pointer;}
+.tc-btn-editar,.tc-btn-borrar{width:28px;height:28px;padding:0;border-radius:9px;background:var(--bg3);border:1px solid var(--border2);display:grid;place-items:center;color:var(--text);cursor:pointer;}
+.tc-btn-borrar{color:var(--red);}
 .tc-resumen-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
-.tc-caja-deuda{background:rgba(240,104,104,.07);border-radius:9px;padding:10px 12px;}
-.tc-cap{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;margin-bottom:3px;}
-.tc-val-rojo{font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--red);}
-.tc-hint-mono{font-size:9px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:1px;}
-.tc-caja-disp{background:rgba(200,240,96,.07);border-radius:9px;padding:10px 12px;}
-.tc-val-verde{font-size:17px;font-weight:600;font-family:'DM Mono',monospace;color:var(--accent);}
-.tc-cupo{margin-bottom:12px;}
-.tc-cupo-cab{display:flex;justify-content:space-between;margin-bottom:4px;}
-.tc-cupo-txt{font-size:10px;color:var(--text3);}
-.tc-barra{height:5px;background:var(--bg3);border-radius:3px;overflow:hidden;}
-.tc-btns{display:flex;gap:8px;}
-.tc-btn-compra-act{flex:1;padding:10px;background:rgba(240,104,104,.12);border:1px solid rgba(240,104,104,.35);border-radius:9px;color:var(--red);font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;}
-.tc-btn-compra-off{flex:1;padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:9px;color:var(--text3);font-size:13px;font-weight:600;cursor:not-allowed;font-family:'DM Sans',sans-serif;}
-.tc-btn-ver{padding:10px 12px;background:var(--bg3);border:1px solid var(--border2);border-radius:9px;color:var(--text2);font-size:13px;cursor:pointer;}
+.tc-caja-deuda,.tc-caja-disp{min-width:0;padding:8px 10px;border-radius:11px;}
+.tc-caja-deuda{background:rgba(240,104,104,.09);border:1px solid rgba(240,104,104,.25);}
+.tc-caja-disp{background:rgba(200,240,96,.09);border:1px solid rgba(200,240,96,.25);}
+.tc-cap{font:500 9px 'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text3);}
+.tc-val-rojo{font:400 16px 'DM Mono',monospace;color:var(--red);margin-top:3px;}
+.tc-val-verde{font:400 16px 'DM Mono',monospace;color:var(--accent);margin-top:3px;}
+.tc-hint-mono{font:400 9.5px 'DM Mono',monospace;color:var(--text3);margin-top:1px;}
+.tc-cupo{margin-bottom:0;}
+.tc-cupo-cab{display:flex;justify-content:space-between;align-items:baseline;}
+.tc-cupo-pct{font:400 11px 'DM Mono',monospace;}
+.tc-barra{height:5px;background:var(--bg4);border-radius:5px;overflow:hidden;margin-top:4px;}
+.tc-btns{display:flex;gap:8px;margin-top:12px;}
+.tc-btn-compra-act,.tc-btn-compra-off,.tc-btn-pagar,.tc-btn-ver{flex:1;min-width:0;height:40px;padding:0;border-radius:12px;font:500 13px 'DM Sans',sans-serif;}
+.tc-btn-compra-act,.tc-btn-ver{background:transparent;border:1.5px solid var(--border2);color:var(--text);cursor:pointer;}
+.tc-btn-compra-off{background:transparent;border:1.5px solid var(--border2);color:var(--text3);opacity:.4;cursor:not-allowed;}
+.tc-btn-pagar-on{background:var(--accent);border:1.5px solid var(--accent);color:var(--bg);font-weight:600;cursor:pointer;}
+.tc-btn-pagar-off{background:var(--accent);border:1.5px solid var(--accent);color:var(--bg);font-weight:600;opacity:.4;cursor:not-allowed;}
+/* Detalle de la tarjeta: dos cajas, cobertura, cargo especial y movimientos */
+.tc-det-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.tc-det-caja-deuda,.tc-det-caja{min-width:0;padding:12px;border-radius:12px;}
+.tc-det-caja-deuda{background:rgba(240,104,104,.09);border:1px solid rgba(240,104,104,.25);}
+.tc-det-caja{background:var(--bg2);border:1px solid var(--border);}
+.tc-det-cap{font:500 9.5px 'DM Mono',monospace;letter-spacing:1px;text-transform:uppercase;color:var(--text3);}
+.tc-det-n{color:var(--text3);}
+.tc-det-caja-deuda .tc-val-rojo,.tc-det-val{font:400 20px 'DM Mono',monospace;letter-spacing:-.6px;margin-top:4px;}
+.tc-det-val{color:var(--text);}
+.tc-cob-caja{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.tc-cob-cab{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.tc-cob-tit{font-size:13px;font-weight:600;color:var(--text);}
+.tc-cob-pct{font:400 11px 'DM Mono',monospace;border-radius:20px;padding:2px 9px;white-space:nowrap;}
+.tc-cob-pct.tc-c-red{background:rgba(240,104,104,.14);} .tc-cob-pct.tc-c-amber{background:rgba(240,184,64,.14);} .tc-cob-pct.tc-c-accent{background:rgba(200,240,96,.14);}
+.tc-cob-barra{height:5px;border-radius:5px;background:var(--bg4);overflow:hidden;margin-top:9px;}
+.tc-cob-txt{font-size:11.5px;color:var(--text2);margin-top:9px;line-height:1.5;}
+.tc-cob-txt b{color:var(--text);font-weight:600;}
+.tc-btn-cargo{min-height:40px;padding:8px 12px;background:transparent;border:1.5px dashed var(--border2);border-radius:12px;color:var(--text);font:500 12.5px 'DM Sans',sans-serif;line-height:1.35;text-align:center;cursor:pointer;}
+.tc-btn-cargo-nota{color:var(--text3);font-weight:400;}
+.tc-movs{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:12px 14px 4px;}
+.tc-mov-tit{font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.tc-mov-n{color:var(--text3);font-weight:400;}
+/* Una fila del historial: en celular lista (nombre, fecha, etiqueta | monto, borrar); en PC fila de tabla (css/pc.css) */
+.tc-mv{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-areas:"desc monto borrar" "fecha monto borrar" "det monto borrar";column-gap:8px;align-items:start;padding:11px 2px;border-top:1px solid var(--border);}
+.tc-mv[data-action]{cursor:pointer;}
+.tc-mv-cab{display:none;}
+.tc-mv-cab-monto{text-align:right;}
+.tc-mv-desc{grid-area:desc;min-width:0;}
+.tc-mv-nombre{font-size:13px;overflow-wrap:anywhere;}
+.tc-mv-sub{display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-top:5px;}
+.tc-mv-nota{font-size:10.5px;color:var(--text3);}
+.tc-mv-fecha{grid-area:fecha;font:400 10.5px 'DM Mono',monospace;color:var(--text3);margin-top:2px;}
+.tc-mv-det{grid-area:det;margin-top:5px;}
+.tc-mv-det:empty{display:none;}
+.tc-mv-monto{grid-area:monto;font:500 13.5px 'DM Mono',monospace;letter-spacing:-.3px;text-align:right;white-space:nowrap;}
+.tc-mv-borrar{grid-area:borrar;display:flex;align-items:flex-start;}
+.tc-mv-borrar .btn-delete-hover{padding:2px;}
+.tc-tag{display:inline-block;font:500 10px 'DM Sans',sans-serif;padding:2px 8px;border-radius:20px;background:var(--border);color:var(--text2);}
+.tc-tag-amber{background:rgba(240,184,64,.12);color:var(--amber);} .tc-tag-azul{background:rgba(96,176,240,.12);color:var(--blue);}
+.tc-tag-rojo{background:rgba(240,104,104,.12);color:var(--red);} .tc-tag-morado{background:rgba(150,120,240,.12);color:rgba(180,140,255,1);} .tc-tag-verde{background:rgba(200,240,96,.12);color:var(--accent);}
+.fa-solid.tc-favor-ico{margin-right:3px;font-size:8px;}
+/* Pantalla de Tarjetas en celular: título + «Agregar tarjeta» arriba; «Ver» abre el detalle como pantalla propia (css/pc.css lo reorganiza en PC) */
+.tarjetas-cab{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+.tarjetas-cab-titulo{font-size:22px;font-weight:700;letter-spacing:-.5px;}
+.tarjetas-cab-pc,.tarjetas-nueva-pc{display:none;}
+.tc-det-cabmovil{display:flex;align-items:center;gap:10px;height:36px;margin-bottom:12px;}
+.tc-det-cabmovil b{font-size:17px;font-weight:700;letter-spacing:-.3px;}
+.tc-det-volver{width:34px;height:34px;border-radius:11px;background:var(--bg3);border:1px solid var(--border2);display:grid;place-items:center;color:var(--text);cursor:pointer;}
+.tc-det-titulo{display:none;}
+#tc-detalle-content{display:flex;flex-direction:column;gap:12px;}
+@media (max-width:899px){
+  #screen-tarjetas.active{display:flex;flex-direction:column;}
+  .tarjetas-cuerpo,.tarjetas-columna{display:contents;}
+  .tarjetas-cab{order:-2;} .tarjetas-resumen{order:-1;}
+  #screen-tarjetas[data-vacio="si"] :is(.tarjetas-resumen,.tarjetas-btn-nueva){display:none;}
+  #screen-tarjetas[data-detalle-abierto="si"] :is(.tarjetas-cab,.tarjetas-resumen,#tc-lista){display:none;}
+  #screen-tarjetas[data-detalle-abierto="si"] .tarjetas-detalle:not([hidden]){display:block;}
+}
 .tc-fila{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);}
 .tc-fila-nombre{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;}
 .tc-ico-fila{display:inline-block;vertical-align:middle;margin-right:4px;flex-shrink:0;}
@@ -1510,28 +1573,8 @@ button.inicio-pilar-accion{cursor:pointer;}
 .tc-pago-tit{font-size:13px;font-weight:600;color:var(--text);}
 .tc-pago-sub{font-size:11px;color:var(--text3);font-family:'DM Mono',monospace;margin-top:2px;}
 .tc-flecha, .fa-solid.tc-flecha{margin:0 3px;font-size:10px;}
-.tc-det-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
-.tc-det-caja-deuda{background:rgba(240,104,104,.07);border-radius:9px;padding:11px 12px;}
-.tc-det-cap{font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;margin-bottom:3px;}
-.tc-det-caja{background:var(--bg3);border-radius:9px;padding:11px 12px;}
-.tc-det-n{font-weight:400;font-size:8px;}
-.tc-det-val{font-size:17px;font-weight:600;font-family:'DM Mono',monospace;}
-.tc-cob-caja{background:var(--bg3);border-radius:9px;padding:11px 12px;margin-bottom:10px;}
-.tc-cob-cab{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
-.tc-cob-tit{font-size:9px;color:var(--text3);text-transform:uppercase;font-family:'DM Mono',monospace;}
-.tc-cob-txt{font-size:12px;color:var(--text2);}
 .tc-aviso{background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 12px;margin-bottom:10px;font-size:11px;color:var(--amber);}
-.tc-btn-cargo{width:100%;margin-bottom:12px;padding:9px 12px;background:rgba(240,184,64,.08);border:1px dashed rgba(240,184,64,.35);border-radius:9px;color:var(--amber);font-size:11px;font-weight:600;cursor:pointer;text-align:left;}
-.tc-mov-tit{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1.2px;font-family:'DM Mono',monospace;margin-bottom:8px;}
-.tc-mov-n{font-weight:400;font-size:9px;}
-.tc-saldo-ini, .gasto-item.tc-saldo-ini{margin-bottom:7px;cursor:pointer;border-left:3px solid var(--text3);}
 .tc-amount-text2, .row-amount.tc-amount-text2{color:var(--text2);}
-.tc-badge-ini, .badge.tc-badge-ini{font-size:9px;background:var(--bg3);color:var(--text3);}
-.tc-favor-badge{font-size:8px;padding:2px 6px;border-radius:8px;background:rgba(96,176,240,.12);border:1px solid rgba(96,176,240,.3);color:var(--blue);font-family:'DM Mono',monospace;white-space:nowrap;margin-left:3px;}
-.tc-favor-ico, .fa-solid.tc-favor-ico{margin-right:3px;font-size:7px;}
-.tc-item-ok, .gasto-item.tc-item-ok{border-color:rgba(200,240,96,.3);border-left:3px solid var(--accent);margin-bottom:7px;background:rgba(200,240,96,.04);cursor:pointer;}
-.card.tc-card{margin-bottom:10px;} .card.tc-card-deuda{border-color:rgba(240,104,104,.3);}
-.tc-cupo-pct{font-size:10px;font-family:'DM Mono',monospace;} .tc-cob-pct{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;}
 .tc-fill{height:100%;border-radius:3px;transition:width .4s;} .tc-fill-sm{height:100%;border-radius:2px;}
 .tc-falta-caja{margin-top:10px;background:rgba(240,184,64,.08);border:1px solid rgba(240,184,64,.25);border-radius:9px;padding:10px 12px;}
 .tc-falta-cap{font-size:10px;color:var(--amber);text-transform:uppercase;letter-spacing:.7px;font-family:'DM Mono',monospace;font-weight:600;}
@@ -1541,16 +1584,8 @@ button.inicio-pilar-accion{cursor:pointer;}
 .tc-ok-caja{background:var(--bg3);border-radius:9px;padding:2px 12px;} .tc-mt6{margin-top:6px;} .tc-mt10{margin-top:10px;}
 .tc-pill{font-size:9px;padding:2px 6px;border-radius:20px;}
 .tc-pill-red{background:rgba(240,104,104,.1);color:var(--red);} .tc-pill-amber{background:rgba(240,184,64,.15);color:var(--amber);} .tc-pill-neutro{background:rgba(255,255,255,.07);color:var(--text2);}
-.gasto-item.tc-item{margin-bottom:7px;cursor:pointer;}
-.gasto-item.tc-item-b-amber{border-color:rgba(240,184,64,.3);} .gasto-item.tc-item-b-azul{border-color:rgba(96,176,240,.25);}
-.gasto-item.tc-item-b-rojo{border-color:rgba(240,104,104,.3);} .gasto-item.tc-item-b-morado{border-color:rgba(150,120,240,.3);}
-.badge.tc-badge-amber{background:rgba(240,184,64,.12);color:var(--amber);} .badge.tc-badge-azul{background:rgba(96,176,240,.12);color:var(--blue);}
-.badge.tc-badge-rojo{background:rgba(240,104,104,.12);color:var(--red);} .badge.tc-badge-morado{background:rgba(150,120,240,.12);color:rgba(180,140,255,1);}
 .tc-bg-red{background:var(--red);} .tc-bg-amber{background:var(--amber);} .tc-bg-accent{background:var(--accent);}
 .tc-c-red{color:var(--red);} .tc-c-amber{color:var(--amber);} .tc-c-text3{color:var(--text3);} .tc-c-accent{color:var(--accent);} .tc-c-blue{color:var(--blue);} .tc-c-purple{color:rgba(180,140,255,1);}
-.tc-btn-pagar{flex:1;padding:10px;border-radius:9px;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;}
-.tc-btn-pagar-on{background:rgba(200,240,96,.12);border:1px solid rgba(200,240,96,.35);color:var(--accent);cursor:pointer;}
-.tc-btn-pagar-off{background:var(--bg3);border:1px solid var(--border);color:var(--text3);cursor:not-allowed;}
 
 /* ── Encargos (js/modules/encargos.js, Paso 5 tanda 15): enc-* ── */
 .enc-int-acum{font-size:9px;color:var(--accent);font-family:'DM Mono',monospace;opacity:.8;}
@@ -2058,7 +2093,7 @@ button.inicio-pilar-accion{cursor:pointer;}
   #screen-personas[data-ficha-abierta="si"] :is(.personas-resumen,#personas-lista,.personas-volver){display:none;}
 }
 /* Botones de Personas (como el prototipo): «Nueva persona» y, solo en celular, volver a Configuración */
-.personas-boton-nueva{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font:500 11.5px 'DM Sans',sans-serif;cursor:pointer;}
+.personas-boton-nueva,.tarjetas-btn-nueva{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:10px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font:500 11.5px 'DM Sans',sans-serif;cursor:pointer;}
 .personas-volver{margin-bottom:12px;}
 .personas-volver-boton{display:inline-flex;align-items:center;gap:4px;height:34px;padding:0 12px 0 8px;border-radius:11px;background:var(--bg3);border:1px solid var(--border2);color:var(--text);font:500 12.5px 'DM Sans',sans-serif;cursor:pointer;}
 /* Tarjeta de persona de PC (relación, saldo neto y etiquetas): en celular la fila es la de siempre y estos bloques no se ven (css/pc.css) */

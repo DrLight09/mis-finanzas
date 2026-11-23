@@ -859,7 +859,7 @@
         </div>
 
         <!-- PANTALLA TARJETAS DE CRÉDITO -->
-        <div class="screen" id="screen-tarjetas">
+        <div class="screen" id="screen-tarjetas" data-detalle-abierto="no" data-vacio="no">
           <div class="tarjetas-resumen">
             <div class="hero hero-red">
             <div class="hero-label ix-cred">Deuda
@@ -876,18 +876,25 @@
           </div>
           <div class="tarjetas-cuerpo">
             <div class="tarjetas-columna">
-              <div class="ix-mb10" id="tc-lista"></div>
-              <button type="button" class="btn btn-ghost ix-button-033" id="btn-nueva-tarjeta"
-            data-action="tarjetas:nueva">
-            <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5"
-              stroke-linecap="round"><line x1="12" y1="5" x2="12"
-                y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
-            Agregar tarjeta de crédito
-          </button>
+              <!-- Título de la lista + «Agregar tarjeta»: en celular va arriba de todo (título de la pantalla), en PC encima de la lista. Con 0 tarjetas el botón se oculta (el estado vacío trae el suyo). -->
+              <div class="tarjetas-cab">
+                <span class="tarjetas-cab-titulo"><span class="tarjetas-cab-pc">Tarjetas</span><span class="tarjetas-cab-movil">Tarjetas de crédito</span></span>
+                <button type="button" class="tarjetas-btn-nueva" id="btn-nueva-tarjeta" data-action="tarjetas:nueva">
+                  <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                  <span class="tarjetas-nueva-pc">Agregar tarjeta de crédito</span><span class="tarjetas-nueva-movil">Agregar tarjeta</span>
+                </button>
+              </div>
+              <div id="tc-lista"></div>
             </div>
-            <!-- Solo PC: el detalle de la tarjeta elegida (en celular «Ver» abre la hoja). -->
-            <section class="tarjetas-detalle" id="tc-detalle" aria-label="Compras y pagos de la tarjeta"><div class="sec-title" id="tc-detalle-titulo"></div><div id="tc-detalle-content"></div></section>
+            <!-- Compras y pagos de la tarjeta elegida: en PC es la caja de la derecha; en celular es una pantalla propia (con «Volver») que se abre con «Ver». -->
+            <section class="tarjetas-detalle" id="tc-detalle" aria-label="Compras y pagos de la tarjeta">
+              <div class="tc-det-cabmovil">
+                <button type="button" class="tc-det-volver" data-action="tarjetas:cerrarDetalle" data-args="[]" aria-label="Volver"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+                <b id="tc-detalle-nombre"></b>
+              </div>
+              <div class="tc-det-titulo" id="tc-detalle-titulo"></div>
+              <div id="tc-detalle-content"></div>
+            </section>
           </div>
         </div>
 
@@ -5034,17 +5041,6 @@
           cargo</button>
         <button type="button" class="btn btn-ghost"
           data-close-sheet="cargo-especial-tc">Cancelar</button>
-      </div>
-    </div>
-
-    <!-- DETALLE TC (historial: saldo inicial + compras + pagos) -->
-    <div class="overlay" id="sheet-detalle-tc" data-sheet-id="detalle-tc">
-      <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title" id="detalle-tc-title">Detalle de tarjeta</div>
-        <div id="detalle-tc-content"></div>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="detalle-tc">Cerrar</button>
       </div>
     </div>
 

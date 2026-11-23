@@ -114,7 +114,8 @@
   #panel-fijo{grid-column:2;grid-row:1 / span 2;min-width:0;}
   #screen-gastos .tab-bar + .gastos-panel{margin-top:0;}
 
-  /* ── Tarjetas de crédito (como el prototipo): resumen (deuda y cupo total) arriba; debajo la lista de tarjetas (420 px) | compras y pagos de la tarjeta elegida ── */
+  /* ── Tarjetas de crédito (como el prototipo): resumen (deuda y cupo total) arriba; debajo la lista de tarjetas (420 px, con «Agregar tarjeta» fijo arriba)
+     | caja con las compras y pagos de la tarjeta elegida (cajas del detalle y tabla de movimientos). «Ver» no hace falta: tocar la tarjeta la elige. ── */
   .scroll-area > #screen-tarjetas{max-width:none;margin-left:0;margin-right:0;}
   #screen-tarjetas.active{display:flex;flex-direction:column;gap:12px;height:100%;}
   .tarjetas-resumen{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
@@ -125,16 +126,39 @@
   .tarjetas-cupo-sub{font-size:11px;color:var(--text3);margin-top:2px;}
   .tarjetas-cuerpo{flex:1;min-height:0;display:flex;gap:12px;align-items:stretch;}
   .tarjetas-columna{width:420px;flex-shrink:0;display:flex;flex-direction:column;gap:10px;}
+  .tarjetas-cab{position:sticky;top:0;z-index:2;margin:0;padding:2px 2px 4px;background:var(--bg);}
+  .tarjetas-cab-titulo{font:500 10px 'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);}
+  .tarjetas-cab-pc,.tarjetas-nueva-pc{display:inline;}
+  .tarjetas-cab-movil,.tarjetas-nueva-movil{display:none;}
   #tc-lista{display:flex;flex-direction:column;gap:10px;margin:0;}
-  #btn-nueva-tarjeta{order:-1;align-self:flex-end;width:auto;margin:0;padding:6px 12px;font-size:12px;}
-  #tc-lista .tc-card{margin:0;cursor:pointer;}
-  #tc-lista .tc-card-activa{border-color:var(--accent);}
-  .tarjetas-detalle{display:block;flex:1;min-width:0;padding:14px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
+  #tc-lista .tc-card{margin:0;padding:11px 14px;cursor:pointer;}
+  #tc-lista .tc-card-activa{border-color:color-mix(in srgb,var(--accent) 50%,transparent);background:color-mix(in srgb,var(--accent) 5%,var(--bg2));}
+  #tc-lista .tc-btn-ver{display:none;}
+  #tc-lista .tc-btns{margin-top:9px;}
+  #tc-lista :is(.tc-btn-compra-act,.tc-btn-compra-off,.tc-btn-pagar){height:32px;font-size:12.5px;}
+  .tarjetas-detalle{display:block;flex:1;min-width:0;padding:14px 12px 10px;background:var(--bg2);border:1px solid var(--border);border-radius:14px;}
   .tarjetas-detalle[hidden]{display:none;}
-  .tarjetas-detalle > .sec-title{margin-top:0;}
-  #tc-lista > .empty-state{grid-column:1 / -1;}
-  #tc-lista > .tc-card{margin-bottom:0;}
-  #btn-nueva-tarjeta{max-width:320px;}
+  .tc-det-cabmovil{display:none;}
+  .tc-det-titulo{display:block;padding:0 4px 8px;font:500 10px 'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);}
+  #tc-detalle-content{gap:8px;padding:0 4px;}
+  .tarjetas-detalle :is(.tc-det-caja,.tc-cob-caja){background:var(--bg3);}
+  .tc-det-caja-deuda .tc-val-rojo,.tc-det-val{font-size:20px;}
+  .tc-btn-cargo{min-height:36px;padding:0 12px;border-radius:11px;font-size:12px;}
+  /* Movimientos como tabla: Fecha | Descripción | Detalle | Monto | borrar (el prototipo trae además «Estado»; la app no guarda ese dato, así que no se muestra) */
+  .tc-movs{background:none;border:0;padding:0;}
+  .tc-mov-tit{font:500 10px 'DM Mono',monospace;letter-spacing:1.2px;text-transform:uppercase;color:var(--text3);margin:4px 0 6px;}
+  .tc-mv{grid-template-columns:84px minmax(0,1fr) 150px 112px 36px;grid-template-areas:"fecha desc det monto borrar";gap:10px;align-items:center;padding:8px 12px;border-top:0;border-radius:12px;}
+  .tc-mv:not(.tc-mv-cab):hover{background:var(--bg3);}
+  .tc-mv-cab{display:grid;padding:4px 12px 6px;font:500 10px 'DM Mono',monospace;letter-spacing:1.1px;text-transform:uppercase;color:var(--text3);}
+  .tc-mv-fecha{margin-top:0;font-size:11px;color:var(--text2);}
+  .tc-mv-sub{margin-top:3px;}
+  .tc-mv-det{margin-top:0;}
+  .tc-mv-monto{font-size:13px;}
+  .tc-mv-borrar{justify-content:center;align-items:center;}
+  /* Sin tarjetas: la caja de «Sin tarjetas de crédito» ocupa todo el ancho (el título ya está en la cabecera) */
+  #screen-tarjetas[data-vacio="si"] :is(.tarjetas-resumen,.tarjetas-cab){display:none;}
+  #screen-tarjetas[data-vacio="si"] .tarjetas-columna{width:auto;flex:1;}
+  #screen-tarjetas[data-vacio="si"] #tc-lista > .empty-state{min-height:360px;}
 
   /* ── Prestado (como el prototipo): el resumen arriba y debajo DOS cajas a todo el alto: la columna (400 px) con las pestañas Me deben / Yo debo
      y la lista de la pestaña activa, y el detalle de la persona abierta al lado. La pestaña la deja prestado.js en data-tab-prestamos de la

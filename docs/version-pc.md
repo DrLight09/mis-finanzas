@@ -56,7 +56,7 @@ Fila compacta por cuenta (`.cuenta-card`) solo en PC: ícono, nombre y etiqueta,
 
 ## 9. Tarjetas de crédito
 
-`#tc-lista` en cuadrícula (`minmax(380px,1fr)`); sin reparto de columnas por JS. Las acciones y los movimientos de cada tarjeta siguen siendo los de la app (botones de la tarjeta y hoja «Ver»).
+Como el prototipo (parte 21): resumen arriba; debajo la lista (`#tc-lista`, 420 px, con `.tarjetas-cab` fijo arriba) y el detalle `#tc-detalle` de la tarjeta elegida (`_tcSelId`; la primera por defecto) con tabla de movimientos. Sin tarjetas: `data-vacio="si"` y el estado vacío a todo el ancho. En celular el detalle es una pantalla propia con «volver» (`data-detalle-abierto`), no una hoja.
 
 ## 10. Prestado
 

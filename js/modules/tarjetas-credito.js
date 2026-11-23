@@ -10,7 +10,7 @@
      vez de handlers propios.
    - El HTML de las pantallas/sheets (#screen-tarjetas,
      #sheet-nueva-tc, #sheet-compra-tc, #sheet-pagar-tc,
-     #sheet-detalle-tc, #tc-deuda-card) se quedó en index.html; solo
+     #tc-deuda-card; el detalle de la tarjeta ya no es hoja: es el panel #tc-detalle) se quedó en index.html; solo
      se movió el JS.
    - A diferencia de Spotify y Encargos, este módulo NO necesitó
      partirse en dos archivos: no tiene una dependencia de
@@ -94,7 +94,7 @@ import { Deudas, getTCById, tcCupoDisponible, tcCupoUsadoPct } from '../core/cal
 import { marcarColorSeleccionado } from '../core/color-picker.js';
 import { avisarMovimientoBloqueado, confirmarBorrarMovimientoViejo, confirmarEliminar, dialogo, nivelAntiguedadMovimiento, toast } from '../core/dialogos.js';
 import { refresh } from '../core/refresh.js';
-import { botonEliminarFila, emptyInline, emptyState, filaMovimiento, mostrarSi } from '../core/utilidades-ui.js';
+import { botonEliminarFila, emptyInline, emptyState } from '../core/utilidades-ui.js';
 import { Events } from '../core/events.js';
 import { calcC } from '../core/nu-calc.js';
 import { FuentesFiltro } from '../core/fuentes-filtro.js';
@@ -104,7 +104,7 @@ import { medirPatrimonioParaHistorial, purgarEfectoEnHistorial } from '../core/p
 import { abrirDetalleMovimiento } from '../core/movimientos.js';
 import { Ui } from '../core/ui.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ _tcOperacionesPosteriores, tcDeudaTotal, tcEstadoInfo, _tcEsCargoExterno, tcDeudaCalculada, tcRecalcular, tcNormalizarTarjetas, tcCrearCompra, tcEliminarCompraInterna, tcBuscarCompraPorIdOMatch, tcCrearPago, tcEliminarPagoInterna, _tcPoblarSelectCajita, abrirNuevaTarjeta, abrirEditarTC, tcSelColor, guardarTC, eliminarTC, _tcPanelPc, _tcMarcarActiva, renderTCScreen, renderTCDashboard, abrirCompraTC, confirmarCompraTC, abrirCargoEspecialTC, confirmarCargoEspecialTC, abrirPagarTC, ptcSetMonto, ptcActualizarPreview, confirmarPagarTC, abrirDetalleTCSheet, eliminarCompraTC, eliminarPagoTC });
+exponerGlobales({ _tcOperacionesPosteriores, tcDeudaTotal, tcEstadoInfo, _tcEsCargoExterno, tcDeudaCalculada, tcRecalcular, tcNormalizarTarjetas, tcCrearCompra, tcEliminarCompraInterna, tcBuscarCompraPorIdOMatch, tcCrearPago, tcEliminarPagoInterna, _tcPoblarSelectCajita, abrirNuevaTarjeta, abrirEditarTC, tcSelColor, guardarTC, eliminarTC, _tcPanelPc, _tcMarcarActiva, _tcCerrarDetalle, renderTCScreen, renderTCDashboard, abrirCompraTC, confirmarCompraTC, abrirCargoEspecialTC, confirmarCargoEspecialTC, abrirPagarTC, ptcSetMonto, ptcActualizarPreview, confirmarPagarTC, abrirDetalleTCSheet, eliminarCompraTC, eliminarPagoTC });
 
 export let _tcActualId = null;
 export let _tcCompraTcId = null;
@@ -444,8 +444,9 @@ export async function eliminarTC(id){
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────
-/* ── PC (≥900 px): como el prototipo, la pantalla es resumen arriba y debajo la lista de tarjetas | compras y pagos de la tarjeta elegida.
-   En celular «Ver» abre la hoja de siempre. La tarjeta elegida (_tcSelId) es la primera mientras no se toque otra. ── */
+/* ── Pantalla de Tarjetas (como el prototipo). PC (≥900 px): resumen arriba y debajo la lista de tarjetas | compras y pagos de la tarjeta elegida
+   (la primera mientras no se toque otra). Celular: la lista de siempre; «Ver» abre el detalle como pantalla propia (con «Volver»), no como hoja.
+   Qué se ve lo deciden el CSS y dos atributos de #screen-tarjetas: data-vacio (sin tarjetas) y data-detalle-abierto (solo celular). ── */
 export let _tcSelId=null;
 export const _consultaPcTC=typeof window.matchMedia==='function'?window.matchMedia('(min-width: 900px)'):null;
 export function _tcPanelPc(){
@@ -456,6 +457,15 @@ export function _tcPanelPc(){
 export function _tcMarcarActiva(){
   document.querySelectorAll('#tc-lista .tc-card[data-tc-id]').forEach(c=>c.classList.toggle('tc-card-activa',_tcPanelPc()&&c.getAttribute('data-tc-id')===_tcSelId));
 }
+// Celular: vuelve de la pantalla de detalle a la lista.
+export function _tcCerrarDetalle(){
+  const pantalla=document.getElementById('screen-tarjetas');
+  if(!pantalla||pantalla.dataset.detalleAbierto!=='si')return;
+  pantalla.dataset.detalleAbierto='no';
+  const scroll=document.getElementById('scrollArea');
+  if(scroll)scroll.scrollTop=0;
+}
+Ui.pantalla('*',nombre=>{if(nombre!=='tarjetas')_tcCerrarDetalle();},{key:'tarjetas-cerrar-detalle'});
 export function renderTCScreen(){
   const tarjetas=S.tarjetasCredito||[];
   const hero=document.getElementById('tc-hero-deuda');
@@ -471,10 +481,10 @@ export function renderTCScreen(){
   if(cupoSub)cupoSub.textContent=tarjetas.length+(tarjetas.length===1?' tarjeta':' tarjetas');
   const panelTC=document.getElementById('tc-detalle');
   if(panelTC)panelTC.hidden=!tarjetas.length;
-
-  // El estado vacío ya trae «Agregar tarjeta»: el botón de pie solo aparece con tarjetas.
-  mostrarSi(document.getElementById('btn-nueva-tarjeta'),tarjetas.length>0);
+  const pantalla=document.getElementById('screen-tarjetas');
+  if(pantalla)pantalla.dataset.vacio=tarjetas.length?'no':'si'; // sin tarjetas el CSS esconde el resumen y «Agregar tarjeta» (el estado vacío trae el suyo)
   if(!tarjetas.length){
+    _tcCerrarDetalle();
     lista.innerHTML=emptyState(
       '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h3"/></svg>',
       'Sin tarjetas de crédito',
@@ -497,18 +507,18 @@ export function renderTCScreen(){
     const subtitulo=[tc.banco,tc.franquicia].filter(Boolean).join(' · ');
     const colorIcono=tc.color||'currentColor';
 
-    return html`<div class="card tc-card ${deuda>0?'tc-card-deuda':''}" data-tc-id="${tc.id}">
+    return html`<div class="card tc-card" data-tc-id="${tc.id}">
       <div class="tc-cab">
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${colorIcono}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" class="tc-ico-tarjeta"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>
         <div class="tc-flex1-min0">
-          <div class="tc-nombre">
-            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${colorIcono}" stroke-width="2" stroke-linecap="round" class="tc-ico-tarjeta"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><circle cx="7" cy="15" r="1.2" fill="${colorIcono}" stroke="none"/></svg>${tc.nombre}
+          <div class="tc-nombre">${tc.nombre}
             ${raw(estadoInfo.badge?`<span class="badge ${estadoInfo.badge} badge-xs">${estadoInfo.label}</span>`:'')}
           </div>
           ${subtitulo?html`<div class="tc-sub">${subtitulo}</div>`:''}
         </div>
         <div class="tc-acciones">
-          <button type="button" ${raw(Events.attr('tarjetas:editar',tc.id))} class="tc-btn-editar" aria-label="Editar ${tc.nombre}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          <button type="button" ${raw(Events.attr('tarjetas:eliminar',tc.id))} class="tc-btn-borrar" aria-label="Eliminar ${tc.nombre}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg></button>
+          <button type="button" ${raw(Events.attr('tarjetas:editar',tc.id))} class="tc-btn-editar" aria-label="Editar ${tc.nombre}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></button>
+          <button type="button" ${raw(Events.attr('tarjetas:eliminar',tc.id))} class="tc-btn-borrar" aria-label="Eliminar ${tc.nombre}"><svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
         </div>
       </div>
 
@@ -527,7 +537,7 @@ export function renderTCScreen(){
 
       <div class="tc-cupo">
         <div class="tc-cupo-cab">
-          <span class="tc-cupo-txt">Cupo usado</span>
+          <span class="tc-cap">Usado</span>
           <span class="tc-cupo-pct ${pct>80?'tc-c-red':pct>50?'tc-c-amber':'tc-c-text3'}">${pct.toFixed(0)}%</span>
         </div>
         <div class="tc-barra">
@@ -543,14 +553,17 @@ export function renderTCScreen(){
       </div>
     </div>`;
   }).join('');
-  // PC: la tarjeta elegida (la primera por defecto) con su detalle a la derecha.
   if(_tcPanelPc()){
+    // PC: la tarjeta elegida (la primera por defecto) con su detalle a la derecha.
     if(!_tcSelId||!getTCById(_tcSelId))_tcSelId=tarjetas[0].id;
     abrirDetalleTCSheet(_tcSelId);
+  }else if(pantalla&&pantalla.dataset.detalleAbierto==='si'){
+    // Celular con el detalle abierto: se repinta (una compra, un pago o un borrado cambian lo que muestra); si la tarjeta ya no existe, vuelve a la lista.
+    if(getTCById(_tcSelId))abrirDetalleTCSheet(_tcSelId);else _tcCerrarDetalle();
   }
   _tcMarcarActiva();
 }
-// Tocar el cuerpo de una tarjeta (no sus botones) la elige. Solo en PC: en celular la tarjeta no es clicable.
+// Tocar el cuerpo de una tarjeta (no sus botones) la elige. Solo en PC: en celular la tarjeta no es clicable (se usa «Ver»).
 document.addEventListener('click',e=>{
   if(!_consultaPcTC||!_consultaPcTC.matches)return;
   const card=e.target.closest&&e.target.closest('#tc-lista .tc-card[data-tc-id]');
@@ -867,12 +880,34 @@ export function confirmarPagarTC(){
 }
 
 // ── Detalle de TC (historial: saldo inicial + compras + pagos) ────
+const _TC_MESES_CORTOS=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+// '2026-11-08' → '8 nov' (con el año si no es el actual).
+function _tcFechaCorta(f){
+  const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(f||'');
+  if(!m)return f||'';
+  const txt=Number(m[3])+' '+_TC_MESES_CORTOS[Number(m[2])-1];
+  return m[1]===String(new Date().getFullYear())?txt:txt+' '+m[1];
+}
+// Una fila del historial. Es la MISMA en PC y en celular: en PC la cuadrícula la muestra como fila de tabla (fecha | descripción | detalle | monto | borrar)
+// y en celular como la lista del prototipo (nombre, fecha debajo, etiquetas y monto a la derecha). Todo lo que llega en `sub`, `det`, `acciones` y `attrs`
+// ya viene escapado (html``/raw()).
+function _tcFila(o){
+  return html`<div class="tc-mv${o.clase?' '+o.clase:''}" ${raw(o.attrs||'')}>
+    <span class="tc-mv-fecha">${_tcFechaCorta(o.fecha)}</span>
+    <div class="tc-mv-desc"><div class="tc-mv-nombre">${o.nombre}</div>${o.sub?html`<div class="tc-mv-sub">${o.sub}</div>`:''}</div>
+    <div class="tc-mv-det">${o.det||''}</div>
+    <span class="tc-mv-monto ${o.montoClase||''}">${o.monto}</span>
+    <span class="tc-mv-borrar">${o.acciones||''}</span>
+  </div>`;
+}
+// Abre el detalle de la tarjeta: en PC lo pinta en el panel de la derecha; en celular, en la pantalla de detalle (con «Volver»).
 export function abrirDetalleTCSheet(tcId){
   const tc=getTCById(tcId);
   if(!tc)return;
-  const enPanel=_tcPanelPc();
-  if(enPanel)_tcSelId=tc.id;
-  else document.getElementById('detalle-tc-title').textContent=tc.nombre;
+  _tcSelId=tc.id;
+  const pantalla=document.getElementById('screen-tarjetas');
+  if(!pantalla)return;
+  if(!pantalla.classList.contains('active'))showScreen('tarjetas');
   const compras=(tc.compras||[]).filter(c=>!c.eliminado);
   const pagos=(tc.pagos||[]).filter(p=>!p.eliminado);
   const tcMovimientos=(S.tcMovimientos||[]).filter(m=>m.tcId===tc.id&&!m.eliminado);
@@ -911,12 +946,14 @@ export function abrirDetalleTCSheet(tcId){
     const pct=deudaGrupoTotal>0?Math.min(100,Math.round(saldoCajita/deudaGrupoTotal*100)):100;
     const cubre=saldoCajita>=deudaGrupoTotal;
     const colorEstado=cubre?'tc-c-accent':(pct>=50?'tc-c-amber':'tc-c-red');
+    const fondoEstado=cubre?'tc-bg-accent':(pct>=50?'tc-bg-amber':'tc-bg-red');
     const otrasNombres=tarjetasEnCajita.filter(x=>x.id!==tc.id).map(x=>x.nombre);
     contenido+=html`<div class="tc-cob-caja">
       <div class="tc-cob-cab">
-        <div class="tc-cob-tit">Cobertura desde "${cajitaVinc.nombre}"</div>
+        <div class="tc-cob-tit">Cobertura desde «${cajitaVinc.nombre}»</div>
         <span class="tc-cob-pct ${colorEstado}">${cubre?'Cubre todo':pct+'%'}</span>
       </div>
+      <div class="tc-cob-barra"><div class="tc-fill ${fondoEstado}" style="width:${pct}%;"></div></div>
       <div class="tc-cob-txt">Saldo en la cajita: <b>${fmt(saldoCajita)}</b> · Deuda a cubrir: <b>${fmt(deudaGrupoTotal)}</b></div>
       ${otrasNombres.length?html`<div class="tc-falta-nombres">Compartida con: ${otrasNombres.join(', ')}.</div>`:''}
     </div>`;
@@ -952,12 +989,11 @@ export function abrirDetalleTCSheet(tcId){
     });
   }
 
-  contenido+=html`<button type="button" ${raw(Events.attr('tarjetas:cargoEspecial',tc.id))} class="tc-btn-cargo">+ Cargo especial (interés, comisión...) — no valida cupo</button>`;
+  contenido+=html`<button type="button" ${raw(Events.attr('tarjetas:cargoEspecial',tc.id))} class="tc-btn-cargo">+ Cargo especial (interés, comisión…) <span class="tc-btn-cargo-nota">— no valida cupo</span></button>`;
 
-  contenido+=`<div class="tc-mov-tit">Movimientos <span class="tc-mov-n">(${itemsLinea.length})</span></div>`;
-
+  let filas='';
   if(!itemsLinea.length){
-    contenido+=emptyInline('Sin movimientos registrados.',{clase:'empty-inline-sep'});
+    filas=emptyInline('Sin movimientos registrados.',{clase:'empty-inline-sep'});
   } else {
     // Arma los data-mov-* de cada fila (los usa el sheet de detalle de
     // movimiento al hacer click) — es HTML de confianza ya escapado acá
@@ -966,49 +1002,44 @@ export function abrirDetalleTCSheet(tcId){
       const sd=_tcDeudaPorId.get(item.id);
       if(!sd) return '';
       const otras=otrasCuentas?html`data-movimiento-otras="${JSON.stringify(otrasCuentas)}"`.toString():'';
-      return html`data-movimiento-id="${item.id}" data-movimiento-tipo="${item._tipo==='pago'?'abono':'compra'}" data-movimiento-monto="${Math.abs(item.monto)}" data-cuenta-key="tc" data-movimiento-origen="${origenLbl}" ${raw(otras)} data-movimiento-saldo-antes="${sd.antes}" data-movimiento-saldo-despues="${sd.despues}" data-movimiento-saldo-label="Deuda ${tc.nombre}" data-movimiento-desc="${descOverride||item.desc||''}" data-movimiento-fecha="${item.fecha}" style="cursor:pointer;" data-action="tarjetas:verMovimiento"`.toString();
+      return html`data-movimiento-id="${item.id}" data-movimiento-tipo="${item._tipo==='pago'?'abono':'compra'}" data-movimiento-monto="${Math.abs(item.monto)}" data-cuenta-key="tc" data-movimiento-origen="${origenLbl}" ${raw(otras)} data-movimiento-saldo-antes="${sd.antes}" data-movimiento-saldo-despues="${sd.despues}" data-movimiento-saldo-label="Deuda ${tc.nombre}" data-movimiento-desc="${descOverride||item.desc||''}" data-movimiento-fecha="${item.fecha}" data-action="tarjetas:verMovimiento"`.toString();
     };
-    contenido+=itemsLinea.slice(0,80).map(item=>{
+    const _nota=txt=>txt?html`<span class="tc-mv-nota">${txt}</span>`:'';
+    filas=itemsLinea.slice(0,80).map(item=>{
       if(item._tipo==='saldo_inicial'){
-        return filaMovimiento({
-          clase: 'tc-saldo-ini',
+        return _tcFila({
           attrs: _tcAttrs(item,'Tarjeta de crédito',null,'Saldo inicial'),
+          fecha: item.fecha,
           nombre: 'Saldo inicial',
-          sub: item.fecha,
+          sub: html`<span class="tc-tag">Deuda antes de usar la app</span>`,
           monto: fmt(item.monto),
-          montoClase: 'tc-amount-text2',
-          meta: html`<span class="badge tc-badge-ini">Deuda antes de usar la app</span>`
+          montoClase: 'tc-amount-text2'
         });
       }
       if(item._tipo==='compra'){
         const c=item;
         const esFavor=c._esFavor||c._desdePlataComprometida;
         const esCargoEspecial=!!c._esCargoEspecial;
-        const favorBadge=esFavor
-          ? `<span class="tc-favor-badge"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>favor</span>`
-          : '';
         const _origenC=esCargoEspecial?'Cargo especial del banco':(c._desdePlataComprometida?'Plata comprometida':'Tarjeta de crédito');
         const badgeLabel=esCargoEspecial?('Cargo especial · '+(TC_MOTIVOS_CARGO[c._motivoCargo]||'Otro')):(esFavor?'Favor cubierto':(c.cat||'Sin cat.'));
-        const badgeClase=esCargoEspecial?'tc-badge-amber':(esFavor?'tc-badge-azul':'tc-badge-rojo');
-        return filaMovimiento({
-          clase: 'tc-item ' + (esCargoEspecial?'tc-item-b-amber':(esFavor?'tc-item-b-azul':'')),
+        const badgeClase=esCargoEspecial?'tc-tag-amber':(esFavor?'tc-tag-azul':'');
+        return _tcFila({
           attrs: _tcAttrs(c,_origenC,null),
+          fecha: c.fecha,
           nombre: c.desc,
-          nombreExtra: raw(favorBadge),
-          sub: c.fecha,
+          sub: _nota(c.nota),
+          det: html`<span class="tc-tag ${badgeClase}">${badgeLabel}</span>`,
           monto: fmt(c.monto),
           montoClase: esCargoEspecial?'tc-c-amber':(esFavor?'tc-c-blue':'tc-c-red'),
-          acciones: botonEliminarFila('tarjetas:eliminarCompra', [tc.id, c.id]),
-          meta: html`<span class="badge badge-xs ${badgeClase}">${badgeLabel}</span>${c.nota?html`<span class="tc-cupo-txt">${c.nota}</span>`:''}`
+          acciones: botonEliminarFila('tarjetas:eliminarCompra', [tc.id, c.id])
         });
       }
       if(item._tipo==='tcmov'){
         const m=item;
         const esEncargo=m.tipo==='cargo_encargo';
         const esDeuda=m.tipo==='cargo_deuda';
-        const claseBorde=esEncargo?'tc-item-b-amber':(esDeuda?'tc-item-b-rojo':'tc-item-b-morado');
         const claseMonto=esEncargo?'tc-c-amber':(esDeuda?'tc-c-red':'tc-c-purple');
-        const claseBadge=esEncargo?'tc-badge-amber':(esDeuda?'tc-badge-rojo':'tc-badge-morado');
+        const claseTag=esEncargo?'tc-tag-amber':(esDeuda?'tc-tag-rojo':'tc-tag-morado');
         const labelBadge=esEncargo?'Encargo':(esDeuda?'Pago de deuda':'Préstamo');
         const iconoBadge=esEncargo
           ? `<i class="fa-solid fa-box tc-favor-ico"></i>`
@@ -1018,40 +1049,48 @@ export function abrirDetalleTCSheet(tcId){
         const _origenM=esEncargo?'Encargos':(esDeuda
           ?('Préstamos · Yo debo · '+Personas.nombre((Deudas.porId('contra',m.miDeudaId)||{}).personaId))
           :('Préstamos · '+Personas.nombre((Deudas.porId('favor',m.deudorId)||{}).personaId)));
-        return filaMovimiento({
-          clase: 'tc-item ' + claseBorde,
+        return _tcFila({
           attrs: _tcAttrs(m,_origenM,null),
+          fecha: m.fecha,
           nombre: m.desc,
-          sub: m.fecha,
+          sub: _nota(m.nota),
+          det: html`<span class="tc-tag ${claseTag}">${raw(iconoBadge)}${labelBadge}</span>`,
           monto: fmt(m.monto),
-          montoClase: claseMonto,
-          meta: html`<span class="badge badge-xs ${claseBadge}">${raw(iconoBadge)}${labelBadge}</span>${m.nota?html`<span class="tc-cupo-txt">${m.nota}</span>`:''}`
+          montoClase: claseMonto
         });
       }
       const p=item;
-      const descPago=p.nota?p.nota:'Abono a la deuda de '+(tc.nombre||'tu tarjeta')+' — no corresponde a una compra específica';
       const otrasPago=p.fuente?[{fuente:p.fuente,monto:-p.monto}]:null;
-      return filaMovimiento({
-        clase: 'tc-item-ok',
+      return _tcFila({
         attrs: _tcAttrs(p,'Tarjeta de crédito',otrasPago,'Abono a tu deuda'),
+        fecha: p.fecha,
         nombre: 'Abono a tu deuda',
-        sub: p.fecha,
+        sub: html`<span class="tc-tag tc-tag-verde"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>Reduce deuda</span>${_nota(p.nota)}`,
+        det: html`<span class="badge ${fuenteBadgeClass(p.fuente)} badge-xs">Desde ${fuenteLabel(p.fuente)}</span>`,
         monto: `−${fmt(p.monto)}`,
         montoClase: 'c-green',
-        acciones: botonEliminarFila('tarjetas:eliminarPago', [tc.id, p.id]),
-        meta: html`<span class="badge bg-green badge-xs"><i class="fa-solid fa-arrow-down tc-favor-ico"></i>Reduce deuda</span><span class="badge ${fuenteBadgeClass(p.fuente)} badge-xs">Desde ${fuenteLabel(p.fuente)}</span><span class="tc-cupo-txt">${descPago}</span>`
+        acciones: botonEliminarFila('tarjetas:eliminarPago', [tc.id, p.id])
       });
     }).join('');
   }
+  contenido+=`<div class="tc-movs">
+    <div class="tc-mov-tit">Movimientos <span class="tc-mov-n">(${itemsLinea.length})</span></div>
+    ${itemsLinea.length?'<div class="tc-mv tc-mv-cab"><span>Fecha</span><span>Descripción</span><span>Detalle</span><span class="tc-mv-cab-monto">Monto</span><span></span></div>':''}
+    ${filas}
+  </div>`;
 
-  if(enPanel){
-    document.getElementById('tc-detalle-titulo').textContent='Compras y pagos · '+tc.nombre;
-    document.getElementById('tc-detalle-content').innerHTML=contenido;
-    _tcMarcarActiva();
-    return;
+  document.getElementById('tc-detalle-titulo').textContent='Compras y pagos · '+tc.nombre;
+  document.getElementById('tc-detalle-nombre').textContent=tc.nombre;
+  document.getElementById('tc-detalle-content').innerHTML=contenido;
+  // Celular: el detalle es una pantalla propia; al abrirlo se empieza desde arriba (al repintar con el detalle ya abierto, no se salta).
+  if(!_consultaPcTC||!_consultaPcTC.matches){
+    if(pantalla.dataset.detalleAbierto!=='si'){
+      pantalla.dataset.detalleAbierto='si';
+      const scroll=document.getElementById('scrollArea');
+      if(scroll)scroll.scrollTop=0;
+    }
   }
-  document.getElementById('detalle-tc-content').innerHTML=contenido;
-  openSheet('detalle-tc');
+  _tcMarcarActiva();
 }
 
 export async function eliminarCompraTC(tcId,compraId){
@@ -1116,6 +1155,7 @@ Events.registerAll('tarjetas', {
   cargoEspecial:    abrirCargoEspecialTC,
   pagar:            abrirPagarTC,
   verDetalle:       abrirDetalleTCSheet,
+  cerrarDetalle:    _tcCerrarDetalle,
   pagoTotal:        ptcSetMonto,
   eliminarCompra:   eliminarCompraTC,
   eliminarPago:     eliminarPagoTC,

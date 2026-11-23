@@ -4968,6 +4968,7 @@
     <div class="overlay" id="sheet-pagar-tc" data-sheet-id="pagar-tc">
       <div class="sheet">
         <div class="sheet-handle"></div>
+        <button type="button" class="sheet-x" data-close-sheet="pagar-tc" aria-label="Cerrar"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12" /></svg></button>
         <div class="sheet-title" id="pagar-tc-title">Pagar tarjeta</div>
 
         <div class="ix-div-362">
@@ -4999,10 +5000,12 @@
             (opcional)</label><input type="text" id="ptc_nota" maxlength="60"
             placeholder="Ej: pago total, abono..."></div>
         <div class="ix-ptc-preview" id="ptc-preview"></div>
-        <button type="button" class="btn btn-primary"
-          id="btn-confirmar-pagar-tc">Confirmar pago</button>
-        <button type="button" class="btn btn-ghost"
-          data-close-sheet="pagar-tc">Cancelar</button>
+        <div class="sheet-acciones">
+          <button type="button" class="btn btn-primary"
+            id="btn-confirmar-pagar-tc">Confirmar pago</button>
+          <button type="button" class="btn btn-ghost"
+            data-close-sheet="pagar-tc">Cancelar</button>
+        </div>
       </div>
     </div>
 

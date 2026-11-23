@@ -470,6 +470,7 @@ export async function borrarTodo(){
   const ok=await confirmarEliminar({titulo:'Borrar todos los datos',verbo:'Borrar',etiqueta:'Borrar todo',objeto:'TODOS tus datos',detalle:'Perderás toda tu información financiera, incluidos los respaldos automáticos.'});
   if(!ok)return;
   if(!await pedirPinAntesDe('Para borrar todos los datos'))return;
+  window._borrandoTodo = true; // el listener de firebase-sync no debe tratar el eco de este borrado como «lo borró otro dispositivo»
   const _overlay = document.getElementById('fb-loading-screen');
   if(_overlay) _overlay.style.display = 'flex';
   // Borrar en Firebase: payload "{}" a propósito — la carga lo lee como "vacío", lo verifica

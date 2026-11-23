@@ -634,6 +634,9 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
           // (ninguno vio al otro). No es el eco de mi guardado: se trata como actualización de otro y se conserva copia de lo local.
           const mia = window._ultimaEscrituraPropia;
           const mismaRevOtroEscritor = hayRev && !!mia && remoteData.rev === mia.rev && remoteTs !== mia.ts;
+          // «Borrar todos los datos» en otro dispositivo escribe un documento vacío ({}). Aquí NO se ignora ni se fusiona: si no, esta
+          // pestaña conserva sus datos viejos y el siguiente guardado los vuelve a subir (se «resucitan» los datos borrados).
+          if((esNueva || mismaRevOtroEscritor) && !window._borrandoTodo && _payloadEsVacio(remoteData.payload)) { _adoptarBorradoRemoto(remoteTs); return; }
           if(esNueva || mismaRevOtroEscritor) {
             window._ultimaEscrituraPropia = null;
             _remotoAplicadoTs = Math.max(_remotoAplicadoTs, remoteTs);
@@ -755,6 +758,27 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
       console.warn('[Sync] _applyCloudData: snap.exists()=' + snap.exists() + ' — sin datos en nube.');
       return 'nodoc';
     }
+  }
+
+  function _payloadEsVacio(plano) {
+    try { const o = JSON.parse(plano); return !!o && typeof o === 'object' && !Array.isArray(o) && Object.keys(o).length === 0; } catch(_) { return false; }
+  }
+
+  // Otro dispositivo borró todo: se bloquea el guardado de inmediato (lo que hay aquí ya no es la verdad), se borran también los
+  // respaldos de ESTE equipo (el que borró limpió los suyos y los de la nube) y se recarga, que es lo que hace el dispositivo que borró.
+  // No se guarda copia de lo local: se pidió borrar TODO. Los snapshots repetidos del mismo borrado no lo repiten.
+  let _adoptandoBorrado = false;
+  function _adoptarBorradoRemoto(ts) {
+    if(_adoptandoBorrado) return;
+    _adoptandoBorrado = true;
+    window._dataLoaded = false;
+    clearTimeout(window._syncConfirmTimer);
+    window._lastSavedAt = ts;
+    try { localStorage.setItem('mf_lastSavedAt', String(ts)); } catch(_) {}
+    if(window.toast) window.toast('Se borraron todos los datos desde otro dispositivo. Recargando…', 'warn', 4000);
+    const espera = ms => new Promise(r => setTimeout(r, ms));
+    const limpieza = Promise.resolve().then(() => window._firebaseRespaldos && window._firebaseRespaldos.borrarTodos()).catch(() => {});
+    Promise.all([espera(1200), Promise.race([limpieza, espera(3000)])]).then(() => location.reload());
   }
 
   // FIX — la nube se pisaba con el estado por defecto tras

@@ -35,6 +35,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 
 
+## Varias pestañas: «Actualizar» y «Borrar todos los datos»
+
+- **«Actualizar» en la segunda pestaña no hacía nada:** la primera ya había activado la versión nueva, y esa versión ya no atiende el mensaje de activación. Ahora, si el worker ya no está «en espera», el botón recarga directamente; y si otra pestaña activó la versión, esta muestra el aviso (sin recargar sola, por si se está escribiendo). `js/core/sw-registro.js`, pruebas en `tests/sw-registro.test.js`.
+- **Los datos borrados volvían:** al borrar todo en una pestaña, la otra (con datos) ignoraba la nube vacía y, al agregar algo, volvía a subir todo. Ahora, si llega un documento vacío (`{}`) más nuevo y no lo escribió este mismo dispositivo, la pestaña bloquea el guardado, avisa «Se borraron todos los datos desde otro dispositivo» y recarga, igual que la que borró. No guarda copia local: se pidió borrar todo, y también limpia los respaldos de ese equipo (los de la nube ya los borró quien borró). Cubre además la carrera en que el borrado y un guardado de esta pestaña caen en la misma revisión, y varias entregas del mismo borrado recargan una sola vez. Límite conocido: un dispositivo que estuvo sin red con cambios sin enviar puede reponerlos al reconectar (la cola de escritura del SDK no se puede cancelar desde la app). `js/core/firebase-sync.js` (`_adoptarBorradoRemoto`) y `configuracion.js` (`_borrandoTodo`); dos pruebas en `tests/sesion-y-despliegue.test.js`.
+
+## Aviso de Node en el chequeo de notificaciones
+
+- Se añadió `js/package.json` con `{ "type": "module" }`: todo lo de `js/` es módulo ES, y así Node deja de avisar `MODULE_TYPELESS_PACKAGE_JSON` (y de releer `umbrales.js` y los demás) en el Action de notificaciones.
+
 ## Reglas de Firestore probadas y más cortas
 
 - `firestore.rules` se probó en la Zona de pruebas de reglas de la consola (8 casos: lectura propia, de otro usuario, sin sesión y de ruta ajena; escritura válida, con campo de más, con payload vacío y de tokens push) y todas dieron lo esperado. Se recortaron los comentarios a los que evitan errores; la lógica no cambió.

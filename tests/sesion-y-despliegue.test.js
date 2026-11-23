@@ -489,6 +489,60 @@ describe('firebase-sync', () => {
     assert.equal(b.app.S.cuentas[0].saldo, 500, 'B cargó la versión de la nube');
   });
 
+  test('dos pestañas — si otra borra TODO ({}), esta bloquea el guardado y recarga en vez de resucitar los datos', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    const recargas = [], avisos = [];
+    e.app.location = { reload: () => recargas.push(1) };
+    e.app.toast = m => avisos.push(m); e.app.window = e.app.window || e.app; e.app.window.toast = e.app.toast; e.app.window.dispatchEvent = () => {};
+    await cargar(e); await esperar(30);
+    assert.equal(e.app._dataLoaded, true);
+    entregar(e, { payload: '{}', updatedAt: Date.now(), rev: 4 });
+    await hasta(() => e.app._dataLoaded === false);
+    assert.ok(avisos.some(m => /borraron todos los datos/i.test(m)));
+    e.app.S.cuentas[0].saldo = 123; // lo que la persona hiciera ahora en esta pestaña vieja…
+    const r = await guardar(e.app);
+    assert.equal(r.ok, false, '…no puede subirse y resucitar lo borrado');
+    assert.equal(e.escritos.length, 0);
+    await hasta(() => recargas.length === 1, 3000);
+    assert.equal(recargas.length, 1);
+  });
+  test('dos pestañas — el borrado también limpia los respaldos de este equipo, y varias entregas del mismo borrado recargan una sola vez', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    const recargas = []; let limpiezas = 0;
+    e.app.location = { reload: () => recargas.push(1) };
+    e.app.window = e.app.window || e.app; e.app.window.toast = () => {}; e.app.window.dispatchEvent = () => {};
+    await cargar(e); await esperar(30);
+    e.app._firebaseRespaldos = { borrarTodos: async () => { limpiezas++; } };
+    const borrado = { payload: '{}', updatedAt: Date.now(), rev: 4 };
+    entregar(e, borrado); entregar(e, borrado); entregar(e, borrado);
+    await hasta(() => recargas.length >= 1, 4000); await esperar(300);
+    assert.equal(recargas.length, 1);
+    assert.equal(limpiezas, 1);
+  });
+  test('dos pestañas — el borrado llega justo cuando esta pestaña escribía esa misma revisión: también gana el borrado', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    const recargas = [];
+    e.app.location = { reload: () => recargas.push(1) };
+    e.app.window = e.app.window || e.app; e.app.window.toast = () => {}; e.app.window.dispatchEvent = () => {};
+    await cargar(e); await esperar(30);
+    e.app.S.cuentas[0].saldo = 55; await guardar(e.app);            // esta pestaña escribe la revisión 4…
+    const mia = e.almacen.doc.rev;
+    entregar(e, { payload: '{}', updatedAt: Date.now() + 7, rev: mia }); // …y el borrado de otra también es la 4, con otra hora
+    await hasta(() => e.app._dataLoaded === false);
+    assert.equal(e.app._dataLoaded, false);
+    await hasta(() => recargas.length === 1, 4000);
+  });
+  test('dos pestañas — el eco del propio borrado (_borrandoTodo) no se toma como borrado de otro', async () => {
+    const e = entornoRev(nubeDoc(1, 3));
+    e.app.location = { reload: () => { throw new Error('no debe recargar por el eco'); } };
+    e.app.window = e.app.window || e.app; e.app.window.toast = () => {}; e.app.window.dispatchEvent = () => {};
+    await cargar(e); await esperar(30);
+    e.app._borrandoTodo = true;
+    entregar(e, { payload: '{}', updatedAt: Date.now(), rev: 4 });
+    await esperar(1500);
+    assert.equal(e.app._dataLoaded, true);
+  });
+
   test('dos pestañas — si las dos escriben la MISMA revisión sin verse, cada una lo detecta y conserva copia de lo suyo', async () => {
     const { a, b, nube } = dosPestanas(false); // sin lectura del servidor: la escritura a ciegas sigue siendo posible (de verdad sin red)
     const avisosA = [], avisosB = [];

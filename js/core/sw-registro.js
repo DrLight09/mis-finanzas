@@ -37,8 +37,11 @@ if ('serviceWorker' in navigator) {
     .catch(err => console.info('[SW] No disponible:', err.message));
 
   // El controlador cambia (a) en la primera instalación — no hay nada que recargar — o (b) cuando la persona aceptó actualizar.
+  // Si lo activó otra pestaña (aquí no se tocó «Actualizar»), esta sigue con el código viejo: se avisa, y el botón recarga.
   navigator.serviceWorker.addEventListener('controllerchange', () => {
-    if (_teniaControlador && _actualizando) location.reload();
+    if (!_teniaControlador) return;
+    if (_actualizando) location.reload();
+    else mostrarAvisoNuevaVersion(null);
   });
 
   window.__swActualizar = function (worker) {
@@ -61,7 +64,8 @@ export function mostrarAvisoNuevaVersion(worker) {
   actualizar.className = 'sw-aviso-btn';
   actualizar.textContent = 'Actualizar';
   actualizar.addEventListener('click', () => {
-    if (worker && window.__swActualizar) window.__swActualizar(worker);
+    // Solo un worker «en espera» (installed) atiende SKIP_WAITING; si otra pestaña ya lo activó, basta con recargar.
+    if (worker && worker.state === 'installed' && window.__swActualizar) window.__swActualizar(worker);
     else location.reload();
   });
   const luego = document.createElement('button');

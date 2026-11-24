@@ -33,9 +33,11 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
-## 2026-11-23 — Cierre de períodos, etapa 2: el motor (sin botón todavía)
+## 2026-11-23 — Cierre de períodos, etapa 2: motor, candado y pantalla de Configuración
 
-**Probado solo con Node y datos sintéticos; sin ver en navegador real.** Código dormido: ninguna pantalla lo ejecuta.
+**Probado solo con Node y datos sintéticos; sin ver en navegador real.** El botón aparece únicamente cuando hay algo cerrable (con datos reales, desde ~oct 2028).
+- **Relectura y dispositivo atrasado:** tras cerrar se fuerza el guardado y se relee el documento del servidor (`Cierre.verificarGuardado`, `window._firebaseReleerEstado`); si no coincide, aviso con la salida (el respaldo). Tras fusionar, `Cierre.registrosDeMesesCerrados` detecta registros de meses ya cerrados que trajo un dispositivo atrasado y deja `S.cierre.revisar` (alerta en Configuración con «Ya los revisé»). `scripts/generar-datos-prueba.js` genera un respaldo sintético importable para probar el cierre a mano.
+- **Pantalla:** tarjeta «Cierre de períodos» en Configuración (`renderCierrePeriodos`) y flujo `cerrarPeriodosAntiguos`: resumen → aviso de Wrapped sin guardar (hay que aceptarlo) → descarga del respaldo y confirmación → PIN → `Cierre.ejecutarCompleto` (espera las sondas bajo demanda) → mensaje claro por cada motivo de rechazo. Gastos muestra el resumen de un mes cerrado (`.mes-cerrado-aviso`); el CSV trae su resumen por categoría.
 - `Cierre.ejecutar(corte, opciones)` (`js/core/cierre.js`): clona, calcula la huella con todas las sondas base, analiza el corte, aplica el cierre al clon y vuelve a calcular la huella; cualquier diferencia, error de sonda, sonda faltante o `componente-grande` lo detiene **sin escribir**. Exige la política de 24 meses salvo `forzar`. Repetirlo da `ya-cerrado`.
 - Aplica: resumen congelado `S.resumenMeses` (los 10 campos de la sonda más `extraTotal`, `recurrenteTotal`, `ingresosExtra`, `ingresosSinExtra`, `gastosSinExtra`: los 10 no bastaban para que `Periodo` diera lo mismo); poda por componentes archivables; libro plegado en una entrada `cierre` por cuenta (en centavos enteros; saldo derivado idéntico); `S.cierre = {corte, ejecutadoEn}`.
 - `Periodo` lee el resumen de un mes cerrado para totales y agregados (las listas devuelven lo que quede); sin resumen se comporta igual que antes (prueba).

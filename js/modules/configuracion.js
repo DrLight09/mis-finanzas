@@ -34,7 +34,7 @@ import { exponerGlobales, exponerVariables } from '../core/puente.js';
 import { html, raw } from '../core/html-tag.js';
 import { Events } from '../core/events.js';
 import { CATS_FIJO_DEFAULT, CATS_VAR_DEFAULT, S, getCatsFijo, getCatsVar, hoy } from '../core/estado.js';
-import { _fechaSafe, confirmarEliminar, dialogo, toast } from '../core/dialogos.js';
+import { _fechaSafe, avisarNoSePuede, confirmarEliminar, dialogo, toast } from '../core/dialogos.js';
 import { botonEliminarFila, pedirPinAntesDe } from '../core/utilidades-ui.js';
 import { SCHEMA_BASE, SCHEMA_VERSION_ACTUAL, aplicarMigraciones, save } from '../core/persistencia.js';
 import { Loader } from '../core/lazy-loader.js';
@@ -47,7 +47,7 @@ import { applyModulos } from '../core/modulos-activos.js';
 import { showScreen } from '../core/navegacion.js';
 import { Ui } from '../core/ui.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, renderErroresRecientes, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
+exponerGlobales({ renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, renderErroresRecientes, renderCierrePeriodos, cerrarPeriodosAntiguos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
 // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
@@ -77,6 +77,7 @@ export function renderCatsConfig(){
   elVar.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsVar(),CATS_VAR_DEFAULT,'var')}</div>`;
   elFijo.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsFijo(),CATS_FIJO_DEFAULT,'fijo')}</div>`;
   renderTamanoDatos();
+  renderCierrePeriodos();
   renderErroresRecientes();
   renderRespaldos();
   renderMisWrapped();
@@ -145,6 +146,74 @@ export function renderErroresRecientes(){
     catch(_){toast('No se pudo copiar; mantén pulsado el texto o expórtalo desde la consola','err');}
   });
   el.querySelector('[data-errores="limpiar"]').addEventListener('click',()=>{limpiarErrores();renderErroresRecientes();});
+}
+
+// ---- CIERRE DE PERÍODOS (docs/cierre-de-periodos.md §5.8) ----
+const MOTIVOS_CIERRE = {
+  'corte-reciente': 'El mes elegido es más reciente de lo permitido: se cierran meses con más de 24 meses de antigüedad.',
+  'huella-incompleta': 'No se pudieron cargar todas las verificaciones. No se tocó nada; inténtalo de nuevo en un momento.',
+  'componente-grande': 'Hay un grupo de movimientos enlazados demasiado grande para cerrarlo con seguridad. No se tocó nada.',
+  'wrapped-sin-guardar': 'El Wrapped de algún año no está guardado y no se aceptó cerrar sin él. No se tocó nada.',
+  'huella-distinta': 'La verificación encontró una diferencia entre tus datos de antes y de después del cierre, así que no se guardó nada: tus datos siguen exactamente como estaban.',
+  'error-al-transformar': 'Algo falló al preparar el cierre. No se tocó nada.',
+};
+const _nombreMes = mes => _fechaSafe(mes + '-15', 12).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
+let _cierreSeq = 0;
+export async function renderCierrePeriodos(){
+  const el=document.getElementById('cfg-cierre');
+  if(!el)return;
+  const mi=++_cierreSeq;
+  try{
+    if(typeof Loader!=='undefined'&&typeof Loader.ensure==='function')await Loader.ensure('cierre');
+    if(typeof Cierre==='undefined'||typeof Cierre.ejecutarCompleto!=='function')return;
+    const corte=Cierre.corteMasReciente();
+    const informe=await Cierre.analizarCompleto(corte,S);
+    if(mi!==_cierreSeq)return;
+    const cerradoHasta=S.cierre&&S.cierre.corte;
+    const n=informe.archivables.registros;
+    const revisar=(S.cierre&&S.cierre.revisar)||0;
+    if(!n&&!cerradoHasta){el.innerHTML='';return;}
+    el.innerHTML=html`<div class="cfg-tamano-titulo">Cierre de períodos</div>
+      ${revisar?html`<div class="cfg-tamano-alerta">Llegaron ${revisar} registro(s) de meses ya cerrados desde otro dispositivo. Su monto no está en el resumen de esos meses: no se reflejan en los totales y conviene corregirlos. <button type="button" class="btn" data-cierre="revisado">Ya los revisé</button></div>`:''}
+      ${cerradoHasta?html`<div class="cfg-tamano-nota">Meses cerrados hasta ${_nombreMes(cerradoHasta)}: de cada uno queda su resumen y sus movimientos ya no se editan.</div>`:''}
+      ${n?html`<div class="cfg-tamano-nota">Hay ${n} registros de meses anteriores a ${_nombreMes(corte)} que se pueden archivar para aligerar tus datos. Tus saldos no cambian.</div>
+        <div class="backup-row"><button type="button" class="btn" data-cierre="cerrar">Cerrar períodos antiguos</button></div>`:''}`;
+    const boton=el.querySelector('[data-cierre="cerrar"]');
+    if(boton)boton.addEventListener('click',cerrarPeriodosAntiguos);
+    const revisado=el.querySelector('[data-cierre="revisado"]');
+    if(revisado)revisado.addEventListener('click',()=>{delete S.cierre.revisar;save();renderCierrePeriodos();});
+  }catch(e){
+    if(mi===_cierreSeq)el.innerHTML='';
+    console.warn('[config] No se pudo preparar el cierre de períodos:',e);
+  }
+}
+
+// Flujo completo y deliberadamente lento: resumen → (Wrapped) → respaldo descargado → PIN → ejecutar (que verifica con la huella antes de escribir).
+export async function cerrarPeriodosAntiguos(){
+  if(typeof Cierre==='undefined'||typeof Cierre.ejecutarCompleto!=='function')return;
+  const corte=Cierre.corteMasReciente();
+  let informe;
+  try{informe=await Cierre.analizarCompleto(corte,S);}
+  catch(e){console.warn('[cierre] análisis:',e);toast('No se pudo preparar el cierre','err');return;}
+  const n=informe.archivables.registros;
+  if(!n){toast('No hay nada que cerrar todavía','info');return;}
+  const mes=_nombreMes(corte);
+  if(!await dialogo('Cerrar períodos antiguos','Se cerrarán los meses hasta '+mes+': '+n+' registros viejos se archivan y de cada mes queda su resumen (ingresos, gastos, balance y gasto por categoría). Tus saldos no cambian. Después no podrás editar ni eliminar movimientos de esos meses.','Continuar',false))return;
+  const sinWrapped=informe.advertencias.includes('wrapped-sin-guardar');
+  if(sinWrapped&&!await dialogo('Wrapped sin guardar','El Wrapped de '+informe.wrapped.sinGuardar.join(', ')+' no está guardado y, al cerrar esos meses, ya no se podrá generar. ¿Cerrar de todos modos?','Cerrar igual',true))return;
+  exportarJSON(); // el respaldo es lo único que permite recuperar el detalle de esos meses
+  if(!await dialogo('Respaldo descargado','Se descargó una copia de tus datos antes del cierre. Guárdala en un lugar seguro: es lo único que permite recuperar el detalle de esos meses. ¿Ya la guardaste?','Ya la guardé',false))return;
+  if(!await pedirPinAntesDe('Cerrar períodos antiguos'))return;
+  let r;
+  try{r=await Cierre.ejecutarCompleto(corte,{aceptarWrappedSinGuardar:sinWrapped});}
+  catch(e){console.warn('[cierre] ejecución:',e);await avisarNoSePuede('No se pudo cerrar','Algo falló y no se tocó nada. Tus datos siguen como estaban.');return;}
+  if(!r.ok){await avisarNoSePuede('No se pudo cerrar',MOTIVOS_CIERRE[r.motivo]||'No se tocó nada.');return;}
+  refresh();renderTamanoDatos();renderCierrePeriodos();
+  // Paso 5: se escribe ya en la nube y se RELEE lo guardado para comprobar que quedó igual a lo que se verificó.
+  const guardado=typeof window._firebaseFlushSave==='function'?await window._firebaseFlushSave():{ok:false,reason:'no-disponible'};
+  const releido=guardado&&guardado.ok?await Cierre.verificarGuardado(window._firebaseReleerEstado):null;
+  if(releido&&releido.ok){toast('Períodos cerrados hasta '+mes+' y guardados en la nube','ok');return;}
+  await avisarNoSePuede('Cierre hecho, pero revisa el guardado','Los períodos se cerraron en este dispositivo, pero no se pudo confirmar que quedaran guardados en la nube'+(guardado&&!guardado.ok?' (motivo: '+(guardado.reason||'desconocido')+')':'')+'. No cierres la app todavía: espera a que aparezca «Guardado en la nube». Si algo se ve mal, el respaldo que descargaste antes del cierre lo recupera todo.');
 }
 
 export async function renderTamanoDatos(){
@@ -465,6 +534,11 @@ export function exportarCSV(){
   });
   Periodo.pagosFijos().sort((a,b)=>b.mes.localeCompare(a.mes)).forEach(p=>{
     rows.push([p.mes+'-01',p.nombre||'Gasto fijo',p.cat||'',-p.monto,'Fijo','']);
+  });
+  // Meses cerrados (docs/cierre-de-periodos.md): su detalle se archivó, así que el CSV trae su RESUMEN por categoría. Ese resumen ya incluye las
+  // filas del mismo mes que se hayan conservado arriba: se avisa en la descripción para no sumarlas dos veces.
+  Object.keys(S.resumenMeses||{}).sort().reverse().forEach(mes=>{
+    Object.entries(S.resumenMeses[mes].porCategoria||{}).forEach(([cat,v])=>rows.push([mes+'-01','Resumen del mes cerrado (ya incluye las filas de ese mes)',cat,-v,'Resumen','']));
   });
   const csv = rows.map(r=>r.map(v=>'"'+String(v).replace(/"/g,'""')+'"').join(',')).join('\n');
   const blob = new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});

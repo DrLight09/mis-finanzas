@@ -220,6 +220,20 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   }
   window._firebaseEscribirDoc = _escribirNube;
 
+  // Relee del SERVIDOR lo que hay guardado y lo devuelve ya decodificado, sin aplicarlo a S. Sirve para comprobar que un cambio grande (el
+  // cierre de períodos) quedó escrito tal cual (Cierre.verificarGuardado).
+  window._firebaseReleerEstado = async function() {
+    try {
+      const { db, doc, getDocFromServer } = window._firebase || {};
+      if(!window._firebaseUser || typeof getDocFromServer !== 'function') return { ok: false, reason: 'no-disponible' };
+      const snap = await getDocFromServer(doc(db, 'usuarios', window._firebaseUser.uid, 'data', 'finanzas'));
+      if(!snap.exists()) return { ok: false, reason: 'sin-documento' };
+      const datos = snap.data();
+      if(!datos || typeof datos.payload !== 'string') return { ok: false, reason: 'sin-payload' };
+      return { ok: true, rev: _revDe(datos), estado: JSON.parse(await decodificarPayload(datos.payload)) };
+    } catch(e) { return { ok: false, reason: 'error', mensaje: String((e && e.message) || e) }; }
+  };
+
   // Otro dispositivo guardó antes que este: se conserva una copia de lo local que se descarta y se carga la versión de la nube.
   // Guarda una copia de lo local que se va a descartar. Devuelve dónde quedó: 'equipo' (almacén de respaldos del dispositivo: IndexedDB,
   // comprimido, sin el tope de ~5 MB de localStorage; se ve y se restaura en Configuración → Respaldos), 'ls' (localStorage comprimido:
@@ -263,6 +277,24 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     if (window.Libro) window.Libro.hidratar(window.S); // el saldo no viaja en el estado: sale del libro ya fusionado
     window._lastSavedPayload = JSON.stringify(JSON.parse(remotoTxt));
   }
+  // Tras fusionar: si el estado resultante tiene un cierre de períodos y algún lado no lo tenía, ese lado pudo crear registros de meses ya
+  // cerrados (su monto no está en el resumen). Se cuentan y se deja la marca `S.cierre.revisar` para que Configuración lo avise.
+  let _baseParaRevisarCierre = null; // base/local/remoto de la última fusión del listener, para _revisarMesesCerrados
+  async function _revisarMesesCerrados(baseTxt, localTxt, remotoTxt) {
+    try {
+      const corte = window.S && window.S.cierre && window.S.cierre.corte;
+      if (!corte || !baseTxt || !localTxt || !remotoTxt) return;
+      if (typeof Loader !== 'undefined' && typeof Loader.ensure === 'function') await Loader.ensure('cierre');
+      if (!window.Cierre || typeof window.Cierre.registrosDeMesesCerrados !== 'function') return;
+      const base = JSON.parse(baseTxt);
+      const sinCierre = [JSON.parse(localTxt), JSON.parse(remotoTxt)].filter(l => !(l.cierre && l.cierre.corte >= corte));
+      const n = sinCierre.reduce((a, l) => a + window.Cierre.registrosDeMesesCerrados(base, l, corte).length, 0);
+      if (!n) return;
+      window.S.cierre = Object.assign({}, window.S.cierre, { revisar: ((window.S.cierre.revisar) || 0) + n });
+      if (typeof toast === 'function') toast('Llegaron ' + n + ' registro(s) de meses ya cerrados desde otro dispositivo. Revísalos en Configuración, en Cierre de períodos.', 'info', 10000);
+      if (typeof save === 'function') save();
+    } catch (e) { console.warn('[Sync] No se pudo revisar los meses cerrados:', e); }
+  }
   async function _resolverConflicto(snapCrudo, payloadLocal) {
     const baseTxt = window._lastSavedPayload; // el último estado de la nube que este dispositivo vio, ANTES de aplicar la nueva
     const donde = await _guardarCopiaConflicto(payloadLocal); // la copia se guarda siempre, aunque después se fusione
@@ -270,7 +302,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     const remotoTxt = snap.exists() ? (snap.data() || {}).payload : null;
     const fusion = _fusionarConNube(baseTxt, payloadLocal, remotoTxt);
     _applyCloudData(snap);
-    if (fusion) _aplicarFusion(fusion, remotoTxt);
+    if (fusion) { _aplicarFusion(fusion, remotoTxt); _revisarMesesCerrados(baseTxt, payloadLocal, remotoTxt); }
     const tsNube = (snap.data() || {}).updatedAt || 0;
     window._lastSavedAt = tsNube;
     try { localStorage.setItem('mf_lastSavedAt', String(tsNube)); } catch (_) {}
@@ -654,6 +686,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
               if(hayLocal) {
                 const baseTxt = mismaRevOtroEscritor ? window._baseAntesDeEscribir : window._lastSavedPayload;
                 fusion = _fusionarConNube(baseTxt, planoLocal, snap.data().payload);
+                if(fusion) _baseParaRevisarCierre = { baseTxt, planoLocal, remotoTxt: snap.data().payload };
                 _guardarCopiaConflicto(planoLocal).then(donde => {
                   if(fusion) return; // se fusionó: la copia es solo un seguro y no hace falta avisar de ella
                   if(window.toast) window.toast(_textoAvisoConflicto('Otro dispositivo guardó mientras editabas aquí: se cargó su versión.', donde), 'warn', donde === 'equipo' ? 10000 : 14000);
@@ -661,7 +694,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
               }
             } catch(_){}
             _applyCloudData(snap);
-            if(fusion) { try { _aplicarFusion(fusion, snap.data().payload); } catch(e) { console.warn('[Sync] No se pudo aplicar la fusión:', e); fusion = null; } }
+            if(fusion) { try { _aplicarFusion(fusion, snap.data().payload); if(_baseParaRevisarCierre) _revisarMesesCerrados(_baseParaRevisarCierre.baseTxt, _baseParaRevisarCierre.planoLocal, _baseParaRevisarCierre.remotoTxt); } catch(e) { console.warn('[Sync] No se pudo aplicar la fusión:', e); fusion = null; } _baseParaRevisarCierre = null; }
             // Materializar intereses antes de renderizar para minimizar diferencia con Nu
             (window.S&&window.S.cajitas||[]).forEach(c=>{ if(typeof materializarIntereses==='function') materializarIntereses(c); });
             // Re-renderizar la UI sin reinicializar event listeners

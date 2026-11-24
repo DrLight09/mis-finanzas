@@ -72,7 +72,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/actividad-reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 31 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
-| `js/modules/configuracion.js` | lazy — grupo `config` | 21 | 0 |
+| `js/modules/configuracion.js` | lazy — grupo `config` | 24 | 1 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 88 | 3 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 85 | 0 |
 | `js/modules/gastos.js` | módulo ES — importado por `js/core/eventos-base.js`, `js/main.js` | 25 | 0 |
@@ -510,7 +510,9 @@ Carga: lazy — grupo `analisis`
 
 Carga: lazy — grupo `config`
 
-**Funciones:** `_reemplazarDatos`, `_respBotonVer`, `_respDescripcion`, `_respFechaLarga`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderErroresRecientes`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verRespaldos`
+**Funciones:** `_nombreMes`, `_reemplazarDatos`, `_respBotonVer`, `_respDescripcion`, `_respFechaLarga`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `cerrarPeriodosAntiguos`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderCierrePeriodos`, `renderErroresRecientes`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verRespaldos`
+
+**Globales:** `MOTIVOS_CIERRE`
 
 ### `js/modules/cuentas.js`
 
@@ -881,6 +883,7 @@ Ninguno.
 | `_msVal` | `js/modules/mesada.js` |
 | `_nivelRunway` | `js/modules/inicio.js` |
 | `_nombreAhorro` | `js/modules/nu.js` |
+| `_nombreMes` | `js/modules/configuracion.js` |
 | `_normTxt` | `js/modules/mesada.js` |
 | `_nuActualizarBotonesTransferir` | `js/modules/nu.js` |
 | `_nuMovimientoActualizarPreview` | `js/modules/nu.js` |
@@ -1305,6 +1308,7 @@ Ninguno.
 | `CATS_VAR_DEFAULT` | `js/core/estado.js` |
 | `cdtVencido` | `js/core/nu-calc.js` |
 | `cerrarPartSheet` | `js/modules/encargos.js` |
+| `cerrarPeriodosAntiguos` | `js/modules/configuracion.js` |
 | `Cierre` | `js/core/cierre.js` |
 | `claseEfectivaMovimiento` | `js/core/persistencia.js` |
 | `CLASES` | `js/core/respaldos.js` |
@@ -1584,6 +1588,7 @@ Ninguno.
 | `mostrarAlertaFuente` | `js/core/formularios-ui.js` |
 | `mostrarAvisoNuevaVersion` | `js/core/sw-registro.js` |
 | `mostrarSi` | `js/core/utilidades-ui.js` |
+| `MOTIVOS_CIERRE` | `js/modules/configuracion.js` |
 | `moverCuenta` | `js/modules/cuentas.js` |
 | `moverCuentaUI` | `js/modules/cuentas.js` |
 | `MOVIMIENTOS_PAGINA` | `js/modules/cuentas.js` |
@@ -1646,6 +1651,7 @@ Ninguno.
 | `renderBienes` | `js/modules/analisis.js` |
 | `renderCajitas` | `js/modules/nu.js` |
 | `renderCatsConfig` | `js/modules/configuracion.js` |
+| `renderCierrePeriodos` | `js/modules/configuracion.js` |
 | `renderConciliacion` | `js/modules/analisis.js` |
 | `renderCuentasInicio` | `js/core/refresh.js` |
 | `renderDetalleAhorro` | `js/modules/nu.js` |

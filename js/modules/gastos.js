@@ -365,13 +365,15 @@ export function renderGastosVar() {
   // sume lo mismo que el resto. Va después de los gastos del mismo día (índice -1).
   Periodo.retirosManuales().forEach(r => conIdx.push({ g: Object.assign({}, r, { _secundario: true, _origenSeccion: 'Cuentas · Restar dinero' }), i: -1 }));
   if (mesFilter !== 'todos') conIdx = conIdx.filter(x => mesKey(x.g.fecha) === mesFilter);
+  // Mes cerrado (docs/cierre-de-periodos.md): su detalle se archivó y solo queda el resumen; aquí se muestra ese resumen y lo que no se haya podado.
+  const cerrado = mesFilter !== 'todos' ? Periodo.resumenDelMes(mesFilter) : null;
   conIdx.sort((a, b) => (b.g.fecha || '').localeCompare(a.g.fecha || '') || b.i - a.i);
   const gastos = conIdx.map(x => x.g);
   // Totales (misma regla de siempre, ver regla 3.3): solo cuenta como gasto
   // real lo que salió de una cuenta y no está contado en otro lado.
   const gastosVarPuros = gastos.filter(g => !_esGastoVarNoReal(g));
   const gastosTC = gastos.filter(g => g._esCompraTC);
-  const total = gastosVarPuros.filter(g => !g._esCompraTC).reduce((a, g) => a + (g.monto || 0), 0);
+  const total = cerrado ? cerrado.gastoVariableTotal : gastosVarPuros.filter(g => !g._esCompraTC).reduce((a, g) => a + (g.monto || 0), 0);
   const totalTC = gastosTC.reduce((a, g) => a + (g.monto || 0), 0);
   document.getElementById('totalGVFilt').textContent = fmt(total);
   // Mostrar total TC si hay
@@ -388,8 +390,11 @@ export function renderGastosVar() {
   // Sin gastos no hay nada que totalizar. Y el botón de pie se esconde solo cuando el estado
   // vacío ya trae el suyo («Registrar primer gasto», solo con el filtro «todos»); en un mes
   // sin gastos el estado vacío no tiene botón, así que el de pie sigue siendo la acción.
-  mostrarSi(document.getElementById('gvTotalCard'), visibles.length > 0);
+  mostrarSi(document.getElementById('gvTotalCard'), visibles.length > 0 || !!cerrado);
   mostrarSi(document.querySelector('.btn-open-gasto-var'), visibles.length > 0 || mesFilter !== 'todos');
+  const topCategorias = cerrado ? Object.entries(cerrado.porCategoria || {}).sort((a, b) => b[1] - a[1]).slice(0, 5) : [];
+  const avisoCerrado = cerrado ? html`<div class="mes-cerrado-aviso" role="note"><strong>Mes cerrado.</strong> El detalle de sus movimientos se archivó; esto es el resumen que quedó guardado: ingresos ${fmt(cerrado.ingresos)} · gastos ${fmt(cerrado.gastos)} · balance ${fmt(cerrado.balance)}.${topCategorias.length ? html`<br>Más gasto: ${topCategorias.map(([cat, v]) => cat + ' ' + fmt(v)).join(' · ')}.` : ''}</div>` : '';
+  if (!visibles.length && cerrado) { el.innerHTML = avisoCerrado; return; }
   if (!visibles.length) {
     el.innerHTML = emptyState(
       '<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--text3)" stroke-width="1.8" stroke-linecap="round"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 3 14 9 20 9"/><line x1="8" y1="13" x2="16" y2="13"/></svg>',
@@ -477,7 +482,7 @@ export function renderGastosVar() {
       <span class="gasto-dia-total">${partes.join(' ')}</span>
     </div>${dia.items.map(itemHtml)}`;
   });
-  el.innerHTML = html`${contenido}`;
+  el.innerHTML = html`${avisoCerrado}${contenido}`;
 }
 
 export function addGastoVar() {

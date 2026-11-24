@@ -256,6 +256,32 @@ export const Cierre = (() => {
     return analizar(corte, estado, Object.assign({}, opciones, { huella }));
   }
 
+  // En la app real algunas sondas de la huella se cargan bajo demanda: el flujo de pantalla debe esperar a que estén TODAS antes de ejecutar
+  // (si no, ejecutar() se negaría por `huella-incompleta`). Las pruebas con datos sintéticos ya las tienen cargadas y usan ejecutar().
+  async function ejecutarCompleto(corte, opciones) {
+    await Huella.completa((opciones && opciones.estado) || S);
+    return ejecutar(corte, opciones);
+  }
+
+  // Paso 5 de docs/cierre-de-periodos.md §5.9: tras guardar, se RELEE lo escrito y se compara con lo que tiene la app en memoria. `releer()` →
+  // {ok, estado} (en la app: window._firebaseReleerEstado). Si no coincide, el respaldo descargado antes del cierre es la salida.
+  async function verificarGuardado(releer, estadoActual) {
+    let lectura;
+    try { lectura = await releer(); } catch (e) { return { ok: false, motivo: 'no-se-pudo-releer', detalle: String((e && e.message) || e) }; }
+    if (!lectura || !lectura.ok) return { ok: false, motivo: 'no-se-pudo-releer', detalle: lectura && lectura.reason };
+    if (JSON.stringify(lectura.estado) !== JSON.stringify(estadoActual || S)) return { ok: false, motivo: 'distinto-al-releer' };
+    return { ok: true, rev: lectura.rev };
+  }
+
+  // Riesgo de docs/diseno-saldo-derivado-y-cierre.md §4.2: un dispositivo atrasado (sin el cierre) puede haber creado, desde el último estado común
+  // (`base`), registros con fecha de un mes ya cerrado. La fusión los conserva y su monto NO está en el resumen de ese mes. Esta función los
+  // encuentra: registros de `lado` que no estaban en `base` con mes ≤ corte (sin contar las patas del libro, que los acompañan).
+  function registrosDeMesesCerrados(base, lado, corte) {
+    const ids = estado => new Map(conEstadoAislado(estado, () => _grafo(estado)).filter(r => PODABLES.includes(r.fuente) && r.fuente !== 'libro').map(r => [r.id, r]));
+    const previos = ids(base);
+    return Array.from(ids(lado).values()).filter(r => !previos.has(r.id) && _fechaOk(r.fecha) && r.fecha.slice(0, 7) <= corte).map(r => ({ id: r.id, fuente: r.fuente, fecha: r.fecha }));
+  }
+
   /* ---- 4. TAMAÑO ---- */
   const _comprimirReal = async txt => { const m = await import('./payload-codec.js'); return (await m.codificarPayload(txt)).length; };
 
@@ -374,7 +400,7 @@ export const Cierre = (() => {
     return quitados;
   }
 
-  // ejecutar(corte, {estado?, hoy?, mesActual?, simular?, guardar?, forzar?}) → { ok, ... }. SIEMPRE verifica con la huella antes de tocar nada:
+  // ejecutar(corte, {estado?, hoy?, mesActual?, simular?, guardar?, forzar?, aceptarWrappedSinGuardar?}) → { ok, ... }. SIEMPRE verifica con la huella antes de tocar nada:
   //   1. clona el estado y calcula la huella con TODAS las sondas base (si falta una o falla, se detiene);
   //   2. analiza el corte sobre el clon y, si hay una unidad atómica sospechosa (`componente-grande`), se detiene;
   //   3. aplica el cierre al clon (aislado) y vuelve a calcular la huella: cualquier diferencia aborta SIN escribir;
@@ -392,6 +418,8 @@ export const Cierre = (() => {
     if (Object.keys(antes.errores).length) return fallo('huella-incompleta', { errores: antes.errores });
     const informe = analizar(corte, copia, { huella: antes, registros: true, mesActual: op.mesActual });
     if (informe.advertencias.includes('componente-grande')) return fallo('componente-grande', { componentes: informe.componentes });
+    // Un año con Wrapped posible y sin guardar perdería para siempre la posibilidad de generarlo (necesita el detalle): hay que aceptarlo expresamente.
+    if (informe.advertencias.includes('wrapped-sin-guardar') && !op.aceptarWrappedSinGuardar) return fallo('wrapped-sin-guardar', { anios: informe.wrapped.sinGuardar });
     if (!informe.archivables.registros) return { ok: true, sinCambios: true, motivo: 'nada-que-cerrar', corte, informe };
     let quitados;
     try { conEstadoAislado(copia, () => { quitados = _transformar(copia, informe, corte); }); }
@@ -411,7 +439,7 @@ export const Cierre = (() => {
     return resultado;
   }
 
-  return { VERSION, POLITICA, LIMITES, DISPARADOR_BYTES, CLASIFICACION, PODABLES, ejecutar, registrarFuente, fuentes: () => Array.from(_fuentes.values()), corteMasReciente, analizar, analizarCompleto, tamano, disparador };
+  return { VERSION, POLITICA, LIMITES, DISPARADOR_BYTES, CLASIFICACION, PODABLES, ejecutar, ejecutarCompleto, verificarGuardado, registrosDeMesesCerrados, registrarFuente, fuentes: () => Array.from(_fuentes.values()), corteMasReciente, analizar, analizarCompleto, tamano, disparador };
 })();
 if (typeof window !== 'undefined') window.Cierre = Cierre; // un `const` de nivel superior no cuelga de window: los tests lo leen como ctx.Cierre
 

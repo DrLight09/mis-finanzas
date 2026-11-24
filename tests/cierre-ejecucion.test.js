@@ -8,7 +8,7 @@ const { cargarApp, generar, HOY } = require('./support/datos-sinteticos');
 
 const MES_ACTUAL = HOY.slice(0, 7);
 const CORTE = '2024-09'; // Cierre.corteMasReciente(HOY): el mes completo con ≥ 24 meses de antigüedad
-const opciones = (extra) => Object.assign({ hoy: HOY, mesActual: MES_ACTUAL, guardar: () => {} }, extra || {});
+const opciones = (extra) => Object.assign({ hoy: HOY, mesActual: MES_ACTUAL, guardar: () => {}, aceptarWrappedSinGuardar: true }, extra || {});
 const clon = x => JSON.parse(JSON.stringify(x));
 const saldos = ctx => JSON.stringify([ctx.S.cuentas.filter(c => c.tipo !== 'ahorro').map(c => [c.id, c.saldo]), ctx.S.cajitas.map(c => [c.id, c.saldo])]);
 function preparar(dias = 1000) { const ctx = cargarApp(); generar(ctx, { dias }); return ctx; }
@@ -168,4 +168,59 @@ test('el historial de la cuenta muestra «Saldo anterior» (Libro.entradasVisibl
   assert.equal(ctx.Cierre.ejecutar(CORTE, opciones()).ok, true);
   const visibles = ctx.Libro.entradasVisibles(ctx.S).filter(l => l.tipo === 'cierre');
   assert.ok(visibles.length > 0);
+});
+
+test('un año cuyo Wrapped no está guardado exige aceptarlo expresamente: sin eso no se cierra nada', () => {
+  const ctx = preparar();
+  const antes = JSON.stringify(ctx.S);
+  const r = ctx.Cierre.ejecutar(CORTE, opciones({ aceptarWrappedSinGuardar: false }));
+  if (r.ok) { assert.equal(r.sinCambios, true); return; } // si los datos de prueba no tienen un año con Wrapped posible, no aplica
+  assert.equal(r.motivo, 'wrapped-sin-guardar');
+  assert.ok(Array.isArray(r.anios) && r.anios.length > 0);
+  assert.equal(JSON.stringify(ctx.S), antes);
+});
+
+test('Periodo.resumenDelMes: hay resumen de un mes cerrado con sus categorías y no de uno abierto', () => {
+  const ctx = preparar();
+  assert.equal(ctx.Periodo.resumenDelMes('2024-05', ctx.S), null, 'antes de cerrar no hay resumen');
+  assert.equal(ctx.Cierre.ejecutar(CORTE, opciones()).ok, true);
+  const r = ctx.Periodo.resumenDelMes('2024-05', ctx.S);
+  assert.ok(r && typeof r.gastos === 'number' && typeof r.porCategoria === 'object');
+  assert.equal(ctx.Periodo.resumenDelMes('2025-05', ctx.S), null, 'un mes posterior al corte sigue con su detalle');
+  const suma = Object.values(r.porCategoria).reduce((a, v) => a + v, 0);
+  assert.ok(Math.abs(suma - r.gastos) < 0.5, 'las categorías suman el gasto del mes (' + suma + ' vs ' + r.gastos + ')');
+});
+
+test('ejecutarCompleto (la entrada que usa la pantalla) espera las sondas y cierra igual que ejecutar', async () => {
+  const ctx = preparar();
+  const saldosAntes = saldos(ctx);
+  const r = await ctx.Cierre.ejecutarCompleto(CORTE, opciones());
+  assert.equal(r.ok, true, JSON.stringify(r.diferencias || r));
+  assert.equal(saldos(ctx), saldosAntes);
+  assert.equal(ctx.S.cierre.corte, CORTE);
+});
+
+test('verificarGuardado: lo releído igual a lo de memoria pasa; distinto o no releíble se avisa', async () => {
+  const ctx = preparar();
+  assert.equal(ctx.Cierre.ejecutar(CORTE, opciones()).ok, true);
+  const igual = await ctx.Cierre.verificarGuardado(async () => ({ ok: true, rev: 7, estado: clon(ctx.S) }), ctx.S);
+  assert.deepEqual([igual.ok, igual.rev], [true, 7]);
+  const otro = clon(ctx.S); otro.libro.pop();
+  assert.equal((await ctx.Cierre.verificarGuardado(async () => ({ ok: true, estado: otro }), ctx.S)).motivo, 'distinto-al-releer');
+  assert.equal((await ctx.Cierre.verificarGuardado(async () => ({ ok: false, reason: 'sin-documento' }), ctx.S)).motivo, 'no-se-pudo-releer');
+  assert.equal((await ctx.Cierre.verificarGuardado(async () => { throw new Error('sin red'); }, ctx.S)).motivo, 'no-se-pudo-releer');
+});
+
+test('registrosDeMesesCerrados: un dispositivo atrasado que creó un gasto de un mes ya cerrado se detecta; lo ya existente no', () => {
+  const ctx = preparar();
+  const base = clon(ctx.S);
+  const atrasado = clon(ctx.S);
+  atrasado.gastosVar.push({ id: 'g-atrasado', desc: 'Olvidado', monto: 5000, fecha: '2024-05-10', cat: 'Comida', fuente: 'cuenta:nequi', clase: 'gasto' });
+  atrasado.gastosVar.push({ id: 'g-reciente', desc: 'Normal', monto: 100, fecha: '2026-09-10', cat: 'Comida', fuente: 'cuenta:nequi', clase: 'gasto' });
+  const huerfanos = ctx.Cierre.registrosDeMesesCerrados(base, atrasado, CORTE);
+  assert.deepEqual(huerfanos.map(h => h.id), ['g-atrasado'], 'solo el de un mes ≤ corte que no estaba en la base');
+  assert.deepEqual(ctx.Cierre.registrosDeMesesCerrados(base, clon(base), CORTE), [], 'sin cambios no hay nada que revisar');
+  // el lado que SÍ cerró (sus registros viejos ya existían en la base y las entradas `cierre` del libro no cuentan)
+  assert.equal(ctx.Cierre.ejecutar(CORTE, opciones()).ok, true);
+  assert.deepEqual(ctx.Cierre.registrosDeMesesCerrados(base, clon(ctx.S), CORTE), []);
 });

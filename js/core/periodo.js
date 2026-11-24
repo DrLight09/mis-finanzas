@@ -582,7 +582,7 @@ export const Periodo = (() => {
     return { dia: d, diasMes, esperadoPct, usadoPct, adelantado: limite > 0 && d >= 5 && usadoPct < 100 && usadoPct - esperadoPct >= 15 };
   }
 
-  return { gastoPromedioPorCategoria, ritmoPresupuesto, resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
+  return { resumenDelMes: _resumenMes, gastoPromedioPorCategoria, ritmoPresupuesto, resumenFlujo, cuotaMesada, mesDesplazado, mesAnterior, ultimosMeses, mesadaDelMes, ingresosFijosDelMes, ingresosFijosEntradas, spotifyEntradas, spotifyDelMes, ingresosDelMes, ingresosPorMes, ingresoPromedioPrevio, mesadaEntradas,
            pagosFijos, retirosManuales, rendimientosDelMes, gastosFijosDelMes, gastosFijosProgramados, gastosFijosSinDia, conciliar, diaDelMes, saldoProyectado, esCompraGrande, compraGrandeEstado, umbralCompraGrande, COMPRA_GRANDE_AUTO, comprasGrandesEntre, gastosVarRealesDelMes, gastosDelMes, gastosPorMes, gastoPromedioPrevio, gastoPorCategoria, balanceDelMes, balanceEvaluable, rachaDeficit, VENTANA_REFERENCIA_MESES };
 })();
 

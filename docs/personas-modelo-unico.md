@@ -26,7 +26,7 @@ Alternativas descartadas: persona con sub-objetos por módulo (acopla todos los 
 ## 3. Hallazgos de la revisión del 2026-11-18 (no estaban en el análisis original)
 
 - **Notificaciones:** `scripts/notificaciones/run.js` y `checks.js` no leen nombres de las personas desde los registros (la regla de encargos y la de Spotify usan `nombrePersona(S, id)` de `reglas.js`, pura sobre `S`, porque también corre en Node sin el núcleo). Falta una prueba de paridad con un respaldo del esquema final.
-- **Un solo documento de Firestore** (tope 1 MiB, avisa a 800 KB; `firebase-sync.js:246`). Quitar copias ayuda poco; partir el estado por colección es otro proyecto, fuera de este plan.
+- **Un solo documento de Firestore** (las reglas rechazan desde 950.000 caracteres; el cliente avisa a 760 KB y bloquea a 940 KB, `firebase-sync.js`). Quitar copias ayuda poco; partir el estado por colección es otro proyecto, fuera de este plan.
 
 ## 4. Modelo objetivo (lo que falta)
 

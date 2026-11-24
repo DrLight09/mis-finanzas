@@ -60,7 +60,10 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
   let _savePromise = null;
   let _saveResolve = null;
   let _forzarProximo = false; // lo pide _firebaseSaveToCloud({ forzar:true }): importar un backup pisa la nube a propósito
-  const PAYLOAD_AVISO_BYTES = 800000, PAYLOAD_LIMITE_BYTES = 1000000; // el documento de Firestore admite 1 MiB
+  // Las reglas de Firestore rechazan un payload de 950.000 caracteres o más (firestore.rules) y el documento admite 1 MiB: el límite del
+  // cliente queda POR DEBAJO del de las reglas, así el aviso «no cabe» sale antes de que la escritura falle sin explicación.
+  // Una prueba (tests/cierre-wrapped.test.js) vigila que sigan por debajo de lo que dicen las reglas.
+  const PAYLOAD_AVISO_BYTES = 760000, PAYLOAD_LIMITE_BYTES = 940000;
   window._payloadLimites = { aviso: PAYLOAD_AVISO_BYTES, limite: PAYLOAD_LIMITE_BYTES }; // los lee js/core/cierre.js (medidor de tamaño)
   // Cada guardado toma su número al empezar. Comprimir es asíncrono: si mientras tanto arrancó un guardado más nuevo, este
   // ya quedó viejo y no debe escribir después (pisaría datos más recientes en la nube).
@@ -341,14 +344,14 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
         const bytes = payloadNube.length; // base64 o JSON plano: todo ASCII salvo tildes del plano (≈ 1 byte por carácter)
         window._payloadBytes = bytes;
         if(bytes > PAYLOAD_LIMITE_BYTES) {
-          setSyncStatus('error', 'Datos demasiado grandes para la nube (' + Math.round(bytes/1024) + ' KB de 1.000 KB)');
-          if(typeof toast === 'function') toast('Tus datos ya no caben en la nube (' + Math.round(bytes/1024) + ' KB de 1.000 KB) y no se están guardando. Exporta un backup y avisa para archivar meses antiguos.', 'err', 10000);
+          setSyncStatus('error', 'Datos demasiado grandes para la nube (' + Math.round(bytes/1000) + ' KB de ' + Math.round(PAYLOAD_LIMITE_BYTES/1000) + ' KB)');
+          if(typeof toast === 'function') toast('Tus datos ya no caben en la nube (' + Math.round(bytes/1000) + ' KB de ' + Math.round(PAYLOAD_LIMITE_BYTES/1000) + ' KB) y no se están guardando. Exporta un backup y avisa para archivar meses antiguos.', 'err', 10000);
           resolve({ok:false, reason:'too-large', bytes});
           return;
         }
         if(bytes > PAYLOAD_AVISO_BYTES && !window._avisoTamanoMostrado) {
           window._avisoTamanoMostrado = true;
-          if(typeof toast === 'function') toast('Tus datos ocupan ' + Math.round(bytes/1024) + ' KB de 1.000 KB en la nube. Conviene archivar meses antiguos pronto.', 'warn', 8000);
+          if(typeof toast === 'function') toast('Tus datos ocupan ' + Math.round(bytes/1000) + ' KB de ' + Math.round(PAYLOAD_LIMITE_BYTES/1000) + ' KB en la nube. Conviene archivar meses antiguos pronto.', 'warn', 8000);
         }
         const savedAt = Date.now();
         // FIX (2026-08-17, hallazgo #2 — el toast falso pasaba INCLUSO sin

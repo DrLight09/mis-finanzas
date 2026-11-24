@@ -656,7 +656,7 @@ describe('cierre — medidor en Configuración (renderTamanoDatos)', () => {
     const h = String(el.innerHTML);
     assert.match(h, /Tamaño de tus datos/);
     assert.match(h, /<progress class="cfg-tamano-barra"/);
-    assert.match(h, /KB de 1\.000 KB/);
+    assert.match(h, /KB de 940 KB/);
     assert.match(h, /llegarías al aviso de tamaño hacia/);
     assert.doesNotMatch(h, /style=/);
     assert.doesNotMatch(h, /conviene empezar a archivar/, 'con 2,7 años a este ritmo aún no toca archivar');

@@ -47,7 +47,7 @@ import { applyModulos } from '../core/modulos-activos.js';
 import { showScreen } from '../core/navegacion.js';
 import { Ui } from '../core/ui.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
+exponerGlobales({ renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, renderErroresRecientes, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
 // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
@@ -77,6 +77,7 @@ export function renderCatsConfig(){
   elVar.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsVar(),CATS_VAR_DEFAULT,'var')}</div>`;
   elFijo.innerHTML=html`<div class="cat-chips">${renderCatChips(getCatsFijo(),CATS_FIJO_DEFAULT,'fijo')}</div>`;
   renderTamanoDatos();
+  renderErroresRecientes();
   renderRespaldos();
   renderMisWrapped();
 }
@@ -124,6 +125,28 @@ export async function eliminarWrapped(anio){
 // cerrar períodos antiguos es la etapa siguiente (docs/cierre-de-periodos.md) y solo se plantea al pasar del disparador. El aviso no ofrece
 // ningún botón porque esa función aún no existe: solo dice que ya toca revisarla.
 export let _tamanoSeq=0;
+// Errores no atrapados de este dispositivo (js/core/registro-errores.js): qué falló y un botón para copiarlo y reportarlo.
+export function renderErroresRecientes(){
+  const el=document.getElementById('cfg-errores');
+  if(!el)return;
+  const lista=typeof listarErrores==='function'?listarErrores():[];
+  if(!lista.length){
+    el.innerHTML=html`<div class="cfg-tamano-titulo">Errores recientes</div><div class="cfg-tamano-nota">Ninguno registrado en este dispositivo.</div>`;
+    return;
+  }
+  el.innerHTML=html`<div class="cfg-tamano-titulo">Errores recientes (${lista.length})</div>
+    ${lista.slice(-3).reverse().map(e=>html`<div class="cfg-tamano-nota">${(e.ultima||e.primera||'').slice(0,16).replace('T',' ')} · ${e.mensaje}${e.veces>1?' (×'+e.veces+')':''}</div>`)}
+    <div class="backup-row">
+      <button type="button" class="btn" data-errores="copiar">Copiar para reportar</button>
+      <button type="button" class="btn" data-errores="limpiar">Limpiar</button>
+    </div>`;
+  el.querySelector('[data-errores="copiar"]').addEventListener('click',async()=>{
+    try{await navigator.clipboard.writeText(erroresATexto(lista));toast('Errores copiados','ok');}
+    catch(_){toast('No se pudo copiar; mantén pulsado el texto o expórtalo desde la consola','err');}
+  });
+  el.querySelector('[data-errores="limpiar"]').addEventListener('click',()=>{limpiarErrores();renderErroresRecientes();});
+}
+
 export async function renderTamanoDatos(){
   const el=document.getElementById('cfg-tamano');
   if(!el)return;

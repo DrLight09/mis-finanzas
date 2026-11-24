@@ -335,7 +335,7 @@ export function renderAnalisis(){
             </div>
             <div class="an-der">
               <div class="an-comp-val ${diffClase(diffGastos,true)}">${diffGastos===0?'=':arrow(diffGastos)} ${fmt(Math.abs(diffGastos))}</div>
-              <div class="an-comp-sub an-t-muted">${totalPrev>0?Math.abs(Math.round(diffGastos/totalPrev*100))+'%':''} ${diffGastos<0?'menos':'más'} por ahora</div>
+              <div class="an-comp-sub an-t-muted">${diffGastos===0?'Igual que el mes pasado':gastosTotalMes===0?'Aún sin gastos este mes':Math.abs(Math.round(diffGastos/totalPrev*100))+'% '+(diffGastos<0?'menos':'más')+' por ahora'}</div>
             </div>
           </div>
           <div class="an-sep"></div>
@@ -582,12 +582,12 @@ export function renderConciliacion(){
   if(!c){ el.innerHTML=''; return; }
   const nombreMes=(['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'][Number(c.mes.slice(5,7))-1])||c.mes;
   const delta=c.delta-c.base;                       // sin saldos iniciales ni ajustes: lo que de verdad cambió
-  const verbo=delta<0?'bajó':'subió';
+  const cambio=Math.abs(delta)<0.5?'se mantuvo igual':(delta<0?'bajó ':'subió ')+fmt(Math.abs(delta));
   const sin=c.sinExplicar;
   const hayRaro=Math.abs(sin)>=UMBRALES.conciliacion.minimo;
   el.innerHTML=html`<div class="card an-conc">
     <div class="an-conc-tit">¿Por qué cambió tu patrimonio?</div>
-    <div class="an-conc-txt">En ${nombreMes} tu patrimonio ${verbo} ${fmt(Math.abs(delta))}. ${
+    <div class="an-conc-txt">En ${nombreMes} tu patrimonio ${cambio}. ${
       c.explicado>=0?'Entró más de lo que salió':'Salió más de lo que entró'} (${fmt(Math.abs(c.explicado))}${c.rendimientos>0?', con '+fmt(c.rendimientos)+' de rendimientos':''}).</div>
     ${hayRaro?html`<div class="an-conc-raro">Quedan <b>${fmt(Math.abs(sin))}</b> sin explicar: revisa movimientos sin cuenta, préstamos y ajustes de ese mes.</div>`
       :html`<div class="an-conc-ok">Todo cuadra: ingresos y gastos explican el cambio.</div>`}

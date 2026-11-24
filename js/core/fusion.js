@@ -15,19 +15,23 @@
 //      quitado por alguien se quita.
 //   5. Choque real (los dos cambiaron el MISMO valor a cosas distintas): gana el local, el cambio que se está guardando ahora.
 //   6. Números que se acumulan (`ADITIVOS`: p. ej. el monto de una entrada de intereses del libro, que crece en el sitio): se suman
-//      los dos cambios sobre la base en vez de elegir uno.
+//      los dos cambios sobre la base en vez de elegir uno (y se redondea a centavos: base + Δlocal + Δremoto en coma flotante deja residuos).
+//   7. Fechas que solo avanzan (`MAXIMOS`: la fecha de esa misma entrada de intereses, que cada dispositivo adelanta al sumar): si los dos
+//      la cambiaron queda la mayor. Sin esto el resultado dependía de qué lado era «local» (no era conmutativa).
 //
 // Es una función pura (sin DOM, sin red, no modifica sus entradas): se prueba sola en tests/fusion.test.js.
 
 // Campos numéricos que dos dispositivos pueden aumentar a la vez: lista → campos. Fusión: base + (local − base) + (remoto − base).
 export const ADITIVOS = { libro: ['monto'] };
+// Campos de fecha ISO (YYYY-MM-DD, comparables como texto) que solo avanzan: lista → campos. Solo cuenta si los DOS lados la cambiaron.
+export const MAXIMOS = { libro: ['fecha'] };
 
 const esObjeto = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const igual = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
 const clon = x => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
 const conId = lista => lista.length > 0 && lista.every(x => esObjeto(x) && x.id != null);
 
-function fusionarListaConId(base, local, remoto, aditivos) {
+function fusionarListaConId(base, local, remoto, aditivos, maximos) {
   const pb = new Map(base.map(x => [x.id, x]));
   const pl = new Map(local.map(x => [x.id, x]));
   const pr = new Map(remoto.map(x => [x.id, x]));
@@ -37,7 +41,7 @@ function fusionarListaConId(base, local, remoto, aditivos) {
     if (visto.has(id)) return;
     visto.add(id);
     const b = pb.get(id), l = pl.get(id), r = pr.get(id);
-    if (l !== undefined && r !== undefined) { out.push(fusionarRegistro(b, l, r, aditivos)); return; }
+    if (l !== undefined && r !== undefined) { out.push(fusionarRegistro(b, l, r, aditivos, maximos)); return; }
     if (l === undefined && r === undefined) return;               // borrado en los dos
     const queda = l !== undefined ? l : r;                         // existe solo de un lado
     if (b === undefined) { out.push(clon(queda)); return; }       // alta: se conserva
@@ -50,13 +54,20 @@ function fusionarListaConId(base, local, remoto, aditivos) {
   return out;
 }
 
-function fusionarRegistro(b, l, r, aditivos) {
+function fusionarRegistro(b, l, r, aditivos, maximos) {
   if (b === undefined) return fusionarValor(undefined, l, r);     // el mismo id dado de alta en los dos lados con contenido distinto
   const res = fusionarValor(b, l, r);
   if (aditivos && esObjeto(res)) {
     for (const campo of aditivos) {
       if (typeof b[campo] === 'number' && typeof l[campo] === 'number' && typeof r[campo] === 'number') {
-        res[campo] = b[campo] + (l[campo] - b[campo]) + (r[campo] - b[campo]);
+        res[campo] = Math.round((b[campo] + (l[campo] - b[campo]) + (r[campo] - b[campo])) * 100) / 100;
+      }
+    }
+  }
+  if (maximos && esObjeto(res)) {
+    for (const campo of maximos) {
+      if (typeof l[campo] === 'string' && typeof r[campo] === 'string' && l[campo] !== b[campo] && r[campo] !== b[campo]) {
+        res[campo] = l[campo] > r[campo] ? l[campo] : r[campo];
       }
     }
   }
@@ -76,7 +87,7 @@ function fusionarConjunto(base, local, remoto) {
   return out;
 }
 
-function fusionarValor(b, l, r, aditivos) {
+function fusionarValor(b, l, r, aditivos, maximos) {
   if (igual(l, r)) return clon(l);
   if (igual(b, l)) return clon(r);   // solo cambió el remoto
   if (igual(b, r)) return clon(l);   // solo cambió el local
@@ -87,14 +98,14 @@ function fusionarValor(b, l, r, aditivos) {
     const out = {};
     const claves = new Set([...Object.keys(r), ...Object.keys(l), ...Object.keys(base)]);
     for (const c of claves) {
-      const v = fusionarValor(base[c], l[c], r[c], ADITIVOS_POR_RUTA(c, aditivos));
+      const v = fusionarValor(base[c], l[c], r[c], ADITIVOS_POR_RUTA(c, aditivos), MAXIMOS_POR_RUTA(c, aditivos));
       if (v !== undefined) out[c] = v;
     }
     return out;
   }
   if (Array.isArray(l) && Array.isArray(r)) {
     const base = Array.isArray(b) ? b : [];
-    if (conId(l.concat(r)) && (base.length === 0 || conId(base))) return fusionarListaConId(base, l, r, aditivos);
+    if (conId(l.concat(r)) && (base.length === 0 || conId(base))) return fusionarListaConId(base, l, r, aditivos, maximos);
     return fusionarConjunto(base, l, r);
   }
   return clon(l);                    // choque real: gana el local
@@ -103,6 +114,11 @@ function fusionarValor(b, l, r, aditivos) {
 // En el nivel de las claves de S, `libro` baja con la lista de campos aditivos; más abajo ya no se propaga.
 function ADITIVOS_POR_RUTA(clave, actual) {
   if (actual === undefined && Object.prototype.hasOwnProperty.call(ADITIVOS, clave)) return ADITIVOS[clave];
+  return undefined;
+}
+
+function MAXIMOS_POR_RUTA(clave, actual) {
+  if (actual === undefined && Object.prototype.hasOwnProperty.call(MAXIMOS, clave)) return MAXIMOS[clave];
   return undefined;
 }
 

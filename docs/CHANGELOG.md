@@ -33,6 +33,23 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-23 — Fusión: prueba de propiedades y dos bugs que encontró
+
+**Probado solo con Node; sin ver en navegador real.** `tests/fusion-propiedades.test.js`: 300 secuencias aleatorias (semilla fija) de dos dispositivos que parten de la misma base, con libro, listas con `id` y listas sin `id`. Exige: conmutativa, idempotente, base como un lado da el otro, saldo fusionado == base + Δ local + Δ remoto al centavo, sin ids duplicados y montos a centavos.
+- **Bug 1 (no conmutativa):** una entrada de rendimiento que los dos dispositivos aumentan en el mismo mes cambia su `fecha` en ambos; ganaba la del «local», así que el resultado dependía del orden. Nueva regla `MAXIMOS` en `js/core/fusion.js`: si los dos cambiaron esa fecha, queda la mayor (solo para `libro.fecha`).
+- **Bug 2 (residuos binarios):** la suma `base + Δlocal + Δremoto` de `ADITIVOS` dejaba montos como `0.30000000000000004`; ahora se redondea a centavos.
+
+---
+
+## 2026-11-23 — Arreglos rápidos de `pendientes.md` (tope de tamaño, errores no atrapados, textos de Análisis)
+
+**Probado solo con Node; sin ver en navegador real.**
+- **Tope de tamaño coherente con las reglas.** El cliente avisaba a 800.000 y bloqueaba a 1.000.000 caracteres, pero `firestore.rules` rechaza desde 950.000: entre 950.000 y 1.000.000 la escritura fallaba sin el mensaje «no caben». Ahora avisa a 760.000 y bloquea a 940.000 (`firebase-sync.js` y `Cierre.LIMITES`), y los mensajes usan la cifra real. Una prueba lee `firestore.rules` y exige que el límite del cliente quede por debajo.
+- **Registro de errores no atrapados** (`js/core/registro-errores.js`, importado en `main.js` tras `puente` y `fecha`): guarda en este dispositivo los últimos 30 (`error` y `unhandledrejection`, sin repetidos seguidos) y Configuración los muestra en «Errores recientes» con «Copiar para reportar» y «Limpiar». Nada sale a ningún servidor.
+- **Análisis:** «¿Por qué cambió tu patrimonio?» dice «se mantuvo igual» en vez de «subió $0»; la comparación de gastos dice «Aún sin gastos este mes» (antes «100% menos por ahora») e «Igual que el mes pasado» (antes «0% más»).
+
+---
+
 ## 2026-11-23 — Saldo derivado del libro (paso 1 de `docs/diseno-saldo-derivado-y-cierre.md`)
 
 El saldo de cuentas y cajitas **ya no se guarda**: es la suma de `S.libro`. **Probado solo con Node (vm); sin ver en navegador real.**

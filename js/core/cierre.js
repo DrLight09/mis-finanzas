@@ -38,7 +38,7 @@ export const Cierre = (() => {
   const POLITICA = { mesesMinimos: 24 };
   // Umbrales por defecto = los de firebase-sync.js (una prueba vigila que no se desalineen). Ese archivo es un módulo ES y carga DESPUÉS
   // de este script, así que sus valores reales (window._payloadLimites) se leen al usarlos, no al cargar.
-  const LIMITES = { aviso: 800000, limite: 1000000 };
+  const LIMITES = { aviso: 760000, limite: 940000 };
   const _limites = () => (typeof window !== 'undefined' && window._payloadLimites) || LIMITES;
   // Disparador para pasar a la etapa siguiente (archivo por año): payload comprimido sobre este valor.
   const DISPARADOR_BYTES = 500000, DISPARADOR_ANTIGUEDAD_DIAS = 730;

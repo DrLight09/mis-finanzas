@@ -46,7 +46,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/nu-calc.js` | módulo ES — importado por `js/core/busqueda-global.js`, `js/main.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/inicio.js`, `js/modules/nu.js`, `js/modules/prestado.js`, `js/modules/tarjetas-credito.js` | 28 | 0 |
 | `js/core/patrimonio.js` | módulo ES — importado por `js/core/huella.js`, `js/core/ingresos.js`, `js/core/movimientos.js`, `js/core/nu-calc.js`, `js/core/refresh.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 26 | 1 |
 | `js/core/payload-codec.js` | módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.js` | 4 | 1 |
-| `js/core/periodo.js` | módulo ES — importado por `js/core/calc-helpers.js`, `js/core/huella.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/wrapped.js` | 1 | 0 |
+| `js/core/periodo.js` | módulo ES — importado por `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/huella.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/wrapped.js` | 1 | 0 |
 | `js/core/persistencia.js` | módulo ES — importado por `js/core/bootstrap.js`, `js/core/cierre.js`, `js/core/eventos-base.js`, `js/core/huella.js`, `js/core/ingresos.js`, `js/core/movimientos.js`, `js/core/periodo.js`, `js/core/refresh.js`, `js/main.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 12 | 3 |
 | `js/core/personas-core.js` | módulo ES — importado por `js/core/busqueda-global.js`, `js/core/movimientos.js`, `js/core/persistencia.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 1 | 0 |
 | `js/core/personas-init.js` | módulo ES — importado por `js/main.js` | 1 | 0 |
@@ -334,7 +334,7 @@ Carga: módulo ES — importado por `js/core/cierre.js`, `js/core/firebase-sync.
 
 ### `js/core/periodo.js`
 
-Carga: módulo ES — importado por `js/core/calc-helpers.js`, `js/core/huella.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/wrapped.js`
+Carga: módulo ES — importado por `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/huella.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/wrapped.js`
 
 **Funciones:** `Periodo`
 

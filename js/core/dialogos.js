@@ -142,6 +142,10 @@ export function _fechaSafe(fechaStr, hora){ return Fecha.parsear(fechaStr, hora)
 export function nivelAntiguedadMovimiento(fecha, operacionesPosteriores, modulo){
   const cfg=S.config.proteccionAntiguedad;
   const modCfg=cfg[modulo]||{};
+  // Candado del cierre de períodos (docs/cierre-de-periodos.md §5.7): un mes ya cerrado tiene su resumen congelado, así que NINGÚN registro con
+  // fecha de ese mes o anterior se edita ni se elimina, sin importar `diasBloqueo` (que el usuario puede ampliar).
+  const corteCerrado=S.cierre&&S.cierre.corte;
+  if(corteCerrado&&typeof fecha==='string'&&fecha.slice(0,7)<=corteCerrado) return 'bloqueado';
   const dias=Fecha.diasEntre(fecha,hoy());
   const operaciones=operacionesPosteriores||0;
   if(dias>cfg.diasBloqueo || (modCfg.operacionesBloqueo!=null && operaciones>=modCfg.operacionesBloqueo)) return 'bloqueado';

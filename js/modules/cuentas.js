@@ -893,7 +893,7 @@ export function getMovimientosCuenta(tipo) {
   // Van como filas automáticas (_secundario: con candado, sin botón de eliminar). Ver Libro.entradasVisibles (js/core/cuentas-fuentes.js).
   Libro.entradasVisibles().forEach(l => {
     if (!coincide(l.cuenta)) return;
-    const etiqueta = l.tipo === 'rendimiento' ? 'Intereses' : l.tipo === 'cdt' ? 'CDT' : l.tipo === 'apertura' ? 'Saldo inicial' : 'Ajuste';
+    const etiqueta = l.tipo === 'rendimiento' ? 'Intereses' : l.tipo === 'cdt' ? 'CDT' : l.tipo === 'apertura' ? 'Saldo inicial' : l.tipo === 'cierre' ? 'Saldo anterior' : 'Ajuste';
     movimientos.push({
       tipo: l.tipo === 'apertura' ? 'apertura' : l.monto > 0 ? 'ingreso' : tipoSalidaManual,
       fecha: l.fecha, desc: l.desc || etiqueta, monto: l.monto, fuente: l.cuenta, _idx: _idx++, _movimientoId: l.id,

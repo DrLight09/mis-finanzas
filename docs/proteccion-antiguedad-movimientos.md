@@ -74,3 +74,7 @@ Ajustar un umbral (ej. bajar de 1 año a 6 meses) es un solo cambio, no uno por 
 - No se bloquea ni se advierte nada sobre movimientos que no muevan dinero (editar nombre, categoría, nota).
 - No aplica a los `cobro` de Spotify, ya que su alcance es individual y pequeño.
 - No reemplaza la protección ya existente de movimientos secundarios (el gasto/ingreso generado automáticamente sigue sin poder borrarse desde otra pantalla, solo desde el módulo dueño) — esta es una capa adicional sobre esa misma protección, no un reemplazo.
+
+## Candado del cierre de períodos (2026-11-23)
+
+`nivelAntiguedadMovimiento` (`js/core/dialogos.js`) devuelve `'bloqueado'` para cualquier fecha de un mes ≤ `S.cierre.corte`, sin importar `diasBloqueo` ni las operaciones posteriores: el resumen congelado de ese mes dejaría de coincidir con el detalle si se editara o eliminara algo. Sin `S.cierre` no cambia nada. Ver `docs/cierre-de-periodos.md` §5.7.

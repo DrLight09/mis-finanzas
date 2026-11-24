@@ -278,7 +278,7 @@ export function _validarEstructuraJSON(data){
   ['gastosFijos','ingresosFijos','movimientos','misDeudas','encargos','tarjetasCredito','personas','libro','bienes'].forEach(k=>{
     if(k in data&&!Array.isArray(data[k]))errores.push('El campo "'+k+'" debe ser un array.');
   });
-  ['pagosGastosFijos','mesadas','presupuestos','wrappedAnios'].forEach(k=>{
+  ['pagosGastosFijos','mesadas','presupuestos','wrappedAnios','resumenMeses','cierre'].forEach(k=>{
     if(k in data&&(data[k]===null||typeof data[k]!=='object'))errores.push('El campo "'+k+'" debe ser un objeto.');
   });
   // Un backup de una versión más nueva del modelo de datos que esta app no sabe leer: importarlo lo dejaría a medio

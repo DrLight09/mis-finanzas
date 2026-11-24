@@ -33,6 +33,17 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-23 — Cierre de períodos, etapa 2: el motor (sin botón todavía)
+
+**Probado solo con Node y datos sintéticos; sin ver en navegador real.** Código dormido: ninguna pantalla lo ejecuta.
+- `Cierre.ejecutar(corte, opciones)` (`js/core/cierre.js`): clona, calcula la huella con todas las sondas base, analiza el corte, aplica el cierre al clon y vuelve a calcular la huella; cualquier diferencia, error de sonda, sonda faltante o `componente-grande` lo detiene **sin escribir**. Exige la política de 24 meses salvo `forzar`. Repetirlo da `ya-cerrado`.
+- Aplica: resumen congelado `S.resumenMeses` (los 10 campos de la sonda más `extraTotal`, `recurrenteTotal`, `ingresosExtra`, `ingresosSinExtra`, `gastosSinExtra`: los 10 no bastaban para que `Periodo` diera lo mismo); poda por componentes archivables; libro plegado en una entrada `cierre` por cuenta (en centavos enteros; saldo derivado idéntico); `S.cierre = {corte, ejecutadoEn}`.
+- `Periodo` lee el resumen de un mes cerrado para totales y agregados (las listas devuelven lo que quede); sin resumen se comporta igual que antes (prueba).
+- Candado en `nivelAntiguedadMovimiento`; «Saldo anterior» en el historial de cuentas; `resumenMeses` y `cierre` en la clasificación y en la validación al importar.
+- `tests/cierre-ejecucion.test.js` (15): saldos, libro, huella y `Periodo` de todos los meses idénticos; lo abierto no se toca; entidad cerrada sí se poda; idempotente; cierres sucesivos; política; huella distinta, sonda faltante → nada escrito; respaldo anterior importable; operaciones posteriores; candado.
+
+---
+
 ## 2026-11-23 — Fusión: prueba de propiedades y dos bugs que encontró
 
 **Probado solo con Node; sin ver en navegador real.** `tests/fusion-propiedades.test.js`: 300 secuencias aleatorias (semilla fija) de dos dispositivos que parten de la misma base, con libro, listas con `id` y listas sin `id`. Exige: conmutativa, idempotente, base como un lado da el otro, saldo fusionado == base + Δ local + Δ remoto al centavo, sin ids duplicados y montos a centavos.

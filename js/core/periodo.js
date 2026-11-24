@@ -179,7 +179,15 @@ export const Periodo = (() => {
 
   const spotifyDelMes = (mes, estado) => spotifyEntradas(estado).reduce((a, e) => e.mes === mes ? a + e.monto : a, 0);
 
+  // Resumen congelado de un mes cerrado (S.resumenMeses, js/core/cierre.js): se calculó con el detalle COMPLETO antes de podarlo. Sin resumen
+  // todo se comporta exactamente como antes (regla de oro: el cierre es no-op hasta que existe un resumen). Las funciones que devuelven LISTAS
+  // de registros devuelven lo que quede; los TOTALES y agregados salen del resumen para el mes entero.
+  const _resumenMes = (mes, estado) => { const r = _estadoActual(estado).resumenMeses; return (r && typeof r === 'object' && r[mes]) || null; };
+  const _mesesResumidos = estado => { const r = _estadoActual(estado).resumenMeses; return r && typeof r === 'object' ? Object.keys(r) : []; };
+
   function ingresosDelMes(mes, estado) {
+    const resumido = _resumenMes(mes, estado);
+    if (resumido) return { mesada: resumido.mesada, fijos: resumido.fijos, spotify: resumido.spotify, entradas: resumido.entradas, total: resumido.ingresos };
     const mesada = mesadaDelMes(mes, estado);
     const fijos = ingresosFijosDelMes(mes, estado);
     const spotify = spotifyDelMes(mes, estado);
@@ -197,6 +205,7 @@ export const Periodo = (() => {
     ingresosFijosEntradas(estado).forEach(e => sumar(e.mes, e.monto));
     spotifyEntradas(estado).forEach(e => sumar(e.mes, e.monto));
     entradasIngresoReal(estado).forEach(m => { if (!(sinExtra && m.extraordinario)) sumar(mesKey(m.fecha), m.monto || 0); });
+    _mesesResumidos(estado).forEach(mes => { const r = _resumenMes(mes, estado), v = sinExtra ? r.ingresosSinExtra : r.ingresos; if (v > 0) out[mes] = v; else delete out[mes]; });
     return out;
   }
 
@@ -308,6 +317,8 @@ export const Periodo = (() => {
     const umbral = umbralCompraGrande(estado);
     const extraordinarios = variables.filter(g => esCompraGrande(g, umbral));
     const extraTotal = extraordinarios.reduce((a, g) => a + (g.monto || 0), 0);
+    const resumido = _resumenMes(mes, estado);
+    if (resumido) return { variables, fijos, gastoVariableTotal: resumido.gastoVariableTotal, gastoFijoTotal: resumido.gastoFijoTotal, total: resumido.gastos, items: [...variables, ...fijos], extraordinarios, extraTotal: resumido.extraTotal, recurrenteTotal: resumido.recurrenteTotal };
     // total = TODO lo que salió (real). recurrenteTotal = lo mismo sin las compras grandes (el ritmo del mes).
     return { variables, fijos, gastoVariableTotal, gastoFijoTotal, total: gastoVariableTotal + gastoFijoTotal, items: [...variables, ...fijos], extraordinarios, extraTotal, recurrenteTotal: gastoVariableTotal + gastoFijoTotal - extraTotal };
   }
@@ -333,6 +344,7 @@ export const Periodo = (() => {
     });
     retirosManuales(estado).forEach(r => { const k = mesKey(r.fecha); if (k) out[k] = (out[k] || 0) + r.monto; });
     pagosFijos(estado).forEach(p => { out[p.mes] = (out[p.mes] || 0) + p.monto; });
+    _mesesResumidos(estado).forEach(mes => { const r = _resumenMes(mes, estado), v = sinExtra ? r.gastosSinExtra : r.gastos; if (v > 0) out[mes] = v; else delete out[mes]; });
     return out;
   }
 
@@ -351,6 +363,8 @@ export const Periodo = (() => {
 
   // Gasto real por categoría de un mes: { cat: total }.
   function gastoPorCategoria(mes, estado) {
+    const resumido = _resumenMes(mes, estado);
+    if (resumido) return Object.assign({}, resumido.porCategoria);
     const out = {};
     gastosDelMes(mes, estado).items.forEach(g => {
       const c = g.cat || 'Otro';
@@ -409,7 +423,8 @@ export const Periodo = (() => {
     const balance = ingresos.total - gastos.total;
     // balanceRecurrente: el balance sin las compras grandes (el ritmo del mes). `balance` sigue siendo el real.
     // Un ingreso marcado «extraordinario» (aguinaldo, venta, premio: `extraordinario:true` en la entrada) tampoco es el ritmo del mes.
-    const ingresosExtra = entradasIngresoReal(estado).reduce((a, m) => m.extraordinario && mesKey(m.fecha) === mes ? a + (m.monto || 0) : a, 0);
+    const resumido = _resumenMes(mes, estado);
+    const ingresosExtra = resumido ? resumido.ingresosExtra : entradasIngresoReal(estado).reduce((a, m) => m.extraordinario && mesKey(m.fecha) === mes ? a + (m.monto || 0) : a, 0);
     const balanceRecurrente = balance + gastos.extraTotal - ingresosExtra;
     return { mes, ingresos, gastos, balance, balanceRecurrente, extraordinarios: gastos.extraTotal, ingresosExtra, rendimientos, tasaAhorro: ingresos.total > 0 ? balance / ingresos.total * 100 : null };
   }

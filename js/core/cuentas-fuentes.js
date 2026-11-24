@@ -287,7 +287,7 @@ export const Libro = (() => {
   // Entradas que NINGÚN registro de módulo representa (no tienen fila propia en el historial de una cuenta): intereses de Nu,
   // ajustes y CDT. getMovimientosCuenta() (cuentas.js) las añade como filas para que el historial explique TODO el saldo.
   function entradasVisibles(estado) {
-    return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt'));
+    return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt' || l.tipo === 'cierre'));
   }
 
   const api = { esCuenta, registrar, origen, conOrigen, verificar, entradasVisibles, saldo, hidratar, asegurar, reindexar, estricto: false, TOL };

@@ -1,7 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════
    js/core/cierre.js
 
-   CIERRE DE PERÍODOS — etapa 1: vista previa de SOLO LECTURA y medidor de tamaño. No modifica ningún dato ni escribe nada.
+   CIERRE DE PERÍODOS — etapa 1: vista previa de SOLO LECTURA y medidor de tamaño (analizar, tamano, disparador): no modifican nada.
+   Etapa 2 (sección 5, `ejecutar`): cierre con resumen congelado; verificado con la huella ANTES de escribir. Sin botón en la pantalla todavía.
    Diseño y decisión: docs/cierre-de-periodos.md. Esta etapa construye lo que cualquier estrategia posterior necesita
    (archivo por año en documentos aparte, o compactación): saber QUÉ historia existe, cuáles de sus partes se pueden mover
    como una unidad sin romper nada, y cuánto pesa. La verificación de que nada cambió es la huella (js/core/huella.js).
@@ -27,8 +28,9 @@
    ═══════════════════════════════════════════════════════════════ */
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { S, hoy } from './estado.js';
-import { conEstadoAislado } from './persistencia.js';
+import { conEstadoAislado, save } from './persistencia.js';
 import { Fecha } from './fecha.js';
+import { Periodo } from './periodo.js';
 
 export const Cierre = (() => {
   const VERSION = 1;
@@ -131,7 +133,7 @@ export const Cierre = (() => {
     alcanciaSaldoOfuscado: 'derivada',
     // Resultado ya calculado que NO se puede recalcular tras podar el detalle (Wrapped que el usuario guardó, HTML congelado): un cierre no lo
     // toca; si falta el de un año con datos suficientes, analizar() lo avisa (no lo bloquea).
-    wrappedAnios: 'congelada',
+    wrappedAnios: 'congelada', resumenMeses: 'congelada', cierre: 'meta',
     cuentas: 'estado-actual', personas: 'estado-actual', gastosFijos: 'estado-actual', bienes: 'estado-actual', plataComprometida: 'estado-actual',
     catsVar: 'configuracion', catsFijo: 'configuracion', presupuestos: 'configuracion', modulos: 'configuracion', invitacionCuentasOculta: 'configuracion', config: 'configuracion', mesadaAnio: 'configuracion',
     schemaVersion: 'meta', _esquemaAnterior: 'meta', _ultimoMesVisto: 'meta', _ajustesBaseLog: 'meta', cdts: 'meta', nequiSaldo: 'meta', efectivoSaldo: 'meta', cuentasPersonalizadas: 'meta',
@@ -224,6 +226,7 @@ export const Cierre = (() => {
     const total = vacio(), candidatos = vacio(), archivables = vacio(), porFuente = {}, motivos = {}, detalle = [];
     const compsArchivables = new Set();
     regs.forEach(r => {
+      r.archivable = r.estado === 'libre' && comps.get(r.comp).libre === comps.get(r.comp).n;
       suma(total, r);
       const pf = porFuente[r.fuente] || (porFuente[r.fuente] = { total: vacio(), candidatos: vacio(), archivables: vacio() });
       suma(pf.total, r);
@@ -235,13 +238,16 @@ export const Cierre = (() => {
       motivos[motivo] = (motivos[motivo] || 0) + 1;
       if (detalle.length < 50) detalle.push({ motivo, fuente: r.fuente, id: r.id, fecha: r.fecha || null });
     });
-    return {
+    const informe = {
       version: VERSION, corte, fechaCorte, completo, huella: Huella.digest(huella), erroresHuella: huella.errores || {},
       advertencias, wrapped: { conWrapped, sinGuardar: wrappedSinGuardar }, componentes: { total: tam.size, maxRegistros: mayores.length ? mayores[0].registros : 0, mayores },
       total, candidatos, archivables: Object.assign(archivables, { unidades: compsArchivables.size }),
       bloqueados: { registros: candidatos.registros - archivables.registros, porMotivo: motivos, detalle },
       porFuente, entidades: Array.from(ents.values()).map(e => ({ id: e.id, fuente: e.fuente, registros: e.n, saldo: e.valor == null ? null : e.valor, estado: e.cerrada ? 'cerrada' : 'abierta', motivo: e.motivo })),
     };
+    // Los registros reales (con su marca `archivable`) solo se entregan a quien ejecuta el cierre: no se enumeran ni se serializan.
+    if (op.registros) Object.defineProperty(informe, '_regs', { value: regs });
+    return informe;
   }
 
   // Igual que analizar pero carga antes los módulos diferidos y exige todas las sondas: es lo que debe usar la pantalla.
@@ -293,7 +299,119 @@ export const Cierre = (() => {
     return { recomendado: motivos.length > 0, motivos, avisos };
   }
 
-  return { VERSION, POLITICA, LIMITES, DISPARADOR_BYTES, CLASIFICACION, registrarFuente, fuentes: () => Array.from(_fuentes.values()), corteMasReciente, analizar, analizarCompleto, tamano, disparador };
+
+  /* ---- 5. EJECUCIÓN (etapa 2): cierre con resumen congelado ---- */
+  // Fuentes cuya historia ARCHIVABLE se poda. Nunca se tocan el historial/cierres de patrimonio (la huella los lee), Spotify, mesada, ingresos
+  // fijos ni los CDT: no tienen sonda de saldo o crecen poco (docs/cierre-de-periodos.md §5.4).
+  const PODABLES = ['libro', 'movimientos', 'gastosVar', 'transferencias', 'pagosGastosFijos', 'tcMovimientos', 'tarjetas', 'deudas', 'encargos', 'alcancia', 'ingresosExtra', 'chequeosAhorro'];
+  const LIBRO_NO_SE_PLIEGA = ['rendimiento', 'ajuste', 'cdt']; // crecen poco y su historia propia es la que se muestra
+  const _ultimoDiaDelMes = mes => { const [y, m] = mes.split('-').map(Number); return mes + '-' + String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0'); };
+
+  // Lo que `Periodo` lee de un mes cerrado. Son los 10 campos que compara la sonda `periodos` MÁS lo que las pantallas usan además
+  // (las variantes «sin extraordinarios», ingresos extra, total extraordinario): sin ellos esos meses darían otro resultado que hoy.
+  function _resumenDelMes(mes, estadoActual, ingresosSinExtra, gastosSinExtra) {
+    const b = Periodo.balanceDelMes(mes, estadoActual), g = b.gastos;
+    return {
+      mesada: b.ingresos.mesada, fijos: b.ingresos.fijos, spotify: b.ingresos.spotify, entradas: b.ingresos.entradas, ingresos: b.ingresos.total,
+      gastoVariableTotal: g.gastoVariableTotal, gastoFijoTotal: g.gastoFijoTotal, gastos: g.total, balance: b.balance,
+      porCategoria: Periodo.gastoPorCategoria(mes, estadoActual),
+      extraTotal: g.extraTotal, recurrenteTotal: g.recurrenteTotal, ingresosExtra: b.ingresosExtra,
+      ingresosSinExtra: ingresosSinExtra[mes] || 0, gastosSinExtra: gastosSinExtra[mes] || 0,
+    };
+  }
+
+  // Aplica el cierre a `estadoActual` (una COPIA aislada, nunca el estado real). Devuelve cuánto se podó.
+  function _transformar(estadoActual, informe, corte) {
+    // 1. Resumen congelado de cada mes ≤ corte que aún no lo tiene, calculado con el detalle COMPLETO (antes de podar nada).
+    const hasta = corte;
+    const previo = _obj(estadoActual.resumenMeses);
+    const ingresosSinExtra = Periodo.ingresosPorMes(estadoActual, { sinExtra: true }), gastosSinExtra = Periodo.gastosPorMes(estadoActual, { sinExtraordinarios: true });
+    const meses = new Set(Object.keys(Periodo.ingresosPorMes(estadoActual)).concat(Object.keys(Periodo.gastosPorMes(estadoActual))));
+    const resumen = Object.assign({}, previo);
+    Array.from(meses).sort().forEach(mes => { if (mes <= hasta && !previo[mes]) resumen[mes] = _resumenDelMes(mes, estadoActual, ingresosSinExtra, gastosSinExtra); });
+
+    // 2. Poda por componentes archivables.
+    const porFuente = {};
+    informe._regs.forEach(r => { if (r.archivable && PODABLES.includes(r.fuente)) (porFuente[r.fuente] || (porFuente[r.fuente] = new Set())).add(r.obj); });
+    const vaciar = (lista, fuente) => (porFuente[fuente] ? _lst(lista).filter(x => !porFuente[fuente].has(x)) : _lst(lista));
+    const quitados = { registros: 0 };
+    const contar = antes => { quitados.registros += antes; };
+    ['movimientos', 'gastosVar', 'transferencias', 'ingresosExtra', 'chequeosAhorro', 'tcMovimientos'].forEach(k => { if (!porFuente[k]) return; const n = _lst(estadoActual[k]).length; estadoActual[k] = vaciar(estadoActual[k], k); contar(n - estadoActual[k].length); });
+    if (porFuente.pagosGastosFijos) {
+      const pagos = _obj(estadoActual.pagosGastosFijos);
+      informe._regs.forEach(r => { if (r.archivable && r.fuente === 'pagosGastosFijos') { delete pagos[r.id.slice(3)]; contar(1); } });
+    }
+    if (porFuente.tarjetas) _lst(estadoActual.tarjetasCredito).forEach(tc => {
+      const n = _lst(tc.compras).length + _lst(tc.pagos).length + (tc.saldoInicial ? 1 : 0);
+      tc.compras = vaciar(tc.compras, 'tarjetas'); tc.pagos = vaciar(tc.pagos, 'tarjetas');
+      if (tc.saldoInicial && porFuente.tarjetas.has(tc.saldoInicial)) tc.saldoInicial = null;
+      contar(n - (_lst(tc.compras).length + _lst(tc.pagos).length + (tc.saldoInicial ? 1 : 0)));
+    });
+    if (porFuente.deudas) ['deudores', 'misDeudas'].forEach(k => _lst(estadoActual[k]).forEach(d => { const n = _lst(d.movimientos).length; d.movimientos = vaciar(d.movimientos, 'deudas'); contar(n - d.movimientos.length); }));
+    if (porFuente.encargos) _lst(estadoActual.encargos).forEach(e => { const n = _lst(e.movimientos).length; e.movimientos = vaciar(e.movimientos, 'encargos'); contar(n - e.movimientos.length); });
+    if (porFuente.alcancia && estadoActual.alcancia) {
+      const a = estadoActual.alcancia, n = _lst(a.movimientos).length + _lst(a.historial).length;
+      a.movimientos = vaciar(a.movimientos, 'alcancia'); a.historial = vaciar(a.historial, 'alcancia');
+      contar(n - (a.movimientos.length + a.historial.length));
+    }
+
+    // 3. Libro: las patas de las componentes podadas (y cualquier «Saldo anterior» de un cierre previo) se sustituyen por UNA entrada
+    //    `cierre` por cuenta con su suma, en centavos enteros. El saldo de cada cuenta (suma del libro) no cambia.
+    const aPlegar = porFuente.libro || new Set(), sumas = new Map(), conservadas = [];
+    _lst(estadoActual.libro).forEach(l => {
+      if (aPlegar.has(l) && !LIBRO_NO_SE_PLIEGA.includes(l.tipo)) { sumas.set(l.cuenta, (sumas.get(l.cuenta) || 0) + Math.round((Number(l.monto) || 0) * 100)); contar(1); } else conservadas.push(l);
+    });
+    sumas.forEach((centavos, cuenta) => {
+      if (centavos === 0) return;
+      // id determinista: repetir el cierre da la misma entrada, y dos dispositivos que cierren el mismo corte coinciden.
+      conservadas.push({ id: 'cierre-' + corte + '-' + cuenta, cuenta, monto: centavos / 100, tipo: 'cierre', fecha: _ultimoDiaDelMes(corte), desc: 'Saldo anterior', origen: { modulo: 'cierre' } });
+    });
+    quitados.registros -= Array.from(sumas.values()).filter(c => c !== 0).length; // las entradas `cierre` creadas no cuentan como podadas
+    estadoActual.libro = conservadas;
+
+    estadoActual.resumenMeses = resumen;
+    estadoActual.cierre = { corte, ejecutadoEn: new Date().toISOString() };
+    return quitados;
+  }
+
+  // ejecutar(corte, {estado?, hoy?, mesActual?, simular?, guardar?, forzar?}) → { ok, ... }. SIEMPRE verifica con la huella antes de tocar nada:
+  //   1. clona el estado y calcula la huella con TODAS las sondas base (si falta una o falla, se detiene);
+  //   2. analiza el corte sobre el clon y, si hay una unidad atómica sospechosa (`componente-grande`), se detiene;
+  //   3. aplica el cierre al clon (aislado) y vuelve a calcular la huella: cualquier diferencia aborta SIN escribir;
+  //   4. solo entonces reemplaza el estado real por el verificado y lo guarda (una sola vez). Con `simular` hace 1–3 y no escribe.
+  // La política (corte ≤ corteMasReciente) la exige esta función salvo `forzar` (pruebas con datos sintéticos).
+  function ejecutar(corte, opciones) {
+    const op = opciones || {}, original = op.estado || S;
+    const fallo = (motivo, extra) => Object.assign({ ok: false, motivo }, extra || {});
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(corte))) return fallo('corte-invalido');
+    if (!op.forzar && corte > corteMasReciente(op.hoy)) return fallo('corte-reciente', { corteMasReciente: corteMasReciente(op.hoy) });
+    if (original.cierre && original.cierre.corte >= corte) return { ok: true, sinCambios: true, motivo: 'ya-cerrado', corte: original.cierre.corte };
+    const requeridas = Huella.SONDAS_BASE;
+    const copia = JSON.parse(JSON.stringify(original));
+    const antes = Huella.calcular(copia, { requeridas });
+    if (Object.keys(antes.errores).length) return fallo('huella-incompleta', { errores: antes.errores });
+    const informe = analizar(corte, copia, { huella: antes, registros: true, mesActual: op.mesActual });
+    if (informe.advertencias.includes('componente-grande')) return fallo('componente-grande', { componentes: informe.componentes });
+    if (!informe.archivables.registros) return { ok: true, sinCambios: true, motivo: 'nada-que-cerrar', corte, informe };
+    let quitados;
+    try { conEstadoAislado(copia, () => { quitados = _transformar(copia, informe, corte); }); }
+    catch (e) { return fallo('error-al-transformar', { mensaje: String((e && e.message) || e) }); }
+    const despues = Huella.calcular(copia, { requeridas });
+    const comparacion = Huella.comparar(antes, despues);
+    if (!comparacion.ok) return fallo('huella-distinta', { diferencias: comparacion.diferencias.slice(0, 20), errores: comparacion.errores });
+    const resultado = { ok: true, corte, informe, quitados, huellaAntes: Huella.digest(antes), huellaDespues: Huella.digest(despues) };
+    if (op.simular) return Object.assign(resultado, { simulado: true });
+    // El estado verificado reemplaza al real. Se pasa por JSON para soltar las propiedades derivadas (saldo) atadas a la copia: el real se vuelve a hidratar.
+    const verificado = JSON.parse(JSON.stringify(copia));
+    Object.keys(original).forEach(k => { if (!(k in verificado)) delete original[k]; });
+    Object.assign(original, verificado);
+    if (typeof window !== 'undefined' && window.Libro) window.Libro.hidratar(original);
+    const guardar = op.guardar || (original === S ? save : null);
+    if (typeof guardar === 'function') guardar();
+    return resultado;
+  }
+
+  return { VERSION, POLITICA, LIMITES, DISPARADOR_BYTES, CLASIFICACION, PODABLES, ejecutar, registrarFuente, fuentes: () => Array.from(_fuentes.values()), corteMasReciente, analizar, analizarCompleto, tamano, disparador };
 })();
 if (typeof window !== 'undefined') window.Cierre = Cierre; // un `const` de nivel superior no cuelga de window: los tests lo leen como ctx.Cierre
 

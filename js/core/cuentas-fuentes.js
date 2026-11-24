@@ -7,7 +7,7 @@
 import { exponerGlobales, exponerVariables } from './puente.js';
 import { S, escHtml, fmt, hoy } from './estado.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ _buildFuentesOpts, opcionesCuenta, esCuentaFija, asegurarEfectivo, esFuenteCuenta, fuenteDeCuenta, idDeFuenteCuenta, _cuentasArr, getCuenta, getCuentaDeFuente, esCuentaAhorro, cuentasTodas, cuentasActivas, cuentasAhorro, cuentasConSaldo, cajitasDeCuenta, cuentaDeCajita, nombreCuenta, _luminancia, colorLegible, colorCuenta, saldoCuentas, redondearCentavos, ajustarSaldoCuenta, descontarFuente, sumarFuente, _fuenteHuerfana, _fijarSaldoReconciliado, _listaFuentes, getFuentes, getFuentesSinTC, fuenteTexto, fuenteHtml, fuenteLabel, _clasePorCuenta, fuenteBadgeClass, poblarFuente, getSaldoFuente });
+exponerGlobales({ _buildFuentesOpts, opcionesCuenta, esCuentaFija, asegurarEfectivo, esFuenteCuenta, fuenteDeCuenta, idDeFuenteCuenta, _cuentasArr, getCuenta, getCuentaDeFuente, esCuentaAhorro, cuentasTodas, cuentasActivas, cuentasAhorro, cuentasConSaldo, cajitasDeCuenta, cuentaDeCajita, nombreCuenta, _luminancia, colorLegible, colorCuenta, saldoCuentas, redondearCentavos, ajustarSaldoCuenta, descontarFuente, sumarFuente, _fuenteHuerfana, _listaFuentes, getFuentes, getFuentesSinTC, fuenteTexto, fuenteHtml, fuenteLabel, _clasePorCuenta, fuenteBadgeClass, poblarFuente, getSaldoFuente });
 
 /**
  * _buildFuentesOpts — constructor interno de <option>s de fuentes (privado: las pantallas usan opcionesCuenta, más abajo).
@@ -108,7 +108,7 @@ export function esCuentaFija(c){return !!c&&!!(TIPOS_CUENTA[c.tipo]||{}).fija;}
 export function asegurarEfectivo(){
   const arr=_cuentasArr();
   const ef=arr.find(c=>c&&c.tipo==='efectivo');
-  if(!ef){arr.push({id:'efectivo',tipo:'efectivo',nombre:'Efectivo',icono:'efectivo',color:'#f0b840',saldo:0});return true;}
+  if(!ef){arr.push({id:'efectivo',tipo:'efectivo',nombre:'Efectivo',icono:'efectivo',color:'#f0b840'});Libro.hidratar(S);return true;}
   if(ef.archivada){ef.archivada=false;return true;}
   return false;
 }
@@ -162,7 +162,7 @@ export function saldoCuentas(opts){return cuentasConSaldo(opts).reduce((a,c)=>a+
 
 /* ---- LIBRO DE MOVIMIENTOS ----
    S.libro es la lista de entradas de plata de las cuentas con saldo (cuenta:ID, cajita:ID): una entrada por
-   cada cambio de saldo. Regla central: el saldo guardado de una cuenta == la suma de sus entradas (Libro.verificar).
+   cada cambio de saldo. Regla central: el saldo de una cuenta ES la suma de sus entradas (no se guarda: Libro.hidratar lo deriva del libro).
    Vive en el núcleo porque sumarFuente/descontarFuente (la puerta única de saldos) lo necesitan en CUALQUIER pantalla.
    Entrada: { id, fecha, cuenta, monto (con signo), tipo, desc?, origen:{modulo, ref?, rev?} }
      tipo: 'apertura' | 'movimiento' | 'reversion' | 'rendimiento' | 'ajuste' | 'cdt'
@@ -177,6 +177,55 @@ export const Libro = (() => {
   const _arr = x => (Array.isArray(x) ? x : []);
   const _id = () => 'l' + Date.now().toString(36) + (_seq++).toString(36);
   const esCuenta = k => typeof k === 'string' && (esFuenteCuenta(k) || Fuente.esCajita(k));
+
+  // ÍNDICE DE SALDOS. El saldo de una cuenta o cajita NO se guarda: es la suma de sus entradas del libro. Se mantiene un índice por
+  // libro (WeakMap por el arreglo) en CENTAVOS ENTEROS: la suma de enteros no depende del orden ni deja residuos binarios, así que dos
+  // dispositivos que fusionan las mismas entradas llegan exactamente al mismo saldo. registrar() lo actualiza de forma incremental; si
+  // alguien cambia el largo del libro por fuera (push, carga, fusión, cierre) se reconstruye solo. Libro.reindexar() lo fuerza.
+  const _indices = new WeakMap();
+  const _cent = x => Math.round((Number(x) || 0) * 100);
+  function _indice(estadoActual) {
+    const libro = estadoActual.libro;
+    if (!Array.isArray(libro)) return { n: 0, m: new Map() };
+    let ix = _indices.get(libro);
+    if (!ix || ix.n !== libro.length) {
+      const m = new Map();
+      libro.forEach(l => { if (l && l.cuenta) m.set(l.cuenta, (m.get(l.cuenta) || 0) + _cent(l.monto)); });
+      ix = { n: libro.length, m };
+      _indices.set(libro, ix);
+    }
+    return ix;
+  }
+  const _saldoDe = (estadoActual, fuente) => ((_indice(estadoActual).m.get(fuente)) || 0) / 100;
+  // Asignar `cuenta.saldo = x` directamente ya no descuadra nada: queda como un ajuste en el libro por la diferencia (y en modo estricto,
+  // que usan las pruebas de invariantes, lanza error para delatar el código que se salta sumarFuente/descontarFuente/ajustarSaldoCuenta).
+  function _asignarSaldo(estadoActual, fuente, valor) {
+    if (api.estricto) throw new Error('[libro] saldo asignado directamente en ' + fuente + ': usa sumarFuente / descontarFuente / ajustarSaldoCuenta');
+    const diferencia = redondearCentavos(redondearCentavos(valor) - _saldoDe(estadoActual, fuente));
+    if (Math.abs(diferencia) >= TOL) registrar(fuente, diferencia, { tipo: 'ajuste', desc: 'Asignación directa', origen: { modulo: 'asignacion-directa' } }, estadoActual);
+  }
+  // Pone en una cuenta o cajita la propiedad `saldo` derivada: accesora y NO enumerable, de modo que JSON.stringify, structuredClone,
+  // el guardado local y de la nube y los respaldos nunca la incluyen (un clon se vuelve a hidratar con hidratar()). Si el objeto traía un
+  // `saldo` guardado (respaldo viejo, importación, datos de prueba) que el libro no explica, la diferencia queda como un ajuste.
+  function _hidratarObjeto(estadoActual, obj, fuente) {
+    const d = Object.getOwnPropertyDescriptor(obj, 'saldo');
+    if (d && d.get) return;
+    const heredado = d && typeof d.value === 'number' && isFinite(d.value) ? redondearCentavos(d.value) : null;
+    Object.defineProperty(obj, 'saldo', { enumerable: false, configurable: true, get: () => _saldoDe(estadoActual, fuente), set: v => _asignarSaldo(estadoActual, fuente, v) });
+    if (heredado !== null) {
+      const diferencia = redondearCentavos(heredado - _saldoDe(estadoActual, fuente));
+      if (Math.abs(diferencia) >= TOL) registrar(fuente, diferencia, { tipo: 'ajuste', desc: 'Saldo importado', origen: { modulo: 'hidratacion' } }, estadoActual);
+    }
+  }
+  // Idempotente y barata: se llama al reemplazar o cargar el estado, al crear cuentas y desde la puerta única de saldos.
+  function hidratar(estado) {
+    const estadoActual = estado || S;
+    if (!estadoActual) return;
+    _arr(estadoActual.cuentas).forEach(c => { if (c && c.id && c.tipo !== 'ahorro') _hidratarObjeto(estadoActual, c, FUENTE_CUENTA_PREFIJO + c.id); });
+    _arr(estadoActual.cajitas).forEach(c => { if (c && c.id) _hidratarObjeto(estadoActual, c, 'cajita:' + c.id); });
+  }
+  const asegurar = (obj, fuente, estado) => { if (obj) _hidratarObjeto(estado || S, obj, fuente); };
+  const reindexar = estado => { const e = estado || S; if (Array.isArray(e.libro)) _indices.delete(e.libro); };
 
   function _cuentasDe(estadoActual) {
     const out = {};
@@ -206,6 +255,7 @@ export const Libro = (() => {
     monto = redondearCentavos(monto);
     if (!esCuenta(cuenta) || !monto) return null;
     const estadoActual = estado || S; if (!Array.isArray(estadoActual.libro)) estadoActual.libro = [];
+    const ix = _indice(estadoActual); // fresco ANTES de mutar el libro; abajo se actualiza de forma incremental
     o = o || {};
     const origenLibro = o.origen || _ctx || { modulo: 'sin-origen' };
     const fecha = o.fecha || hoy(), tipo = o.tipo || (origenLibro.rev ? 'reversion' : 'movimiento');
@@ -213,13 +263,14 @@ export const Libro = (() => {
       const mes = fecha.slice(0, 7);
       for (let i = estadoActual.libro.length - 1, n = 0; i >= 0 && n < 400; i--, n++) {
         const l = estadoActual.libro[i];
-        if (l && l.cuenta === cuenta && l.tipo === 'rendimiento' && String(l.fecha).slice(0, 7) === mes) { l.monto = redondearCentavos(l.monto + monto); if (fecha > l.fecha) l.fecha = fecha; return l.id; }
+        if (l && l.cuenta === cuenta && l.tipo === 'rendimiento' && String(l.fecha).slice(0, 7) === mes) { l.monto = redondearCentavos(l.monto + monto); ix.m.set(cuenta, (ix.m.get(cuenta) || 0) + _cent(monto)); if (fecha > l.fecha) l.fecha = fecha; return l.id; }
       }
     }
     const registro = { id: _id(), fecha, cuenta, monto, tipo };
     if (o.desc) registro.desc = o.desc;
     registro.origen = origenLibro;
     estadoActual.libro.push(registro);
+    ix.m.set(cuenta, (ix.m.get(cuenta) || 0) + _cent(monto)); ix.n = estadoActual.libro.length;
     return registro.id;
   }
 
@@ -231,26 +282,7 @@ export const Libro = (() => {
     const descuadres = filas.filter(f => Math.abs(f.diferencial) >= TOL);
     return { ok: descuadres.length === 0, filas, descuadres };
   }
-  // Tras fusionar el estado de dos dispositivos (js/core/fusion.js) el saldo de una cuenta puede quedar mal (los dos lo cambiaron: la
-  // fusión elige un valor, pero lo correcto es la suma de TODAS las entradas del libro de los dos). Se recalcula SOLO donde la base
-  // (el estado común de partida) ya cuadraba con su libro: en una cuenta que ya venía descuadrada no se inventa un saldo.
-  // Devuelve las cuentas cuyo saldo cambió.
-  function recalcularSaldos(estado, base) {
-    const hecho = [];
-    const suma = e => { const s = {}; _arr(e.libro).forEach(l => { if (l) s[l.cuenta] = (s[l.cuenta] || 0) + (l.monto || 0); }); return s; };
-    const cu = _cuentasDe(estado), cb = _cuentasDe(base || {}), sm = suma(estado), sb = suma(base || {});
-    const objeto = {};
-    _arr(estado.cuentas).forEach(c => { if (c && c.id) objeto[FUENTE_CUENTA_PREFIJO + c.id] = c; });
-    _arr(estado.cajitas).forEach(c => { if (c && c.id) objeto['cajita:' + c.id] = c; });
-    Object.keys(cu).forEach(k => {
-      const enBase = cb[k];
-      if (enBase && Math.abs(enBase.saldo - (sb[k] || 0)) >= TOL) return;   // ya venía descuadrada
-      const bueno = sm[k] || 0;
-      if (Math.abs((objeto[k].saldo || 0) - bueno) >= TOL) { _fijarSaldoReconciliado(objeto[k], bueno); hecho.push(k); }
-    });
-    return hecho;
-  }
-  const saldo = (cuenta, estado) => _arr((estado || S).libro).reduce((a, l) => (l && l.cuenta === cuenta ? a + (l.monto || 0) : a), 0);
+  const saldo = (cuenta, estado) => _saldoDe(estado || S, cuenta);
 
   // Entradas que NINGÚN registro de módulo representa (no tienen fila propia en el historial de una cuenta): intereses de Nu,
   // ajustes y CDT. getMovimientosCuenta() (cuentas.js) las añade como filas para que el historial explique TODO el saldo.
@@ -258,7 +290,8 @@ export const Libro = (() => {
     return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt'));
   }
 
-  return { esCuenta, registrar, origen, conOrigen, verificar, recalcularSaldos, entradasVisibles, saldo, TOL };
+  const api = { esCuenta, registrar, origen, conOrigen, verificar, entradasVisibles, saldo, hidratar, asegurar, reindexar, estricto: false, TOL };
+  return api;
 })();
 if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen como ctx.Libro
 
@@ -275,8 +308,8 @@ export function ajustarSaldoCuenta(fuente,nuevoSaldo,opts){
   const c=Fuente.esCajita(fuente)?(S.cajitas||[]).find(x=>x.id===fuente.split(':')[1]):getCuentaDeFuente(fuente);
   if(!c||esCuentaAhorro(c))return 0;
   nuevoSaldo=redondearCentavos(nuevoSaldo);
+  Libro.asegurar(c,fuente);
   const delta=redondearCentavos(nuevoSaldo-(c.saldo||0));
-  c.saldo=nuevoSaldo;
   if(Math.abs(delta)>1e-9)_libroPata(fuente,delta,opts);
   return delta;
 }
@@ -292,7 +325,7 @@ export function descontarFuente(fuente,monto,opts){
   }
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c&&!esCuentaAhorro(c)){c.saldo=redondearCentavos((c.saldo||0)-monto);_libroPata(fuente,-monto,opts);return true;}
+    if(c&&!esCuentaAhorro(c)){Libro.asegurar(c,fuente);_libroPata(fuente,-monto,opts);return true;}
   } else if(Fuente.esCajita(fuente)){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
@@ -306,8 +339,8 @@ export function descontarFuente(fuente,monto,opts){
       // riesgo ya aceptado para mesada/tarjetas: el saldo puede quedar sin
       // el interés de ese día hasta que se visite Cuentas) en vez de tumbar
       // el gasto/movimiento completo con un ReferenceError.
+      Libro.asegurar(c,fuente);
       if(typeof materializarIntereses==='function') materializarIntereses(c);
-      c.saldo=redondearCentavos((c.saldo||0)-monto);
       _libroPata(fuente,-monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
       return true;
@@ -325,14 +358,14 @@ export function sumarFuente(fuente,monto,opts){
   if(!fuente||!monto)return false;
   if(esFuenteCuenta(fuente)){
     const c=getCuentaDeFuente(fuente);
-    if(c&&!esCuentaAhorro(c)){c.saldo=redondearCentavos((c.saldo||0)+monto);_libroPata(fuente,monto,opts);return true;}
+    if(c&&!esCuentaAhorro(c)){Libro.asegurar(c,fuente);_libroPata(fuente,monto,opts);return true;}
   } else if(Fuente.esCajita(fuente)){
     const id=fuente.split(':')[1];
     const c=(S.cajitas||[]).find(x=>x.id===id);
     if(c){
       // Ver nota equivalente en descontarFuente() más arriba.
+      Libro.asegurar(c,fuente);
       if(typeof materializarIntereses==='function') materializarIntereses(c);
-      c.saldo=redondearCentavos((c.saldo||0)+monto);
       _libroPata(fuente,monto,opts);
       const el=document.getElementById('cs_'+c.id);if(el)el.value=fmtInput(c.saldo);
       return true;
@@ -458,10 +491,6 @@ if(typeof window!=='undefined')window.Plata=Plata;
 // Lista de cuentas que se pueden elegir como origen/destino: las cajitas de cada cuenta de ahorro activa, las demás cuentas
 // activas (en el orden en que se crearon) y, si incluirTC, las tarjetas activas. Las archivadas no se ofrecen. getFuentes() y
 // getFuentesSinTC() son la misma lista, con y sin TC.
-// Parte de la puerta única: la ÚNICA asignación de saldo que no lleva entrada de libro, porque el saldo se iguala a la suma del libro que
-// ya tiene todas las entradas (Libro.recalcularSaldos, tras fusionar el estado de dos dispositivos). No usar para nada más.
-export function _fijarSaldoReconciliado(cuentaOCajita,saldoDelLibro){cuentaOCajita.saldo=saldoDelLibro;}
-
 export function _listaFuentes(incluirTC){
   const arr=[];
   const activas=cuentasActivas();

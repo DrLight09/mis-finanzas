@@ -38,7 +38,7 @@ function loadApp(appFiles, options = {}) {
   const sandbox = {
     console,
     Math, Date, JSON, Object, Array, String, Number, Boolean, RegExp, Error,
-    Set, Map, Promise,
+    Set, Map, WeakMap, Promise,
     parseInt, parseFloat, isNaN, isFinite, Infinity, NaN,
     encodeURIComponent, decodeURIComponent,
     setTimeout, clearTimeout, setInterval, clearInterval,

@@ -23,8 +23,8 @@ El libro responde "¿cuánta plata hay en cada cuenta y por qué?". No responde 
 
 ## 3. Reglas que nunca se rompen
 
-1. **Saldo == suma del libro**, por cuenta (`Libro.verificar`). `save()` lo comprueba y avisa una vez por sesión si algo no cuadra.
-2. **Nadie escribe `c.saldo` directamente.** Solo la puerta única. Un código que lo haga rompe la regla 1 y se ve al guardar.
+1. **El saldo ES la suma del libro**, por cuenta y cajita. No se guarda: `Libro.hidratar` pone en cada una una propiedad `saldo` accesora y no enumerable que lee un índice en centavos enteros (por eso `JSON.stringify`, el guardado, los respaldos y los clones nunca la incluyen). `Libro.verificar` queda como comprobación de coherencia.
+2. **Nadie escribe `c.saldo` directamente.** Solo la puerta única. Si alguien lo hace, no descuadra: `_asignarSaldo` registra un ajuste `asignacion-directa` por la diferencia (visible en el historial) y, con `Libro.estricto = true` (modo de las pruebas), lanza error.
 3. **Toda llamada a la puerta única lleva `origen`** (`{ modulo, ref }`). Excepciones sin `ref`: intereses de Nu, chequeo rápido, CDT y destape de la alcancía, que no nacen de un registro suelto.
 4. **Deshacer = una entrada `reversion`**, no borrar. Quien revierte pasa el mismo `ref` con `rev: true` (o envuelve el bloque en `Libro.conOrigen({ …, rev: true }, fn)`).
 5. **El saldo nunca se recorta.** Una salida mayor que el saldo se registra completa y la cuenta queda negativa y visible (los selectores ya solo ofrecen cuentas con saldo suficiente, así que un negativo es un movimiento mal registrado).
@@ -85,7 +85,7 @@ S.libro = [{
 - **Libro de patas de caja, no partida doble.** Cada módulo conserva su historia propia (a quién, qué deuda, qué abonos); el libro solo guarda el efecto en las cuentas.
 - **Dos vistas, no una.** El ingreso y gasto del mes incluyen hechos sin pata de caja, así que `Periodo` sigue leyendo los registros de los módulos. El libro no clasifica ingreso/gasto.
 - **Las tarjetas de crédito no son cuenta del libro.** Su deuda ya se deriva de sus propios registros (`tcRecalcular`: saldo inicial + compras + cargos externos − pagos, en cada `refresh`); duplicarla en el libro no aportaría nada.
-- **Saldo guardado + verificación**, en lugar de calcularlo siempre: la lectura es instantánea y cualquier código que cambie un saldo sin pasar por el libro se detecta al guardar. Derivarlo en cada refresh habría escondido el error.
+- **Saldo derivado del libro, con índice** (2026-11-23; antes: saldo guardado + verificación). Con dos copias del dinero había que vigilar que no se separaran (`verificar`, `recalcularSaldos` tras fusionar, `_fijarSaldoReconciliado`); con una sola fuente de verdad el descuadre es imposible por construcción y la fusión entre dispositivos es solo unión del libro. La objeción de entonces («derivarlo escondería el error») se cubre con el modo estricto y con los ajustes `asignacion-directa`, que dejan rastro. La lectura sigue siendo instantánea: `registrar` mantiene un índice por libro en centavos enteros (se reconstruye solo si el largo del libro cambia por fuera). Un respaldo viejo con `saldo` guardado se importa sin pérdida: la diferencia queda como ajuste «Saldo importado». Diseño completo: `docs/diseno-saldo-derivado-y-cierre.md`.
 - **Revertir añade, no borra.** Deja rastro auditable de qué se deshizo y por qué módulo.
 - **Una sola lista de historial.** Evita que una pantalla o un cálculo se olvide de una lista (el origen de varios descuadres silenciosos) y que cada módulo tenga que saber en cuál escribir.
 - **El libro vive en el núcleo (`el núcleo`)**, no en un archivo aparte: la puerta única que lo usa está ahí y tiene que funcionar en cualquier pantalla y en cualquier test que cargue el núcleo.

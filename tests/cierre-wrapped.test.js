@@ -216,7 +216,7 @@ describe('huella', () => {
 
   test('un backup restaurado (JSON → estado nuevo en otra instancia de la app) tiene la MISMA huella: la huella es comparable entre sesiones', () => {
     const otra = cargarApp();
-    Object.assign(otra.S, JSON.parse(snapshot)); // lo que hace importar un backup
+    Object.assign(otra.S, JSON.parse(snapshot)); otra.Libro.hidratar(otra.S); // lo que hace importar un backup (el saldo se deriva del libro)
     const h2 = otra.Huella.calcular(otra.S, { requeridas: BASE });
     const r = ctx.Huella.comparar(huella, plano(h2));
     assert.equal(r.ok, true, JSON.stringify(r.diferencias.slice(0, 3)));

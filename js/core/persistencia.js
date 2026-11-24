@@ -138,6 +138,7 @@ export function load(){
   if(!S.movimientos)S.movimientos=[];
   if(!Array.isArray(S.libro))S.libro=[];
   _cuentasArr(); // garantiza que S.cuentas sea un arreglo (ver "CUENTAS: MODELO ÚNICO")
+  Libro.hidratar(S); // el saldo de cuentas y cajitas se deriva del libro (no se guarda)
   if(!S.catsVar)S.catsVar=[];
   if(!S.catsFijo)S.catsFijo=[];
   if(!S.patrimonioHistorial)S.patrimonioHistorial=[];
@@ -221,17 +222,6 @@ export function save(){
     if(_scroller.length && !window._claseAvisada){
       window._claseAvisada = true;
       console.warn('[clase] ' + _scroller.length + ' movimiento(s) sin clase: revisar qué módulo los creó.', _scroller);
-    }
-  }
-  // Invariante del libro: saldo guardado == suma de S.libro. Un descuadre significa que algún código movió un saldo
-  // sin pasar por sumarFuente/descontarFuente/ajustarSaldoCuenta. Se avisa UNA vez por sesión (consola + aviso).
-  {
-    const _lv=Libro.verificar();
-    window._libroDescuadres=_lv.ok?[]:_lv.descuadres;
-    if(!_lv.ok&&!window._libroAvisado){
-      window._libroAvisado=true;
-      console.warn('[libro] el saldo guardado no coincide con la suma del libro:',_lv.descuadres);
-      if(typeof toast==='function')toast('El libro no cuadra con el saldo de '+_lv.descuadres.map(f=>f.nombre).join(', ')+' (ver consola).','err',6000);
     }
   }
   // Invariantes de Personas (I1–I4, personas-core.js): un registro huérfano o repetido significa que algún código creó una relación sin

@@ -188,11 +188,18 @@ describe('libro-modulos', () => {
     assert.equal(app.Libro.verificar().ok, true);
   });
 
-  test('un saldo cambiado sin pasar por la puerta única lo detecta verificar()', () => {
+  test('un saldo asignado sin pasar por la puerta única no descuadra: queda como ajuste en el libro (y en modo estricto lanza)', () => {
     const app = cargar();
     app.sumarFuente('cuenta:nequi', 100);
-    app.S.cuentas.find(c => c.id === 'nequi').saldo += 5;
-    assert.equal(plano(app.Libro.verificar()).descuadres[0].diferencial, 5);
+    const c = app.S.cuentas.find(c => c.id === 'nequi');
+    c.saldo += 5;
+    assert.equal(c.saldo, 105);
+    assert.equal(app.Libro.verificar().ok, true);
+    const e = app.S.libro[app.S.libro.length - 1];
+    assert.deepEqual([e.tipo, e.monto, e.origen.modulo], ['ajuste', 5, 'asignacion-directa']);
+    app.Libro.estricto = true;
+    assert.throws(() => { c.saldo = 1; }, /libro/);
+    assert.equal(c.saldo, 105, 'el intento no cambió nada');
   });
 
   test('Encargos — eliminar el saldo inicial NO toca el saldo de la cuenta ni el libro (es plata ajena, no está en c.saldo)', async () => {

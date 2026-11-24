@@ -328,13 +328,13 @@ export async function crearCuenta(){
   const tipo=_nuevaCuentaTipoSel;
   const esAhorro=tipo==='ahorro';
   const saldo=esAhorro?0:(parseMoney(document.getElementById('nc_saldo').value)||0);
-  const nueva={id:uid(),tipo,nombre,icono:_nuevaCuentaIconoSel,color:_nuevaCuentaColorSel,movimientos:[],...(esAhorro?{tasaEA:null,historialTasas:[]}:{saldo})};
+  const nueva={id:uid(),tipo,nombre,icono:_nuevaCuentaIconoSel,color:_nuevaCuentaColorSel,movimientos:[],...(esAhorro?{tasaEA:null,historialTasas:[]}:{})};
   const fuente=fuenteDeCuenta(nueva.id);
   // El saldo inicial es un movimiento de apertura en S.movimientos con `fuente` y su entrada en el libro.
   const movimientoApertura=saldo>0?crearMovimientoApertura(saldo,hoy(),'Saldo inicial'):null;
   if(movimientoApertura){movimientoApertura.fuente=fuente;if(!S.movimientos)S.movimientos=[];S.movimientos.push(movimientoApertura);}
   const eraLaPrimera=!cuentasTodas().some(c=>!esCuentaFija(c));
-  _cuentasArr().push(nueva);
+  _cuentasArr().push(nueva);Libro.hidratar(S);
   if(movimientoApertura)_libroPata(fuente,saldo,{tipo:'apertura',desc:'Saldo inicial',origen:{modulo:'cuentas',ref:movimientoApertura.id}});
   save();refresh();
   closeSheet('nueva-cuenta');

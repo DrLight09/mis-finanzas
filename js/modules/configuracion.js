@@ -279,6 +279,7 @@ export async function _reemplazarDatos(data,motivoPin,msgOk){
   // Reemplazar CONTENIDO de S sin romper la referencia de window.S
   Object.keys(S).forEach(k => delete S[k]);
   Object.assign(S, data);
+  Libro.hidratar(S); // un respaldo viejo con `saldo` guardado queda explicado en el libro (ajuste «Saldo importado»)
   // Repintar YA la pantalla activa con los datos recién importados — sin esto,
   // S ya tiene los datos nuevos pero la UI sigue mostrando lo que había antes
   // de importar hasta que el location.reload() de más abajo confirme el guardado.

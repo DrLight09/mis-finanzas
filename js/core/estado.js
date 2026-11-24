@@ -85,7 +85,8 @@ export let S={
 window.S = S;
 // Los módulos que importan `S` ven su valor actual (enlace vivo) pero no pueden asignarlo: quien necesite reemplazar el estado completo
 // (conEstadoAislado en persistencia.js) usa esta función, que además mantiene `window.S` al día para quien lo lee por ahí.
-export function setEstado(nuevo) { S = nuevo; window.S = nuevo; }
+// Al reemplazar el estado se hidrata el saldo derivado de cuentas y cajitas (Libro.hidratar, cuentas-fuentes.js): el saldo no viaja en el estado.
+export function setEstado(nuevo) { S = nuevo; window.S = nuevo; if (window.Libro) window.Libro.hidratar(nuevo); }
 // patrimonioHistorial: [{fecha:'YYYY-MM-DD', valor:number}]
 // cuentas: modelo único de cuentas (ver "CUENTAS: MODELO ÚNICO" más abajo):
 //   {id, tipo:'banco'|'billetera'|'efectivo'|'ahorro', nombre, icono, color, saldo, archivada?}  (los movimientos viven en S.movimientos / el libro, no dentro de la cuenta)

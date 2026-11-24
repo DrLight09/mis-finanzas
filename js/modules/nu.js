@@ -596,7 +596,7 @@ export function addCajita(){
   if(!S.cajitas)S.cajitas=[];
   if(cajitasDeCuenta(cuentaId).length>=MAX)return;
   const nombre='Cajita '+(cajitasDeCuenta(cuentaId).length+1);
-  S.cajitas.push({id:uid(),cuentaId,nombre,saldo:0,cdts:[]});
+  S.cajitas.push({id:uid(),cuentaId,nombre,cdts:[]});Libro.hidratar(S);
   save();renderCajitas();
   const _newId=S.cajitas[S.cajitas.length-1].id;
   if(window.logCambio)logCambio('Creaste una cajita',nombre,0,'cajita',_newId);

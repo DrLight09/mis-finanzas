@@ -247,7 +247,6 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     try {
       if (!baseTxt || !localTxt || !remotoTxt) return null;
       const base = JSON.parse(baseTxt), merged = fusionarEstados(base, JSON.parse(localTxt), JSON.parse(remotoTxt));
-      if (typeof Libro !== 'undefined' && Libro && typeof Libro.recalcularSaldos === 'function') Libro.recalcularSaldos(merged, base);
       return JSON.stringify(merged);
     } catch (e) { console.warn('[Sync] No se pudo fusionar con la nube:', e); return null; }
   }
@@ -258,6 +257,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
     const f = JSON.parse(textoFusionado);
     Object.keys(window.S).forEach(k => { if (!(k in f)) delete window.S[k]; });
     Object.assign(window.S, f);
+    if (window.Libro) window.Libro.hidratar(window.S); // el saldo no viaja en el estado: sale del libro ya fusionado
     window._lastSavedPayload = JSON.stringify(JSON.parse(remotoTxt));
   }
   async function _resolverConflicto(snapCrudo, payloadLocal) {
@@ -738,6 +738,7 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
           estado = 'empty';
         } else {
           Object.assign(window.S, cloudData);
+          if (window.Libro) window.Libro.hidratar(window.S);
           // La migración y auto-sanación de tarjetas de crédito ahora vive en
           // tcNormalizarTarjetas(), que se ejecuta en cada refresh() — no hace
           // falta un parche puntual aquí.

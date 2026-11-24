@@ -224,7 +224,9 @@ describe('mesada-reglas', () => {
 
   // El libro (S.libro) nunca borra: registrar y deshacer deja un par entrada + reversión. Lo que se exige es que S quede
   // exactamente igual SALVO el libro, y que lo que el libro sumó después de `antes` neto a cero por cuenta.
+  // El saldo de cuentas y cajitas es derivado del libro (no se serializa): `sinLibro` compara la forma guardada y `saldosDe` los saldos derivados.
   const sinLibro = S => { const c = clone(S); delete c.libro; return c; };
+  const saldosDe = S => JSON.stringify([(S.cuentas || []).map(x => [x.id, x.saldo]), (S.cajitas || []).map(x => [x.id, x.saldo])]);
   function netoLibroDesde(S, n) {
     const neto = {};
     (S.libro || []).slice(n).forEach(e => { neto[e.cuenta] = (neto[e.cuenta] || 0) + e.monto; });
@@ -237,11 +239,13 @@ describe('mesada-reglas', () => {
       const ctx = fresh({ nequi: 5000, efectivo: 700, encargos: [encargo('e1', 'Mamá', [entrada(300000, 'cuenta:nequi'), entrada(50000)])] });
       ctx.S.cuentas.push({ id: 'c1', tipo: 'banco', nombre: 'C1', saldo: 100, movimientos: [] });
       ctx._ensureMesadas(); ctx.S.mesadas.papa.cuotas = { '2026': 80000 };
-      const antes = clone(ctx.S);
+      ctx.Libro.hidratar(ctx.S); // los saldos de las cuentas sembradas pasan a derivarse del libro antes de tomar la foto
+      const antes = clone(ctx.S), saldosAntes = saldosDe(ctx.S);
       preparar(ctx);
       assert.notDeepEqual(sinLibro(ctx.S), sinLibro(antes), 'el escenario debería haber cambiado algo');
       assert.equal(ctx.mesadaBorrarPago('papa', '2026-3'), true);
       assert.deepEqual(sinLibro(ctx.S), sinLibro(antes));
+      assert.equal(saldosDe(ctx.S), saldosAntes, 'los saldos vuelven a ser los de antes');
       assert.deepEqual(netoLibroDesde(ctx.S, (antes.libro || []).length), [], 'el libro suma cero por cuenta');
     });
   }
@@ -263,6 +267,7 @@ describe('mesada-reglas', () => {
     const ctx = fresh({ encargos: [encargo('e1', 'Papá', [entrada(300000, 'cuenta:nequi')])] });
     conPendiente(ctx);
     ctx.mesadaAbonarPendiente({ parent: 'papa', key: '2026-3', monto: 5000, fecha: '2026-05-01', destino: 'cuenta:efectivo' });
+    ctx.Libro.hidratar(ctx.S);
     const antes = clone(ctx.S);
     ctx.mesadaAbonarPendiente({ parent: 'papa', key: '2026-3', monto: 7000, fecha: '2026-05-02', destino: 'cuenta:nequi', encargo: { id: 'e1', cuentaSel: 'cuenta:nequi' } });
     assert.equal(ctx.mesadaDeshacerAbono('papa', '2026-3', 1), true);

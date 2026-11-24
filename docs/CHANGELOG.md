@@ -33,6 +33,17 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-23 — Saldo derivado del libro (paso 1 de `docs/diseno-saldo-derivado-y-cierre.md`)
+
+El saldo de cuentas y cajitas **ya no se guarda**: es la suma de `S.libro`. **Probado solo con Node (vm); sin ver en navegador real.**
+- `Libro` mantiene un índice por libro en centavos enteros (`registrar` lo actualiza; se reconstruye si el largo del libro cambia por fuera) y `Libro.hidratar(estado)` pone en cada cuenta/cajita un `saldo` accesora y no enumerable. Por eso ningún punto de serialización (guardado local, nube, `exportarJSON`, clones) lo incluye.
+- `sumarFuente`, `descontarFuente` y `ajustarSaldoCuenta` solo registran en el libro. Asignar `saldo` a mano deja un ajuste `asignacion-directa` (y lanza con `Libro.estricto = true`).
+- Se hidrata en `setEstado`, `load()`, al aplicar la nube y la fusión, al importar un respaldo y al crear cuentas/cajitas. Un respaldo viejo con `saldo` se conserva como ajuste «Saldo importado».
+- Eliminado: `Libro.recalcularSaldos`, `_fijarSaldoReconciliado` y el aviso «el libro no cuadra» de `load()`.
+- Pruebas: `tests/saldo-derivado.test.js` (8) y las de fusión y libro reescritas. `tests/support/load-app.js` expone `WeakMap` al sandbox.
+
+---
+
 ## Versión PC, parte 21: Tarjetas de crédito como el prototipo (PC y celular)
 
 Rediseño visual de la pantalla de Tarjetas siguiendo `TarjetaCredito/` (prototipo). **Sin ver en navegador real** (jsdom no dibuja): revisar a 1366×768, 1100, 800, 430 y 360.

@@ -1,4 +1,4 @@
-// Fusión de tres vías (js/core/fusion.js) y recálculo de saldos tras fusionar (Libro.recalcularSaldos).
+// Fusión de tres vías (js/core/fusion.js) y saldo derivado del libro tras fusionar (Libro.hidratar).
 // Idea que se prueba: dos dispositivos parten del mismo estado (base), cada uno cambia cosas y las dos versiones se UNEN cuando
 // no tocan lo mismo; solo chocan los cambios sobre el mismo valor (gana el local).
 const test = require('node:test'), { describe, before } = test;
@@ -92,30 +92,28 @@ describe('fusión — listas sin id (conjuntos)', () => {
   });
 });
 
-describe('Libro.recalcularSaldos — el saldo vuelve a ser la suma del libro tras fusionar', () => {
-  const app = () => {
-    const ctx = loadApp([path.join(RAIZ, 'js', 'core', 'core-state.js')], { permissive: true });
-    return ctx;
-  };
-  test('dos dispositivos suman a la misma cuenta: la fusión elige un saldo, el recálculo lo corrige a la suma de las dos entradas', () => {
+describe('saldo derivado — tras fusionar, el saldo es la suma del libro unido (no hay nada que recalcular)', () => {
+  const app = () => loadApp([path.join(RAIZ, 'js', 'core', 'core-state.js')], { permissive: true });
+  const e = (id, monto) => ({ id, cuenta: 'cuenta:ef', monto, tipo: 'movimiento', fecha: '2026-11-20', origen: { modulo: 'x' } });
+  test('dos dispositivos suman a la misma cuenta: la unión del libro da la suma de las dos entradas', () => {
     const ctx = app();
-    const cuenta = saldo => ({ id: 'ef', tipo: 'efectivo', nombre: 'Efectivo', saldo });
-    const e = (id, monto) => ({ id, cuenta: 'cuenta:ef', monto, tipo: 'movimiento', fecha: '2026-11-20', origen: { modulo: 'x' } });
-    const base = { cuentas: [cuenta(100)], libro: [e('l0', 100)] };
-    const local = { cuentas: [cuenta(150)], libro: [e('l0', 100), e('l1', 50)] };
-    const remoto = { cuentas: [cuenta(130)], libro: [e('l0', 100), e('l2', 30)] };
+    const cuenta = { id: 'ef', tipo: 'efectivo', nombre: 'Efectivo' };
+    const base = { cuentas: [cuenta], libro: [e('l0', 100)] };
+    const local = { cuentas: [cuenta], libro: [e('l0', 100), e('l1', 50)] };
+    const remoto = { cuentas: [cuenta], libro: [e('l0', 100), e('l2', 30)] };
     const merged = fus(base, local, remoto);
-    assert.equal(merged.cuentas[0].saldo, 150, 'la fusión sola deja el del local (choque)');
-    const hechas = ctx.Libro.recalcularSaldos(merged, base);
-    assert.deepEqual([...hechas], ['cuenta:ef']);
+    ctx.Libro.hidratar(merged);
     assert.equal(merged.cuentas[0].saldo, 180, '100 + 50 + 30');
+    assert.equal('saldo' in JSON.parse(JSON.stringify(merged)).cuentas[0], false, 'el saldo no viaja en el estado');
   });
-  test('una cuenta que ya venía descuadrada en la base no se toca (no se inventa un saldo)', () => {
+  test('el orden de las entradas no cambia el saldo (centavos enteros: sin residuos binarios)', () => {
     const ctx = app();
-    const base = { cuentas: [{ id: 'ef', tipo: 'efectivo', saldo: 777 }], libro: [] };
-    const merged = JSON.parse(JSON.stringify(base));
-    assert.deepEqual([...ctx.Libro.recalcularSaldos(merged, base)], []);
-    assert.equal(merged.cuentas[0].saldo, 777);
+    const montos = [0.1, 0.2, 0.3, 1234.56, -0.07, 99.99, 0.01];
+    const arma = ms => ({ cuentas: [{ id: 'ef', tipo: 'efectivo', nombre: 'Efectivo' }], libro: ms.map((m, i) => e('l' + i, m)) });
+    const a = arma(montos), b = arma([...montos].reverse());
+    ctx.Libro.hidratar(a); ctx.Libro.hidratar(b);
+    assert.equal(a.cuentas[0].saldo, b.cuentas[0].saldo);
+    assert.equal(a.cuentas[0].saldo, 1335.09);
   });
 });
 

@@ -39,6 +39,7 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 - `Libro.verificarEspejo(estado)` (`js/core/cuentas-fuentes.js`): cada pata del libro con `origen.ref` cuyo neto por (ref, cuenta) no sea 0 tiene que apuntar a un registro existente (`id` o clave de `pagosGastosFijos`, que es como se referencian los gastos fijos). Detecta un registro borrado sin revertir su plata.
 - **El cierre la exige:** si el espejo y el libro estaban coherentes y el cierre los separaría (podar un registro dejando su pata, o al revés), aborta con `espejo-roto` sin escribir. Si ya venían incoherentes no se bloquea.
 - `tests/consistencia-libro.test.js` (6) y `tests/ida-y-vuelta.test.js` (6 operaciones de Préstamos: aplicar → coherente; revertir → estado y saldos exactos, libro neto 0). Todas pasaron: Préstamos ya cumplía el contrato.
+- `tests/ida-y-vuelta-encargos.test.js` (3: traspaso «Me lo regalaron» y «Yo puse la plata» simple y dividido, eliminados con `deleteMovimientoEncargo`) y `tests/ida-y-vuelta-alcancia.test.js` (3: depósito desde cuenta, directo y dividido, eliminados con `alcanciaEliminarDeposito`). También pasaron. Como crear estos movimientos lee el DOM, el estado de creación se arma replicando lo que escribe el código; las pruebas verifican que ELIMINAR revierte exactamente lo que la creación deja.
 
 ---
 

@@ -156,6 +156,7 @@ const MOTIVOS_CIERRE = {
   'wrapped-sin-guardar': 'El Wrapped de algún año no está guardado y no se aceptó cerrar sin él. No se tocó nada.',
   'huella-distinta': 'La verificación encontró una diferencia entre tus datos de antes y de después del cierre, así que no se guardó nada: tus datos siguen exactamente como estaban.',
   'error-al-transformar': 'Algo falló al preparar el cierre. No se tocó nada.',
+  'espejo-roto': 'El cierre habría dejado un movimiento sin su registro (o al revés). No se tocó nada; tus datos siguen como estaban.',
 };
 const _nombreMes = mes => _fechaSafe(mes + '-15', 12).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' });
 let _cierreSeq = 0;

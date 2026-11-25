@@ -421,9 +421,15 @@ export const Cierre = (() => {
     // Un año con Wrapped posible y sin guardar perdería para siempre la posibilidad de generarlo (necesita el detalle): hay que aceptarlo expresamente.
     if (informe.advertencias.includes('wrapped-sin-guardar') && !op.aceptarWrappedSinGuardar) return fallo('wrapped-sin-guardar', { anios: informe.wrapped.sinGuardar });
     if (!informe.archivables.registros) return { ok: true, sinCambios: true, motivo: 'nada-que-cerrar', corte, informe };
+    // Red de seguridad extra: si el espejo y el libro estaban coherentes y el cierre los separa (podó un registro y dejó su pata, o al revés),
+    // se aborta. Si ya venían incoherentes de antes no se bloquea el cierre por eso.
+    const libroApi = (typeof window !== 'undefined' && window.Libro) || (typeof Libro !== 'undefined' ? Libro : null);
+    const espejoAntes = libroApi && libroApi.verificarEspejo ? libroApi.verificarEspejo(copia) : null;
     let quitados;
     try { conEstadoAislado(copia, () => { quitados = _transformar(copia, informe, corte); }); }
     catch (e) { return fallo('error-al-transformar', { mensaje: String((e && e.message) || e) }); }
+    const espejoDespues = espejoAntes && libroApi.verificarEspejo(copia);
+    if (espejoAntes && espejoAntes.ok && !espejoDespues.ok) return fallo('espejo-roto', { huerfanas: espejoDespues.huerfanas.slice(0, 20) });
     const despues = Huella.calcular(copia, { requeridas });
     const comparacion = Huella.comparar(antes, despues);
     if (!comparacion.ok) return fallo('huella-distinta', { diferencias: comparacion.diferencias.slice(0, 20), errores: comparacion.errores });

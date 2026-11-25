@@ -290,7 +290,37 @@ export const Libro = (() => {
     return _arr((estado || S).libro).filter(l => l && esCuenta(l.cuenta) && (l.tipo === 'rendimiento' || l.tipo === 'ajuste' || l.tipo === 'cdt' || l.tipo === 'cierre'));
   }
 
-  const api = { esCuenta, registrar, origen, conOrigen, verificar, entradasVisibles, saldo, hidratar, asegurar, reindexar, estricto: false, TOL };
+  // Coherencia ESPEJO ↔ LIBRO: cada pata del libro con `origen.ref` cuyo saldo neto por (ref, cuenta) no sea cero tiene que apuntar a un
+  // registro que EXISTA en el estado (un `id` o una clave de `pagosGastosFijos`). Si no, alguien borró el registro sin revertir la plata
+  // (o el cierre de períodos podó uno y dejó el otro). Una pata revertida (neto 0) no necesita registro. No mira las entradas sin `ref`
+  // (ajustes, intereses, cierre). Devuelve { ok, huerfanas: [{ ref, cuenta, monto, modulo }] }.
+  function verificarEspejo(estado) {
+    const estadoActual = estado || S;
+    const vivos = new Set();
+    (function recorrer(x, esLibro) {
+      if (Array.isArray(x)) x.forEach(e => recorrer(e, false));
+      else if (x && typeof x === 'object') {
+        if (typeof x.id === 'string') vivos.add(x.id);
+        Object.keys(x).forEach(k => { if (!esLibro) recorrer(x[k], false); });
+      }
+    })(Object.assign({}, estadoActual, { libro: [] }));
+    Object.keys(estadoActual.pagosGastosFijos || {}).forEach(k => vivos.add(k));
+    const netos = new Map();
+    _arr(estadoActual.libro).forEach(l => {
+      const ref = l && l.origen && l.origen.ref;
+      if (!ref) return;
+      const clave = ref + '\u0000' + l.cuenta, previo = netos.get(clave) || { centavos: 0, modulo: l.origen.modulo };
+      previo.centavos += _cent(l.monto); netos.set(clave, previo);
+    });
+    const huerfanas = [];
+    netos.forEach((v, clave) => {
+      if (v.centavos === 0) return;
+      const [ref, cuenta] = clave.split('\u0000');
+      if (!vivos.has(ref)) huerfanas.push({ ref, cuenta, monto: v.centavos / 100, modulo: v.modulo });
+    });
+    return { ok: huerfanas.length === 0, huerfanas };
+  }
+  const api = { esCuenta, registrar, origen, conOrigen, verificar, verificarEspejo, entradasVisibles, saldo, hidratar, asegurar, reindexar, estricto: false, TOL };
   return api;
 })();
 if (typeof window !== 'undefined') window.Libro = Libro; // los tests lo leen como ctx.Libro

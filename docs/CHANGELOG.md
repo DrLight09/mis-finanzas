@@ -33,6 +33,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-24 — Coherencia espejo ↔ libro (`Libro.verificarEspejo`) y ida-y-vuelta de Préstamos
+
+**Probado solo con Node; sin ver en navegador real.**
+- `Libro.verificarEspejo(estado)` (`js/core/cuentas-fuentes.js`): cada pata del libro con `origen.ref` cuyo neto por (ref, cuenta) no sea 0 tiene que apuntar a un registro existente (`id` o clave de `pagosGastosFijos`, que es como se referencian los gastos fijos). Detecta un registro borrado sin revertir su plata.
+- **El cierre la exige:** si el espejo y el libro estaban coherentes y el cierre los separaría (podar un registro dejando su pata, o al revés), aborta con `espejo-roto` sin escribir. Si ya venían incoherentes no se bloquea.
+- `tests/consistencia-libro.test.js` (6) y `tests/ida-y-vuelta.test.js` (6 operaciones de Préstamos: aplicar → coherente; revertir → estado y saldos exactos, libro neto 0). Todas pasaron: Préstamos ya cumplía el contrato.
+
+---
+
 ## 2026-11-23 — Cierre de períodos, etapa 2: motor, candado y pantalla de Configuración
 
 **Probado solo con Node y datos sintéticos; sin ver en navegador real.** El botón aparece únicamente cuando hay algo cerrable (con datos reales, desde ~oct 2028).

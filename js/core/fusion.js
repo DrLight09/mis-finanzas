@@ -11,6 +11,9 @@
 //   2. Objetos: cada clave se fusiona por separado (por eso un cambio de nombre y un saldo nuevo conviven).
 //   3. Listas de objetos con `id`: se fusionan registro por registro. Alta en un lado → se conserva. Baja en un lado y sin tocar en
 //      el otro → se borra. Baja en uno y editado en el otro → se conserva el editado (no se pierde trabajo). Editado en los dos → regla 2.
+//   4b. Listas sin `id` con CLAVE NATURAL (`CLAVES_NATURALES`: `patrimonioHistorial` y `historialTasas`, una fila por `fecha`): como las listas con `id`
+//      pero por esa clave, para que dos dispositivos que registran el MISMO día no dejen dos filas. Si los dos lo registraron distinto elige de
+//      forma determinista (la de mayor texto JSON: no es «mejor», pero es la misma en los dos dispositivos) y la lista queda ordenada por fecha.
 //   4. Listas sin `id` (nombres de categorías, historiales por fecha…): como conjuntos. Lo agregado por cualquiera se conserva; lo
 //      quitado por alguien se quita.
 //   5. Choque real (los dos cambiaron el MISMO valor a cosas distintas): gana el local, el cambio que se está guardando ahora.
@@ -29,19 +32,25 @@ export const MAXIMOS = { libro: ['fecha'] };
 const esObjeto = x => x !== null && typeof x === 'object' && !Array.isArray(x);
 const igual = (a, b) => a === b || JSON.stringify(a) === JSON.stringify(b);
 const clon = x => (x === undefined ? undefined : JSON.parse(JSON.stringify(x)));
-const conId = lista => lista.length > 0 && lista.every(x => esObjeto(x) && x.id != null);
+const conId = (lista, campo = 'id') => lista.length > 0 && lista.every(x => esObjeto(x) && x[campo] != null);
+// Listas sin `id` cuya fila se identifica por un campo (una por fecha). Se busca por NOMBRE DE CAMPO en cualquier nivel.
+export const CLAVES_NATURALES = { patrimonioHistorial: 'fecha', historialTasas: 'fecha' };
 
-function fusionarListaConId(base, local, remoto, aditivos, maximos) {
-  const pb = new Map(base.map(x => [x.id, x]));
-  const pl = new Map(local.map(x => [x.id, x]));
-  const pr = new Map(remoto.map(x => [x.id, x]));
+function fusionarListaConId(base, local, remoto, aditivos, maximos, campo = 'id') {
+  const natural = campo !== 'id';
+  const pb = new Map(base.map(x => [x[campo], x]));
+  const pl = new Map(local.map(x => [x[campo], x]));
+  const pr = new Map(remoto.map(x => [x[campo], x]));
   const out = [];
   const visto = new Set();
   const poner = (id) => {
     if (visto.has(id)) return;
     visto.add(id);
     const b = pb.get(id), l = pl.get(id), r = pr.get(id);
-    if (l !== undefined && r !== undefined) { out.push(fusionarRegistro(b, l, r, aditivos, maximos)); return; }
+    if (l !== undefined && r !== undefined) {
+      if (natural) { out.push(clon(igual(l, r) || igual(b, r) ? l : igual(b, l) ? r : (JSON.stringify(l) >= JSON.stringify(r) ? l : r))); return; }
+      out.push(fusionarRegistro(b, l, r, aditivos, maximos)); return;
+    }
     if (l === undefined && r === undefined) return;               // borrado en los dos
     const queda = l !== undefined ? l : r;                         // existe solo de un lado
     if (b === undefined) { out.push(clon(queda)); return; }       // alta: se conserva
@@ -49,8 +58,9 @@ function fusionarListaConId(base, local, remoto, aditivos, maximos) {
     out.push(clon(queda));                                         // lo borró un lado pero el otro lo editó: se conserva lo editado
   };
   // Orden: el de la nube (lo que ya vieron los demás), y al final lo que solo existe aquí.
-  remoto.forEach(x => poner(x.id));
-  local.forEach(x => poner(x.id));
+  remoto.forEach(x => poner(x[campo]));
+  local.forEach(x => poner(x[campo]));
+  if (natural) out.sort((p, q) => (p[campo] < q[campo] ? -1 : p[campo] > q[campo] ? 1 : 0));
   return out;
 }
 
@@ -87,7 +97,7 @@ function fusionarConjunto(base, local, remoto) {
   return out;
 }
 
-function fusionarValor(b, l, r, aditivos, maximos) {
+function fusionarValor(b, l, r, aditivos, maximos, campoClave) {
   if (igual(l, r)) return clon(l);
   if (igual(b, l)) return clon(r);   // solo cambió el remoto
   if (igual(b, r)) return clon(l);   // solo cambió el local
@@ -98,13 +108,14 @@ function fusionarValor(b, l, r, aditivos, maximos) {
     const out = {};
     const claves = new Set([...Object.keys(r), ...Object.keys(l), ...Object.keys(base)]);
     for (const c of claves) {
-      const v = fusionarValor(base[c], l[c], r[c], ADITIVOS_POR_RUTA(c, aditivos), MAXIMOS_POR_RUTA(c, aditivos));
+      const v = fusionarValor(base[c], l[c], r[c], ADITIVOS_POR_RUTA(c, aditivos), MAXIMOS_POR_RUTA(c, aditivos), Object.prototype.hasOwnProperty.call(CLAVES_NATURALES, c) ? CLAVES_NATURALES[c] : undefined);
       if (v !== undefined) out[c] = v;
     }
     return out;
   }
   if (Array.isArray(l) && Array.isArray(r)) {
     const base = Array.isArray(b) ? b : [];
+    if (campoClave && conId(l.concat(r), campoClave) && (base.length === 0 || conId(base, campoClave))) return fusionarListaConId(base, l, r, aditivos, maximos, campoClave);
     if (conId(l.concat(r)) && (base.length === 0 || conId(base))) return fusionarListaConId(base, l, r, aditivos, maximos);
     return fusionarConjunto(base, l, r);
   }

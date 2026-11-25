@@ -19,7 +19,8 @@ const clon = x => JSON.parse(JSON.stringify(x));
 function crearBase(ctx) {
   const base = {
     nombre: 'Base', moneda: 'COP',
-    cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi' }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo' }],
+    cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi' }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo' }, { id: 'ahorro', tipo: 'ahorro', nombre: 'Nu', historialTasas: [{ fecha: '2026-01-01', tasa: 8 }] }],
+    patrimonioHistorial: [{ fecha: '2026-11-01', valor: 1000 }],
     cajitas: [{ id: 'c1', nombre: 'Sobra', cuentaId: 'nequi' }],
     libro: [], movimientos: [], etiquetas: ['uno', 'dos'],
   };
@@ -42,7 +43,11 @@ function operar(ctx, estado, lado, azar) {
     else if (r < 0.60) estado.movimientos.push({ id: lado + 'm' + Math.floor(azar() * 1e6), monto, desc: lado, nota: '' });
     else if (r < 0.75 && estado.movimientos.length) { const m = estado.movimientos[Math.floor(azar() * estado.movimientos.length)]; m[lado === 'a' ? 'desc' : 'nota'] = lado + Math.floor(azar() * 100); }
     else if (r < 0.85 && estado.movimientos.length) estado.movimientos.splice(Math.floor(azar() * estado.movimientos.length), 1);
-    else if (r < 0.95) estado.etiquetas.push(lado + 'etq' + Math.floor(azar() * 1000));
+    else if (r < 0.90) estado.etiquetas.push(lado + 'etq' + Math.floor(azar() * 1000));
+    // Listas sin `id` con clave natural (una fila por fecha): los dos lados pueden registrar el MISMO día con valores distintos.
+    // (la app anota como mucho UNA fila por día en cada dispositivo y siempre en orden cronológico)
+    else if (r < 0.95) { const fecha = '2026-11-0' + (2 + Math.floor(azar() * 4)); if (!estado.patrimonioHistorial.some(h => h.fecha === fecha)) { estado.patrimonioHistorial.push({ fecha, valor: Math.round(azar() * 1e6) }); estado.patrimonioHistorial.sort((p, q) => (p.fecha < q.fecha ? -1 : 1)); } }
+    else if (r < 0.97) { const fecha = '2026-0' + (2 + Math.floor(azar() * 4)) + '-01'; if (!estado.cuentas[2].historialTasas.some(h => h.fecha === fecha)) { estado.cuentas[2].historialTasas.push({ fecha, tasa: 5 + Math.floor(azar() * 9) }); estado.cuentas[2].historialTasas.sort((p, q) => (p.fecha < q.fecha ? -1 : 1)); } }
     else estado[lado === 'a' ? 'nombre' : 'moneda'] = lado + Math.floor(azar() * 100);
   }
 }
@@ -78,6 +83,11 @@ test('fusión: propiedades sobre secuencias aleatorias de dos dispositivos', asy
     assert.deepEqual(normalizar(fus(clon(base), clon(A), clon(base))), normalizar(A), `${contexto}: base como remoto debe dar lo local`);
     assert.deepEqual(normalizar(fus(clon(base), clon(base), clon(B))), normalizar(B), `${contexto}: base como local debe dar lo remoto`);
 
+    for (const [nombre, filas] of [['patrimonioHistorial', ab.patrimonioHistorial], ['historialTasas', ab.cuentas.find(c => c.id === 'ahorro').historialTasas]]) {
+      const fechas = filas.map(f => f.fecha);
+      assert.equal(new Set(fechas).size, fechas.length, `${contexto}: dos filas para una misma fecha en ${nombre}`);
+      assert.deepEqual(fechas, [...fechas].sort(), `${contexto}: ${nombre} debe quedar ordenada por fecha`);
+    }
     for (const lista of ['libro', 'movimientos', 'cuentas', 'cajitas']) {
       const ids = ab[lista].map(x => x.id);
       assert.equal(new Set(ids).size, ids.length, `${contexto}: ids duplicados en ${lista}`);

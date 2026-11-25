@@ -33,6 +33,16 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-25 — Fusión: listas por fecha sin duplicar el mismo día
+
+**Probado solo con Node; sin ver en navegador real.**
+- **Bug real:** `patrimonioHistorial` e `historialTasas` son listas sin `id` (una fila por `fecha`) y se fusionaban como conjuntos por su JSON: si dos dispositivos registraban el patrimonio (o cambiaban la tasa) del MISMO día con valores distintos, quedaban DOS filas para ese día.
+- **Arreglo** (`js/core/fusion.js`): `CLAVES_NATURALES = { patrimonioHistorial: 'fecha', historialTasas: 'fecha' }`; esas listas se fusionan por esa clave (altas y bajas de tres vías como las listas con `id`). Si los dos tocaron el mismo día de forma distinta gana la fila de mayor texto JSON: no es «mejor», pero es la misma en los dos dispositivos (determinista). La lista queda ordenada por fecha, así que el último elemento es el más reciente (lo que lee el resto del código).
+- **No se cambió a propósito:** los nombres de categorías (`catsVar`, `catsFijo`) renombrados de forma distinta en los dos lados siguen dejando los dos nombres; son etiquetas y no hay forma de saber cuál prefiere la persona.
+- Pruebas: 3 casos nuevos en `tests/fusion.test.js` y las 300 secuencias de `tests/fusion-propiedades.test.js` ahora incluyen estas listas (conmutatividad, idempotencia, una fila por fecha, orden).
+
+---
+
 ## 2026-11-24 — Coherencia espejo ↔ libro (`Libro.verificarEspejo`) y ida-y-vuelta de Préstamos
 
 **Probado solo con Node; sin ver en navegador real.**

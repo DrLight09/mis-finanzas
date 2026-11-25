@@ -92,6 +92,32 @@ describe('fusión — listas sin id (conjuntos)', () => {
   });
 });
 
+describe('listas sin id con clave natural (una fila por fecha): patrimonioHistorial e historialTasas', () => {
+  const base = { patrimonioHistorial: [{ fecha: '2026-11-23', valor: 100 }], cuentas: [{ id: 'a', tipo: 'ahorro', historialTasas: [{ fecha: '2026-01-01', tasa: 8 }] }] };
+  const copia = () => JSON.parse(JSON.stringify(base));
+  test('el mismo día registrado en los dos dispositivos deja UNA fila (antes quedaban dos)', () => {
+    const A = copia(), B = copia();
+    A.patrimonioHistorial.push({ fecha: '2026-11-24', valor: 120 }); B.patrimonioHistorial.push({ fecha: '2026-11-24', valor: 125 });
+    A.cuentas[0].historialTasas.push({ fecha: '2026-06-01', tasa: 9 }); B.cuentas[0].historialTasas.push({ fecha: '2026-06-01', tasa: 9.5 });
+    const m = fus(base, A, B), n = fus(base, B, A);
+    assert.equal(m.patrimonioHistorial.length, 2); assert.equal(m.cuentas[0].historialTasas.length, 2);
+    assert.deepEqual(m, n, 'el resultado no depende de qué lado es el local');
+  });
+  test('días distintos se suman, y la lista queda ordenada por fecha (el último es el más reciente)', () => {
+    const A = copia(), B = copia();
+    A.patrimonioHistorial.push({ fecha: '2026-11-25', valor: 1 }); B.patrimonioHistorial.push({ fecha: '2026-11-24', valor: 2 });
+    const m = fus(base, A, B);
+    assert.deepEqual(m.patrimonioHistorial.map(h => h.fecha), ['2026-11-23', '2026-11-24', '2026-11-25']);
+  });
+  test('editar un día en un lado y no en el otro conserva la edición; borrar en uno sin tocar en el otro lo borra', () => {
+    const A = copia(), B = copia();
+    A.patrimonioHistorial[0].valor = 111;
+    assert.equal(fus(base, A, B).patrimonioHistorial[0].valor, 111);
+    const C = copia(); C.patrimonioHistorial = [];
+    assert.equal(fus(base, C, B).patrimonioHistorial.length, 0);
+  });
+});
+
 describe('saldo derivado — tras fusionar, el saldo es la suma del libro unido (no hay nada que recalcular)', () => {
   const app = () => loadApp([path.join(RAIZ, 'js', 'core', 'core-state.js')], { permissive: true });
   const e = (id, monto) => ({ id, cuenta: 'cuenta:ef', monto, tipo: 'movimiento', fecha: '2026-11-20', origen: { modulo: 'x' } });

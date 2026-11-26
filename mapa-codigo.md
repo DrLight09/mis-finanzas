@@ -52,12 +52,13 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/personas-init.js` | módulo ES — importado por `js/main.js` | 1 | 0 |
 | `js/core/pin-bio.js` | de entrada (módulo ES) | 0 | 0 |
 | `js/core/plan-deudas.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, `js/modules/analisis.js` | 1 | 0 |
-| `js/core/puente.js` | módulo ES — importado por `js/core/arranque-ui.js`, `js/core/async-css.js`, `js/core/bootstrap.js`, `js/core/busqueda-global.js`, `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/cobros.js`, `js/core/color-picker.js`, `js/core/cuenta-efectos.js`, `js/core/cuentas-fuentes.js`, `js/core/dialogos.js`, `js/core/diferencial.js`, `js/core/disposicion-pc.js`, `js/core/estado.js`, `js/core/eventos-base.js`, `js/core/events.js`, `js/core/fecha.js`, `js/core/formulario.js`, `js/core/formularios-ui.js`, `js/core/fuentes-filtro.js`, `js/core/gastos-fijos-progress.js`, `js/core/globales-logica.js`, `js/core/html-tag.js`, `js/core/huella.js`, `js/core/ingresos.js`, `js/core/lazy-loader.js`, `js/core/mas-menu.js`, `js/core/modulos-activos.js`, `js/core/money-input.js`, `js/core/movimientos.js`, `js/core/navegacion.js`, `js/core/notificaciones-push.js`, `js/core/nu-calc.js`, `js/core/patrimonio.js`, `js/core/periodo.js`, `js/core/persistencia.js`, `js/core/personas-core.js`, `js/core/personas-init.js`, `js/core/refresh.js`, `js/core/registro-errores.js`, `js/core/reordenable.js`, `js/core/saldos-ocultos.js`, `js/core/sheet-behavior.js`, `js/core/split.js`, `js/core/sw-registro.js`, `js/core/ui.js`, `js/core/utilidades-ui.js`, `js/core/wait-for.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 2 | 0 |
+| `js/core/puente.js` | módulo ES — importado por `js/core/arranque-ui.js`, `js/core/async-css.js`, `js/core/bootstrap.js`, `js/core/busqueda-global.js`, `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/cobros.js`, `js/core/color-picker.js`, `js/core/cuenta-efectos.js`, `js/core/cuentas-fuentes.js`, `js/core/dialogos.js`, `js/core/diferencial.js`, `js/core/disposicion-pc.js`, `js/core/estado.js`, `js/core/eventos-base.js`, `js/core/events.js`, `js/core/fecha.js`, `js/core/formulario.js`, `js/core/formularios-ui.js`, `js/core/fuentes-filtro.js`, `js/core/gastos-fijos-progress.js`, `js/core/globales-logica.js`, `js/core/html-tag.js`, `js/core/huella.js`, `js/core/ingresos.js`, `js/core/lazy-loader.js`, `js/core/mas-menu.js`, `js/core/modulos-activos.js`, `js/core/money-input.js`, `js/core/movimientos.js`, `js/core/navegacion.js`, `js/core/notificaciones-push.js`, `js/core/nu-calc.js`, `js/core/patrimonio.js`, `js/core/periodo.js`, `js/core/persistencia.js`, `js/core/personas-core.js`, `js/core/personas-init.js`, `js/core/refresh.js`, `js/core/registro-errores.js`, `js/core/reordenable.js`, `js/core/resumen-datos.js`, `js/core/saldos-ocultos.js`, `js/core/sheet-behavior.js`, `js/core/split.js`, `js/core/sw-registro.js`, `js/core/ui.js`, `js/core/utilidades-ui.js`, `js/core/wait-for.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js` | 2 | 0 |
 | `js/core/refresh.js` | módulo ES — importado por `js/core/arranque-ui.js`, `js/core/gastos-fijos-progress.js`, `js/core/lazy-loader.js`, `js/core/mas-menu.js`, `js/core/movimientos.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 6 | 0 |
 | `js/core/registro-errores.js` | módulo ES — importado por `js/main.js` | 4 | 3 |
 | `js/core/reglas.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/core/salud.js`, `js/main.js`, `js/modules/inicio.js` | 1 | 0 |
 | `js/core/reordenable.js` | módulo ES — importado por `js/main.js`, `js/modules/cuentas.js` | 1 | 0 |
 | `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 17 | 4 |
+| `js/core/resumen-datos.js` | módulo ES — importado por `js/main.js`, `js/modules/configuracion.js` | 5 | 1 |
 | `js/core/saldos-ocultos.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/salud.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/inicio.js` | 1 | 0 |
 | `js/core/sheet-behavior.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
@@ -72,7 +73,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/actividad-reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 31 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
-| `js/modules/configuracion.js` | lazy — grupo `config` | 24 | 1 |
+| `js/modules/configuracion.js` | lazy — grupo `config` | 26 | 1 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 88 | 3 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 85 | 0 |
 | `js/modules/gastos.js` | módulo ES — importado por `js/core/eventos-base.js`, `js/main.js` | 25 | 0 |
@@ -372,7 +373,7 @@ Carga: módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, 
 
 ### `js/core/puente.js`
 
-Carga: módulo ES — importado por `js/core/arranque-ui.js`, `js/core/async-css.js`, `js/core/bootstrap.js`, `js/core/busqueda-global.js`, `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/cobros.js`, `js/core/color-picker.js`, `js/core/cuenta-efectos.js`, `js/core/cuentas-fuentes.js`, `js/core/dialogos.js`, `js/core/diferencial.js`, `js/core/disposicion-pc.js`, `js/core/estado.js`, `js/core/eventos-base.js`, `js/core/events.js`, `js/core/fecha.js`, `js/core/formulario.js`, `js/core/formularios-ui.js`, `js/core/fuentes-filtro.js`, `js/core/gastos-fijos-progress.js`, `js/core/globales-logica.js`, `js/core/html-tag.js`, `js/core/huella.js`, `js/core/ingresos.js`, `js/core/lazy-loader.js`, `js/core/mas-menu.js`, `js/core/modulos-activos.js`, `js/core/money-input.js`, `js/core/movimientos.js`, `js/core/navegacion.js`, `js/core/notificaciones-push.js`, `js/core/nu-calc.js`, `js/core/patrimonio.js`, `js/core/periodo.js`, `js/core/persistencia.js`, `js/core/personas-core.js`, `js/core/personas-init.js`, `js/core/refresh.js`, `js/core/registro-errores.js`, `js/core/reordenable.js`, `js/core/saldos-ocultos.js`, `js/core/sheet-behavior.js`, `js/core/split.js`, `js/core/sw-registro.js`, `js/core/ui.js`, `js/core/utilidades-ui.js`, `js/core/wait-for.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js`
+Carga: módulo ES — importado por `js/core/arranque-ui.js`, `js/core/async-css.js`, `js/core/bootstrap.js`, `js/core/busqueda-global.js`, `js/core/calc-helpers.js`, `js/core/cierre.js`, `js/core/cobros.js`, `js/core/color-picker.js`, `js/core/cuenta-efectos.js`, `js/core/cuentas-fuentes.js`, `js/core/dialogos.js`, `js/core/diferencial.js`, `js/core/disposicion-pc.js`, `js/core/estado.js`, `js/core/eventos-base.js`, `js/core/events.js`, `js/core/fecha.js`, `js/core/formulario.js`, `js/core/formularios-ui.js`, `js/core/fuentes-filtro.js`, `js/core/gastos-fijos-progress.js`, `js/core/globales-logica.js`, `js/core/html-tag.js`, `js/core/huella.js`, `js/core/ingresos.js`, `js/core/lazy-loader.js`, `js/core/mas-menu.js`, `js/core/modulos-activos.js`, `js/core/money-input.js`, `js/core/movimientos.js`, `js/core/navegacion.js`, `js/core/notificaciones-push.js`, `js/core/nu-calc.js`, `js/core/patrimonio.js`, `js/core/periodo.js`, `js/core/persistencia.js`, `js/core/personas-core.js`, `js/core/personas-init.js`, `js/core/refresh.js`, `js/core/registro-errores.js`, `js/core/reordenable.js`, `js/core/resumen-datos.js`, `js/core/saldos-ocultos.js`, `js/core/sheet-behavior.js`, `js/core/split.js`, `js/core/sw-registro.js`, `js/core/ui.js`, `js/core/utilidades-ui.js`, `js/core/wait-for.js`, `js/core/wrapped-gate.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/alcancia.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js`, `js/modules/wrapped.js`
 
 **Funciones:** `exponerGlobales`, `exponerVariables`
 
@@ -409,6 +410,14 @@ Carga: módulo ES — importado por `js/core/firebase-sync.js`
 **Funciones:** `almacenIndexedDB`, `almacenMemoria`, `borrarRespaldosNube`, `dos`, `fechaLocal`, `fusionar`, `idConflicto`, `idDiario`, `idPrevio`, `leerRespaldo`, `listarEnEquipo`, `listarEnNube`, `payloadTieneDatos`, `planoTieneDatos`, `podar`, `respaldarEnEquipo`, `respaldarEnNube`
 
 **Globales:** `CLASES`, `ID_INDICE`, `LIMITES`, `PREFIJO_RESPALDO`
+
+### `js/core/resumen-datos.js`
+
+Carga: módulo ES — importado por `js/main.js`, `js/modules/configuracion.js`
+
+**Funciones:** `_centavos`, `_esFecha`, `_lista`, `compararResumenes`, `resumirDatos`
+
+**Globales:** `FILAS_RESUMEN`
 
 ### `js/core/saldos-ocultos.js`
 
@@ -510,7 +519,7 @@ Carga: lazy — grupo `analisis`
 
 Carga: lazy — grupo `config`
 
-**Funciones:** `_nombreMes`, `_reemplazarDatos`, `_respBotonVer`, `_respDescripcion`, `_respFechaLarga`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `cerrarPeriodosAntiguos`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderCierrePeriodos`, `renderErroresRecientes`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verRespaldos`
+**Funciones:** `_nombreMes`, `_reemplazarDatos`, `_respBotonVer`, `_respDescripcion`, `_respFechaLarga`, `_textoImpacto`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `cerrarPeriodosAntiguos`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderCierrePeriodos`, `renderErroresRecientes`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verContenidoRespaldo`, `verRespaldos`
 
 **Globales:** `MOTIVOS_CIERRE`
 
@@ -692,6 +701,7 @@ Ninguno.
 | `_cajitasAhorroActual` | `js/modules/nu.js` |
 | `_cancelarCobrarCDT` | `js/modules/nu.js` |
 | `_cdtModoSheet` | `js/modules/nu.js` |
+| `_centavos` | `js/core/resumen-datos.js` |
 | `_cerrarFichaPersonas` | `js/modules/personas.js` |
 | `_checkGastoAlto` | `js/modules/inicio.js` |
 | `_clasePorCuenta` | `js/core/cuentas-fuentes.js` |
@@ -762,6 +772,7 @@ Ninguno.
 | `_errMonto` | `js/modules/prestado.js` |
 | `_errSumaCuentas` | `js/modules/prestado.js` |
 | `_esEntradaEspejoNoIngreso` | `js/core/ingresos.js` |
+| `_esFecha` | `js/core/resumen-datos.js` |
 | `_esGastoVarNoReal` | `js/core/ingresos.js` |
 | `_esPcPersonas` | `js/modules/personas.js` |
 | `_espejoLista` | `js/core/cuenta-efectos.js` |
@@ -811,6 +822,7 @@ Ninguno.
 | `_irASpotify` | `js/modules/personas.js` |
 | `_leer` | `js/core/registro-errores.js` |
 | `_libroPata` | `js/core/cuentas-fuentes.js` |
+| `_lista` | `js/core/resumen-datos.js` |
 | `_listaFuentes` | `js/core/cuentas-fuentes.js` |
 | `_locallyModified` | `js/core/utilidades-ui.js` (window._locallyModified = …) |
 | `_luminancia` | `js/core/cuentas-fuentes.js` |
@@ -1018,6 +1030,7 @@ Ninguno.
 | `_tcOperacionesPosteriores` | `js/modules/tarjetas-credito.js` |
 | `_tcPanelPc` | `js/modules/tarjetas-credito.js` |
 | `_tcPoblarSelectCajita` | `js/modules/tarjetas-credito.js` |
+| `_textoImpacto` | `js/modules/configuracion.js` |
 | `_tituloCuentaHtml` | `js/modules/cuentas.js` |
 | `_toastTexto` | `js/core/dialogos.js` |
 | `_trasCambioDePersonas` | `js/modules/personas.js` |
@@ -1330,6 +1343,7 @@ Ninguno.
 | `codificarPayload` | `js/core/payload-codec.js` |
 | `colorCuenta` | `js/core/cuentas-fuentes.js` |
 | `colorLegible` | `js/core/cuentas-fuentes.js` |
+| `compararResumenes` | `js/core/resumen-datos.js` |
 | `conEstadoAislado` | `js/core/persistencia.js` |
 | `confirmarAgregarDinero` | `js/modules/cuentas.js` |
 | `confirmarAgregarDineroMenu` | `js/modules/cuentas.js` |
@@ -1467,6 +1481,7 @@ Ninguno.
 | `Fecha` | `js/core/fecha.js` |
 | `fechaLocal` | `js/core/respaldos.js` |
 | `filaMovimiento` | `js/core/utilidades-ui.js` |
+| `FILAS_RESUMEN` | `js/core/resumen-datos.js` |
 | `fmt` | `js/core/estado.js` |
 | `fmtInput` | `js/core/persistencia.js` |
 | `fmtNoCents` | `js/core/estado.js` |
@@ -1693,6 +1708,7 @@ Ninguno.
 | `respaldarEnEquipo` | `js/core/respaldos.js` |
 | `respaldarEnNube` | `js/core/respaldos.js` |
 | `restaurarRespaldo` | `js/modules/configuracion.js` |
+| `resumirDatos` | `js/core/resumen-datos.js` |
 | `Reversibles` | `js/core/utilidades-ui.js` |
 | `S` | `js/core/estado.js` |
 | `saldoCuentas` | `js/core/cuentas-fuentes.js` |
@@ -1776,6 +1792,7 @@ Ninguno.
 | `validarCamposCDT` | `js/modules/nu.js` |
 | `validarEstado` | `js/core/validar-estado.js` |
 | `validarTransferencia` | `js/modules/cuentas.js` |
+| `verContenidoRespaldo` | `js/modules/configuracion.js` |
 | `verificarTasaAhorro` | `js/modules/nu.js` |
 | `verificarVencimientosCDT` | `js/modules/nu.js` |
 | `verRespaldos` | `js/modules/configuracion.js` |

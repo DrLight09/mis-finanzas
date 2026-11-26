@@ -33,6 +33,16 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-25 — Importar, restaurar y «Ver» un respaldo muestran qué cambia
+
+**Probado solo con Node; sin ver en navegador real.**
+- `js/core/resumen-datos.js` (nuevo, puro, cargado desde `main.js`): `resumirDatos(plano)` (conteos de cuentas, cajitas, movimientos, tarjetas, préstamos, encargos, personas y meses cerrados; saldo de cuentas y cajitas; esquema; rango de fechas) y `compararResumenes(actual, nuevo)`. Tolera entradas raras, campos que falten y esquemas viejos. El saldo es el guardado (respaldos viejos) o se deriva de su libro, como lo mostrará la app tras cargarlo.
+- «Importar datos» y «Restaurar respaldo» (`configuracion.js`) muestran en su confirmación «ahora X, en el archivo/respaldo Y» (`_textoImpacto`); antes la persona confirmaba a ciegas.
+- Nuevo botón «Ver» en cada respaldo (`verContenidoRespaldo`): resumen y comparación sin cargar, validar ni migrar nada y sin PIN; un respaldo ilegible avisa y no abre nada.
+- Pruebas: `tests/resumen-datos.test.js` (4) y 2 casos nuevos más aserciones del diálogo en `tests/respaldos.test.js`. **Sigue pendiente** «Eliminar un respaldo» (§15.3 de `pendientes.md`).
+
+---
+
 ## 2026-11-25 — Fusión: listas por fecha sin duplicar el mismo día
 
 **Probado solo con Node; sin ver en navegador real.**

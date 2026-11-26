@@ -33,7 +33,8 @@
 import { exponerGlobales, exponerVariables } from '../core/puente.js';
 import { html, raw } from '../core/html-tag.js';
 import { Events } from '../core/events.js';
-import { CATS_FIJO_DEFAULT, CATS_VAR_DEFAULT, S, getCatsFijo, getCatsVar, hoy } from '../core/estado.js';
+import { CATS_FIJO_DEFAULT, CATS_VAR_DEFAULT, S, fmt, getCatsFijo, getCatsVar, hoy } from '../core/estado.js';
+import { compararResumenes, resumirDatos } from '../core/resumen-datos.js';
 import { _fechaSafe, avisarNoSePuede, confirmarEliminar, dialogo, toast } from '../core/dialogos.js';
 import { botonEliminarFila, pedirPinAntesDe } from '../core/utilidades-ui.js';
 import { SCHEMA_BASE, SCHEMA_VERSION_ACTUAL, aplicarMigraciones, save } from '../core/persistencia.js';
@@ -47,7 +48,7 @@ import { applyModulos } from '../core/modulos-activos.js';
 import { showScreen } from '../core/navegacion.js';
 import { Ui } from '../core/ui.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, renderErroresRecientes, renderCierrePeriodos, cerrarPeriodosAntiguos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
+exponerGlobales({ _textoImpacto, verContenidoRespaldo, renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, renderErroresRecientes, renderCierrePeriodos, cerrarPeriodosAntiguos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
 // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
@@ -291,6 +292,16 @@ export function exportarJSON(){
   toast('Copia de seguridad exportada','ok');
 }
 
+// Texto con lo que CAMBIARÍA reemplazar los datos actuales por `nuevo` (un archivo importado o un respaldo), para el diálogo de confirmación.
+// `S` se pasa tal cual: sus cuentas ya traen el saldo derivado, igual que lo mostrará la app tras cargar `nuevo`.
+export function _textoImpacto(nuevo,deDonde){
+  const resumen=resumirDatos(nuevo);
+  const valor=(f,x)=>f.dinero?fmt(x):String(x);
+  const lineas=compararResumenes(resumirDatos(S),resumen).map(f=>f.etiqueta+': ahora '+valor(f,f.actual)+', '+deDonde+' '+valor(f,f.nuevo));
+  if(resumen.primeraFecha)lineas.push('Movimientos de '+resumen.primeraFecha+' a '+resumen.ultimaFecha+' ('+deDonde+')');
+  return lineas.join('\n');
+}
+
 export function importarJSON(){
   document.getElementById('importFileInput').click();
 }
@@ -426,7 +437,7 @@ export function leerArchivoImport(e){
         e.target.value='';
         return;
       }
-      const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado? Antes de reemplazar se guarda una copia de lo que tienes ahora (la encuentras en Respaldos automáticos).','Importar',true);
+      const ok=await dialogo('Importar datos','¿Reemplazar todos los datos actuales con el archivo importado?\n\n'+_textoImpacto(data,'en el archivo')+'\n\nAntes de reemplazar se guarda una copia de lo que tienes ahora (la encuentras en Respaldos automáticos).','Importar',true);
       if(!ok)return;
       const _r=await _reemplazarDatos(data,'Para reemplazar todos tus datos con el backup','Datos importados correctamente — recargando…');
       if(_r===false){e.target.value='';return;}
@@ -502,8 +513,21 @@ export async function verRespaldos(){
   contenedor.innerHTML=html`${r.errorNube?html`<div class="cfg-resp-estado cfg-resp-aviso">No se pudo leer la lista de la nube (${r.errorNube}); se muestran solo las copias de este dispositivo.</div>`:''}
     <div class="cfg-resp-lista">${r.filas.map(f=>html`<div class="cfg-resp-fila">
       <div class="cfg-resp-info"><div class="cfg-resp-fecha">${_respFechaLarga(f)}</div><div class="cfg-resp-meta">${_respDescripcion(f)}</div></div>
+      <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:verContenidoRespaldo',f.id))}>Ver</button>
       <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:restaurarRespaldo',f.id))}>Restaurar</button>
     </div>`)}</div>`;
+}
+// «Ver»: qué contiene un respaldo y en qué se diferencia de lo que tienes ahora, SIN cargarlo ni validarlo ni migrarlo (solo lectura).
+export async function verContenidoRespaldo(id){
+  const api=window._firebaseRespaldos;
+  const fila=_respaldosFilas.find(f=>f.id===id);
+  if(!api||!fila){toast('No se encontró ese respaldo. Vuelve a abrir la lista.','err');return;}
+  let data;
+  try{data=JSON.parse(await api.leer(fila));}
+  catch(_){toast('No se pudo leer este respaldo (está dañado o no hay conexión).','err');return;}
+  const resumen=resumirDatos(data);
+  const encabezado=_respFechaLarga(fila)+' · '+_respDescripcion(fila)+(resumen.esquema?' · esquema '+resumen.esquema:'');
+  await dialogo('Contenido del respaldo',encabezado+'\n\n'+(_textoImpacto(data,'en el respaldo')||'Está vacío.'),'Cerrar',false);
 }
 export async function restaurarRespaldo(id){
   const api=window._firebaseRespaldos;
@@ -517,7 +541,7 @@ export async function restaurarRespaldo(id){
     const errores=_validarEstructuraJSON(data);
     if(errores.length>0){toast('Ese respaldo no es válido: '+errores[0],'err');return;}
     const cuando=_respFechaLarga(fila);
-    const ok=await dialogo('Restaurar respaldo','¿Reemplazar todos tus datos actuales por el respaldo del '+cuando+'? Antes de reemplazar se guarda una copia de lo que tienes ahora, así que también podrás deshacerlo.','Restaurar',true);
+    const ok=await dialogo('Restaurar respaldo','¿Reemplazar todos tus datos actuales por el respaldo del '+cuando+'?\n\n'+_textoImpacto(data,'en el respaldo')+'\n\nAntes de reemplazar se guarda una copia de lo que tienes ahora, así que también podrás deshacerlo.','Restaurar',true);
     if(!ok)return;
     await _reemplazarDatos(data,'Para restaurar el respaldo del '+cuando,'Respaldo restaurado — recargando…');
   }catch(err){
@@ -617,6 +641,7 @@ Events.registerAll('config', {
   // Respaldos automáticos (Configuración → Datos)
   verRespaldos: verRespaldos,
   restaurarRespaldo: (id) => restaurarRespaldo(id),
+  verContenidoRespaldo: (id) => verContenidoRespaldo(id),
 });
 
 /* ---- WIRING de controles que no son clicks simples (change/keydown/inputs de archivo) ---- */

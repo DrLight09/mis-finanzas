@@ -420,7 +420,7 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
 describe('respaldos — pantalla de Configuración', () => {
   const MOD = f => path.join(__dirname, '..', 'js', 'modules', f);
   function pantalla({ filas = [], estado = { ultimo: null, error: null }, leerPlano, errorNube = null } = {}) {
-    const ctx = loadApp([path.join(CORE, 'core-state.js'), path.join(CORE, 'html-tag.js'), path.join(CORE, 'events.js'), MOD('configuracion.js')], { permissive: true });
+    const ctx = loadApp([path.join(CORE, 'core-state.js'), path.join(CORE, 'html-tag.js'), path.join(CORE, 'events.js'), path.join(CORE, 'resumen-datos.js'), MOD('configuracion.js')], { permissive: true });
     const dom = createFakeDom();
     ctx.document = dom.document;
     const toasts = [], dialogos = [], pins = [], guardados = [];
@@ -501,12 +501,37 @@ describe('respaldos — pantalla de Configuración', () => {
     await p.ctx.restaurarRespaldo('respaldo-2026-11-09');
     assert.equal(p.dialogos.length, 1);
     assert.match(p.dialogos[0].msg, /9 de noviembre de 2026/); assert.match(p.dialogos[0].msg, /también podrás deshacerlo/);
+    assert.match(p.dialogos[0].msg, /Cuentas: ahora 1, en el respaldo 1/, 'el diálogo muestra qué cambia');
+    assert.match(p.dialogos[0].msg, /Saldo de cuentas y cajitas: ahora .*1.*, en el respaldo .*777/);
     assert.deepEqual(p.pins, ['Para restaurar el respaldo del 9 de noviembre de 2026']);
     assert.equal(p.ctx.S.cuentas[0].saldo, 777);
     assert.equal(p.ctx.S.cuentasViejas, undefined, 'S se reemplaza completo, no se mezcla');
     assert.deepEqual(p.guardados.map(g => ({ ...g })), [{ forzar: true }]);
     assert.ok(p.toasts.some(t => /Respaldo restaurado/.test(t.m)));
     await esperar(900); assert.equal(p.ctx.__recargo, true, 'recarga solo tras confirmar el guardado');
+  });
+
+  test('lista: cada fila trae «Ver» además de «Restaurar»; «Ver» muestra el contenido y lo que cambiaría SIN tocar nada', async () => {
+    const p = pantalla({ filas: [fila('respaldo-2026-11-09')], leerPlano: async () => valido(777) });
+    p.ctx.S.cuentas = [{ id: 'a', nombre: 'A', tipo: 'banco', saldo: 5 }, { id: 'b', nombre: 'B', tipo: 'efectivo', saldo: 7 }];
+    p.ctx.renderRespaldos(); await p.ctx.verRespaldos();
+    const h = p.dom.document.getElementById('cfg-respaldos-lista').innerHTML;
+    assert.match(h, /data-action="config:verContenidoRespaldo"/); assert.match(h, /data-action="config:restaurarRespaldo"/);
+    const antes = JSON.stringify(p.ctx.S);
+    await p.ctx.verContenidoRespaldo('respaldo-2026-11-09');
+    assert.equal(p.dialogos.length, 1);
+    assert.equal(p.dialogos[0].titulo, 'Contenido del respaldo');
+    assert.match(p.dialogos[0].msg, /9 de noviembre de 2026/);
+    assert.match(p.dialogos[0].msg, /Cuentas: ahora 2, en el respaldo 1/);
+    assert.equal(JSON.stringify(p.ctx.S), antes, 'ver no carga ni cambia los datos');
+    assert.equal(p.pins.length, 0); assert.equal(p.guardados.length, 0);
+  });
+
+  test('«Ver» un respaldo ilegible avisa y no abre nada', async () => {
+    const p = pantalla({ filas: [fila('respaldo-2026-11-09')], leerPlano: async () => 'gz1:esto-no-es-json' });
+    p.ctx.renderRespaldos(); await p.ctx.verRespaldos();
+    await p.ctx.verContenidoRespaldo('respaldo-2026-11-09');
+    assert.match(p.toasts[p.toasts.length - 1].m, /No se pudo leer/); assert.equal(p.dialogos.length, 0);
   });
 
   test('restaurar: un respaldo ilegible o que no pasa la validación NO reemplaza nada ni pregunta', async () => {

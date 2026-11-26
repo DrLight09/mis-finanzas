@@ -8,6 +8,7 @@
 
 import './core/puente.js';
 import './core/fecha.js';
+import './core/resumen-datos.js'; // resumen puro de un estado (importar / restaurar / ver respaldo)
 import './core/registro-errores.js'; // lo antes posible (tras puente y fecha, que la prueba de orden exige primero): así también queda registrado un error al arrancar el resto
 import './core/umbrales.js';
 import './core/reglas.js';

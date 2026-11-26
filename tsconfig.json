@@ -14,6 +14,6 @@
   "include": [
     "js/tipos-globales.d.ts",
     "js/core/umbrales.js", "js/core/reglas.js", "js/core/salud.js", "js/core/plan-deudas.js",
-    "js/core/payload-codec.js", "js/core/fusion.js", "js/core/validar-estado.js", "js/core/respaldos.js", "js/core/fecha.js", "js/core/wait-for.js", "js/core/puente.js"
+    "js/core/payload-codec.js", "js/core/fusion.js", "js/core/validar-estado.js", "js/core/respaldos.js", "js/core/resumen-datos.js", "js/core/fecha.js", "js/core/wait-for.js", "js/core/puente.js"
   ]
 }

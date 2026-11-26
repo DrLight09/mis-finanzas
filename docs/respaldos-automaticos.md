@@ -52,10 +52,12 @@ Configuración → Datos → Respaldos automáticos → «Ver respaldos» → «
 
 1. lee el respaldo (de la nube; si no responde, del dispositivo);
 2. lo valida igual que un archivo importado (uno inválido no reemplaza nada);
-3. pide confirmación y el PIN;
+3. pide confirmación **mostrando qué cambiaría** (cuentas, saldo de cuentas y cajitas, movimientos, tarjetas, préstamos, encargos, personas y meses cerrados: «ahora X, en el respaldo Y», más el rango de fechas de los movimientos) y luego el PIN;
 4. crea un respaldo **previo** de lo que tienes ahora y recién entonces lo reemplaza.
 
-Importar un JSON usa exactamente el mismo camino.
+Importar un JSON usa exactamente el mismo camino y muestra el mismo resumen de lo que cambiaría.
+
+**«Ver» (solo lectura).** Cada fila trae también «Ver»: abre un diálogo con la fecha, el tipo, el esquema y ese mismo resumen frente a tus datos actuales, **sin cargar, validar ni migrar nada** y sin pedir PIN. Sirve para decidir si conviene restaurar. El cálculo es `resumirDatos` / `compararResumenes` (`js/core/resumen-datos.js`, puro); el saldo se toma del respaldo si es de un formato viejo que lo trae guardado o se deriva de su libro.
 
 ## 7. Garantías de diseño
 

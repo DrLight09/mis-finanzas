@@ -2,6 +2,7 @@
 // Secuencias ALEATORIAS con las funciones REALES de gastos fijos y tarjetas de crédito, vigilando el libro después de CADA paso:
 //   · pagar un gasto fijo con una cuenta (`abrirPagarGastoFijo` + `confirmarPagarGastoFijo`) o con la tarjeta (sube la deuda);
 //   · pagar la tarjeta desde una cuenta (`abrirPagarTC` + `confirmarPagarTC`);
+//   · comprar con la tarjeta como gasto variable (`addGastoVar` con la tarjeta como fuente; sube la deuda);
 //   · eliminar un pago de gasto fijo (`eliminarMovimiento`, la ruta de la pantalla) o un pago de tarjeta (`eliminarPagoTC`).
 // Tras cada paso: saldo de cada cuenta y deuda de la tarjeta == un modelo independiente; `pagosGastosFijos` == los gastos fijos que el modelo
 // considera pagados este mes; Libro.verificar y Libro.verificarEspejo. Al final se elimina todo y todo vuelve al inicio. Semilla fija.
@@ -31,7 +32,7 @@ function entorno() {
   app.S.config = { proteccionAntiguedad: { diasAviso: 99999, diasBloqueo: 99999 } };
   app.Libro.hidratar(app.S);
   const campos = {};
-  ['pgf-fuente', 'pgf-fecha', 'pgf-nota', 'pgf-title', 'pgf-monto', 'pgf-cat-badge', 'pgf-saldo-info', 'ptc_monto', 'ptc_fuente', 'ptc_fecha', 'ptc_nota', 'ptc-preview', 'ptc-deuda-total', 'ptc-fuente-saldo', 'pagar-tc-title']
+  ['pgf-fuente', 'pgf-fecha', 'pgf-nota', 'pgf-title', 'pgf-monto', 'pgf-cat-badge', 'pgf-saldo-info', 'gv_desc', 'gv_monto', 'gv_fecha', 'gv_cat', 'gv_nota', 'gv_fuente', 'ptc_monto', 'ptc_fuente', 'ptc_fecha', 'ptc_nota', 'ptc-preview', 'ptc-deuda-total', 'ptc-fuente-saldo', 'pagar-tc-title']
     .forEach(id => { campos[id] = { value: '', textContent: '', innerHTML: '', style: {} }; });
   campos['pgf-error'] = { value: '', textContent: '', style: {} };
   const dom = createFakeDom(campos);
@@ -85,7 +86,7 @@ async function correrSecuencia(semilla, pasos) {
 
   for (let paso = 1; paso <= pasos; paso++) {
     const r = azar();
-    if (r < 0.34) {                                   // pagar un gasto fijo (cuenta o tarjeta)
+    if (r < 0.28) {                                   // pagar un gasto fijo (cuenta o tarjeta)
       const libres = FIJOS.filter(f => !modelo.pagados.has(clave(f)));
       if (!libres.length) continue;
       const f = elegir(libres), fuente = azar() < 0.7 ? elegir(CUENTAS) : 'tc:tc1';
@@ -101,7 +102,7 @@ async function correrSecuencia(semilla, pasos) {
       modelo.pagados.add(clave(f));
       vivos.push({ clase: 'fijo', gastoId: g.id, fuente, fecha, monto: f.monto, deshacer() { if (i >= 0) modelo.saldos[i] += f.monto; else modelo.deuda -= f.monto; modelo.pagados.delete(clave(f)); } });
       revisar(paso, 'pagar gasto fijo');
-    } else if (r < 0.62) {                            // pagar la tarjeta desde una cuenta
+    } else if (r < 0.50) {                            // pagar la tarjeta desde una cuenta
       const monto = (1 + Math.floor(azar() * 40)) * 10000, fuente = elegir(CUENTAS), i = CUENTAS.indexOf(fuente);
       if (monto > modelo.deuda) continue;
       app.abrirPagarTC('tc1');
@@ -113,6 +114,17 @@ async function correrSecuencia(semilla, pasos) {
       modelo.saldos[i] -= monto; modelo.deuda -= monto;
       vivos.push({ clase: 'pagoTc', pagoId: pago.id, deshacer() { modelo.saldos[i] += monto; modelo.deuda += monto; } });
       revisar(paso, 'pagar tarjeta');
+    } else if (r < 0.72) {                            // comprar con la tarjeta (gasto variable)
+      const monto = (1 + Math.floor(azar() * 60)) * 5000, fecha = azar() < 0.35 ? MES_ANTERIOR : HOY;
+      campo(dom, 'gv_fuente', 'tc:tc1'); campo(dom, 'gv_monto', String(monto) + ',00'); campo(dom, 'gv_desc', 'Compra'); campo(dom, 'gv_cat', 'Comida'); campo(dom, 'gv_fecha', fecha);
+      const antes = app.S.gastosVar.length, comprasAntes = app.S.tarjetasCredito[0].compras.length;
+      app.addGastoVar();
+      assert.equal(app.S.gastosVar.length, antes + 1, `semilla ${semilla}, paso ${paso}: la compra con tarjeta no se creó`);
+      assert.equal(app.S.tarjetasCredito[0].compras.length, comprasAntes + 1, `semilla ${semilla}, paso ${paso}: la compra no quedó en la tarjeta`);
+      const g = app.S.gastosVar[app.S.gastosVar.length - 1];
+      modelo.deuda += monto;
+      vivos.push({ clase: 'fijo', gastoId: g.id, fuente: 'tc:tc1', fecha, monto, deshacer() { modelo.deuda -= monto; } });
+      revisar(paso, 'compra con tarjeta');
     } else if (vivos.length) {                        // eliminar uno al azar
       const k = Math.floor(azar() * vivos.length), v = vivos[k];
       await eliminar(v); vivos.splice(k, 1);

@@ -52,6 +52,14 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-26 — Las secuencias aleatorias incluyen saldo inicial y compras con tarjeta
+
+**Probado solo con Node; sin ver en navegador real.** No encontró fallos nuevos.
+- `tests/secuencias-libro.test.js`: además de ingreso, retiro, transferencia y gasto, ahora CREA y CORRIGE el saldo inicial de una cuenta (`registrarEntradaConApertura` con apertura + `abrirEditarApertura`/`confirmarEditarApertura`) y lo elimina con `eliminarMovimiento`; el modelo suma la diferencia al corregir. Validada con una mutación (corregir hacia abajo sumando en vez de restar: falla en 4 de las 8 semillas).
+- `tests/secuencias-fijos-tc.test.js`: ahora incluye COMPRAS con tarjeta como gasto variable (`addGastoVar` con `tc:tc1`, fecha de este mes o del anterior): comprueba que la compra queda en la tarjeta, que la deuda sube y que eliminarla la devuelve.
+
+---
+
 ## 2026-11-26 — Bug: pagar un gasto fijo con fecha de otro mes y eliminar el pago dejaba el gasto «pagado»
 
 **Probado solo con Node; sin ver en navegador real.** Lo encontró la prueba de secuencias aleatorias de gastos fijos y tarjeta (`tests/secuencias-fijos-tc.test.js`).

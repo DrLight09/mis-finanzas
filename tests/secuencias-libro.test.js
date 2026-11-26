@@ -5,6 +5,7 @@
 //   · el saldo de cada cuenta == lo que dice un modelo independiente (saldo inicial + movimientos vivos);
 //   · el libro cuadra con los saldos (Libro.verificar) y es coherente con los registros (Libro.verificarEspejo);
 //   · al eliminar TODO lo que quedó, cada saldo vuelve al inicial y el libro no deja plata neta por ningún ref.
+// También crea y CORRIGE el saldo inicial de una cuenta (`abrirEditarApertura` + `confirmarEditarApertura`): una edición que mueve plata.
 // Corre con:  node --test tests/secuencias-libro.test.js
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -26,9 +27,10 @@ function entorno() {
     cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi' }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo' }, { id: 'z', tipo: 'banco', nombre: 'Z' }] });
   app.Libro.hidratar(app.S);
   const dom = createFakeDom({ gv_desc: { value: 'Gasto' }, gv_monto: { value: '' }, gv_fecha: { value: '' }, gv_cat: { value: 'Comida' }, gv_nota: { value: '' }, gv_fuente: { value: '' },
-    tr_origen: { value: '' }, tr_destino: { value: '' }, tr_monto: { value: '' }, tr_nota: { value: '' }, tr_fecha: { value: HOY } });
+    tr_origen: { value: '' }, tr_destino: { value: '' }, tr_monto: { value: '' }, tr_nota: { value: '' }, tr_fecha: { value: HOY },
+    eaTitle: { textContent: '' }, eaSaldoActual: { textContent: '' }, eaMonto: { value: '' }, eaPreview: { textContent: '', innerHTML: '', style: {} } });
   app.document = dom.document;
-  app.dialogo = async () => true; app.save = () => {}; app.refresh = () => {}; app.toast = () => {}; app.fuenteLabel = f => f;
+  app.dialogo = async () => true; app.openSheet = () => {}; app.closeSheet = () => {}; app.focusSheetField = () => {}; app.save = () => {}; app.refresh = () => {}; app.toast = () => {}; app.fuenteLabel = f => f;
   CUENTAS.forEach(c => app.sumarFuente(c, INICIAL, { origen: { modulo: 'test' } })); // saldo inicial sin ref: no cuenta como movimiento
   return { app, dom };
 }
@@ -88,6 +90,19 @@ async function correrSecuencia(semilla, pasos) {
       assert.equal(app.S.gastosVar.length, antes + 1, `semilla ${semilla}, paso ${paso}: el gasto no se creó`);
       const g = app.S.gastosVar[app.S.gastosVar.length - 1];
       vivos.push({ tipo: 'gasto', id: g.id, fuente, monto, efecto: delta(fuente, -monto) }); aplicar(delta(fuente, -monto)); revisar(paso, 'gasto');
+    } else if (r < 0.80) {
+      // Saldo inicial: se crea (una por cuenta) o, si ya existe, se CORRIGE a otro valor.
+      const fuente = elegir(CUENTAS), existente = vivos.find(v => v.tipo === 'apertura' && v.fuente === fuente);
+      if (!existente) {
+        app.registrarEntradaConApertura(fuente, monto, HOY, 'Saldo inicial', true, '');
+        const m = app.S.movimientos[app.S.movimientos.length - 1];
+        assert.equal(m.tipo, 'apertura');
+        vivos.push({ tipo: 'apertura', id: m.id, fuente, monto, efecto: delta(fuente, monto) }); aplicar(delta(fuente, monto)); revisar(paso, 'saldo inicial');
+      } else if (monto !== existente.monto) {
+        app.abrirEditarApertura(fuente); campo(dom, 'eaMonto', montoTexto(monto)); app.confirmarEditarApertura();
+        const diferencia = monto - existente.monto;
+        aplicar(delta(fuente, diferencia)); existente.efecto = delta(fuente, monto); existente.monto = monto; revisar(paso, 'corregir saldo inicial');
+      }
     } else if (vivos.length) {
       const i = Math.floor(azar() * vivos.length), v = vivos[i];
       await app.eliminarMovimiento(boton(v.tipo, v.id, v.fuente, v.monto));

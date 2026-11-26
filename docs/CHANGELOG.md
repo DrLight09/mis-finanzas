@@ -33,6 +33,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-25 — Eliminar un respaldo desde la app
+
+**Probado solo con Node y un Firestore simulado; sin ver en navegador real ni contra las reglas reales.**
+- `borrarRespaldo` (`js/core/respaldos.js`, expuesto como `_firebaseRespaldos.borrar`): borra UN respaldo de la nube, del equipo o de ambos. En la nube el índice y el documento se actualizan en una sola transacción (sin fila fantasma ni documento huérfano). Solo acepta ids `respaldo-…`: `finanzas`, el índice y ids raros lanzan sin tocar nada. Un id que ya no existe no es un error. No lanza por fallos de red: devuelve `{ ok, nube, equipo, errores }`.
+- Botón «Eliminar» por fila (`eliminarRespaldo`, `configuracion.js`) con confirmación que dice de dónde se borra; advierte si es el único respaldo previo; se rehúsa durante una importación; si falla a medias lo dice y no finge éxito; repinta la lista al terminar.
+- Pruebas: 7 de `borrarRespaldo` y 3 de pantalla en `tests/respaldos.test.js`.
+
+---
+
 ## 2026-11-25 — Importar, restaurar y «Ver» un respaldo muestran qué cambia
 
 **Probado solo con Node; sin ver en navegador real.**

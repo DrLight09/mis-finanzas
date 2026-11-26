@@ -123,6 +123,41 @@ export async function borrarRespaldosNube({ firebase, uid }) {
   return { borrados, errores };
 }
 
+// Borra UN respaldo, de donde esté (`fila.fuentes`: nube, equipo o los dos). En la nube el índice y el documento se actualizan en UNA transacción:
+// no puede quedar una fila fantasma en el índice (al leerla fallaría) ni un documento huérfano. Solo acepta ids de respaldo (`respaldo-…`): jamás
+// toca `finanzas` ni el índice, aunque alguien pase un id equivocado. Un id que ya no existe no es un error. No lanza por fallos de red o de
+// almacenamiento: devuelve { ok, nube, equipo, errores } con 'ok' | 'error' | 'no-aplica' por origen (así la pantalla dice qué se pudo y qué no).
+export async function borrarRespaldo({ firebase, uid, almacen, fila }) {
+  if (!fila || typeof fila.id !== 'string' || !fila.id.startsWith(PREFIJO_RESPALDO)) throw new Error('Solo se pueden borrar respaldos (el id debe empezar con «' + PREFIJO_RESPALDO + '»).');
+  const fuentes = Array.isArray(fila.fuentes) ? fila.fuentes : [];
+  /** @type {{ok: boolean, nube: string, equipo: string, errores: string[]}} */
+  const r = { ok: true, nube: 'no-aplica', equipo: 'no-aplica', errores: [] };
+  if (fuentes.includes('nube')) {
+    try {
+      if (!firebase || !uid) throw new Error('sin sesión');
+      const { db, doc, runTransaction } = firebase;
+      const ref = nombre => doc(db, 'usuarios', uid, 'data', nombre);
+      await runTransaction(db, async (tx) => {
+        const sIndice = await tx.get(ref(ID_INDICE)); // lecturas primero (Firestore)
+        if (sIndice.exists() && sIndice.data() && Array.isArray(sIndice.data().items)) {
+          tx.set(ref(ID_INDICE), { items: sIndice.data().items.filter(i => i && i.id !== fila.id) });
+        }
+        tx.delete(ref(fila.id));
+      });
+      r.nube = 'ok';
+    } catch (e) { r.nube = 'error'; r.errores.push('nube: ' + String((e && e.code) || (e && e.message) || e)); }
+  }
+  if (fuentes.includes('equipo')) {
+    try {
+      if (!almacen) throw new Error('almacenamiento del equipo no disponible');
+      await almacen.borrar(fila.id);
+      r.equipo = 'ok';
+    } catch (e) { r.equipo = 'error'; r.errores.push('equipo: ' + String((e && e.message) || e)); }
+  }
+  r.ok = r.errores.length === 0;
+  return r;
+}
+
 // ── Equipo (IndexedDB) ───────────────────────────────────────────────────────────────────────────────────────────────
 // Un «almacén» es cualquier objeto con { guardar(rec), leer(id), listar(), borrar(id), vaciar() } (todo async).
 export function almacenMemoria() {

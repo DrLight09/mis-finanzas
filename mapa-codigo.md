@@ -57,7 +57,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/registro-errores.js` | módulo ES — importado por `js/main.js` | 4 | 3 |
 | `js/core/reglas.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/core/salud.js`, `js/main.js`, `js/modules/inicio.js` | 1 | 0 |
 | `js/core/reordenable.js` | módulo ES — importado por `js/main.js`, `js/modules/cuentas.js` | 1 | 0 |
-| `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 17 | 4 |
+| `js/core/respaldos.js` | módulo ES — importado por `js/core/firebase-sync.js` | 18 | 4 |
 | `js/core/resumen-datos.js` | módulo ES — importado por `js/main.js`, `js/modules/configuracion.js` | 5 | 1 |
 | `js/core/saldos-ocultos.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/salud.js` | módulo ES — importado por `js/core/globales-logica.js`, `js/main.js`, `js/modules/analisis.js`, `js/modules/inicio.js` | 1 | 0 |
@@ -73,7 +73,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/actividad-reciente.js` | lazy — grupo `historial` | 0 | 0 |
 | `js/modules/alcancia.js` | lazy — grupo `alcancia` | 31 | 0 |
 | `js/modules/analisis.js` | lazy — grupo `analisis` | 16 | 0 |
-| `js/modules/configuracion.js` | lazy — grupo `config` | 26 | 1 |
+| `js/modules/configuracion.js` | lazy — grupo `config` | 27 | 1 |
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 88 | 3 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 85 | 0 |
 | `js/modules/gastos.js` | módulo ES — importado por `js/core/eventos-base.js`, `js/main.js` | 25 | 0 |
@@ -407,7 +407,7 @@ Carga: módulo ES — importado por `js/main.js`, `js/modules/cuentas.js`
 
 Carga: módulo ES — importado por `js/core/firebase-sync.js`
 
-**Funciones:** `almacenIndexedDB`, `almacenMemoria`, `borrarRespaldosNube`, `dos`, `fechaLocal`, `fusionar`, `idConflicto`, `idDiario`, `idPrevio`, `leerRespaldo`, `listarEnEquipo`, `listarEnNube`, `payloadTieneDatos`, `planoTieneDatos`, `podar`, `respaldarEnEquipo`, `respaldarEnNube`
+**Funciones:** `almacenIndexedDB`, `almacenMemoria`, `borrarRespaldo`, `borrarRespaldosNube`, `dos`, `fechaLocal`, `fusionar`, `idConflicto`, `idDiario`, `idPrevio`, `leerRespaldo`, `listarEnEquipo`, `listarEnNube`, `payloadTieneDatos`, `planoTieneDatos`, `podar`, `respaldarEnEquipo`, `respaldarEnNube`
 
 **Globales:** `CLASES`, `ID_INDICE`, `LIMITES`, `PREFIJO_RESPALDO`
 
@@ -519,7 +519,7 @@ Carga: lazy — grupo `analisis`
 
 Carga: lazy — grupo `config`
 
-**Funciones:** `_nombreMes`, `_reemplazarDatos`, `_respBotonVer`, `_respDescripcion`, `_respFechaLarga`, `_textoImpacto`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `cerrarPeriodosAntiguos`, `eliminarCat`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderCierrePeriodos`, `renderErroresRecientes`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verContenidoRespaldo`, `verRespaldos`
+**Funciones:** `_nombreMes`, `_reemplazarDatos`, `_respBotonVer`, `_respDescripcion`, `_respFechaLarga`, `_textoImpacto`, `_validarEstructuraJSON`, `agregarCat`, `borrarTodo`, `cerrarPeriodosAntiguos`, `eliminarCat`, `eliminarRespaldo`, `eliminarWrapped`, `exportarCSV`, `exportarJSON`, `importarJSON`, `leerArchivoImport`, `renderCatsConfig`, `renderCierrePeriodos`, `renderErroresRecientes`, `renderMisWrapped`, `renderRespaldos`, `renderTamanoDatos`, `restaurarRespaldo`, `toggleModulo`, `verContenidoRespaldo`, `verRespaldos`
 
 **Globales:** `MOTIVOS_CIERRE`
 
@@ -1284,6 +1284,7 @@ Ninguno.
 | `avisarMovimientoBloqueado` | `js/core/dialogos.js` |
 | `avisarNoSePuede` | `js/core/dialogos.js` |
 | `borrarMovimientoEspejo` | `js/core/cuenta-efectos.js` |
+| `borrarRespaldo` | `js/core/respaldos.js` |
 | `borrarRespaldosNube` | `js/core/respaldos.js` |
 | `borrarTodo` | `js/modules/configuracion.js` |
 | `botonEliminarFila` | `js/core/utilidades-ui.js` |
@@ -1447,6 +1448,7 @@ Ninguno.
 | `eliminarMovimientoMiDeuda` | `js/modules/prestado.js` |
 | `eliminarPagoTC` | `js/modules/tarjetas-credito.js` |
 | `eliminarParte` | `js/modules/encargos.js` |
+| `eliminarRespaldo` | `js/modules/configuracion.js` |
 | `eliminarTC` | `js/modules/tarjetas-credito.js` |
 | `eliminarWrapped` | `js/modules/configuracion.js` |
 | `emptyInline` | `js/core/utilidades-ui.js` |

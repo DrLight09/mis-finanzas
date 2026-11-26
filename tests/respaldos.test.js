@@ -193,6 +193,78 @@ describe('respaldos — módulo (js/core/respaldos.js)', () => {
 });
 
 // ── Integración con firebase-sync.js real ────────────────────────────────────────────────────────────────────────────
+describe('respaldos — borrar uno (borrarRespaldo)', () => {
+  let R;
+  before(async () => { R = await import(pathToFileURL(path.join(CORE, 'respaldos.js')).href); });
+  const item = (id, tipo = 'diario') => ({ id, tipo, fecha: id.slice(-10), creadoEn: 1, bytes: 10 });
+  const nubeConRespaldos = () => crearNube({
+    [PRINCIPAL]: { payload: plano({ a: 1 }), rev: 3 },
+    'usuarios/u1/data/respaldo-2026-11-01': { payload: 'a' }, 'usuarios/u1/data/respaldo-2026-11-02': { payload: 'b' },
+    [INDICE]: { items: [item('respaldo-2026-11-02'), item('respaldo-2026-11-01')] },
+  });
+  const fila = (id, fuentes) => ({ id, tipo: 'diario', fecha: '2026-11-01', creadoEn: 1, fuentes });
+
+  test('nube: quita el documento Y su entrada del índice a la vez, sin tocar los otros respaldos ni los datos', async () => {
+    const nube = nubeConRespaldos();
+    const r = await R.borrarRespaldo({ firebase: nube.firebase, uid: 'u1', almacen: null, fila: fila('respaldo-2026-11-01', ['nube']) });
+    assert.deepEqual({ ...r }, { ok: true, nube: 'ok', equipo: 'no-aplica', errores: [] });
+    assert.equal(nube.docs.has('usuarios/u1/data/respaldo-2026-11-01'), false);
+    assert.deepEqual(nube.docs.get(INDICE).items.map(i => i.id), ['respaldo-2026-11-02']);
+    assert.equal(nube.docs.has('usuarios/u1/data/respaldo-2026-11-02'), true);
+    assert.equal(nube.docs.get(PRINCIPAL).rev, 3, 'los datos actuales no se tocan');
+  });
+
+  test('equipo: borra del almacén; si está en los dos sitios, de los dos', async () => {
+    const nube = nubeConRespaldos(), almacen = R.almacenMemoria();
+    await almacen.guardar({ id: 'respaldo-2026-11-01', payload: 'x' }); await almacen.guardar({ id: 'respaldo-2026-11-02', payload: 'y' });
+    const r = await R.borrarRespaldo({ firebase: nube.firebase, uid: 'u1', almacen, fila: fila('respaldo-2026-11-01', ['nube', 'equipo']) });
+    assert.equal(r.ok, true);
+    assert.deepEqual((await almacen.listar()).map(x => x.id), ['respaldo-2026-11-02']);
+    assert.equal(nube.docs.has('usuarios/u1/data/respaldo-2026-11-01'), false);
+  });
+
+  test('un id que ya no existe no lanza ni toca nada más', async () => {
+    const nube = nubeConRespaldos();
+    const antes = JSON.stringify([...nube.docs.entries()]);
+    const r = await R.borrarRespaldo({ firebase: nube.firebase, uid: 'u1', almacen: R.almacenMemoria(), fila: fila('respaldo-2025-01-01', ['nube', 'equipo']) });
+    assert.equal(r.ok, true);
+    assert.equal(JSON.stringify([...nube.docs.entries()]), antes);
+  });
+
+  test('NUNCA borra algo que no sea un respaldo: finanzas, el índice o un id raro lanzan sin tocar nada', async () => {
+    const nube = nubeConRespaldos();
+    const antes = JSON.stringify([...nube.docs.entries()]);
+    for (const id of ['finanzas', 'respaldos-indice', '', 'previo-2026', undefined, 42]) {
+      await assert.rejects(() => R.borrarRespaldo({ firebase: nube.firebase, uid: 'u1', almacen: null, fila: { id, fuentes: ['nube'] } }), /Solo se pueden borrar respaldos/);
+    }
+    await assert.rejects(() => R.borrarRespaldo({ firebase: nube.firebase, uid: 'u1', almacen: null, fila: null }), /Solo se pueden borrar respaldos/);
+    assert.equal(JSON.stringify([...nube.docs.entries()]), antes);
+  });
+
+  test('si la nube falla NO se queda a medias: el índice y el documento siguen como estaban, y se informa qué origen falló', async () => {
+    const nube = nubeConRespaldos();
+    const antes = JSON.stringify([...nube.docs.entries()]);
+    const firebase = { ...nube.firebase, runTransaction: async () => { const e = new Error('sin red'); e.code = 'unavailable'; throw e; } };
+    const almacen = R.almacenMemoria(); await almacen.guardar({ id: 'respaldo-2026-11-01', payload: 'x' });
+    const r = await R.borrarRespaldo({ firebase, uid: 'u1', almacen, fila: fila('respaldo-2026-11-01', ['nube', 'equipo']) });
+    assert.equal(r.ok, false); assert.equal(r.nube, 'error'); assert.equal(r.equipo, 'ok');
+    assert.match(r.errores[0], /nube: unavailable/);
+    assert.equal(JSON.stringify([...nube.docs.entries()]), antes, 'lo de la nube no cambió');
+  });
+
+  test('sin sesión (sin uid) o sin almacén: informa el error por origen y no lanza', async () => {
+    const r = await R.borrarRespaldo({ firebase: null, uid: null, almacen: null, fila: fila('respaldo-2026-11-01', ['nube', 'equipo']) });
+    assert.equal(r.ok, false); assert.equal(r.errores.length, 2);
+  });
+
+  test('borra un respaldo aunque el índice no exista (queda el documento fuera de él)', async () => {
+    const nube = crearNube({ 'usuarios/u1/data/respaldo-2026-11-01': { payload: 'a' } });
+    const r = await R.borrarRespaldo({ firebase: nube.firebase, uid: 'u1', almacen: null, fila: fila('respaldo-2026-11-01', ['nube']) });
+    assert.equal(r.ok, true); assert.equal(nube.docs.has('usuarios/u1/data/respaldo-2026-11-01'), false);
+    assert.equal(nube.docs.has(INDICE), false, 'no inventa un índice');
+  });
+});
+
 describe('respaldos — integración con el guardado (firebase-sync.js)', () => {
   const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'respaldos-'));
   const escribir = (nombre, codigo) => { const p = path.join(TMP, nombre); fs.writeFileSync(p, codigo); return p; };
@@ -419,20 +491,21 @@ describe('respaldos — integración con el guardado (firebase-sync.js)', () => 
 // ── Pantalla: Configuración → Datos → Respaldos automáticos (js/modules/configuracion.js) ─────────────────────────────
 describe('respaldos — pantalla de Configuración', () => {
   const MOD = f => path.join(__dirname, '..', 'js', 'modules', f);
-  function pantalla({ filas = [], estado = { ultimo: null, error: null }, leerPlano, errorNube = null } = {}) {
+  function pantalla({ filas = [], estado = { ultimo: null, error: null }, leerPlano, errorNube = null, resultadoBorrar = { ok: true, nube: 'ok', equipo: 'ok', errores: [] } } = {}) {
     const ctx = loadApp([path.join(CORE, 'core-state.js'), path.join(CORE, 'html-tag.js'), path.join(CORE, 'events.js'), path.join(CORE, 'resumen-datos.js'), MOD('configuracion.js')], { permissive: true });
     const dom = createFakeDom();
     ctx.document = dom.document;
-    const toasts = [], dialogos = [], pins = [], guardados = [];
+    const toasts = [], dialogos = [], pins = [], guardados = [], borrados = [];
     ctx.toast = (m, t) => toasts.push({ m, t });
     ctx.dialogo = async (titulo, msg) => { dialogos.push({ titulo, msg }); return true; };
+    ctx.confirmarEliminar = async o => { dialogos.push({ titulo: o.titulo, msg: '¿Eliminar ' + o.objeto + '? ' + (o.detalle || '') }); return true; };
     ctx.pedirPinAntesDe = async motivo => { pins.push(motivo); return true; };
     ctx.refresh = () => {};
     ctx.location = { reload() { ctx.__recargo = true; } };
-    ctx.window = ctx.window || ctx; ctx.window._firebaseRespaldos = { estado: () => estado, listar: async () => ({ filas, errorNube }), leer: async fila => leerPlano(fila) };
+    ctx.window = ctx.window || ctx; ctx.window._firebaseRespaldos = { estado: () => estado, listar: async () => ({ filas: filas.filter(f => !borrados.includes(f.id)), errorNube }), leer: async fila => leerPlano(fila), borrar: async fila => { borrados.push(fila.id); return resultadoBorrar; } };
     ctx.window._firebaseSaveToCloud = async opts => { guardados.push(opts); return { ok: true }; };
     ctx._firebaseRespaldos = ctx.window._firebaseRespaldos; ctx._firebaseSaveToCloud = ctx.window._firebaseSaveToCloud;
-    return { ctx, dom, toasts, dialogos, pins, guardados };
+    return { ctx, dom, toasts, dialogos, pins, guardados, borrados };
   }
   const fila = (id, extra = {}) => ({ id, tipo: 'diario', fecha: '2026-11-09', creadoEn: AHORA, bytes: 12345, fuentes: ['nube', 'equipo'], ...extra });
   const valido = (saldo = 1) => plano({ schemaVersion: undefined, cuentas: [{ id: 'nequi', nombre: 'Nequi', tipo: 'billetera', saldo }], libro: [], gastosVar: [] });
@@ -525,6 +598,48 @@ describe('respaldos — pantalla de Configuración', () => {
     assert.match(p.dialogos[0].msg, /Cuentas: ahora 2, en el respaldo 1/);
     assert.equal(JSON.stringify(p.ctx.S), antes, 'ver no carga ni cambia los datos');
     assert.equal(p.pins.length, 0); assert.equal(p.guardados.length, 0);
+  });
+
+  test('Eliminar: confirma diciendo de dónde se borra, borra solo ese respaldo, repinta la lista y avisa; no toca los datos ni pide PIN', async () => {
+    const p = pantalla({ filas: [fila('respaldo-2026-11-09'), fila('respaldo-2026-11-08', { fuentes: ['nube'] })], leerPlano: async () => valido() });
+    p.ctx.S.cuentas = [{ id: 'a', nombre: 'A', tipo: 'banco', saldo: 5 }];
+    p.ctx.renderRespaldos(); await p.ctx.verRespaldos();
+    assert.match(p.dom.document.getElementById('cfg-respaldos-lista').innerHTML, /data-action="config:eliminarRespaldo"/);
+    const antes = JSON.stringify(p.ctx.S);
+    await p.ctx.eliminarRespaldo('respaldo-2026-11-09');
+    assert.equal(p.dialogos.length, 1);
+    assert.match(p.dialogos[0].msg, /Eliminar el respaldo del 9 de noviembre de 2026/);
+    assert.match(p.dialogos[0].msg, /Se borra de la nube y este dispositivo/);
+    assert.deepEqual(p.borrados, ['respaldo-2026-11-09']);
+    assert.ok(p.toasts.some(t => /Respaldo eliminado/.test(t.m)));
+    assert.equal(JSON.stringify(p.ctx.S), antes); assert.equal(p.pins.length, 0); assert.equal(p.guardados.length, 0);
+    assert.doesNotMatch(p.dom.document.getElementById('cfg-respaldos-lista').innerHTML, /respaldo-2026-11-09/, 'la fila desaparece de la lista');
+    assert.match(p.dom.document.getElementById('cfg-respaldos-lista').innerHTML, /respaldo-2026-11-08/);
+  });
+
+  test('Eliminar el ÚNICO respaldo previo advierte que sin él un error al importar no se podría deshacer', async () => {
+    const p = pantalla({ filas: [fila('respaldo-previo-2026-11-09-153000', { tipo: 'previo', fuentes: ['nube'] }), fila('respaldo-2026-11-09')], leerPlano: async () => valido() });
+    p.ctx.renderRespaldos(); await p.ctx.verRespaldos();
+    await p.ctx.eliminarRespaldo('respaldo-previo-2026-11-09-153000');
+    assert.match(p.dialogos[0].msg, /único respaldo de seguridad previo/);
+    // con dos previos ya no se advierte
+    const q = pantalla({ filas: [fila('respaldo-previo-2026-11-09-153000', { tipo: 'previo' }), fila('respaldo-previo-2026-11-08-100000', { tipo: 'previo' })], leerPlano: async () => valido() });
+    q.ctx.renderRespaldos(); await q.ctx.verRespaldos();
+    await q.ctx.eliminarRespaldo('respaldo-previo-2026-11-09-153000');
+    assert.doesNotMatch(q.dialogos[0].msg, /único respaldo/);
+  });
+
+  test('Eliminar: si el borrado falla a medias lo dice (qué origen falló) y no finge éxito; durante una importación se rehúsa', async () => {
+    const p = pantalla({ filas: [fila('respaldo-2026-11-09')], leerPlano: async () => valido(), resultadoBorrar: { ok: false, nube: 'error', equipo: 'ok', errores: ['nube: unavailable'] } });
+    p.ctx.renderRespaldos(); await p.ctx.verRespaldos();
+    await p.ctx.eliminarRespaldo('respaldo-2026-11-09');
+    assert.match(p.toasts[p.toasts.length - 1].m, /solo se eliminó en parte \(nube: unavailable\)/);
+    assert.ok(!p.toasts.some(t => /Respaldo eliminado/.test(t.m)));
+    const q = pantalla({ filas: [fila('respaldo-2026-11-09')], leerPlano: async () => valido() });
+    q.ctx.renderRespaldos(); await q.ctx.verRespaldos();
+    q.ctx.window._importing = true;
+    await q.ctx.eliminarRespaldo('respaldo-2026-11-09');
+    assert.match(q.toasts[q.toasts.length - 1].m, /en curso/); assert.equal(q.borrados.length, 0); assert.equal(q.dialogos.length, 0);
   });
 
   test('«Ver» un respaldo ilegible avisa y no abre nada', async () => {

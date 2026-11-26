@@ -14,7 +14,7 @@ import { waitFor } from './wait-for.js';
 import { codificarPayload, decodificarPayload } from './payload-codec.js';
 import { fusionarEstados } from './fusion.js';
 import { validarEstado } from './validar-estado.js';
-import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusionar, leerRespaldo, borrarRespaldosNube, almacenIndexedDB, fechaLocal } from './respaldos.js';
+import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusionar, leerRespaldo, borrarRespaldosNube, borrarRespaldo, almacenIndexedDB, fechaLocal } from './respaldos.js';
 
   // ── Helpers de estado de sync ──────────────────────────────────────────────
   function setSyncStatus(state, text) {
@@ -151,6 +151,8 @@ import { respaldarEnNube, respaldarEnEquipo, listarEnNube, listarEnEquipo, fusio
       let ultimo = null; try { ultimo = JSON.parse(_lsGet('mf_respaldoUltimo') || 'null'); } catch(_) {}
       return { ultimo, error: _lsGet('mf_respaldoError'), bloqueado: _respaldoNubeBloqueado };
     },
+    // Borra UN respaldo (lo que `fila.fuentes` diga). Nunca lanza por fallos de red: devuelve { ok, nube, equipo, errores }.
+    borrar(fila) { return borrarRespaldo({ firebase: window._firebase, uid: _uidActual(), almacen: _almacen(), fila }); },
     async borrarTodos() {
       const firebase = window._firebase, uid = _uidActual(), almacen = _almacen();
       let r = { borrados: 0, errores: 0 };

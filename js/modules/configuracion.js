@@ -48,7 +48,7 @@ import { applyModulos } from '../core/modulos-activos.js';
 import { showScreen } from '../core/navegacion.js';
 import { Ui } from '../core/ui.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ _textoImpacto, verContenidoRespaldo, renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, renderErroresRecientes, renderCierrePeriodos, cerrarPeriodosAntiguos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
+exponerGlobales({ _textoImpacto, verContenidoRespaldo, eliminarRespaldo, renderCatsConfig, renderMisWrapped, eliminarWrapped, renderTamanoDatos, renderErroresRecientes, renderCierrePeriodos, cerrarPeriodosAntiguos, agregarCat, eliminarCat, exportarJSON, importarJSON, _validarEstructuraJSON, _reemplazarDatos, leerArchivoImport, _respFechaLarga, _respDescripcion, renderRespaldos, _respBotonVer, verRespaldos, restaurarRespaldo, exportarCSV, toggleModulo, borrarTodo });
 
 /* ---- CATEGORÍAS PERSONALIZADAS ---- */
 // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
@@ -515,8 +515,29 @@ export async function verRespaldos(){
       <div class="cfg-resp-info"><div class="cfg-resp-fecha">${_respFechaLarga(f)}</div><div class="cfg-resp-meta">${_respDescripcion(f)}</div></div>
       <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:verContenidoRespaldo',f.id))}>Ver</button>
       <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:restaurarRespaldo',f.id))}>Restaurar</button>
+      <button type="button" class="btn cfg-resp-btn" ${raw(Events.attr('config:eliminarRespaldo',f.id))}>Eliminar</button>
     </div>`)}</div>`;
 }
+// «Eliminar»: borra UN respaldo (de la nube, del equipo o de ambos). Es un borrado real, sin deshacer: la confirmación es la defensa. Si es el único
+// respaldo «previo» (el que se crea justo antes de importar o restaurar) se advierte, porque sin él un error al importar no se podría deshacer.
+export async function eliminarRespaldo(id){
+  const api=window._firebaseRespaldos;
+  const fila=_respaldosFilas.find(f=>f.id===id);
+  if(!api||!fila||typeof api.borrar!=='function'){toast('No se encontró ese respaldo. Vuelve a abrir la lista.','err');return;}
+  if(window._importing){toast('Hay una importación o restauración en curso: espera a que termine para eliminar respaldos.','err');return;}
+  const unicoPrevio=fila.tipo==='previo'&&_respaldosFilas.filter(f=>f.tipo==='previo').length===1;
+  const donde=(fila.fuentes||[]).map(x=>x==='nube'?'la nube':'este dispositivo').join(' y ');
+  const ok=await confirmarEliminar({titulo:'Eliminar respaldo',objeto:'el respaldo del '+_respFechaLarga(fila),
+    detalle:'Se borra de '+donde+'. Tus datos actuales no cambian.'+(unicoPrevio?' Es tu único respaldo de seguridad previo (el que se crea antes de importar o restaurar): sin él, un error al importar no se podría deshacer.':''),etiqueta:'Eliminar'});
+  if(!ok)return;
+  let r;
+  try{r=await api.borrar(fila);}
+  catch(e){toast('No se pudo eliminar el respaldo: '+((e&&e.message)||e),'err');return;}
+  _respaldosVisibles=false;await verRespaldos(); // vuelve a leer y pintar la lista
+  if(r.ok)toast('Respaldo eliminado','ok');
+  else toast('El respaldo solo se eliminó en parte ('+r.errores.join('; ')+'). Inténtalo de nuevo más tarde.','err',6000);
+}
+
 // «Ver»: qué contiene un respaldo y en qué se diferencia de lo que tienes ahora, SIN cargarlo ni validarlo ni migrarlo (solo lectura).
 export async function verContenidoRespaldo(id){
   const api=window._firebaseRespaldos;
@@ -642,6 +663,7 @@ Events.registerAll('config', {
   verRespaldos: verRespaldos,
   restaurarRespaldo: (id) => restaurarRespaldo(id),
   verContenidoRespaldo: (id) => verContenidoRespaldo(id),
+  eliminarRespaldo: (id) => eliminarRespaldo(id),
 });
 
 /* ---- WIRING de controles que no son clicks simples (change/keydown/inputs de archivo) ---- */

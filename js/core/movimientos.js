@@ -671,7 +671,7 @@ export async function _eliminarMovimientoImpl(btn) {
       }
       // Bug fix: si era pago de gasto fijo, desmarcar como pagado
       if(g.esPagoGastoFijo && g.gastoFijoId){
-        const mes = mesKey(g.fecha);
+        const mes = g.mesCubre || mesKey(g.fecha); // el mes que CUBRE el pago (puede no ser el de su fecha); los pagos viejos sin el campo usan la fecha
         if(S.pagosGastosFijos) delete S.pagosGastosFijos[g.gastoFijoId+'_'+mes];
       }
       S.gastosVar = S.gastosVar.filter(x => x.id !== movimientoId);

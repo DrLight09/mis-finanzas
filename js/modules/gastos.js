@@ -612,7 +612,9 @@ export async function deleteGastoVar(id) {
     }
     // Bug fix: si era pago de gasto fijo, desmarcar como pagado
     if (g.esPagoGastoFijo && g.gastoFijoId) {
-      const mes = mesKey(g.fecha);
+      // El pago se marca en el mes que CUBRE (`mesCubre`, el mes actual al pagar), que puede ser distinto del mes de su fecha si se pagó con una
+      // fecha de otro mes. Pagos creados antes de este campo: se asume el mes de la fecha, como antes.
+      const mes = g.mesCubre || mesKey(g.fecha);
       if (S.pagosGastosFijos) delete S.pagosGastosFijos[g.gastoFijoId + '_' + mes];
     }
   }
@@ -786,7 +788,7 @@ export function confirmarPagarGastoFijo() {
   }
   const nota = document.getElementById('pgf-nota') ? document.getElementById('pgf-nota').value.trim() : '';
   if (!S.gastosVar) S.gastosVar = [];
-  const gastoObj = { id: uid(), desc: 'Pago de ' + gastoFijo.nombre, monto: gastoFijo.monto, fecha, cat: gastoFijo.cat, fuente, nota: nota || 'Pago de gasto fijo', clase: 'neutro', esPagoGastoFijo: true, gastoFijoId: gastoFijo.id }; // neutro: el pago ya cuenta en Periodo.gastosFijosDelMes
+  const gastoObj = { id: uid(), desc: 'Pago de ' + gastoFijo.nombre, monto: gastoFijo.monto, fecha, cat: gastoFijo.cat, fuente, nota: nota || 'Pago de gasto fijo', clase: 'neutro', esPagoGastoFijo: true, gastoFijoId: gastoFijo.id, mesCubre: mesActual() }; // neutro: el pago ya cuenta en Periodo.gastosFijosDelMes
   if (Fuente.esTC(fuente)) {
     // Cargar el pago a la tarjeta (sube tc.deuda) en vez de descontar saldo de una
     // cuenta — misma ruta que addGastoVar() usa para un gasto variable con TC.

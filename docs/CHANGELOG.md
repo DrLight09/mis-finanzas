@@ -52,6 +52,15 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-26 — Bug: pagar un gasto fijo con fecha de otro mes y eliminar el pago dejaba el gasto «pagado»
+
+**Probado solo con Node; sin ver en navegador real.** Lo encontró la prueba de secuencias aleatorias de gastos fijos y tarjeta (`tests/secuencias-fijos-tc.test.js`).
+- **El bug:** `confirmarPagarGastoFijo` marca el pago en `S.pagosGastosFijos` con la clave del mes ACTUAL (el mes que cubre), pero la fecha del pago puede ser de otro mes (la hoja deja elegirla). Al eliminar ese pago, `deleteGastoVar` y `eliminarMovimiento` desmarcaban con el mes de su FECHA: otra clave. Resultado: la plata se devolvía y el gasto se borraba, pero el gasto fijo seguía «pagado» este mes (no se podía volver a pagar: «Este gasto ya fue pagado este mes») y su monto seguía contando en los gastos fijos del mes.
+- **El arreglo:** el pago guarda `mesCubre` (el mes que cubre) y las dos rutas de eliminación desmarcan `g.mesCubre || mesKey(g.fecha)`. Los pagos creados antes del campo siguen desmarcándose por la fecha, como antes (hay prueba).
+- **Pruebas:** `tests/secuencias-fijos-tc.test.js`: 6 secuencias aleatorias de 120 pasos (pagar gasto fijo con cuenta o tarjeta, con fecha de este mes o del anterior; pagar la tarjeta desde una cuenta; eliminar cualquiera) comprobando tras cada paso saldos, deuda de la tarjeta, gastos fijos marcados como pagados, `Libro.verificar` y `Libro.verificarEspejo`; más una regresión y una de compatibilidad. Sin la corrección fallan 7 de las 8. La protección por antigüedad (que bloquea a propósito un pago viejo con varias operaciones posteriores) se desactiva en estas pruebas: tiene las suyas.
+
+---
+
 ## 2026-11-26 — Secuencias aleatorias de crear y eliminar con las funciones reales
 
 **Probado solo con Node; sin ver en navegador real.** `tests/secuencias-libro.test.js`: 8 semillas × 150 pasos de ingreso, retiro, transferencia y gasto variable, creados con `registrarEntradaConApertura`, `registrarSalida`, `confirmarTransferir` y `addGastoVar` (formularios simulados) y eliminados con `eliminarMovimiento` (la ruta de la pantalla, con su protección y su diálogo). Tras cada paso: saldo de cada cuenta == modelo independiente, `Libro.verificar` y `Libro.verificarEspejo`; al final, eliminar todo devuelve los saldos iniciales y deja el libro neto en 0 por cada ref. **No encontró ningún fallo.** Validada con una mutación (reversión de retiros con +1 centavo → la prueba falla en el primer retiro eliminado).

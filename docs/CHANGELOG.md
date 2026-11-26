@@ -52,6 +52,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-26 — Secuencias aleatorias de crear y eliminar con las funciones reales
+
+**Probado solo con Node; sin ver en navegador real.** `tests/secuencias-libro.test.js`: 8 semillas × 150 pasos de ingreso, retiro, transferencia y gasto variable, creados con `registrarEntradaConApertura`, `registrarSalida`, `confirmarTransferir` y `addGastoVar` (formularios simulados) y eliminados con `eliminarMovimiento` (la ruta de la pantalla, con su protección y su diálogo). Tras cada paso: saldo de cada cuenta == modelo independiente, `Libro.verificar` y `Libro.verificarEspejo`; al final, eliminar todo devuelve los saldos iniciales y deja el libro neto en 0 por cada ref. **No encontró ningún fallo.** Validada con una mutación (reversión de retiros con +1 centavo → la prueba falla en el primer retiro eliminado).
+
+---
+
 ## 2026-11-25 — Fusión: listas por fecha sin duplicar el mismo día
 
 **Probado solo con Node; sin ver en navegador real.**

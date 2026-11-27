@@ -23,7 +23,7 @@ function cargar() {
     modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], tcMovimientos: [], deudores: [], misDeudas: [],
     tarjetasCredito: [{ id: 'tc1', nombre: 'Visa', cupo: 5000000, deuda: 100000, estado: 'activa', compras: [], pagos: [] }],
     cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi' }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo' }],
-    encargos: [{ id: 'e1', nombre: 'Encargo', saldoInicial: 0, cuentaInicial: '', movimientos: [] }],
+    encargos: [{ id: 'e1', nombre: 'Encargo', saldoInicial: 0, cuentaInicial: '', movimientos: [] }, { id: 'e2', nombre: 'Otro encargo', saldoInicial: 0, cuentaInicial: '', movimientos: [] }],
   });
   app.Libro.hidratar(app.S);
   app.sumarFuente('cuenta:nequi', 500000, { origen: { modulo: 'test' } });
@@ -59,6 +59,40 @@ const ESCENARIOS = {
     app.S.tcMovimientos.push({ id: 'tcm-1', tcId: 'tc1', tipo: 'cargo_encargo', desc: 'Compra encargo: Zapatos', monto, fecha: FECHA, encargoId: 'e1', _encargoMovimientoId: id });
     return id;
   },
+  'Compra con tarjeta CON margen para mí (diferencial: el sobrante entra a mi cuenta)': app => {
+    // `confirmarCompraConTC` con `diffAplicar` (core/diferencial.js l.398–475): el encargo dijo 100.000 pero la tarjeta cobró 70.000; los 30.000 de
+    // margen entran a mi cuenta con módulo 'diferencial' y el mismo ref (el id del movimiento del encargo).
+    const id = 'mov-tc-dif';
+    app.S.encargos[0].movimientos.push({ id, tipo: 'salida', desc: 'Compra pagada con TC: Bolso', monto: 100000, cuenta: '', fecha: FECHA, _esTcEncargo: true, _encargoId: 'e1', _destino: 'cuenta:efectivo', _tcId: 'tc1', _tcMonto: 70000, _dijoMonto: 100000, _destinoMonto: 70000, ts: 1,
+      diferencial: { dijo: 100000, real: 70000, margen: 30000, beneficiarios: [], miCuenta: 'cuenta:nequi', yoMeQuedo: 30000 } });
+    app.sumarFuente('cuenta:efectivo', 70000, app.Libro.origen('encargos')(id));
+    app.S.movimientos.push({ id: 'esp-tc', tipo: 'entrada', fuente: 'cuenta:efectivo', _encargoMovimientoId: id, clase: 'neutro', _esTcEncargo: true, monto: 70000, fecha: FECHA, desc: 'TC encargo: Bolso', ts: 1 });
+    app.S.tarjetasCredito[0].deuda += 70000;
+    app.S.tcMovimientos.push({ id: 'tcm-1', tcId: 'tc1', tipo: 'cargo_encargo', desc: 'Compra encargo: Bolso', monto: 70000, fecha: FECHA, encargoId: 'e1', _encargoMovimientoId: id });
+    app.sumarFuente('cuenta:nequi', 30000, app.Libro.origen('diferencial')(id));
+    app.S.movimientos.push({ id: 'esp-margen', tipo: 'entrada', fuente: 'cuenta:nequi', _encargoMovimientoId: id, clase: 'ingreso', _esDiferencialEncargo: true, _diferencialDijo: 100000, _diferencialReal: 70000, _diferencialMargen: 30000, monto: 30000, fecha: FECHA, desc: 'Margen: Bolso', ts: 1 });
+    return id;
+  },
+  'Compra con tarjeta con diferencial de intercambio («lo pagué yo»: sale de mi cuenta y recupero en otra)': app => {
+    const id = 'mov-tc-int';
+    app.S.encargos[0].movimientos.push({ id, tipo: 'salida', desc: 'Compra pagada con TC: Mesa', monto: 90000, cuenta: '', fecha: FECHA, _esTcEncargo: true, _encargoId: 'e1', _destino: 'cuenta:efectivo', _tcId: 'tc1', _tcMonto: 60000, _dijoMonto: 90000, _destinoMonto: 60000, ts: 1,
+      diferencial: { dijo: 90000, real: 60000, margen: 30000, beneficiarios: [{ personaId: 'p1', monto: 30000, pagadoPorMi: true, miCuentaSalida: 'cuenta:nequi', miCuentaEntrada: 'cuenta:efectivo' }], miCuenta: '', yoMeQuedo: 0 } });
+    app.sumarFuente('cuenta:efectivo', 60000, app.Libro.origen('encargos')(id));
+    app.S.movimientos.push({ id: 'esp-tc', tipo: 'entrada', fuente: 'cuenta:efectivo', _encargoMovimientoId: id, clase: 'neutro', _esTcEncargo: true, monto: 60000, fecha: FECHA, desc: 'TC encargo: Mesa', ts: 1 });
+    app.S.tarjetasCredito[0].deuda += 60000;
+    app.S.tcMovimientos.push({ id: 'tcm-1', tcId: 'tc1', tipo: 'cargo_encargo', desc: 'Compra encargo: Mesa', monto: 60000, fecha: FECHA, encargoId: 'e1', _encargoMovimientoId: id });
+    app.descontarFuente('cuenta:nequi', 30000, app.Libro.origen('diferencial')(id));
+    app.S.movimientos.push({ id: 'esp-sal', tipo: 'transferencia', fuente: 'cuenta:nequi', _fuenteDestino: 'cuenta:efectivo', _encargoMovimientoId: id, clase: 'neutro', _esIntercambioEncargo: true, _intercambioSalida: true, monto: 30000, fecha: FECHA, desc: 'Intercambio: le di a Persona de mi cuenta', ts: 1 });
+    app.sumarFuente('cuenta:efectivo', 30000, app.Libro.origen('diferencial')(id));
+    app.S.movimientos.push({ id: 'esp-ent', tipo: 'transferencia', fuente: 'cuenta:efectivo', _fuenteDestino: 'cuenta:nequi', _encargoMovimientoId: id, clase: 'neutro', _esIntercambioEncargo: true, _intercambioEntrada: true, monto: 30000, fecha: FECHA, desc: 'Intercambio: recupero de Persona', ts: 1 });
+    return id;
+  },
+  'Transferencia entre encargos (no mueve cuentas: eliminar desde un lado borra también el espejo del otro)': app => {
+    const id = 'mov-transf';
+    app.S.encargos[0].movimientos.push({ id, tipo: 'salida', desc: 'Transferencia a Otro encargo', monto: 15000, cuenta: '', fecha: FECHA, _transfEncargo: true, _transfId: 'tr-1', _encargoDestino: 'e2', ts: 1 });
+    app.S.encargos[1].movimientos.push({ id: 'mov-transf-e2', tipo: 'entrada', desc: 'Transferencia de Encargo', monto: 15000, cuenta: '', fecha: FECHA, _transfEncargo: true, _transfId: 'tr-1', _encargoOrigen: 'e1', ts: 1 });
+    return id;
+  },
   'Yo puse la plata (sale de una cuenta, sin recuperar)': app => {
     const id = 'mov-mia1';
     app.S.encargos[0].movimientos.push({ id, tipo: 'salida', desc: 'Compra', monto: 25000, fecha: FECHA, _miaCuentaSale: 'cuenta:efectivo', ts: 1 });
@@ -84,12 +118,13 @@ for (const [nombre, armar] of Object.entries(ESCENARIOS)) {
     const app = cargar();
     const antes = sinLibro(app), saldosAntes = saldos(app), largoLibro = app.S.libro.length;
     const id = armar(app);
-    assert.notEqual(saldos(app), saldosAntes, 'el escenario sí movió plata');
+    if (!nombre.startsWith('Transferencia entre encargos')) assert.notEqual(saldos(app), saldosAntes, 'el escenario sí movió plata');
     assert.equal(app.Libro.verificar(app.S).ok, true);
     const aplicado = app.Libro.verificarEspejo(app.S);
     assert.equal(aplicado.ok, true, 'tras crear: ' + JSON.stringify(aplicado.huerfanas));
     await app.deleteMovimientoEncargo('e1', id);
     assert.equal(app.S.encargos[0].movimientos.length, 0, 'el movimiento del encargo se eliminó');
+    assert.equal(app.S.encargos[1].movimientos.length, 0, 'y el espejo en el otro encargo (si lo hay) también');
     assert.equal(saldos(app), saldosAntes, 'los saldos vuelven a ser los de antes');
     assert.deepEqual(sinLibro(app), antes, 'el estado guardado vuelve exactamente a como estaba');
     assert.equal(JSON.stringify(netoPorRef(app, largoLibro)), '[]', 'cada pata creada tiene su reversión');

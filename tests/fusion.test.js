@@ -92,6 +92,44 @@ describe('fusión — listas sin id (conjuntos)', () => {
   });
 });
 
+describe('reversiones del libro hechas a la vez por los dos dispositivos (eliminación doble)', () => {
+  const entrada = (id, monto, extra) => Object.assign({ id, cuenta: 'cuenta:ef', monto, tipo: 'movimiento', fecha: '2026-11-20', origen: { modulo: 'gastos', ref: 'g1' } }, extra || {});
+  const reversion = (id, monto, ref, modulo) => entrada(id, monto, { tipo: 'reversion', origen: { modulo: modulo || 'movimientos', ref: ref || 'g1', rev: true } });
+  const base = { libro: [entrada('l1', -50000)] };
+  const con = (...entradas) => ({ libro: [entrada('l1', -50000), ...entradas] });
+  const saldo = estado => Math.round(estado.libro.reduce((a, l) => a + l.monto * 100, 0)) / 100;
+
+  test('los dos eliminan el MISMO movimiento: la plata se devuelve UNA vez (antes quedaba devuelta dos veces)', () => {
+    const A = con(reversion('lA', 50000)), B = con(reversion('lB', 50000));
+    const m = fus(base, A, B), n = fus(base, B, A);
+    assert.equal(m.libro.length, 2); assert.equal(saldo(m), 0);
+    assert.deepEqual(m.libro.map(l => l.id).sort(), n.libro.map(l => l.id).sort(), 'no depende de qué lado es el local');
+  });
+  test('una reversión en un solo lado se conserva', () => {
+    const m = fus(base, con(reversion('lA', 50000)), base);
+    assert.equal(m.libro.length, 2); assert.equal(saldo(m), 0);
+  });
+  test('reversiones de DISTINTO ref, monto, cuenta o módulo no se confunden', () => {
+    for (const otra of [reversion('lB', 50000, 'g2'), reversion('lB', 40000), reversion('lB', 50000, 'g1', 'tarjetas'), Object.assign(reversion('lB', 50000), { cuenta: 'cuenta:nq' })]) {
+      const m = fus(base, con(reversion('lA', 50000)), con(otra));
+      assert.equal(m.libro.length, 3, 'las dos reversiones se conservan: ' + JSON.stringify(otra.origen));
+    }
+  });
+  test('un movimiento normal (no reversión) hecho igual en los dos lados NO se deduplica: son dos movimientos', () => {
+    const m = fus(base, con(entrada('lA', -1000, { origen: { modulo: 'gastos', ref: 'g9' } })), con(entrada('lB', -1000, { origen: { modulo: 'gastos', ref: 'g9' } })));
+    assert.equal(m.libro.length, 3);
+  });
+  test('una reversión que ya estaba en la base no se toca', () => {
+    const b2 = con(reversion('lR', 50000));
+    const m = fus(b2, JSON.parse(JSON.stringify(b2)), JSON.parse(JSON.stringify(b2)));
+    assert.equal(m.libro.length, 2);
+  });
+  test('tres reversiones idénticas nuevas en un lado y una en el otro: solo se emparejan una a una', () => {
+    const m = fus(base, con(reversion('lA1', 10), reversion('lA2', 10), reversion('lA3', 10)), con(reversion('lB1', 10)));
+    assert.equal(m.libro.length, 1 + 3, 'la de B se empareja con una de A; las otras dos de A quedan');
+  });
+});
+
 describe('listas sin id con clave natural (una fila por fecha): patrimonioHistorial e historialTasas', () => {
   const base = { patrimonioHistorial: [{ fecha: '2026-11-23', valor: 100 }], cuentas: [{ id: 'a', tipo: 'ahorro', historialTasas: [{ fecha: '2026-01-01', tasa: 8 }] }] };
   const copia = () => JSON.parse(JSON.stringify(base));

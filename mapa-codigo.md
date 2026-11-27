@@ -30,7 +30,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/formulario.js` | módulo ES — importado por `js/main.js`, `js/modules/gastos.js`, `js/modules/prestado.js` | 1 | 0 |
 | `js/core/formularios-ui.js` | módulo ES — importado por `js/main.js`, `js/modules/prestado.js` | 1 | 0 |
 | `js/core/fuentes-filtro.js` | módulo ES — importado por `js/main.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/nu.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 1 | 0 |
-| `js/core/fusion.js` | módulo ES — importado por `js/core/firebase-sync.js` | 11 | 3 |
+| `js/core/fusion.js` | módulo ES — importado por `js/core/firebase-sync.js` | 13 | 3 |
 | `js/core/gastos-fijos-progress.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/globales-logica.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/html-tag.js` | módulo ES — importado por `js/core/movimientos.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 3 | 0 |
@@ -233,7 +233,7 @@ Carga: módulo ES — importado por `js/main.js`, `js/modules/cuentas.js`, `js/m
 
 Carga: módulo ES — importado por `js/core/firebase-sync.js`
 
-**Funciones:** `ADITIVOS_POR_RUTA`, `clon`, `conId`, `esObjeto`, `fusionarConjunto`, `fusionarEstados`, `fusionarListaConId`, `fusionarRegistro`, `fusionarValor`, `igual`, `MAXIMOS_POR_RUTA`
+**Funciones:** `_firmaReversion`, `ADITIVOS_POR_RUTA`, `clon`, `conId`, `deduplicarReversionesConcurrentes`, `esObjeto`, `fusionarConjunto`, `fusionarEstados`, `fusionarListaConId`, `fusionarRegistro`, `fusionarValor`, `igual`, `MAXIMOS_POR_RUTA`
 
 **Globales:** `ADITIVOS`, `CLAVES_NATURALES`, `MAXIMOS`
 
@@ -781,6 +781,7 @@ Ninguno.
 | `_fechaCorta` | `js/modules/inicio.js` |
 | `_fechaSafe` | `js/core/dialogos.js` |
 | `_fechasCambioEncargoEnCajita` | `js/core/nu-calc.js` |
+| `_firmaReversion` | `js/core/fusion.js` |
 | `_fmtMeses` | `js/modules/inicio.js` |
 | `_fmtTiempo` | `js/modules/alcancia.js` |
 | `_fuenteHuerfana` | `js/core/cuentas-fuentes.js` |
@@ -1391,6 +1392,7 @@ Ninguno.
 | `cuentasTodas` | `js/core/cuentas-fuentes.js` |
 | `debounceSave` | `js/core/utilidades-ui.js` |
 | `decodificarPayload` | `js/core/payload-codec.js` |
+| `deduplicarReversionesConcurrentes` | `js/core/fusion.js` |
 | `deleteCajita` | `js/modules/nu.js` |
 | `deleteGastoFijo` | `js/modules/gastos.js` |
 | `deleteGastoVar` | `js/modules/gastos.js` |

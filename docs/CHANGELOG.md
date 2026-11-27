@@ -52,7 +52,23 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
-## 2026-11-26 — Bug: eliminar una «Compra con TC» de un encargo descontaba dos veces la plata del destino
+## 2026-11-27 — Bug de sincronización: eliminar el mismo movimiento en dos dispositivos devolvía la plata dos veces
+
+**Probado solo con Node; sin ver en navegador real.** Lo encontró la prueba nueva de fusión con estados completos (`tests/fusion-app-completa.test.js`).
+- **El bug:** si dos dispositivos eliminaban el MISMO movimiento antes de sincronizar, cada uno anotaba su propia reversión en el libro (con ids distintos: `Libro.registrar` los genera con la hora y un contador) y `fusionarEstados` unía las dos listas: el movimiento desaparecía (bien) pero la plata se devolvía DOS veces. Con un gasto de 50.000 el saldo fusionado quedaba en 1.050.000 en vez de 1.000.000 y `Libro.verificarEspejo` marcaba una pata sin registro. Un guardado normal repetiría el error en la nube.
+- **El arreglo** (`js/core/fusion.js`, `deduplicarReversionesConcurrentes`): dos reversiones NUEVAS (que no estaban en la base), una por lado, con la misma cuenta, monto, módulo y ref, son el mismo suceso y se queda una (la de menor id: el resultado no depende de qué lado es el local). Se emparejan de una en una; las reversiones de otro ref, monto, cuenta o módulo, las que ya estaban en la base y los movimientos normales no se tocan. Es una heurística consciente: dos reversiones idénticas e independientes del mismo ref a la vez son mucho menos probables que una eliminación doble.
+- **Pruebas:** 6 unitarias en `tests/fusion.test.js` y `tests/fusion-app-completa.test.js` (12 semillas): dos dispositivos con la app real (ingreso, retiro, transferencia, gasto y su eliminación con `eliminarMovimiento`), algunos eliminando lo mismo, y el estado fusionado cargado en una app nueva se compara con un modelo de qué sigue vivo (saldos, libro, espejo, sin registros duplicados). Sin el arreglo fallan 11.
+- **Límite conocido:** solo cubre reversiones de eliminaciones. Dos dispositivos que EDITAN a la vez el mismo saldo inicial siguen sumando las dos correcciones (cada una relativa a lo que vio).
+
+---
+
+## 2026-11-26 — Encargos: ida-y-vuelta con diferencial y transferencia entre encargos
+
+**Probado solo con Node; sin ver en navegador real.** `tests/ida-y-vuelta-encargos.test.js` pasa de 4 a 7 escenarios: compra con tarjeta con margen para mí, compra con tarjeta con diferencial de intercambio («lo pagué yo») y transferencia entre encargos. **No encontraron fallos nuevos** (replican línea a línea lo que escriben `confirmarCompraConTC` y `diffAplicar`). Mutación: sin el arreglo de la reversión doble del destino fallan las 3 compras con tarjeta.
+
+---
+
+## 2026-11-26 — Bug: eliminar una «Compra con TC" de un encargo descontaba dos veces la plata del destino
 
 **Probado solo con Node; sin ver en navegador real.** Detalle y causa raíz en `docs/changelog/encargos.md` (2026-11-26). Resumen: la plata que la compra metía en la cuenta destino se revertía por `_destino` y otra vez por su fila espejo de `S.movimientos`; la cuenta quedaba con menos plata de la que tenía. Arreglo en `deleteMovimientoEncargo` (`encargos.js`); escenario nuevo en `tests/ida-y-vuelta-encargos.test.js` (ahora 4: traspaso, «Yo puse la plata» simple y dividido, compra con tarjeta).
 

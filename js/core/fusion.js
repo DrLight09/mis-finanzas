@@ -133,7 +133,36 @@ function MAXIMOS_POR_RUTA(clave, actual) {
   return undefined;
 }
 
+// Reversiones del libro hechas A LA VEZ por los dos dispositivos. Si los dos eliminan el MISMO movimiento antes de sincronizar, cada uno anota su
+// propia reversión de la plata (ids distintos), y al unir los libros la plata se devolvía DOS veces: el saldo quedaba por encima de lo real y el
+// libro con una pata sin registro (Libro.verificarEspejo). Dos reversiones NUEVAS (que no estaban en la base), una en cada lado, con la misma
+// cuenta, monto, módulo y ref son el mismo suceso: se queda una (la de menor id, para que el resultado no dependa de qué lado es el local).
+// Es una heurística consciente: dos reversiones idénticas e independientes del mismo ref a la vez son muchísimo menos probables que una
+// eliminación doble, y la otra elección (dejar las dos) deja plata de más.
+function _firmaReversion(l) {
+  const o = esObjeto(l.origen) ? l.origen : {};
+  return l.tipo === 'reversion' && o.ref ? [l.cuenta, l.monto, o.modulo, o.ref].join('|') : null;
+}
+function deduplicarReversionesConcurrentes(base, local, remoto, fusionado) {
+  if (!Array.isArray(fusionado.libro)) return fusionado;
+  const lista = x => (x && Array.isArray(x.libro) ? x.libro : []);
+  const enBase = new Set(lista(base).filter(esObjeto).map(l => l.id));
+  const nuevos = estado => lista(estado).filter(l => esObjeto(l) && !enBase.has(l.id));
+  const delRemoto = new Map();
+  nuevos(remoto).forEach(l => { const f = _firmaReversion(l); if (f) { if (!delRemoto.has(f)) delRemoto.set(f, []); delRemoto.get(f).push(l); } });
+  const sobrantes = new Set();
+  nuevos(local).forEach(l => {
+    const f = _firmaReversion(l), candidatos = f ? delRemoto.get(f) : null;
+    if (!candidatos || !candidatos.length || candidatos.some(c => c.id === l.id)) return; // mismo id: la fusión ya lo unió
+    const r = candidatos.shift();
+    sobrantes.add(l.id < r.id ? r.id : l.id); // se descarta el de mayor id
+  });
+  if (!sobrantes.size) return fusionado;
+  return Object.assign({}, fusionado, { libro: fusionado.libro.filter(l => !(esObjeto(l) && sobrantes.has(l.id))) });
+}
+
 // Punto de entrada. `base`, `local` y `remoto` son los estados ya como objetos. Devuelve un objeto nuevo.
 export function fusionarEstados(base, local, remoto) {
-  return fusionarValor(base || {}, local || {}, remoto || {});
+  const b = base || {}, l = local || {}, r = remoto || {};
+  return deduplicarReversionesConcurrentes(b, l, r, fusionarValor(b, l, r));
 }

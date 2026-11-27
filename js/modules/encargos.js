@@ -2006,9 +2006,10 @@ export async function deleteMovimientoEncargo(encargoId, movimientoId) {
   if (movimiento && movimiento._esTcEncargo) {
     // Revertir el sumarFuente del paso 2: usar _destinoMonto si existe (tcMonto guardado),
     // con fallback a _tcMonto y luego a monto para compatibilidad con registros anteriores.
+    let destinoRevertido = false; // la fila espejo de abajo (S.movimientos, _esTcEncargo) trae la MISMA plata: no se revierte dos veces
     if (movimiento._destino) {
       const montoARevertir = movimiento._destinoMonto || movimiento._tcMonto || movimiento.monto;
-      if (montoARevertir) descontarFuente(movimiento._destino, montoARevertir, _origenLibroEncargo(movimientoId, true));
+      if (montoARevertir) { descontarFuente(movimiento._destino, montoARevertir, _origenLibroEncargo(movimientoId, true)); destinoRevertido = true; }
     }
 
     // Revertir la deuda de la TC (paso 3)
@@ -2026,7 +2027,9 @@ export async function deleteMovimientoEncargo(encargoId, movimientoId) {
     // y revertir sus sumas. Excluye los de intercambio — esos los maneja el bloque siguiente.
     if (S.movimientos) {
       const diferencialMovimientos = S.movimientos.filter(m => m._encargoMovimientoId === movimientoId && !m._esIntercambioEncargo);
-      diferencialMovimientos.forEach(m => { if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true)); });
+      // La fila del DESTINO (_esTcEncargo) solo se revierte aquí si el bloque de arriba no lo hizo (registros viejos sin `_destino`): antes se
+      // revertía dos veces y la cuenta destino quedaba con menos plata de la que tenía (ver changelog/encargos.md).
+      diferencialMovimientos.forEach(m => { if (m._esTcEncargo && destinoRevertido) return; if (m.fuente && m.monto) descontarFuente(m.fuente, m.monto, _origenLibroEncargo(movimientoId, true)); });
       S.movimientos = S.movimientos.filter(m => !(m._encargoMovimientoId === movimientoId && !m._esIntercambioEncargo));
     }
   }

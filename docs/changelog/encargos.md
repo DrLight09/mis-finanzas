@@ -4,6 +4,13 @@
 
 ## Encargos
 
+### 🐛 Corregido (2026-11-26) — Eliminar una «Compra con TC» de un encargo descontaba DOS veces la plata de la cuenta destino (`encargos.js`, `deleteMovimientoEncargo`)
+
+**Causa raíz:** `confirmarCompraConTC` mete la plata del encargo en la cuenta destino UNA vez (`sumarFuente`), pero deja dos rastros de esa misma plata: el campo `_destino`/`_destinoMonto` del movimiento del encargo y una fila espejo en `S.movimientos` (`_esTcEncargo`, con la misma `fuente` y `monto`). Al eliminar, el bloque «Revertir compra TC» la revertía por `_destino` y luego el filtro de `S.movimientos` (que debía revertir solo el diferencial, «pasos 2 y 5») volvía a descontar la fila espejo del destino. Resultado: la cuenta destino quedaba con `monto` MENOS de lo que tenía antes de la compra (en la prueba, 430.000 en vez de 500.000 tras una compra de 70.000) y el libro con un neto distinto de cero en ese movimiento.
+- **Arreglo:** el primer bloque marca `destinoRevertido` y el filtro salta la fila `_esTcEncargo` solo en ese caso; para registros viejos sin `_destino`, la fila espejo sigue siendo la que revierte.
+- **Prueba:** nuevo escenario «Compra pagada con tarjeta» en `tests/ida-y-vuelta-encargos.test.js` (replica lo que escribe `confirmarCompraConTC`, sin diferencial): saldos, deuda de la tarjeta, historial de la tarjeta, libro neto en 0 y espejo coherente tras eliminar. Falla sin el arreglo.
+- **No cubierto:** la compra con TC CON diferencial (`diffAplicar`) y el abono a deudor desde un encargo (no mueve cuentas ni libro: solo registros).
+
 ### 🐛 Corregido (2026-10-24) — Tarjetas de crédito como origen o destino en «Me lo regalaron», «Mover entre cuentas» y «Compra con TC» (`encargos.js`, `fuentes-filtro.js`)
 
 *(Mejora 3.)* **Causa raíz:** los selectores de destino de esos sheets se armaban con `getFuentes()` (que incluye las TC), pensada para «de dónde SALE la plata». Pero ahí la plata ENTRA a una cuenta tuya, y una TC no recibe plata (solo se paga o se compra; ver `tarjetas-credito.md`). Al confirmar, `sumarFuente('tc:…')` actuaba sobre la tarjeta y, en «Compra con TC», además se subía su deuda. Ninguna validación al guardar lo impedía.

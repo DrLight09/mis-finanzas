@@ -52,6 +52,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-26 — Bug: eliminar una «Compra con TC» de un encargo descontaba dos veces la plata del destino
+
+**Probado solo con Node; sin ver en navegador real.** Detalle y causa raíz en `docs/changelog/encargos.md` (2026-11-26). Resumen: la plata que la compra metía en la cuenta destino se revertía por `_destino` y otra vez por su fila espejo de `S.movimientos`; la cuenta quedaba con menos plata de la que tenía. Arreglo en `deleteMovimientoEncargo` (`encargos.js`); escenario nuevo en `tests/ida-y-vuelta-encargos.test.js` (ahora 4: traspaso, «Yo puse la plata» simple y dividido, compra con tarjeta).
+
+---
+
 ## 2026-11-26 — Las secuencias aleatorias incluyen saldo inicial y compras con tarjeta
 
 **Probado solo con Node; sin ver en navegador real.** No encontró fallos nuevos.

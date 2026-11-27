@@ -20,7 +20,8 @@ const FECHA = new Date().toISOString().slice(0, 10);
 function cargar() {
   const app = loadApp(ARCHIVOS, { permissive: true });
   Object.assign(app.S, {
-    modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], tcMovimientos: [], tarjetasCredito: [], deudores: [], misDeudas: [],
+    modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], tcMovimientos: [], deudores: [], misDeudas: [],
+    tarjetasCredito: [{ id: 'tc1', nombre: 'Visa', cupo: 5000000, deuda: 100000, estado: 'activa', compras: [], pagos: [] }],
     cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi' }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo' }],
     encargos: [{ id: 'e1', nombre: 'Encargo', saldoInicial: 0, cuentaInicial: '', movimientos: [] }],
   });
@@ -46,6 +47,16 @@ const ESCENARIOS = {
     app.S.encargos[0].movimientos.push({ id, tipo: 'salida', desc: 'Regalo a Nequi', monto: 40000, cuenta: '', fecha: FECHA, nota: 'Traspaso a cuenta propia', _traspasoEncargo: true, _destino: 'cuenta:nequi', ts: 1 });
     app.sumarFuente('cuenta:nequi', 40000, app.Libro.origen('encargos')(id));
     app.S.movimientos.push({ id: 'esp-1', tipo: 'entrada', fuente: 'cuenta:nequi', monto: 40000, fecha: FECHA, desc: 'Regalo (de encargo)', _encargoMovimientoId: id, clase: 'ingreso', _esExtraIngreso: true });
+    return id;
+  },
+  'Compra pagada con tarjeta (la plata del encargo va a una cuenta y sube la deuda de la tarjeta)': app => {
+    // Replica `confirmarCompraConTC` (encargos.js l.3142–3201), sin diferencial: salida en el encargo, plata a la cuenta destino, deuda de la tarjeta y su historial.
+    const id = 'mov-tc', monto = 70000;
+    app.S.encargos[0].movimientos.push({ id, tipo: 'salida', desc: 'Compra pagada con TC: Zapatos', monto, cuenta: '', fecha: FECHA, _esTcEncargo: true, _encargoId: 'e1', _destino: 'cuenta:nequi', _tcId: 'tc1', _tcMonto: monto, _dijoMonto: monto, _destinoMonto: monto, ts: 1 });
+    app.sumarFuente('cuenta:nequi', monto, app.Libro.origen('encargos')(id));
+    app.S.movimientos.push({ id: 'esp-tc', tipo: 'entrada', fuente: 'cuenta:nequi', _encargoMovimientoId: id, clase: 'neutro', _esTcEncargo: true, monto, fecha: FECHA, desc: 'TC encargo: Zapatos', ts: 1 });
+    app.S.tarjetasCredito[0].deuda += monto;
+    app.S.tcMovimientos.push({ id: 'tcm-1', tcId: 'tc1', tipo: 'cargo_encargo', desc: 'Compra encargo: Zapatos', monto, fecha: FECHA, encargoId: 'e1', _encargoMovimientoId: id });
     return id;
   },
   'Yo puse la plata (sale de una cuenta, sin recuperar)': app => {

@@ -58,7 +58,7 @@ import { Refresh } from '../core/refresh.js';
 import { showScreen } from '../core/navegacion.js';
 import { Loader } from '../core/lazy-loader.js';
 // Puente global (js/core/puente.js): las funciones se hoistean, así que quedan en window desde el principio.
-exponerGlobales({ _diasDeUso, _situacion, calcSinBase, _ctxReglas, _fechaCorta, _eventosCaja, calcCalendarioCaja, renderAttencion, _pintarAtencion, _mesesCubiertos, _nivelRunway, _fmtMeses, calcImpactoCompra, calcHealthScore, renderHealthScore, _deudasPropias, calcEstadoHero, renderHeroEstado, calcEstadoSituacion, _ritmosPorTercio, renderProyeccion, _checkGastoAlto, _renderDispNetoTC, _irADestino });
+exponerGlobales({ _diasDeUso, _situacion, calcSinBase, _ctxReglas, _fechaCorta, _eventosCaja, calcCalendarioCaja, renderAttencion, _pintarAtencion, _mesesCubiertos, _nivelRunway, _fmtMeses, calcImpactoCompra, calcHealthScore, renderHealthScore, _deudasPropias, calcEstadoHero, renderHeroEstado, calcEstadoSituacion, _ritmosPorTercio, _nombreTramo, renderProyeccion, _checkGastoAlto, _renderDispNetoTC, _irADestino });
 
 /* ---- DASHBOARD ATENCIÓN ---- */
 // Migrado a html`` (js/core/html-tag.js, ver auditoria-tecnica.md "Auditoría
@@ -206,7 +206,8 @@ export function renderAttencion(){
 }
 export function _pintarAtencion(){
   // Las reglas devuelven TEXTO PLANO; html`` lo escapa (nombres de personas, tarjetas, encargos… son texto libre del usuario).
-  const items=Reglas.evaluar('atencion',_ctxReglas()).map(it=>({tipo:it.tipo,texto:html`${it.texto}`}));
+  // Rojo antes que ámbar; dentro de cada gravedad se conserva el orden de registro de las reglas (Array.prototype.sort es estable).
+  const items=Reglas.evaluar('atencion',_ctxReglas()).map(it=>({tipo:it.tipo,texto:html`${it.texto}`})).sort((a,b)=>(a.tipo==='red'?0:1)-(b.tipo==='red'?0:1));
   const sec=document.getElementById('s-attn-section');
   const list=document.getElementById('s-attn-list');
   if(!items.length){sec.style.display='none';return;}
@@ -538,6 +539,12 @@ export function _ritmosPorTercio(intervalos, diasTotal){
   return t.filter(x => x.d > 0).map(x => x.c / x.d * 30);
 }
 
+// Nombre del tramo del historial (los ritmos van del más antiguo al más reciente). Con tres tramos: primero, del medio y último.
+export function _nombreTramo(indice, total){
+  if(indice === total - 1) return 'el tramo más reciente';
+  return indice === 0 ? 'el tramo más antiguo' : 'el tramo del medio';
+}
+
 export function renderProyeccion(){
   const el = document.getElementById('proyeccion-card');
   if(!el) return;
@@ -683,7 +690,7 @@ export function renderProyeccion(){
   }
   // Ritmo irregular: se muestra el rango en vez de una cifra que no representa ningún período.
   const irregularInfo = (!historialInsuficiente && nivelConfianza !== 'estable' && ritmos.length >= 3 && (Math.max(...ritmos) - Math.min(...ritmos)) > Math.abs(tendenciaMensual))
-    ? `<div class="inicio-proy-irregular">Tu ritmo cambió mucho entre períodos (de ${fmt(Math.min(...ritmos))} a ${fmt(Math.max(...ritmos))} al mes): toma la proyección con cautela</div>` : '';
+    ? `<div class="inicio-proy-irregular">Tu ritmo cambió mucho entre períodos: ${_nombreTramo(ritmos.indexOf(Math.max(...ritmos)), ritmos.length)} fue el mejor (${fmt(Math.max(...ritmos))} al mes) y ${_nombreTramo(ritmos.indexOf(Math.min(...ritmos)), ritmos.length)} el peor (${fmt(Math.min(...ritmos))} al mes): toma la proyección con cautela</div>` : '';
 
   // Calcular diferencias absolutas para el tooltip de cada card
   const proyCards = [

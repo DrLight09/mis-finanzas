@@ -1,6 +1,6 @@
 # Saldo derivado del libro + cierre de períodos (etapa 2) — diseño conjunto
 
-**Estado: paso 1 implementado (2026-11-23); pasos 2–5 pendientes.** Reemplaza en `pendientes.md` las filas #2 (parte de recalcular saldos), #6 y #15, y desarrolla §5.6 y §3.8. Se apoya en `docs/cierre-de-periodos.md` (§4–§5), que sigue siendo el documento maestro del cierre.
+**Estado (revisado 2026-11-28 contra el código): los cinco pasos están implementados** (índice en centavos, `Libro.hidratar`, fusión por unión, `Libro.verificarEspejo`, `Cierre.ejecutar`). Lo que no sigue el texto original está marcado en §2.1 y §2.4; lo que sigue abierto está en `pendientes.md` §5.6. Reemplaza en `pendientes.md` las filas #2 (parte de recalcular saldos), #6 y #15, y desarrolla §5.6 y §3.8. Se apoya en `docs/cierre-de-periodos.md` (§4–§5), que sigue siendo el documento maestro del cierre.
 
 Criterio de trabajo: gana el mejor resultado; no hay usuarios ni datos que migrar, así que el esquema cambia sin migración (se sube `SCHEMA_BASE` y se descarta lo viejo).
 
@@ -81,9 +81,9 @@ Cada módulo que mueve plata deja una fila en su espejo y patas en el libro. Hoy
 | Cierre + fusión | El caso de §4.2. |
 | Espejo ↔ libro | Las tres propiedades de §5 con secuencias aleatorias. |
 
-## 7. Orden de implementación
+## 7. Orden de implementación (todo hecho)
 
-1. `Libro` con índice en centavos + `hidratar` + setter que lanza; fábrica `Cuentas.nueva`; quitar escrituras de `saldo` y el código de reconciliación. Pruebas de §6 (serialización, setter, índice, clones).
+1. `Libro` con índice en centavos + `hidratar` + setter que lanza (en el código, solo en modo estricto; ver §2.1); en lugar de la fábrica `Cuentas.nueva` se usa `Libro.asegurar(obj, fuente)` en los sitios que crean cuentas o cajitas; quitar escrituras de `saldo` y el código de reconciliación. Pruebas de §6 (serialización, setter, índice, clones).
 2. Simplificar la fusión y añadir la prueba de propiedades.
 3. Prueba de consistencia espejo ↔ libro; arreglar lo que encuentre.
 4. Cierre etapa 2 según el maestro §5.2–§5.9, con §4.2 de este documento.

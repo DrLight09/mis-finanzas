@@ -274,6 +274,7 @@ test('«ESTABLE» exige 90 días y un ritmo consistente en los tres tercios; una
   const irregular = proyeccion({ cuentas: cuentas(2000000), patrimonioHistorial: historialPrueba });
   assert.ok(!irregular.includes('ESTABLE'));
   assert.ok(irregular.includes('Tu ritmo cambió mucho'));
+  assert.match(irregular, /Tu ritmo cambió mucho entre períodos: el tramo [\wáéíóú ]+ fue el mejor \([^)]*\) y el tramo [\wáéíóú ]+ el peor \(/, 'dice CUÁL tramo fue el mejor y cuál el peor, no solo el rango');
 });
 
 test('N-4. el texto de deuda dice la deuda TOTAL descontada y cuánto es propia', () => {
@@ -457,6 +458,17 @@ test('P7. con la plata alcanzando y sin vencimientos cerca, no hay alertas de ga
   const dom = createFakeDom(); ctx.document = dom.document;
   ctx.renderAttencion();
   assert.ok(!/vence|venció|próximos 7 días/.test(String((dom.el('s-attn-list') || {}).innerHTML || '')));
+});
+
+test('P7. «Necesita atención» pone lo rojo antes que lo ámbar, aunque la regla roja se registre después', () => {
+  const ctx = app({ cuentas: cuentas(5000000), misDeudas: yoDebo(300000), tarjetasCredito: [{ id: 't', nombre: 'Visa', deuda: 5000000, cupo: 5000000 }] });
+  const l = createHtmlTag(ctx.escHtml); ctx.html = l.html; ctx.raw = l.raw;
+  const dom = createFakeDom(); ctx.document = dom.document;
+  ctx.renderAttencion();
+  const t = String(dom.el('s-attn-list').innerHTML);
+  const rojo = t.indexOf('cupo agotado'), ambar = t.indexOf('Le debes');
+  assert.ok(rojo >= 0 && ambar >= 0, 'deben salir las dos alertas: ' + t);
+  assert.ok(rojo < ambar, 'la alerta roja (cupo agotado) va antes que la ámbar (deuda)');
 });
 
 /* ================= P7b: día esperado de ingresos fijos y edición de gastos fijos ================= */

@@ -164,3 +164,23 @@ test('index.html no usa autofocus: en el celular abre el teclado al cargar la p�
   const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'index.html'), 'utf8');
   assert.ok(!/\bautofocus\b/.test(html.replace(/<!--[\s\S]*?-->/g, '')));
 });
+
+test('ninguna cadena del código lleva emojis: los iconos son SVG o Font Awesome (solo se admiten en comentarios)', () => {
+  const EMOJI = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B50}\u{2B06}\u{2B07}]/u;
+  const hallados = [];
+  (function recorrer(d) {
+    for (const f of fs.readdirSync(path.join(raiz, d))) {
+      const rel = d + '/' + f;
+      if (fs.statSync(path.join(raiz, rel)).isDirectory()) { recorrer(rel); continue; }
+      if (!f.endsWith('.js')) continue;
+      fs.readFileSync(path.join(raiz, rel), 'utf8').split('\n').forEach((linea, i) => {
+        if (!EMOJI.test(linea)) return;
+        const t = linea.trim();
+        if (t.startsWith('//') || t.startsWith('*') || t.startsWith('/*')) return;
+        const sinComentario = linea.replace(/\/\/.*$/, '');
+        if (EMOJI.test(sinComentario)) hallados.push(rel + ':' + (i + 1) + '  ' + t.slice(0, 80));
+      });
+    }
+  })('js');
+  assert.deepEqual(hallados, [], 'Emojis en el código (usa un icono SVG/Font Awesome o quítalo):\n' + hallados.join('\n'));
+});

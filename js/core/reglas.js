@@ -233,7 +233,7 @@ export const Reglas = (() => {
   // Solo push: aviso único el primer día de la ventana de Wrapped (1 de enero); el criterio completo vive en js/core/wrapped-gate.js.
   registrar({ id: 'wrapped-disponible', canales: ['push'], evaluar(ctx) {
     const [, mes, dia] = String(ctx.hoy).split('-');
-    return mes === '01' && dia === '01' ? [{ tipo: 'amber', texto: 'Tu resumen anual (Wrapped) ya está disponible 🎉', ir: 'wrapped' }] : [];
+    return mes === '01' && dia === '01' ? [{ tipo: 'amber', texto: 'Tu resumen anual (Wrapped) ya está disponible', ir: 'wrapped' }] : [];
   } });
 
   return { registrar, evaluar, lista, dias, fmtPesos, fechaCorta, mesesCubiertos, nivelRunway, fmtMeses, textoRunway, rachaDeficitRelevante, spotifyPagadoVigente, nombrePersona };

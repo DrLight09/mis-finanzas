@@ -33,6 +33,16 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-28 — Revisión de `pendientes.md` y del diseño del saldo derivado: lo que no era cierto, textos y emojis
+
+**Probado con Node (`npm ci` + `node --test`: 1300 pruebas, lint 0 errores, `tsc` limpio). Sin ver en navegador.**
+
+- **Verificado contra el código:** el saldo derivado, `Libro.verificarEspejo`, `Cierre.ejecutar` y la fusión por unión **sí existen y funcionan** como dicen `pendientes.md` §5.6 y `docs/diseno-saldo-derivado-y-cierre.md`. Lo que no era cierto: la copia de la raíz de ese diseño decía «sin código escrito» (es la versión del 2026-11-23, anterior a todo); `pendientes.md` §3.1 decía que `_fusionarConNube` llama a `Libro.recalcularSaldos` (borrada); `docs/proteccion-antiguedad-movimientos.md` citaba `_mesadaTieneCuentaAfectada` (hoy es `mesadaTieneCuentaAfectada`, en `mesada.js`); `package.json` decía que Pages sirve `index.html/js/css` (sirve `dist/`).
+- **«Necesita atención»** (`inicio.js`): ahora lo rojo va antes que lo ámbar (orden estable: dentro de cada gravedad se conserva el orden de las reglas). Antes una tarjeta con el cupo agotado o un CDT vencido salía debajo de «Fulano te debe…» solo porque su regla se registra después.
+- **«Tu ritmo cambió mucho entre períodos»** (`inicio.js`): ahora dice cuál tramo del historial fue el mejor y cuál el peor (`_nombreTramo`), no solo el rango.
+- **Emojis visibles quitados:** `alcancia.js` (🔥 y 📈 en los mensajes de racha) y `reglas.js` (🎉 en el aviso de Wrapped, que además se envía como push). Regla del dueño: ningún emoji en la interfaz. Prueba nueva en `tests/convenciones.test.js` que falla si una cadena de `js/` lleva uno.
+- **Pruebas nuevas** (validadas con mutación: sin el orden, sin el texto o con un emoji puesto de vuelta fallan): orden rojo/ámbar y texto del ritmo en `tests/finanzas.test.js`; emojis en `tests/convenciones.test.js`.
+
 ## 2026-11-25 — Eliminar un respaldo desde la app
 
 **Probado solo con Node y un Firestore simulado; sin ver en navegador real ni contra las reglas reales.**

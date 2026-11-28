@@ -539,8 +539,8 @@ function _alcanciaWrappedProgresoHtml(historial, fmtFn){
   const ultimo = historial[historial.length-1];
   const esMejorHastaAhora = mejor === ultimo;
   const rachaMsg = racha >= 2
-    ? `🔥 Llevas ${racha} alcancías seguidas ahorrando más que la anterior`
-    : (racha === 1 ? '📈 Ahorraste más que en tu alcancía anterior' : null);
+    ? `Llevas ${racha} alcancías seguidas ahorrando más que la anterior`
+    : (racha === 1 ? 'Ahorraste más que en tu alcancía anterior' : null);
   return `
     <div class="card alc-prog-card">
       <div class="alc-prog-cap">Tu progreso ahorrando</div>
@@ -1124,7 +1124,7 @@ window.alcanciaConfirmarDestapar = function(){
       const diferencialMonto  = saldoRegistrado - (prev.saldoRegistrado||0);
       const diferencialDias   = diasDuracion - (prev.diasDuracion||0);
       const racha = _alcanciaRachaAhorro(historial);
-      const rachaMsg = racha >= 2 ? `🔥 Racha de ${racha} alcancías seguidas ahorrando más` : '';
+      const rachaMsg = racha >= 2 ? `Racha de ${racha} alcancías seguidas ahorrando más` : '';
       comparHtml = `
         <div class="card alc-cmp-card">
           <div class="alc-cmp-cap">vs. alcancía anterior</div>

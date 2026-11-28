@@ -77,7 +77,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/modules/cuentas.js` | lazy — grupo `cuentas` | 88 | 3 |
 | `js/modules/encargos.js` | lazy — grupo `encargos` | 85 | 0 |
 | `js/modules/gastos.js` | módulo ES — importado por `js/core/eventos-base.js`, `js/main.js` | 25 | 0 |
-| `js/modules/inicio.js` | módulo ES — importado por `js/main.js`, `js/modules/analisis.js`, `js/modules/plata-comprometida.js` | 24 | 1 |
+| `js/modules/inicio.js` | módulo ES — importado por `js/main.js`, `js/modules/analisis.js`, `js/modules/plata-comprometida.js` | 25 | 1 |
 | `js/modules/mesada.js` | lazy — grupo `mesada` | 59 | 1 |
 | `js/modules/nu.js` | lazy — grupo `cuentas` | 60 | 0 |
 | `js/modules/personas.js` | módulo ES — importado por `js/core/busqueda-global.js`, `js/core/personas-init.js`, `js/main.js`, `js/modules/encargos.js`, `js/modules/mesada.js`, `js/modules/prestado.js`, `js/modules/spotify.js` | 40 | 1 |
@@ -547,7 +547,7 @@ Carga: módulo ES — importado por `js/core/eventos-base.js`, `js/main.js`
 
 Carga: módulo ES — importado por `js/main.js`, `js/modules/analisis.js`, `js/modules/plata-comprometida.js`
 
-**Funciones:** `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_diasDeUso`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_irADestino`, `_mesesCubiertos`, `_nivelRunway`, `_pintarAtencion`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `calcCalendarioCaja`, `calcEstadoHero`, `calcEstadoSituacion`, `calcHealthScore`, `calcImpactoCompra`, `calcSinBase`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
+**Funciones:** `_checkGastoAlto`, `_ctxReglas`, `_deudasPropias`, `_diasDeUso`, `_eventosCaja`, `_fechaCorta`, `_fmtMeses`, `_irADestino`, `_mesesCubiertos`, `_nivelRunway`, `_nombreTramo`, `_pintarAtencion`, `_renderDispNetoTC`, `_ritmosPorTercio`, `_situacion`, `calcCalendarioCaja`, `calcEstadoHero`, `calcEstadoSituacion`, `calcHealthScore`, `calcImpactoCompra`, `calcSinBase`, `renderAttencion`, `renderHealthScore`, `renderHeroEstado`, `renderProyeccion`
 
 **Globales:** `SALUD_MAX_CONSEJOS`
 
@@ -902,6 +902,7 @@ Un nombre declarado (function/const/let/var) en dos archivos es una posible coli
 | `_nivelRunway` | `js/modules/inicio.js` |
 | `_nombreAhorro` | `js/modules/nu.js` |
 | `_nombreMes` | `js/modules/configuracion.js` |
+| `_nombreTramo` | `js/modules/inicio.js` |
 | `_normTxt` | `js/modules/mesada.js` |
 | `_nuActualizarBotonesTransferir` | `js/modules/nu.js` |
 | `_nuMovimientoActualizarPreview` | `js/modules/nu.js` |

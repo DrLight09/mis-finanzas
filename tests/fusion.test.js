@@ -92,6 +92,55 @@ describe('fusión — listas sin id (conjuntos)', () => {
   });
 });
 
+describe('alcancía: saldo y contador guardados se RECALCULAN desde los movimientos fusionados', () => {
+  const mov = (id, monto) => ({ id, monto, tipo: 'yo_cuenta', fecha: '2026-10-13' });
+  const alc = (movimientos, extra) => Object.assign({ alcancia: { saldoRegistrado: movimientos.reduce((t, m) => t + m.monto, 0), depositos: movimientos.length, movimientos, historial: [] } }, extra || {});
+  const res = m => [m.alcancia.saldoRegistrado, m.alcancia.depositos];
+  test('cada dispositivo deposita por su cuenta: queda el total de los dos (antes ganaba uno y se perdía el otro depósito)', () => {
+    const base = alc([mov('d0', 100)]);
+    const m = fus(base, alc([mov('d0', 100), mov('dA', 50)]), alc([mov('d0', 100), mov('dB', 20)])), n = fus(base, alc([mov('d0', 100), mov('dB', 20)]), alc([mov('d0', 100), mov('dA', 50)]));
+    assert.deepEqual(res(m), [170, 3]); assert.deepEqual(res(n), res(m), 'no depende de qué lado es el local');
+    assert.deepEqual(m.alcancia.movimientos.map(x => x.id).sort(), n.alcancia.movimientos.map(x => x.id).sort());
+  });
+  test('los dos eliminan el MISMO depósito: se descuenta UNA vez (sumar los dos cambios lo descontaría dos veces)', () => {
+    const base = alc([mov('d0', 70), mov('d1', 30)]);
+    const m = fus(base, alc([mov('d0', 70)]), alc([mov('d0', 70)]));
+    assert.deepEqual(res(m), [70, 1]);
+  });
+  test('uno elimina un depósito y el otro hace uno nuevo', () => {
+    const base = alc([mov('d0', 70), mov('d1', 30)]);
+    assert.deepEqual(res(fus(base, alc([mov('d0', 70)]), alc([mov('d0', 70), mov('d1', 30), mov('dB', 25)]))), [95, 2]);
+  });
+  test('«destapar» en un dispositivo (movimientos y totales a 0) y depositar en el otro: queda solo el depósito nuevo', () => {
+    const base = alc([mov('d0', 70), mov('d1', 30)]);
+    assert.deepEqual(res(fus(base, alc([]), alc([mov('d0', 70), mov('d1', 30), mov('dB', 20)]))), [20, 1]);
+  });
+  test('si solo un lado cambió o ninguno, queda lo de ese lado; los decimales no dejan residuos', () => {
+    const base = alc([mov('d0', 0.1)]);
+    assert.deepEqual(res(fus(base, alc([mov('d0', 0.1), mov('dA', 0.2)]), base)), [0.3, 2]);
+    assert.deepEqual(res(fus(base, base, base)), [0.1, 1]);
+    assert.equal(res(fus(base, alc([mov('d0', 0.1), mov('dA', 0.2)]), alc([mov('d0', 0.1), mov('dB', 0.4)])))[0], 0.7);
+  });
+  test('si alguno de los tres estados YA venía incoherente no se «arregla» nada: gana el local como antes', () => {
+    const roto = Object.assign(alc([mov('d0', 100)]), {}); roto.alcancia.saldoRegistrado = 999;
+    const m = fus(roto, alc([mov('d0', 100), mov('dA', 50)]), alc([mov('d0', 100), mov('dB', 20)]));
+    assert.equal(m.alcancia.saldoRegistrado, 150, 'el saldo del local, sin recalcular');
+  });
+  test('si la alcancía no existía en la base no se rompe nada', () => {
+    const m = fus({}, alc([mov('a', 10)]), alc([mov('b', 20)]));
+    assert.equal(m.alcancia.movimientos.length, 2);
+  });
+  test('el saldo OFUSCADO se descarta cuando el total fusionado no es el de ninguno de los dos lados; si lo es, se conserva', () => {
+    const base = alc([mov('d0', 100)], { alcanciaSaldoOfuscado: 'b' });
+    const ambos = fus(base, alc([mov('d0', 100), mov('dA', 50)], { alcanciaSaldoOfuscado: 'A' }), alc([mov('d0', 100), mov('dB', 20)], { alcanciaSaldoOfuscado: 'B' }));
+    assert.equal('alcanciaSaldoOfuscado' in ambos, false); assert.equal(ambos.alcancia.saldoRegistrado, 170);
+    const uno = fus(base, alc([mov('d0', 100), mov('dA', 50)], { alcanciaSaldoOfuscado: 'A' }), base);
+    assert.equal(uno.alcanciaSaldoOfuscado, 'A');
+    const dobleBorrado = fus(alc([mov('d0', 70), mov('d1', 30)], { alcanciaSaldoOfuscado: 'b' }), alc([mov('d0', 70)], { alcanciaSaldoOfuscado: 'X' }), alc([mov('d0', 70)], { alcanciaSaldoOfuscado: 'X' }));
+    assert.equal(dobleBorrado.alcanciaSaldoOfuscado, 'X', 'los dos lados coinciden con el total fusionado');
+  });
+});
+
 describe('reversiones del libro hechas a la vez por los dos dispositivos (eliminación doble)', () => {
   const entrada = (id, monto, extra) => Object.assign({ id, cuenta: 'cuenta:ef', monto, tipo: 'movimiento', fecha: '2026-11-20', origen: { modulo: 'gastos', ref: 'g1' } }, extra || {});
   const reversion = (id, monto, ref, modulo) => entrada(id, monto, { tipo: 'reversion', origen: { modulo: modulo || 'movimientos', ref: ref || 'g1', rev: true } });

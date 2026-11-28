@@ -30,7 +30,7 @@ Lista solo declaraciones de nivel superior (funciones, y constantes/objetos glob
 | `js/core/formulario.js` | módulo ES — importado por `js/main.js`, `js/modules/gastos.js`, `js/modules/prestado.js` | 1 | 0 |
 | `js/core/formularios-ui.js` | módulo ES — importado por `js/main.js`, `js/modules/prestado.js` | 1 | 0 |
 | `js/core/fuentes-filtro.js` | módulo ES — importado por `js/main.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/nu.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 1 | 0 |
-| `js/core/fusion.js` | módulo ES — importado por `js/core/firebase-sync.js` | 13 | 3 |
+| `js/core/fusion.js` | módulo ES — importado por `js/core/firebase-sync.js` | 16 | 3 |
 | `js/core/gastos-fijos-progress.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/globales-logica.js` | módulo ES — importado por `js/main.js` | 0 | 0 |
 | `js/core/html-tag.js` | módulo ES — importado por `js/core/movimientos.js`, `js/main.js`, `js/modules/actividad-reciente.js`, `js/modules/analisis.js`, `js/modules/configuracion.js`, `js/modules/cuentas.js`, `js/modules/encargos.js`, `js/modules/gastos.js`, `js/modules/inicio.js`, `js/modules/mesada.js`, `js/modules/nu.js`, `js/modules/personas.js`, `js/modules/plata-comprometida.js`, `js/modules/prestado.js`, `js/modules/spotify.js`, `js/modules/tarjetas-credito.js` | 3 | 0 |
@@ -233,7 +233,7 @@ Carga: módulo ES — importado por `js/main.js`, `js/modules/cuentas.js`, `js/m
 
 Carga: módulo ES — importado por `js/core/firebase-sync.js`
 
-**Funciones:** `_firmaReversion`, `ADITIVOS_POR_RUTA`, `clon`, `conId`, `deduplicarReversionesConcurrentes`, `esObjeto`, `fusionarConjunto`, `fusionarEstados`, `fusionarListaConId`, `fusionarRegistro`, `fusionarValor`, `igual`, `MAXIMOS_POR_RUTA`
+**Funciones:** `_alcanciaCoherente`, `_centavos`, `_firmaReversion`, `ADITIVOS_POR_RUTA`, `clon`, `conciliarAlcancia`, `conId`, `deduplicarReversionesConcurrentes`, `esObjeto`, `fusionarConjunto`, `fusionarEstados`, `fusionarListaConId`, `fusionarRegistro`, `fusionarValor`, `igual`, `MAXIMOS_POR_RUTA`
 
 **Globales:** `ADITIVOS`, `CLAVES_NATURALES`, `MAXIMOS`
 
@@ -615,7 +615,11 @@ Carga: lazy — grupo `wrapped`
 
 ## 3. Nombres declarados en más de un archivo
 
-Ninguno.
+Un nombre declarado (function/const/let/var) en dos archivos es una posible colisión: la última carga pisa a la anterior. No cuenta `window.x = …`, que se usa a propósito para parchar.
+
+| Nombre | Archivos |
+|---|---|
+| `_centavos` | `js/core/fusion.js`, `js/core/resumen-datos.js` |
 
 ## 4. Índice inverso (nombre → archivo)
 
@@ -660,6 +664,7 @@ Ninguno.
 | `_ahorroActualId` | `js/modules/nu.js` |
 | `_ajusteAlcanciaPorFecha` | `js/core/patrimonio.js` |
 | `_ajusteDeudasSinCuentaPorFecha` | `js/core/patrimonio.js` |
+| `_alcanciaCoherente` | `js/core/fusion.js` |
 | `_alcanciaDecode` | `js/modules/alcancia.js` |
 | `_alcanciaDesgloseHtml` | `js/modules/alcancia.js` |
 | `_alcanciaDeudorSaldoHintActualizar` | `js/modules/alcancia.js` |
@@ -701,7 +706,7 @@ Ninguno.
 | `_cajitasAhorroActual` | `js/modules/nu.js` |
 | `_cancelarCobrarCDT` | `js/modules/nu.js` |
 | `_cdtModoSheet` | `js/modules/nu.js` |
-| `_centavos` | `js/core/resumen-datos.js` |
+| `_centavos` | `js/core/fusion.js`, `js/core/resumen-datos.js` |
 | `_cerrarFichaPersonas` | `js/modules/personas.js` |
 | `_checkGastoAlto` | `js/modules/inicio.js` |
 | `_clasePorCuenta` | `js/core/cuentas-fuentes.js` |
@@ -1346,6 +1351,7 @@ Ninguno.
 | `colorCuenta` | `js/core/cuentas-fuentes.js` |
 | `colorLegible` | `js/core/cuentas-fuentes.js` |
 | `compararResumenes` | `js/core/resumen-datos.js` |
+| `conciliarAlcancia` | `js/core/fusion.js` |
 | `conEstadoAislado` | `js/core/persistencia.js` |
 | `confirmarAgregarDinero` | `js/modules/cuentas.js` |
 | `confirmarAgregarDineroMenu` | `js/modules/cuentas.js` |

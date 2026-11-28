@@ -52,6 +52,17 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-27 — Bug de sincronización: dos depósitos a la vez en la alcancía perdían uno en el saldo mostrado
+
+**Probado solo con Node; sin ver en navegador real.** Lo encontró un experimento de fusión con tarjetas y alcancía.
+- **El bug:** `alcancia.saldoRegistrado` y `alcancia.depositos` son totales que cada depósito o eliminación actualiza EN SU SITIO. Con dos dispositivos que depositaban a la vez, la fusión conservaba los dos movimientos (bien) pero el total quedaba con el de UN solo dispositivo: depósitos de 50.000 y 20.000 daban saldo 50.000 y contador 1 (esperado: 70.000 y 2). El dinero de las cuentas sí quedaba bien; fallaba el saldo de la alcancía, que además la pantalla lee primero desde el texto cifrado `alcanciaSaldoOfuscado`.
+- **Un primer arreglo era peor:** sumar los dos cambios sobre la base funciona para depósitos simultáneos, pero si los dos dispositivos eliminan el MISMO depósito lo restaría dos veces (saldo 100, depósito de 30 eliminado en ambos: daría 40 en vez de 70). Se descartó antes de entregarlo.
+- **El arreglo** (`js/core/fusion.js`, `conciliarAlcancia`): el saldo y el contador se RECALCULAN desde los movimientos ya fusionados (que se unen bien por id). Solo si los tres estados (base, local, remoto) cumplen la invariante saldo == suma de sus movimientos y contador == cuántos son (el mismo diagnóstico que trae `alcancia.js`); si alguno ya venía incoherente no se toca y gana el local como antes. El texto cifrado se descarta cuando el total fusionado no es el de ninguno de los dos lados (el cifrado vive en `alcancia.js`: la pantalla cae al saldo en claro, que es lo que usa cuando no hay cifrado).
+- **Pruebas:** 8 unitarias en `tests/fusion.test.js` (depósitos a la vez, eliminación doble del mismo depósito, eliminar uno y depositar otro, destapar en uno y depositar en otro, decimales, estado incoherente, sin alcancía en la base, texto cifrado) y 7 en `tests/fusion-app-completa.test.js` (6 semillas de depósitos a la vez y la eliminación doble con `alcanciaEliminarDeposito` real, comparando saldo, contador, movimientos, cuentas y espejo). Sin el arreglo fallan 11.
+- **Revisado y sin bug:** la deuda de una tarjeta (`tcRecalcular` la reconstruye en cada refresh) y los demás totales guardados (una búsqueda de totales actualizados en su sitio solo encontró la alcancía).
+
+---
+
 ## 2026-11-27 — Bug de sincronización: eliminar el mismo movimiento en dos dispositivos devolvía la plata dos veces
 
 **Probado solo con Node; sin ver en navegador real.** Lo encontró la prueba nueva de fusión con estados completos (`tests/fusion-app-completa.test.js`).

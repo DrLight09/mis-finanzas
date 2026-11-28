@@ -17,7 +17,7 @@ const { createFakeDom } = require('./support/fake-dom');
 const RAIZ = path.join(__dirname, '..');
 const core = f => path.join(RAIZ, 'js', 'core', f), modulo = f => path.join(RAIZ, 'js', 'modules', f);
 const ARCHIVOS = [core('core-state.js'), core('periodo.js'), core('nu-calc.js'), core('calc-helpers.js'), core('cuenta-efectos.js'),
-  modulo('tarjetas-credito.js'), modulo('nu.js'), modulo('cuentas.js'), core('split.js'), modulo('gastos.js'), core('movimientos.js')];
+  modulo('tarjetas-credito.js'), modulo('nu.js'), modulo('cuentas.js'), core('split.js'), modulo('gastos.js'), core('movimientos.js'), modulo('alcancia.js')];
 const HOY = '2026-10-13';
 const CUENTAS = ['cuenta:nequi', 'cuenta:efectivo', 'cuenta:z'];
 const INICIAL = 5000000;
@@ -33,6 +33,8 @@ function dispositivo(plano) {
   Object.assign(app.S, { modulos: {}, libro: [], movimientos: [], gastosVar: [], cajitas: [], transferencias: [], pagosGastosFijos: {}, tcMovimientos: [], tarjetasCredito: [],
     cuentas: [{ id: 'nequi', tipo: 'billetera', nombre: 'Nequi' }, { id: 'efectivo', tipo: 'efectivo', nombre: 'Efectivo' }, { id: 'z', tipo: 'banco', nombre: 'Z' }],
     config: { proteccionAntiguedad: { diasAviso: 99999, diasBloqueo: 99999 } } }, plano ? clon(plano) : {});
+  app.S.alcancia = app.S.alcancia || { saldoRegistrado: 0, depositos: 0, fechaInicio: '2026-01-01', movimientos: [], historial: [] };
+  app.TextEncoder = TextEncoder; app.TextDecoder = TextDecoder; app.btoa = btoa; app.atob = atob; // el saldo oculto de la alcancía se ofusca con esto
   app.Libro.hidratar(app.S);
   const dom = createFakeDom({ gv_desc: { value: 'G' }, gv_monto: { value: '' }, gv_fecha: { value: '' }, gv_cat: { value: 'Comida' }, gv_nota: { value: '' }, gv_fuente: { value: '' },
     tr_origen: { value: '' }, tr_destino: { value: '' }, tr_monto: { value: '' }, tr_nota: { value: '' }, tr_fecha: { value: HOY } });
@@ -125,4 +127,51 @@ for (const semilla of [1, 2, 3, 5, 8, 13, 21, 34, 55, 89, 144, 233]) {
 }
 test('las secuencias ejercitaron de verdad la eliminación doble del mismo movimiento (si no, la prueba no vigilaría el caso clave)', () => {
   assert.ok(solapadas >= 3, 'eliminaciones dobles ejercitadas: ' + solapadas);
+});
+
+// Depósitos en la alcancía (crear lo hace un formulario: se arma el estado que deja, como en tests/ida-y-vuelta-alcancia.test.js).
+function depositar(d, azar, id) {
+  const monto = (1 + Math.floor(azar() * 90)) * 1000, fuente = CUENTAS[Math.floor(azar() * CUENTAS.length)], a = d.app.S.alcancia;
+  d.app.S.transferencias.push({ id, fecha: HOY, origen: fuente, destino: 'alcancia', monto, desc: 'Depósito en alcancía', _esAlcancia: true, _secundario: true, _origenSeccion: 'Alcancía', ts: 1 });
+  d.app.descontarFuente(fuente, monto, d.app.Libro.origen('alcancia')(id));
+  a.saldoRegistrado += monto; a.depositos += 1; a.movimientos.push({ id, fecha: HOY, ts: 1, monto, tipo: 'yo_cuenta', fuenteOrigen: fuente, desc: 'Depósito en alcancía' });
+  return { monto, fuente };
+}
+for (const semilla of [4, 9, 16, 25, 36, 49]) {
+  test('alcancía: dos dispositivos depositan por su cuenta y al fusionar el saldo y el contador son los de la suma de los movimientos, semilla ' + semilla, async () => {
+    let s = semilla;
+    const azar = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+    const d0 = dispositivo(); CUENTAS.forEach(c => d0.app.sumarFuente(c, INICIAL, { origen: { modulo: 'test' } }));
+    const plano = clon(d0.app.S); await dormir(4);
+    const A = dispositivo(plano), B = dispositivo(plano);
+    const total = CUENTAS.map(() => INICIAL); let n = 0, suma = 0;
+    const lado = (d, prefijo, cantidad) => { for (let i = 0; i < cantidad; i++) { const x = depositar(d, azar, prefijo + i); total[CUENTAS.indexOf(x.fuente)] -= x.monto; suma += x.monto; n++; } };
+    lado(A, 'dA-', 1 + Math.floor(azar() * 4)); await dormir(4); lado(B, 'dB-', 1 + Math.floor(azar() * 4));
+    const { fusionarEstados } = await import(pathToFileURL(core('fusion.js')).href);
+    const M = dispositivo(fusionarEstados(plano, clon(A.app.S), clon(B.app.S)));
+    const a = M.app.S.alcancia;
+    assert.equal(a.movimientos.length, n); assert.equal(a.depositos, n, 'el contador de depósitos');
+    assert.equal(a.saldoRegistrado, suma, 'el saldo registrado == la suma de los depósitos de los dos dispositivos');
+    assert.equal(a.movimientos.reduce((x, m) => x + m.monto, 0), a.saldoRegistrado, 'saldo == suma de sus movimientos (el diagnóstico que ya trae alcancia.js)');
+    assert.deepEqual(CUENTAS.map(c => M.app.getSaldoFuente(c)), total, 'el saldo de las cuentas');
+    assert.equal(M.app.Libro.verificarEspejo(M.app.S).ok, true);
+  });
+}
+
+test('alcancía: los dos dispositivos eliminan el MISMO depósito con la función real: el saldo y la cuenta quedan como si se hubiera eliminado una vez', async () => {
+  const d0 = dispositivo(); CUENTAS.forEach(c => d0.app.sumarFuente(c, INICIAL, { origen: { modulo: 'test' } }));
+  let s = 77; const azar = () => (s = (s * 1664525 + 1013904223) % 4294967296) / 4294967296;
+  const x1 = depositar(d0, azar, 'dep-1'); const x2 = depositar(d0, azar, 'dep-2');
+  const plano = clon(d0.app.S); await dormir(4);
+  const A = dispositivo(plano), B = dispositivo(plano);
+  await A.app.alcanciaEliminarDeposito('dep-1'); await dormir(4); await B.app.alcanciaEliminarDeposito('dep-1');
+  const { fusionarEstados } = await import(pathToFileURL(core('fusion.js')).href);
+  const M = dispositivo(fusionarEstados(plano, clon(A.app.S), clon(B.app.S)));
+  const a = M.app.S.alcancia;
+  assert.deepEqual(a.movimientos.map(m => m.id), ['dep-2']);
+  assert.equal(a.saldoRegistrado, x2.monto); assert.equal(a.depositos, 1);
+  const esperado = CUENTAS.map(() => INICIAL); esperado[CUENTAS.indexOf(x2.fuente)] -= x2.monto;
+  assert.deepEqual(CUENTAS.map(c => M.app.getSaldoFuente(c)), esperado, 'el depósito eliminado se devuelve una sola vez');
+  assert.equal(M.app.Libro.verificarEspejo(M.app.S).ok, true);
+  assert.ok(x1.monto > 0);
 });

@@ -109,7 +109,9 @@ function fusionarValor(b, l, r, aditivos, maximos, campoClave) {
     const claves = new Set([...Object.keys(r), ...Object.keys(l), ...Object.keys(base)]);
     for (const c of claves) {
       const v = fusionarValor(base[c], l[c], r[c], ADITIVOS_POR_RUTA(c, aditivos), MAXIMOS_POR_RUTA(c, aditivos), Object.prototype.hasOwnProperty.call(CLAVES_NATURALES, c) ? CLAVES_NATURALES[c] : undefined);
-      if (v !== undefined) out[c] = v;
+      if (v !== undefined) {
+        out[c] = v;
+      }
     }
     return out;
   }
@@ -161,8 +163,30 @@ function deduplicarReversionesConcurrentes(base, local, remoto, fusionado) {
   return Object.assign({}, fusionado, { libro: fusionado.libro.filter(l => !(esObjeto(l) && sobrantes.has(l.id))) });
 }
 
+// ALCANCÍA: guarda un total (`saldoRegistrado`) y un contador (`depositos`) que cada depósito o eliminación actualiza EN SU SITIO. Con dos dispositivos que
+// trabajan a la vez, elegir el de uno perdía lo del otro, y SUMAR los dos cambios sobre la base falla si los dos eliminan el MISMO depósito (restaría
+// dos veces). Lo correcto es recalcularlos desde los movimientos ya fusionados, que sí se unen bien por `id`. Solo se hace si los TRES estados cumplen la
+// invariante (saldo == suma de sus movimientos y contador == cuántos son: el mismo diagnóstico que trae alcancia.js); si alguno no, se deja la
+// resolución normal (gana el local) para no «arreglar» datos que ya venían raros.
+// Además `alcanciaSaldoOfuscado` (texto cifrado derivado del saldo, y lo PRIMERO que lee la pantalla) no se puede recalcular aquí (el cifrado vive en
+// alcancia.js): si el saldo fusionado no es el de ninguno de los dos lados, ese cifrado ya no lo describe y se descarta; la pantalla cae al saldo en claro.
+const _centavos = n => Math.round((Number(n) || 0) * 100);
+function _alcanciaCoherente(x) {
+  const a = esObjeto(x) && esObjeto(x.alcancia) ? x.alcancia : null;
+  if (!a || !Array.isArray(a.movimientos) || typeof a.saldoRegistrado !== 'number' || typeof a.depositos !== 'number') return false;
+  return a.movimientos.every(esObjeto) && _centavos(a.saldoRegistrado) === a.movimientos.reduce((t, m) => t + _centavos(m.monto), 0) && a.depositos === a.movimientos.length;
+}
+function conciliarAlcancia(base, local, remoto, fusionado) {
+  if (!esObjeto(fusionado.alcancia) || !Array.isArray(fusionado.alcancia.movimientos)) return fusionado;
+  if (!_alcanciaCoherente(base) || !_alcanciaCoherente(local) || !_alcanciaCoherente(remoto)) return fusionado;
+  const m = fusionado.alcancia, saldo = m.movimientos.reduce((t, x) => t + (esObjeto(x) ? _centavos(x.monto) : 0), 0) / 100;
+  const res = Object.assign({}, fusionado, { alcancia: Object.assign({}, m, { saldoRegistrado: saldo, depositos: m.movimientos.length }) });
+  if ('alcanciaSaldoOfuscado' in res && saldo !== local.alcancia.saldoRegistrado && saldo !== remoto.alcancia.saldoRegistrado) delete res.alcanciaSaldoOfuscado;
+  return res;
+}
+
 // Punto de entrada. `base`, `local` y `remoto` son los estados ya como objetos. Devuelve un objeto nuevo.
 export function fusionarEstados(base, local, remoto) {
   const b = base || {}, l = local || {}, r = remoto || {};
-  return deduplicarReversionesConcurrentes(b, l, r, fusionarValor(b, l, r));
+  return conciliarAlcancia(b, l, r, deduplicarReversionesConcurrentes(b, l, r, fusionarValor(b, l, r)));
 }

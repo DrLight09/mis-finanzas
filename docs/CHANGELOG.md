@@ -52,6 +52,12 @@ Regla: una entrada nueva va **aquí, arriba**; cuando haya más de unas diez, la
 
 ---
 
+## 2026-11-27 — Fusión de dos dispositivos con Préstamos («Me deben»)
+
+**Probado solo con Node; sin ver en navegador real.** `tests/fusion-prestamos.test.js` (3): abonos distintos a la vez a dos cuentas; los DOS dispositivos revierten el MISMO abono; uno revierte y el otro abona. Con `_aplicarMovimiento` y `_revertirMovimientoDeudor` reales y el estado fusionado cargado en una app nueva: lo que debe la persona, el saldo de las cuentas, `Libro.verificar` y `Libro.verificarEspejo` coinciden con un modelo. **No encontró fallos** (la deuda y el estado de los grupos se derivan de los movimientos: no hay totales guardados que se pierdan); sin la deduplicación de reversiones concurrentes falla la reversión doble.
+
+---
+
 ## 2026-11-27 — Bug de sincronización: dos depósitos a la vez en la alcancía perdían uno en el saldo mostrado
 
 **Probado solo con Node; sin ver en navegador real.** Lo encontró un experimento de fusión con tarjetas y alcancía.
